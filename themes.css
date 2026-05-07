@@ -80,6 +80,10 @@
   --blob-blend: screen;
 }
 
+/* When a game is rendered inside the gallery's iframe, the in-game
+   back link is redundant — the gallery has its own close button. */
+.embedded .back-link { display: none; }
+
 /* ---------- Theme picker (shared) ---------- */
 
 .theme-picker {

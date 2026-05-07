@@ -27,6 +27,9 @@
   ];
 
   const grid = document.getElementById('grid');
+  const overlay = document.getElementById('game-overlay');
+  const frame = document.getElementById('game-frame');
+  const closeBtn = document.getElementById('game-close');
 
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -66,6 +69,35 @@
     }).join('');
   }
 
+  function openGame(url) {
+    if (overlay.dataset.state === 'open') return;
+    frame.src = url;
+    overlay.hidden = false;
+    // Force reflow so the transition runs from the initial state.
+    void overlay.offsetWidth;
+    overlay.dataset.state = 'open';
+    try { history.pushState({ gameOpen: true }, '', '#' + url); } catch (_) {}
+  }
+
+  function closeGame() {
+    if (overlay.dataset.state !== 'open') return;
+    overlay.dataset.state = '';
+    setTimeout(() => {
+      overlay.hidden = true;
+      frame.src = 'about:blank';
+      // The iframe may have changed the theme; re-sync the gallery.
+      try {
+        const t = localStorage.getItem('arcade-theme');
+        if (t) {
+          document.documentElement.dataset.theme = t;
+          document.querySelectorAll('.swatch').forEach((s) => {
+            s.classList.toggle('active', s.dataset.theme === t);
+          });
+        }
+      } catch (_) {}
+    }, 320);
+  }
+
   grid.addEventListener('click', (e) => {
     const card = e.target.closest('.card');
     if (!card) return;
@@ -73,7 +105,6 @@
     if (card.dataset.locked === '1') {
       e.preventDefault();
       card.classList.remove('shake');
-      // Force reflow so the animation can replay on rapid taps.
       void card.offsetWidth;
       card.classList.add('shake');
       return;
@@ -83,8 +114,34 @@
     if (!url) return;
     e.preventDefault();
     card.classList.add('tapped');
-    setTimeout(() => { window.location.href = url; }, 220);
+    setTimeout(() => { card.classList.remove('tapped'); }, 240);
+    setTimeout(() => { openGame(url); }, 120);
+  });
+
+  closeBtn.addEventListener('click', () => {
+    if (history.state && history.state.gameOpen) history.back();
+    else closeGame();
+  });
+
+  window.addEventListener('popstate', () => {
+    if (overlay.dataset.state === 'open') closeGame();
+  });
+
+  // Allow embedded games to request close (e.g. via their own back button).
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'close-game') {
+      if (history.state && history.state.gameOpen) history.back();
+      else closeGame();
+    }
   });
 
   render();
+
+  // Deep link: opening /#games/<slug>/ goes straight into the game.
+  (function deepLink() {
+    const hash = decodeURIComponent(location.hash.slice(1));
+    if (!hash) return;
+    const game = games.find((g) => g.url === hash && !g.comingSoon);
+    if (game) openGame(game.url);
+  })();
 })();
