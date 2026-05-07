@@ -306,7 +306,7 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: #06060e;
+  background: var(--bg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -348,7 +348,7 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   z-index: 1;
   font-size: 96px;
   line-height: 1;
-  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.25));
 }
 
 .game-zoom.show-loader .game-zoom-icon {
@@ -371,18 +371,17 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 }
 
 .game-zoom-name {
-  color: #fff;
+  color: var(--ink);
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 .game-zoom-bar {
   width: 180px;
   height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--surface-strong);
   overflow: hidden;
 }
 
@@ -392,7 +391,7 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   left: 0;
   height: 100%;
   width: 40%;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--ink);
   border-radius: inherit;
   animation: zoom-bar 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }

@@ -35,12 +35,13 @@
   const zoomName = document.getElementById('zoom-name');
 
   // Splash sequence timings.
-  const ZOOM_MS = 420;
-  const DARKEN_AT = 180;
-  const SHOW_LOADER_AT = 420;
-  const MIN_TOTAL_MS = 750;
+  const ZOOM_MS = 560;
+  const DARKEN_AT = 220;
+  const SHOW_LOADER_AT = 480;
+  const MIN_TOTAL_MS = 850;
   const REVEAL_MS = 350;
   const CLOSE_MS = 320;
+  const ZOOM_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -124,8 +125,8 @@
 
     // Phase 1: zoom expands to fullscreen.
     zoom.style.transition =
-      `transform ${ZOOM_MS}ms cubic-bezier(0.16, 1, 0.3, 1), ` +
-      `border-radius ${ZOOM_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+      `transform ${ZOOM_MS}ms ${ZOOM_EASING}, ` +
+      `border-radius ${ZOOM_MS}ms ${ZOOM_EASING}`;
     zoom.style.transform = 'translate(0, 0) scale(1, 1)';
     zoom.style.borderRadius = '0';
 
