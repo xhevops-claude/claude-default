@@ -30,11 +30,17 @@
   const overlay = document.getElementById('game-overlay');
   const frame = document.getElementById('game-frame');
   const closeBtn = document.getElementById('game-close');
-  const splash = document.getElementById('game-splash');
-  const splashIcon = document.getElementById('splash-icon');
-  const splashName = document.getElementById('splash-name');
+  const zoom = document.getElementById('game-zoom');
+  const zoomIcon = document.getElementById('zoom-icon');
+  const zoomName = document.getElementById('zoom-name');
 
-  const SPLASH_MIN_MS = 700;
+  // Splash sequence timings.
+  const ZOOM_MS = 420;
+  const DARKEN_AT = 180;
+  const SHOW_LOADER_AT = 420;
+  const MIN_TOTAL_MS = 750;
+  const REVEAL_MS = 350;
+  const CLOSE_MS = 320;
 
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -74,38 +80,81 @@
     }).join('');
   }
 
-  function openGame(game) {
+  function resetZoom() {
+    zoom.style.transition = 'none';
+    zoom.style.transform = '';
+    zoom.style.transformOrigin = '';
+    zoom.style.borderRadius = '';
+    zoom.classList.remove('darkened', 'show-loader', 'reveal');
+  }
+
+  function openGame(card, game) {
     if (overlay.dataset.state === 'open') return;
 
-    // Configure the splash with this game's identity.
-    splash.style.setProperty('--g1', game.gradient[0]);
-    splash.style.setProperty('--g2', game.gradient[1]);
-    splashIcon.textContent = game.icon;
-    splashName.textContent = game.name;
-    splash.dataset.state = 'visible';
+    // Configure zoom layer with this game's gradient and icon.
+    zoom.style.setProperty('--g1', game.gradient[0]);
+    zoom.style.setProperty('--g2', game.gradient[1]);
+    zoomIcon.textContent = game.icon;
+    zoomName.textContent = game.name;
+    resetZoom();
 
-    const splashStart = Date.now();
-    frame.onload = () => {
-      const remaining = Math.max(0, SPLASH_MIN_MS - (Date.now() - splashStart));
-      setTimeout(() => { splash.dataset.state = 'hide'; }, remaining);
-    };
+    // FLIP: position zoom to look like the tapped card, then animate it to
+    // fullscreen. If we have no source card (deep link), fall back to a
+    // small centered scale-in.
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (card) {
+      const r = card.getBoundingClientRect();
+      zoom.style.transformOrigin = '0 0';
+      zoom.style.transform =
+        `translate(${r.left}px, ${r.top}px) scale(${r.width / vw}, ${r.height / vh})`;
+      zoom.style.borderRadius = '16px';
+    } else {
+      zoom.style.transformOrigin = 'center';
+      zoom.style.transform = 'scale(0.6)';
+      zoom.style.borderRadius = '24px';
+    }
 
-    frame.src = game.url;
     overlay.hidden = false;
-    void overlay.offsetWidth;
+    overlay.style.opacity = '';
     overlay.dataset.state = 'open';
+
+    // Force layout so the next frame's transition runs from this state.
+    void zoom.offsetWidth;
+
+    // Phase 1: zoom expands to fullscreen.
+    zoom.style.transition =
+      `transform ${ZOOM_MS}ms cubic-bezier(0.16, 1, 0.3, 1), ` +
+      `border-radius ${ZOOM_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+    zoom.style.transform = 'translate(0, 0) scale(1, 1)';
+    zoom.style.borderRadius = '0';
+
+    // Phase 2: gradient cross-fades to dark.
+    setTimeout(() => zoom.classList.add('darkened'), DARKEN_AT);
+    // Phase 3: name + bar fade in over the dark background.
+    setTimeout(() => zoom.classList.add('show-loader'), SHOW_LOADER_AT);
+
+    // Phase 4: load the iframe; reveal once loaded AND minimum elapsed.
+    const t0 = Date.now();
+    frame.onload = () => {
+      const remaining = Math.max(0, MIN_TOTAL_MS - (Date.now() - t0));
+      setTimeout(() => zoom.classList.add('reveal'), remaining);
+    };
+    frame.src = game.url;
+
     try { history.pushState({ gameOpen: true }, '', '#' + game.url); } catch (_) {}
   }
 
   function closeGame() {
     if (overlay.dataset.state !== 'open') return;
-    overlay.dataset.state = '';
+    overlay.dataset.state = 'closing';
+
     setTimeout(() => {
       overlay.hidden = true;
+      overlay.dataset.state = '';
       frame.onload = null;
       frame.src = 'about:blank';
-      // Reset splash for the next open.
-      splash.dataset.state = 'visible';
+      resetZoom();
       // The iframe may have changed the theme; re-sync the gallery.
       try {
         const t = localStorage.getItem('arcade-theme');
@@ -116,7 +165,7 @@
           });
         }
       } catch (_) {}
-    }, 340);
+    }, CLOSE_MS);
   }
 
   grid.addEventListener('click', (e) => {
@@ -138,7 +187,7 @@
     e.preventDefault();
     card.classList.add('tapped');
     setTimeout(() => { card.classList.remove('tapped'); }, 240);
-    setTimeout(() => { openGame(game); }, 120);
+    setTimeout(() => { openGame(card, game); }, 90);
   });
 
   closeBtn.addEventListener('click', () => {
@@ -165,6 +214,6 @@
     const hash = decodeURIComponent(location.hash.slice(1));
     if (!hash) return;
     const game = games.find((g) => g.url === hash && !g.comingSoon);
-    if (game) openGame(game);
+    if (game) openGame(null, game);
   })();
 })();
