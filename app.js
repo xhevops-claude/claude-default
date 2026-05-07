@@ -1,67 +1,240 @@
 (function () {
-  const input = document.getElementById('name-input');
-  const greetBtn = document.getElementById('greet-btn');
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlay-title');
+  const overlayText = document.getElementById('overlay-text');
+  const actionBtn = document.getElementById('action-btn');
   const themeBtn = document.getElementById('theme-btn');
-  const greeting = document.getElementById('greeting');
-  const subtitle = document.getElementById('subtitle');
-  const timeEl = document.getElementById('time');
 
-  const flavours = [
-    'Hope your day is going well.',
-    'Nice to meet you.',
-    'Welcome aboard.',
-    'Glad you stopped by.',
-    'Sending good vibes your way.',
-    'May your coffee be strong and your bugs be shallow.',
-  ];
+  const GRID = 20;
+  const CELL = canvas.width / GRID;
+  const TICK_START = 130;
+  const TICK_MIN = 60;
+  const TICK_STEP = 3;
 
-  const greetings = ['Hello', 'Hola', 'Bonjour', 'Hallo', 'Ciao', 'こんにちは', '안녕하세요', 'Olá'];
+  let snake, dir, queuedDir, food, score, best, tickMs, lastTick, raf;
+  let state = 'ready'; // ready | playing | paused | over
 
-  function greet() {
-    const name = input.value.trim();
-    const hello = greetings[Math.floor(Math.random() * greetings.length)];
-    if (name) {
-      greeting.textContent = `${hello}, ${name}`;
-      subtitle.textContent = flavours[Math.floor(Math.random() * flavours.length)];
-    } else {
-      greeting.textContent = `${hello}, World`;
-      subtitle.textContent = 'A friendly hello from somewhere on the internet.';
+  try { best = parseInt(localStorage.getItem('snake-best') || '0', 10) || 0; } catch (_) { best = 0; }
+  bestEl.textContent = best;
+
+  function reset() {
+    snake = [
+      { x: 9, y: 10 },
+      { x: 8, y: 10 },
+      { x: 7, y: 10 },
+    ];
+    dir = { x: 1, y: 0 };
+    queuedDir = dir;
+    score = 0;
+    tickMs = TICK_START;
+    placeFood();
+    scoreEl.textContent = score;
+  }
+
+  function placeFood() {
+    while (true) {
+      const f = {
+        x: Math.floor(Math.random() * GRID),
+        y: Math.floor(Math.random() * GRID),
+      };
+      if (!snake.some((s) => s.x === f.x && s.y === f.y)) {
+        food = f;
+        return;
+      }
     }
   }
 
-  function updateTime() {
-    const now = new Date();
-    timeEl.textContent = now.toLocaleString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
+  function setOverlay(s, title, text, btn) {
+    state = s;
+    if (s === 'playing') {
+      overlay.dataset.state = 'hidden';
+      return;
+    }
+    overlay.dataset.state = s;
+    overlayTitle.textContent = title;
+    overlayText.textContent = text;
+    actionBtn.textContent = btn;
   }
 
-  function applyTheme(theme) {
-    document.documentElement.dataset.theme = theme;
-    themeBtn.textContent = theme === 'light' ? '🌙' : '☀️';
-    try { localStorage.setItem('hello-theme', theme); } catch (_) {}
+  function start() {
+    reset();
+    setOverlay('playing');
+    lastTick = performance.now();
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(loop);
   }
 
-  function toggleTheme() {
-    const current = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-    applyTheme(current === 'light' ? 'dark' : 'light');
+  function pause() {
+    if (state !== 'playing') return;
+    setOverlay('paused', 'Paused', 'Take a breath. Press Space or Resume.', 'Resume');
   }
 
-  let saved = null;
-  try { saved = localStorage.getItem('hello-theme'); } catch (_) {}
-  applyTheme(saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+  function resume() {
+    if (state !== 'paused') return;
+    state = 'playing';
+    overlay.dataset.state = 'hidden';
+    lastTick = performance.now();
+    raf = requestAnimationFrame(loop);
+  }
 
-  greetBtn.addEventListener('click', greet);
-  themeBtn.addEventListener('click', toggleTheme);
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') greet();
+  function gameOver() {
+    if (score > best) {
+      best = score;
+      bestEl.textContent = best;
+      try { localStorage.setItem('snake-best', String(best)); } catch (_) {}
+    }
+    setOverlay('over', 'Game Over', `You scored ${score}. Best: ${best}.`, 'Play again');
+  }
+
+  function step() {
+    // Apply queued direction if it isn't a 180° reverse.
+    if (queuedDir.x !== -dir.x || queuedDir.y !== -dir.y) {
+      dir = queuedDir;
+    }
+
+    const head = snake[0];
+    const next = { x: head.x + dir.x, y: head.y + dir.y };
+
+    if (next.x < 0 || next.x >= GRID || next.y < 0 || next.y >= GRID) {
+      return gameOver();
+    }
+    // Self-collision (skip the tail tip since it will move out unless we eat).
+    const willEat = next.x === food.x && next.y === food.y;
+    const body = willEat ? snake : snake.slice(0, -1);
+    if (body.some((s) => s.x === next.x && s.y === next.y)) {
+      return gameOver();
+    }
+
+    snake.unshift(next);
+    if (willEat) {
+      score += 1;
+      scoreEl.textContent = score;
+      tickMs = Math.max(TICK_MIN, tickMs - TICK_STEP);
+      placeFood();
+    } else {
+      snake.pop();
+    }
+  }
+
+  function loop(now) {
+    if (state !== 'playing') return;
+    if (now - lastTick >= tickMs) {
+      step();
+      lastTick = now;
+      if (state !== 'playing') {
+        draw();
+        return;
+      }
+    }
+    draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  function draw() {
+    // Background grid.
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const gridLine = getCss('--grid-line');
+    ctx.strokeStyle = gridLine;
+    ctx.lineWidth = 1;
+    for (let i = 1; i < GRID; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * CELL + 0.5, 0);
+      ctx.lineTo(i * CELL + 0.5, canvas.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i * CELL + 0.5);
+      ctx.lineTo(canvas.width, i * CELL + 0.5);
+      ctx.stroke();
+    }
+
+    // Food (pulsing glow).
+    const t = performance.now() / 400;
+    const pulse = 0.6 + Math.sin(t) * 0.2;
+    const foodColor = getCss('--food');
+    ctx.save();
+    ctx.shadowColor = foodColor;
+    ctx.shadowBlur = 18 * pulse;
+    ctx.fillStyle = foodColor;
+    drawRoundRect(food.x * CELL + 4, food.y * CELL + 4, CELL - 8, CELL - 8, 6);
+    ctx.fill();
+    ctx.restore();
+
+    // Snake.
+    const bodyColor = getCss('--snake');
+    const headColor = getCss('--snake-head');
+    for (let i = snake.length - 1; i >= 0; i--) {
+      const seg = snake[i];
+      ctx.fillStyle = i === 0 ? headColor : bodyColor;
+      ctx.save();
+      if (i === 0) {
+        ctx.shadowColor = headColor;
+        ctx.shadowBlur = 14;
+      }
+      drawRoundRect(seg.x * CELL + 2, seg.y * CELL + 2, CELL - 4, CELL - 4, 6);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawRoundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function getCss(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function setDirection(nx, ny) {
+    queuedDir = { x: nx, y: ny };
+  }
+
+  document.addEventListener('keydown', (e) => {
+    const k = e.key;
+    if (k === 'ArrowUp' || k === 'w' || k === 'W') { setDirection(0, -1); e.preventDefault(); }
+    else if (k === 'ArrowDown' || k === 's' || k === 'S') { setDirection(0, 1); e.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'a' || k === 'A') { setDirection(-1, 0); e.preventDefault(); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { setDirection(1, 0); e.preventDefault(); }
+    else if (k === ' ') {
+      if (state === 'playing') pause();
+      else if (state === 'paused') resume();
+      e.preventDefault();
+    } else if (k === 'Enter') {
+      if (state === 'over' || state === 'ready') start();
+      e.preventDefault();
+    }
   });
 
-  updateTime();
-  setInterval(updateTime, 1000);
+  actionBtn.addEventListener('click', () => {
+    if (state === 'paused') resume();
+    else start();
+  });
+
+  themeBtn.addEventListener('click', () => {
+    const cur = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    const next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    themeBtn.textContent = next === 'light' ? '🌙' : '☀️';
+    try { localStorage.setItem('snake-theme', next); } catch (_) {}
+    if (state !== 'playing') draw();
+  });
+
+  let savedTheme = null;
+  try { savedTheme = localStorage.getItem('snake-theme'); } catch (_) {}
+  const initial = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.dataset.theme = initial;
+  themeBtn.textContent = initial === 'light' ? '🌙' : '☀️';
+
+  // Initial draw so the board is visible behind the start overlay.
+  reset();
+  draw();
 })();

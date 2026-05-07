@@ -1,12 +1,17 @@
 :root {
   --bg: #0f1020;
   --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.10);
   --surface-border: rgba(255, 255, 255, 0.12);
   --ink: #f5f6fa;
   --muted: #a0a3b8;
   --accent: #7c5cff;
   --accent-2: #21d4fd;
   --accent-3: #ff7ad9;
+  --snake: #21d4fd;
+  --snake-head: #7c5cff;
+  --food: #ff7ad9;
+  --grid-line: rgba(255, 255, 255, 0.04);
   --shadow: 0 30px 80px -30px rgba(124, 92, 255, 0.55), 0 10px 30px -15px rgba(0, 0, 0, 0.5);
   --radius: 22px;
 }
@@ -14,9 +19,11 @@
 [data-theme="light"] {
   --bg: #f6f4ff;
   --surface: rgba(255, 255, 255, 0.7);
+  --surface-strong: rgba(255, 255, 255, 0.9);
   --surface-border: rgba(20, 20, 40, 0.08);
   --ink: #15172b;
   --muted: #5b5f7a;
+  --grid-line: rgba(20, 20, 40, 0.05);
   --shadow: 0 30px 80px -30px rgba(124, 92, 255, 0.35), 0 10px 30px -15px rgba(0, 0, 0, 0.15);
 }
 
@@ -35,10 +42,10 @@ body {
   display: grid;
   place-items: center;
   padding: 24px;
-  overflow: hidden;
   min-height: 100vh;
   position: relative;
   transition: background-color 0.4s ease, color 0.4s ease;
+  overflow: hidden;
 }
 
 .aurora {
@@ -81,27 +88,103 @@ body {
   -webkit-backdrop-filter: blur(24px) saturate(140%);
   border: 1px solid var(--surface-border);
   border-radius: var(--radius);
-  padding: 36px 32px 24px;
+  padding: 22px;
   box-shadow: var(--shadow);
-  text-align: center;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
 }
 
 .badge {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 4px 12px;
   font-size: 12px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--muted);
   border: 1px solid var(--surface-border);
   border-radius: 999px;
+}
+
+.scoreboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
   margin-bottom: 14px;
 }
 
-h1 {
-  margin: 4px 0 8px;
-  font-size: clamp(32px, 5vw, 44px);
-  letter-spacing: -0.025em;
+.stat {
+  background: var(--surface-strong);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.stat-label {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(120deg, var(--accent), var(--accent-2), var(--accent-3));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.canvas-wrap {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-strong);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+  background: rgba(15, 16, 32, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 0.2s ease;
+}
+
+[data-theme="light"] .overlay { background: rgba(255, 255, 255, 0.55); }
+
+.overlay[data-state="hidden"] { opacity: 0; pointer-events: none; }
+
+.overlay h2 {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  letter-spacing: -0.02em;
   background: linear-gradient(120deg, var(--accent), var(--accent-2), var(--accent-3));
   background-size: 200% 200%;
   -webkit-background-clip: text;
@@ -115,43 +198,14 @@ h1 {
   50%      { background-position: 100% 50%; }
 }
 
-.subtitle {
-  margin: 0 0 24px;
+.overlay p {
+  margin: 0;
   color: var(--muted);
-  font-size: 15px;
-}
-
-.controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-input[type="text"] {
-  flex: 1;
-  padding: 13px 14px;
-  font-size: 15px;
-  color: var(--ink);
-  border: 1.5px solid var(--surface-border);
-  border-radius: 12px;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-[data-theme="light"] input[type="text"] {
-  background: rgba(255, 255, 255, 0.85);
-}
-
-input[type="text"]::placeholder { color: var(--muted); }
-
-input[type="text"]:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.25);
+  max-width: 320px;
 }
 
 button {
-  padding: 12px 18px;
+  padding: 12px 22px;
   font-size: 15px;
   font-weight: 600;
   color: #fff;
@@ -161,6 +215,7 @@ button {
   cursor: pointer;
   transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.15s ease;
   box-shadow: 0 10px 24px -10px rgba(124, 92, 255, 0.7);
+  margin-top: 6px;
 }
 
 button:hover { filter: brightness(1.08); }
@@ -177,40 +232,39 @@ button:focus-visible {
   padding: 6px 10px;
   font-size: 18px;
   border: 1px solid var(--surface-border);
+  margin-top: 0;
 }
 
-.ghost:hover { color: var(--ink); }
+.ghost:hover { color: var(--ink); filter: none; }
 
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--surface-border);
-}
-
-.time {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
+.controls-hint {
+  margin-top: 14px;
+  text-align: center;
   font-size: 13px;
-  text-align: left;
+  color: var(--muted);
+  line-height: 1.8;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0);
-  white-space: nowrap; border: 0;
+kbd {
+  display: inline-block;
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-strong);
+  border: 1px solid var(--surface-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  margin: 0 1px;
 }
 
 @media (max-width: 480px) {
-  .controls { flex-direction: column; }
+  .card { padding: 16px; }
   .blob { width: 320px; height: 320px; }
+  .controls-hint { font-size: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .blob, h1 { animation: none; }
+  .blob, .overlay h2, .stat-value { animation: none; }
 }
