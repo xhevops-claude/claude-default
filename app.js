@@ -94,6 +94,13 @@
       originY = window.innerHeight / 2;
     }
 
+    // Hide the iframe behind the splash. While the splash is still small,
+    // the iframe would otherwise show through the rest of the overlay area,
+    // briefly flashing the game (or the previous game's residue) before
+    // the splash grows to cover everything.
+    frame.style.transition = 'none';
+    frame.style.opacity = '0';
+
     // Snap the splash to its starting "microscopic" state without animating.
     zoom.style.transition = 'none';
     zoom.style.transformOrigin = `${originX}px ${originY}px`;
@@ -118,7 +125,13 @@
     const t0 = Date.now();
     frame.onload = () => {
       const remaining = Math.max(0, MIN_SPLASH_MS - (Date.now() - t0));
-      setTimeout(() => zoom.classList.add('faded-out'), remaining);
+      setTimeout(() => {
+        // Reveal the iframe just before the splash starts fading out, so
+        // it cross-fades cleanly without ever flashing through the splash.
+        frame.style.transition = 'opacity 0.2s ease';
+        frame.style.opacity = '1';
+        zoom.classList.add('faded-out');
+      }, remaining);
     };
     frame.src = game.url;
 
@@ -143,6 +156,8 @@
     overlay.style.transition = '';
     frame.onload = null;
     frame.src = 'about:blank';
+    frame.style.opacity = '';
+    frame.style.transition = '';
     // Reset splash for the next open without animating.
     zoom.style.transition = 'none';
     zoom.style.transform = '';
