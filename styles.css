@@ -276,36 +276,47 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 
 /* Game-in-iframe overlay.
 
-   The iframe itself is the thing that grows from a microscopic dot at
-   the tapped tile's center to fullscreen on open, and shrinks back into
+   The iframe is wrapped in a div that grows from a microscopic dot at
+   the tapped tile's center to fullscreen on open, and shrinks back to
    the same tile on close. Each game ships its own loading screen inside
    the iframe (with inline critical CSS so it paints on the first frame),
-   so there is no separate splash element on the gallery side. */
+   so there is no separate splash element on the gallery side.
+
+   The wrapper carries the transform because mobile Safari can be flaky
+   about transforming iframe elements directly. */
 .game-overlay {
   position: fixed;
   inset: 0;
   z-index: 100;
   pointer-events: none;
   background: #000;
-  opacity: 0;
+  /* Snap to opaque on open — the iframe-wrapper does the visible
+     animating. Only fade on close. */
+  opacity: 1;
   transition: opacity 0.3s ease;
 }
 
-.game-overlay[data-state="open"] {
-  pointer-events: auto;
-  opacity: 1;
+.game-overlay[data-state="open"] { pointer-events: auto; }
+.game-overlay[data-state="shrinking"] { pointer-events: none; }
+.game-overlay[data-state="closing"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.frame-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
 }
 
 #game-frame {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   border: 0;
   background: #000;
   display: block;
-  z-index: 1;
-  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .game-close {
@@ -336,5 +347,6 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 
 @media (prefers-reduced-motion: reduce) {
   .blob, .title { animation: none; }
-  .game-overlay, #game-frame { transition: opacity 0.15s ease; }
+  .game-overlay { transition: opacity 0.15s ease; }
+  .frame-wrap { transition: opacity 0.15s ease; }
 }

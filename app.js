@@ -25,15 +25,14 @@
 
   const grid = document.getElementById('grid');
   const overlay = document.getElementById('game-overlay');
+  const wrap = document.getElementById('frame-wrap');
   const frame = document.getElementById('game-frame');
   const closeBtn = document.getElementById('game-close');
 
-  // Match the CSS transition on #game-frame.
+  // Match the CSS transition on .frame-wrap.
   const ZOOM_MS = 550;
   const OVERLAY_FADE_MS = 300;
-  // Microscopic starting / ending scale — small enough to read as a dot
-  // at the tile's center, large enough that the iframe content doesn't
-  // pop in on the first frame.
+  // Microscopic starting / ending scale.
   const SMALL_SCALE = 0.04;
 
   // Tracks the tile that launched the current overlay so we can shrink
@@ -88,36 +87,42 @@
     return [window.innerWidth / 2, window.innerHeight / 2];
   }
 
+  // Double-rAF guarantees the browser commits the "before" state to the
+  // compositor before we set the "after" state, so the transition runs.
+  // A single rAF or `void offsetWidth` is sometimes not enough on Safari.
+  function nextFrame(fn) {
+    requestAnimationFrame(() => requestAnimationFrame(fn));
+  }
+
   function openGame(card, game) {
-    if (overlay.dataset.state === 'open') return;
+    if (overlay.dataset.state) return;
 
     const [originX, originY] = originFromCard(card);
     lastCard = card || null;
     lastOriginX = originX;
     lastOriginY = originY;
 
-    // Set iframe src first so the inline loading screen inside the game
-    // paints early (before the grow finishes), but the iframe is held at
-    // microscopic scale so we don't see the about:blank or layout flash
-    // around the dot.
-    frame.style.transition = 'none';
-    frame.style.transformOrigin = `${originX}px ${originY}px`;
-    frame.style.transform = `scale(${SMALL_SCALE})`;
-    frame.style.pointerEvents = 'none';
+    // Reveal the overlay (it's already opaque thanks to CSS opacity:1)
+    // and put the wrapper at its starting microscopic state without
+    // animating.
+    overlay.hidden = false;
+    overlay.dataset.state = 'open';
+
+    wrap.style.transition = 'none';
+    wrap.style.transformOrigin = `${originX}px ${originY}px`;
+    wrap.style.transform = `scale(${SMALL_SCALE})`;
+    wrap.style.pointerEvents = 'none';
     frame.src = game.url;
 
-    overlay.hidden = false;
+    // Force layout commit, then wait two frames so the browser actually
+    // paints the starting transform before we change to scale(1).
+    void wrap.offsetWidth;
+    nextFrame(() => {
+      wrap.style.transition = '';
+      wrap.style.transform = 'scale(1)';
+    });
 
-    // Force a layout pass so the starting transform is committed before
-    // we re-enable transitions and animate to fullscreen.
-    void frame.offsetWidth;
-
-    frame.style.transition = '';
-    overlay.dataset.state = 'open';
-    frame.style.transform = 'scale(1)';
-
-    // Re-enable iframe interactions once the grow completes.
-    setTimeout(() => { frame.style.pointerEvents = ''; }, ZOOM_MS);
+    setTimeout(() => { wrap.style.pointerEvents = ''; }, ZOOM_MS + 40);
 
     try { history.pushState({ gameOpen: true }, '', '#' + game.url); } catch (_) {}
   }
@@ -126,7 +131,7 @@
   // center, then fade the overlay out.
   function closeGame() {
     if (overlay.dataset.state !== 'open') return;
-    overlay.dataset.state = 'closing';
+    overlay.dataset.state = 'shrinking';
 
     // Recompute the destination from the live card if it's still in the
     // DOM (the gallery may have scrolled while the game was open).
@@ -143,28 +148,32 @@
       oy = window.innerHeight / 2;
     }
 
-    frame.style.pointerEvents = 'none';
-    frame.style.transition = 'none';
-    frame.style.transformOrigin = `${ox}px ${oy}px`;
-    void frame.offsetWidth;
-    frame.style.transition = '';
-    frame.style.transform = `scale(${SMALL_SCALE})`;
+    wrap.style.pointerEvents = 'none';
+    wrap.style.transition = 'none';
+    wrap.style.transformOrigin = `${ox}px ${oy}px`;
+    void wrap.offsetWidth;
+
+    nextFrame(() => {
+      wrap.style.transition = '';
+      wrap.style.transform = `scale(${SMALL_SCALE})`;
+    });
 
     // After the shrink finishes, fade the overlay out and finalize.
     setTimeout(() => {
-      overlay.removeAttribute('data-state');
+      overlay.dataset.state = 'closing';
       setTimeout(finalizeClose, OVERLAY_FADE_MS + 20);
-    }, ZOOM_MS + 20);
+    }, ZOOM_MS + 40);
   }
 
   function finalizeClose() {
     overlay.hidden = true;
+    overlay.removeAttribute('data-state');
     frame.onload = null;
     frame.src = 'about:blank';
-    frame.style.transition = 'none';
-    frame.style.transform = '';
-    frame.style.transformOrigin = '';
-    frame.style.pointerEvents = '';
+    wrap.style.transition = 'none';
+    wrap.style.transform = '';
+    wrap.style.transformOrigin = '';
+    wrap.style.pointerEvents = '';
     lastCard = null;
     lastOriginX = null;
     lastOriginY = null;
