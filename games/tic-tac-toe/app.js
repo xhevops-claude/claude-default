@@ -5,8 +5,12 @@
   const scoreXEl = document.getElementById('score-x');
   const scoreOEl = document.getElementById('score-o');
   const scoreDEl = document.getElementById('score-d');
+  const menu = document.getElementById('menu');
+  const menuTitle = document.getElementById('menu-title');
+  const menuTagline = document.getElementById('menu-tagline');
+  const playBtn = document.getElementById('play-btn');
   const resetBtn = document.getElementById('reset-btn');
-  const clearBtn = document.getElementById('clear-btn');
+  const quitBtn = document.getElementById('quit-btn');
 
   const LINES = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -32,6 +36,34 @@
     scoreXEl.textContent = scores.X;
     scoreOEl.textContent = scores.O;
     scoreDEl.textContent = scores.D;
+    // Show "RESET SCORES" button only when there's something to reset.
+    const hasScores = scores.X || scores.O || scores.D;
+    resetBtn.hidden = !hasScores;
+  }
+
+  function showMenu(state) {
+    if (state === 'ready') {
+      menuTitle.innerHTML = 'TIC<br>TAC<br>TOE';
+      menuTagline.innerHTML = 'Three in a row.<br>Hot-seat for two.';
+      playBtn.textContent = 'PLAY';
+    } else if (state === 'over-x') {
+      menuTitle.innerHTML = 'X<br>WINS';
+      menuTagline.textContent = 'One more?';
+      playBtn.textContent = 'PLAY AGAIN';
+    } else if (state === 'over-o') {
+      menuTitle.innerHTML = 'O<br>WINS';
+      menuTagline.textContent = 'One more?';
+      playBtn.textContent = 'PLAY AGAIN';
+    } else if (state === 'draw') {
+      menuTitle.innerHTML = 'DRAW';
+      menuTagline.textContent = 'Try again?';
+      playBtn.textContent = 'PLAY AGAIN';
+    }
+    menu.dataset.state = 'ready';
+  }
+
+  function hideMenu() {
+    menu.dataset.state = 'hidden';
   }
 
   function newRound() {
@@ -44,7 +76,7 @@
       c.classList.remove('win');
       c.disabled = false;
     });
-    status.textContent = `${turn} to play`;
+    status.textContent = `${turn} TO PLAY`;
   }
 
   function checkWinner() {
@@ -70,18 +102,33 @@
       over = true;
       cells.forEach((c) => { c.disabled = true; });
       if (result.winner === 'D') {
-        status.textContent = "It's a draw";
+        status.textContent = 'DRAW';
         scores.D += 1;
       } else {
-        status.textContent = `${result.winner} wins!`;
+        status.textContent = `${result.winner} WINS`;
         scores[result.winner] += 1;
         result.line.forEach((idx) => cells[idx].classList.add('win'));
       }
       saveScores();
       renderScores();
+      // Wait briefly so the player can see the result on the board,
+      // then bring the menu back with the appropriate state.
+      setTimeout(() => {
+        const next = result.winner === 'D' ? 'draw'
+          : result.winner === 'X' ? 'over-x' : 'over-o';
+        showMenu(next);
+      }, 1200);
     } else {
       turn = turn === 'X' ? 'O' : 'X';
-      status.textContent = `${turn} to play`;
+      status.textContent = `${turn} TO PLAY`;
+    }
+  }
+
+  function quit() {
+    if (window.self !== window.top) {
+      try { window.parent.postMessage({ type: 'close-game' }, '*'); } catch (_) {}
+    } else {
+      location.href = '../../';
     }
   }
 
@@ -89,17 +136,23 @@
     c.addEventListener('click', () => play(parseInt(c.dataset.i, 10)));
   });
 
-  resetBtn.addEventListener('click', newRound);
-  clearBtn.addEventListener('click', () => {
+  playBtn.addEventListener('click', () => {
+    newRound();
+    hideMenu();
+  });
+
+  resetBtn.addEventListener('click', () => {
     scores = { X: 0, O: 0, D: 0 };
     saveScores();
     renderScores();
-    newRound();
   });
+
+  quitBtn.addEventListener('click', quit);
 
   scores = loadScores();
   renderScores();
   newRound();
+  showMenu('ready');
 
   // Hide the inline loading screen once ready and at least 3s have
   // elapsed since the document started loading.

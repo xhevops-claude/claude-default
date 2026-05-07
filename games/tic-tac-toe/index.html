@@ -10,59 +10,49 @@
   <!-- Critical inline CSS so the loading screen paints on the very first
        frame, before styles.css has a chance to load. -->
   <style>
-    html, body { margin: 0; padding: 0; background: #000; color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter,
-      Roboto, "Helvetica Neue", Arial, sans-serif; }
+    html, body { margin: 0; padding: 0; background: #f5f3ee; color: #0a0a0a;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; }
     #game-loading {
       position: fixed; inset: 0; z-index: 9999;
-      background: #000;
+      background: #f5f3ee;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 22px;
+      gap: 28px;
       transition: opacity 0.4s ease;
     }
     #game-loading.hidden { opacity: 0; pointer-events: none; }
     #game-loading .gl-icon {
-      font-size: 96px; line-height: 1;
-      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.4));
-      animation: gl-breathe 2.4s ease-in-out infinite;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+      font-size: 88px; font-weight: 900; line-height: 1;
+      color: #0a0a0a; letter-spacing: -0.04em;
     }
     #game-loading .gl-bar {
-      position: relative; width: 180px; height: 4px;
-      background: rgba(255,255,255,0.22); border-radius: 999px;
+      position: relative; width: 200px; height: 4px;
+      background: rgba(10,10,10,0.15);
       overflow: hidden;
     }
     #game-loading .gl-bar::after {
       content: ""; position: absolute; top: 0; left: -40%;
       width: 40%; height: 100%;
-      background: rgba(255,255,255,0.95); border-radius: inherit;
+      background: #0a0a0a;
       animation: gl-bar 1.2s cubic-bezier(0.45,0,0.55,1) infinite;
     }
-    @keyframes gl-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="game-loading">
-    <span class="gl-icon" aria-hidden="true">#️⃣</span>
+    <span class="gl-icon" aria-hidden="true">×○</span>
     <div class="gl-bar" aria-label="Loading"></div>
-  </div>
-
-  <div class="aurora" aria-hidden="true">
-    <span class="blob blob-1"></span>
-    <span class="blob blob-2"></span>
-    <span class="blob blob-3"></span>
   </div>
 
   <main class="card">
     <header class="header">
-      <a class="back-link" href="../../">←</a>
-      <span class="badge">tic-tac-toe</span>
-      <span class="header-spacer" aria-hidden="true"></span>
+      <span class="badge">TIC TAC TOE</span>
     </header>
 
-    <div class="status" id="status">X to play</div>
+    <div class="status" id="status">X TO PLAY</div>
 
     <div class="board" id="board" role="grid" aria-label="Tic-tac-toe board">
       <button class="cell" data-i="0" type="button" aria-label="Cell 1"></button>
@@ -77,14 +67,20 @@
     </div>
 
     <div class="scoreboard">
-      <div class="stat"><span class="stat-label">X</span><span class="stat-value" id="score-x">0</span></div>
-      <div class="stat"><span class="stat-label">Draw</span><span class="stat-value" id="score-d">0</span></div>
-      <div class="stat"><span class="stat-label">O</span><span class="stat-value" id="score-o">0</span></div>
+      <div class="stat" data-mark="X"><span class="stat-label">X</span><span class="stat-value" id="score-x">0</span></div>
+      <div class="stat"><span class="stat-label">DRAW</span><span class="stat-value" id="score-d">0</span></div>
+      <div class="stat" data-mark="O"><span class="stat-label">O</span><span class="stat-value" id="score-o">0</span></div>
     </div>
 
-    <div class="actions">
-      <button id="reset-btn" type="button">New round</button>
-      <button id="clear-btn" class="ghost" type="button">Reset scores</button>
+    <!-- Main menu overlay: shown at start, after game over. -->
+    <div class="menu" id="menu" data-state="ready">
+      <h1 class="menu-title" id="menu-title">TIC<br>TAC<br>TOE</h1>
+      <p class="menu-tagline" id="menu-tagline">Three in a row.<br>Hot-seat for two.</p>
+      <div class="menu-actions">
+        <button id="play-btn" type="button">PLAY</button>
+        <button id="reset-btn" type="button" class="ghost" hidden>RESET SCORES</button>
+        <button id="quit-btn" type="button" class="ghost">QUIT</button>
+      </div>
     </div>
   </main>
 

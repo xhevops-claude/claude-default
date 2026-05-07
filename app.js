@@ -31,7 +31,6 @@
   const skinIcon = document.getElementById('skin-icon');
   const skinTitle = document.getElementById('skin-title');
   const skinTagline = document.getElementById('skin-tagline');
-  const closeBtn = document.getElementById('game-close');
 
   // Match the CSS transitions on .frame-wrap.
   const ZOOM_MS = 550;
@@ -243,17 +242,6 @@
     card.classList.add('tapped');
     setTimeout(() => { card.classList.remove('tapped'); }, 240);
     setTimeout(() => { openGame(card, game); }, 90);
-  });
-
-  closeBtn.addEventListener('click', () => {
-    if (history.state && history.state.gameOpen) {
-      history.back();
-    } else {
-      closeGame();
-      if (location.hash) {
-        history.replaceState(null, '', location.pathname + location.search);
-      }
-    }
   });
 
   window.addEventListener('popstate', () => {
