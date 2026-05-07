@@ -19,7 +19,6 @@
   ];
 
   const grid = document.getElementById('grid');
-  const themeBtn = document.getElementById('theme-btn');
 
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -42,20 +41,6 @@
       </li>
     `).join('');
   }
-
-  themeBtn.addEventListener('click', () => {
-    const cur = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-    const next = cur === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    themeBtn.textContent = next === 'light' ? '🌙' : '☀️';
-    try { localStorage.setItem('arcade-theme', next); } catch (_) {}
-  });
-
-  let savedTheme = null;
-  try { savedTheme = localStorage.getItem('arcade-theme'); } catch (_) {}
-  const initial = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-  document.documentElement.dataset.theme = initial;
-  themeBtn.textContent = initial === 'light' ? '🌙' : '☀️';
 
   render();
 })();

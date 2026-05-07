@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Snake</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('arcade-theme');
+        if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="../../themes.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -15,9 +25,14 @@
 
   <main class="card">
     <header class="header">
-      <a class="back-link" href="../../">← All games</a>
+      <a class="back-link" href="../../">←</a>
       <span class="badge">snake</span>
-      <button id="theme-btn" class="ghost" type="button" aria-label="Toggle theme">🌗</button>
+      <div class="theme-picker" role="group" aria-label="Theme">
+        <button class="swatch" data-theme="dark"   type="button" aria-label="Dark theme"></button>
+        <button class="swatch" data-theme="light"  type="button" aria-label="Light theme"></button>
+        <button class="swatch" data-theme="space"  type="button" aria-label="Space theme"></button>
+        <button class="swatch" data-theme="sunset" type="button" aria-label="Sunset theme"></button>
+      </div>
     </header>
 
     <div class="scoreboard">
@@ -55,6 +70,7 @@
     <div class="touch-hint">Swipe on the board to move &nbsp;·&nbsp; tap to pause</div>
   </main>
 
+  <script src="../../theme.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

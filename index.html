@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Game Arcade</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('arcade-theme');
+        if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="themes.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -17,7 +27,12 @@
     <header class="hero">
       <div class="hero-top">
         <span class="badge">arcade</span>
-        <button id="theme-btn" class="ghost" type="button" aria-label="Toggle theme">🌗</button>
+        <div class="theme-picker" role="group" aria-label="Theme">
+          <button class="swatch" data-theme="dark"   type="button" aria-label="Dark theme"></button>
+          <button class="swatch" data-theme="light"  type="button" aria-label="Light theme"></button>
+          <button class="swatch" data-theme="space"  type="button" aria-label="Space theme"></button>
+          <button class="swatch" data-theme="sunset" type="button" aria-label="Sunset theme"></button>
+        </div>
       </div>
       <h1 class="title">Pick a game</h1>
       <p class="subtitle">Tap a tile to play.</p>
@@ -28,6 +43,7 @@
     <footer class="foot">Built for fun. More games coming.</footer>
   </main>
 
+  <script src="theme.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

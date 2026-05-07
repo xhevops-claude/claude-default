@@ -7,7 +7,6 @@
   const overlayTitle = document.getElementById('overlay-title');
   const overlayText = document.getElementById('overlay-text');
   const actionBtn = document.getElementById('action-btn');
-  const themeBtn = document.getElementById('theme-btn');
 
   const GRID = 20;
   const CELL = canvas.width / GRID;
@@ -268,20 +267,9 @@
     e.preventDefault();
   }, { passive: false });
 
-  themeBtn.addEventListener('click', () => {
-    const cur = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-    const next = cur === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    themeBtn.textContent = next === 'light' ? '🌙' : '☀️';
-    try { localStorage.setItem('snake-theme', next); } catch (_) {}
+  window.addEventListener('themechange', () => {
     if (state !== 'playing') draw();
   });
-
-  let savedTheme = null;
-  try { savedTheme = localStorage.getItem('snake-theme'); } catch (_) {}
-  const initial = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-  document.documentElement.dataset.theme = initial;
-  themeBtn.textContent = initial === 'light' ? '🌙' : '☀️';
 
   // Initial draw so the board is visible behind the start overlay.
   reset();
