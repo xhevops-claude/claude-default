@@ -198,17 +198,28 @@
     queuedDir = { x: nx, y: ny };
   }
 
+  const DIRS = {
+    up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
+  };
+
+  function applyDir(name) {
+    const d = DIRS[name];
+    if (d) setDirection(d[0], d[1]);
+  }
+
+  function togglePause() {
+    if (state === 'playing') pause();
+    else if (state === 'paused') resume();
+  }
+
   document.addEventListener('keydown', (e) => {
     const k = e.key;
-    if (k === 'ArrowUp' || k === 'w' || k === 'W') { setDirection(0, -1); e.preventDefault(); }
-    else if (k === 'ArrowDown' || k === 's' || k === 'S') { setDirection(0, 1); e.preventDefault(); }
-    else if (k === 'ArrowLeft' || k === 'a' || k === 'A') { setDirection(-1, 0); e.preventDefault(); }
-    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { setDirection(1, 0); e.preventDefault(); }
-    else if (k === ' ') {
-      if (state === 'playing') pause();
-      else if (state === 'paused') resume();
-      e.preventDefault();
-    } else if (k === 'Enter') {
+    if (k === 'ArrowUp' || k === 'w' || k === 'W') { applyDir('up'); e.preventDefault(); }
+    else if (k === 'ArrowDown' || k === 's' || k === 'S') { applyDir('down'); e.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'a' || k === 'A') { applyDir('left'); e.preventDefault(); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { applyDir('right'); e.preventDefault(); }
+    else if (k === ' ') { togglePause(); e.preventDefault(); }
+    else if (k === 'Enter') {
       if (state === 'over' || state === 'ready') start();
       e.preventDefault();
     }
@@ -218,6 +229,44 @@
     if (state === 'paused') resume();
     else start();
   });
+
+  // On-screen D-pad (touch + click).
+  document.querySelectorAll('.dpad-btn[data-dir]').forEach((btn) => {
+    const dir = btn.dataset.dir;
+    const handler = (e) => { applyDir(dir); e.preventDefault(); };
+    btn.addEventListener('click', handler);
+    btn.addEventListener('touchstart', handler, { passive: false });
+  });
+
+  const pauseBtn = document.getElementById('pause-btn');
+  pauseBtn.addEventListener('click', (e) => { togglePause(); e.preventDefault(); });
+
+  // Swipe + tap on the canvas.
+  let touchStart = null;
+  const SWIPE_MIN = 24;
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchStart = { x: t.clientX, y: t.clientY };
+    e.preventDefault();
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    if (!touchStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    touchStart = null;
+    if (ax < SWIPE_MIN && ay < SWIPE_MIN) {
+      togglePause();
+    } else if (ax > ay) {
+      applyDir(dx > 0 ? 'right' : 'left');
+    } else {
+      applyDir(dy > 0 ? 'down' : 'up');
+    }
+    e.preventDefault();
+  }, { passive: false });
 
   themeBtn.addEventListener('click', () => {
     const cur = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
