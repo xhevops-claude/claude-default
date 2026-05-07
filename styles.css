@@ -276,13 +276,12 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 
 /* Game-in-iframe overlay.
 
-   Open: tile zooms (FLIP) from its rect to fullscreen with the tile's
-   gradient still visible via ::before; the gradient cross-fades to a
-   plain black splash; the loading content shows for at least 500ms;
-   then the splash fades out, revealing the iframe.
+   Open: a microscopic black square at the tapped tile's center grows
+   to fullscreen, with the logo and loading bar visible the whole time.
+   Loader stays on screen for at least 3 seconds.
 
-   Close: splash fades in over the iframe, then the overlay fades out,
-   revealing the home menu. */
+   Close: splash fades in over the iframe, then overlay fades out to
+   reveal the home menu. */
 .game-overlay {
   position: fixed;
   inset: 0;
@@ -308,9 +307,9 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   z-index: 1;
 }
 
-/* Splash is intentionally pure black — games are standalone black, the
-   theme color only lives on the home page. The tile's theme gradient
-   shows briefly on ::before during the zoom, then fades out to black. */
+/* The splash is pure black — only the logo and loading bar are visible,
+   no gradient, no card design. The transform-origin is set inline by JS
+   to the tapped tile's center so the splash grows from that point. */
 .game-zoom {
   position: absolute;
   inset: 0;
@@ -321,59 +320,28 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  /* transform / border-radius / transition are set inline by JS for FLIP. */
+  gap: 22px;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.35s ease;
 }
 
-.game-zoom::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(135deg, var(--g1, var(--accent)), var(--g2, var(--accent-3)));
-  opacity: 1;
-  transition: opacity 0.45s ease;
-  z-index: 0;
+.game-zoom.faded-out {
+  opacity: 0;
+  pointer-events: none;
 }
-
-.game-zoom.darkened::before { opacity: 0; }
 
 .game-zoom-icon {
-  position: relative;
-  z-index: 1;
   font-size: 96px;
   line-height: 1;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4));
-}
-
-.game-zoom.show-loader .game-zoom-icon {
   animation: zoom-icon-breathe 2.4s ease-in-out infinite;
 }
 
-.game-zoom-name,
+/* Game name is hidden — the splash is logo + loader only. */
+.game-zoom-name { display: none; }
+
 .game-zoom-bar {
   position: relative;
-  z-index: 1;
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
-}
-
-.game-zoom.show-loader .game-zoom-name,
-.game-zoom.show-loader .game-zoom-bar {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.game-zoom-name {
-  color: #fff;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-}
-
-.game-zoom-bar {
   width: 180px;
   height: 4px;
   border-radius: 999px;
@@ -390,12 +358,6 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   background: rgba(255, 255, 255, 0.95);
   border-radius: inherit;
   animation: zoom-bar 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
-.game-zoom.faded-out {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.35s ease;
 }
 
 @keyframes zoom-icon-breathe {
