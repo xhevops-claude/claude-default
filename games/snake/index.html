@@ -10,6 +10,7 @@
         var t = localStorage.getItem('arcade-theme');
         if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
         document.documentElement.dataset.theme = t;
+        if (window.self !== window.top) document.documentElement.classList.add('embedded');
       } catch (e) {}
     })();
   </script>
