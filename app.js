@@ -29,18 +29,15 @@
   const closeBtn = document.getElementById('game-close');
   const zoom = document.getElementById('game-zoom');
   const zoomIcon = document.getElementById('zoom-icon');
-  const zoomName = document.getElementById('zoom-name');
 
-  // Open / close timings.
-  const ZOOM_MS = 380;
-  const DARKEN_AT = 200;
-  const SHOW_LOADER_AT = 380;
-  // Loader (icon + name + bar) needs to be visible for at least 500ms.
-  const LOADER_MIN_MS = 500;
-  const MIN_TOTAL_MS = SHOW_LOADER_AT + LOADER_MIN_MS;
-  const CLOSE_FADE_MS = 320;
+  // Splash visible for at least 3s so the loading bar reads cleanly.
+  const MIN_SPLASH_MS = 3000;
   const SPLASH_FADE_MS = 350;
-  const ZOOM_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+  const CLOSE_FADE_MS = 320;
+  // Initial scale of the splash — small enough to read as a "dot" at the
+  // tile's center, large enough that the icon doesn't snap on the first
+  // frame.
+  const START_SCALE = 0.04;
 
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -80,74 +77,47 @@
     }).join('');
   }
 
-  function resetZoom() {
-    zoom.style.transition = 'none';
-    zoom.style.transform = '';
-    zoom.style.transformOrigin = '';
-    zoom.style.borderRadius = '';
-    zoom.style.opacity = '';
-    zoom.classList.remove('darkened', 'show-loader', 'faded-out');
-  }
-
   function openGame(card, game) {
     if (overlay.dataset.state === 'open') return;
 
-    // Pull the tile's theme-driven gradient onto the splash so the zoom-in
-    // visually continues the tile's colors before fading to black.
-    if (card) {
-      const cs = getComputedStyle(card);
-      const g1 = cs.getPropertyValue('--g1').trim();
-      const g2 = cs.getPropertyValue('--g2').trim();
-      if (g1) zoom.style.setProperty('--g1', g1);
-      if (g2) zoom.style.setProperty('--g2', g2);
-    } else {
-      zoom.style.removeProperty('--g1');
-      zoom.style.removeProperty('--g2');
-    }
     zoomIcon.textContent = game.icon;
-    zoomName.textContent = game.name;
-    resetZoom();
 
-    // FLIP: place the zoom layer over the tapped tile, then animate to
-    // fullscreen. Deep links (no source tile) get a small centered scale.
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    // Compute the splash's grow-from origin: the tapped tile's center,
+    // or the viewport center as a fallback (deep links).
+    let originX, originY;
     if (card) {
       const r = card.getBoundingClientRect();
-      zoom.style.transformOrigin = '0 0';
-      zoom.style.transform =
-        `translate(${r.left}px, ${r.top}px) scale(${r.width / vw}, ${r.height / vh})`;
-      zoom.style.borderRadius = '16px';
+      originX = r.left + r.width / 2;
+      originY = r.top + r.height / 2;
     } else {
-      zoom.style.transformOrigin = 'center';
-      zoom.style.transform = 'scale(0.6)';
-      zoom.style.borderRadius = '24px';
+      originX = window.innerWidth / 2;
+      originY = window.innerHeight / 2;
     }
+
+    // Snap the splash to its starting "microscopic" state without animating.
+    zoom.style.transition = 'none';
+    zoom.style.transformOrigin = `${originX}px ${originY}px`;
+    zoom.style.transform = `scale(${START_SCALE})`;
+    zoom.classList.remove('faded-out');
 
     overlay.hidden = false;
     overlay.style.opacity = '';
     overlay.style.transition = '';
-    void overlay.offsetWidth;
 
-    overlay.dataset.state = 'open';
+    // Force a layout pass so the starting transform is committed before we
+    // re-enable transitions.
     void zoom.offsetWidth;
 
-    // Phase 1: zoom expands to fullscreen.
-    zoom.style.transition =
-      `transform ${ZOOM_MS}ms ${ZOOM_EASING}, ` +
-      `border-radius ${ZOOM_MS}ms ${ZOOM_EASING}`;
-    zoom.style.transform = 'translate(0, 0) scale(1, 1)';
-    zoom.style.borderRadius = '0';
+    // Now run the actual zoom: overlay fades in (CSS), splash scales up to
+    // 1 (CSS transition on .game-zoom).
+    zoom.style.transition = '';
+    overlay.dataset.state = 'open';
+    zoom.style.transform = 'scale(1)';
 
-    // Phase 2: gradient fades out, revealing the black splash bg.
-    setTimeout(() => zoom.classList.add('darkened'), DARKEN_AT);
-    // Phase 3: loader (name + bar) fades in over the black bg.
-    setTimeout(() => zoom.classList.add('show-loader'), SHOW_LOADER_AT);
-
-    // Phase 4: load iframe; reveal once loaded AND minimum total elapsed.
+    // Load iframe; reveal once loaded AND the minimum splash time elapsed.
     const t0 = Date.now();
     frame.onload = () => {
-      const remaining = Math.max(0, MIN_TOTAL_MS - (Date.now() - t0));
+      const remaining = Math.max(0, MIN_SPLASH_MS - (Date.now() - t0));
       setTimeout(() => zoom.classList.add('faded-out'), remaining);
     };
     frame.src = game.url;
@@ -155,12 +125,10 @@
     try { history.pushState({ gameOpen: true }, '', '#' + game.url); } catch (_) {}
   }
 
-  // Close: splash fades back in over the iframe, then the overlay fades
-  // out to home.
+  // Close: splash fades in over the iframe, then overlay fades out to home.
   function closeGame() {
     if (overlay.dataset.state !== 'open') return;
     overlay.dataset.state = 'closing';
-
     zoom.classList.remove('faded-out');
 
     setTimeout(() => {
@@ -175,7 +143,11 @@
     overlay.style.transition = '';
     frame.onload = null;
     frame.src = 'about:blank';
-    resetZoom();
+    // Reset splash for the next open without animating.
+    zoom.style.transition = 'none';
+    zoom.style.transform = '';
+    zoom.style.transformOrigin = '';
+    zoom.classList.remove('faded-out');
   }
 
   grid.addEventListener('click', (e) => {
@@ -214,8 +186,6 @@
   window.addEventListener('popstate', () => {
     if (overlay.dataset.state === 'open') {
       closeGame();
-      // After history.back() lands on the original deep-link URL, the
-      // hash is still there. Wipe it so the URL bar reads home.
       if (location.hash) {
         history.replaceState(null, '', location.pathname + location.search);
       }
@@ -233,8 +203,7 @@
   render();
 
   // Deep link: opening /#games/<slug>/ goes straight into the game. We
-  // first replace the URL with home so closing returns to / cleanly,
-  // then openGame pushes a fresh state for the back button.
+  // wipe the hash first so the back stack lands on home cleanly.
   (function deepLink() {
     const hash = decodeURIComponent(location.hash.slice(1));
     if (!hash) return;
