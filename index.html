@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Snake</title>
+  <title>Game Arcade</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -13,45 +13,32 @@
     <span class="blob blob-3"></span>
   </div>
 
-  <main class="card">
-    <header class="header">
-      <span class="badge">snake</span>
-      <button id="theme-btn" class="ghost" type="button" aria-label="Toggle theme">🌗</button>
+  <main class="page">
+    <header class="hero">
+      <div class="hero-top">
+        <span class="badge">arcade</span>
+        <button id="theme-btn" class="ghost" type="button" aria-label="Toggle theme">🌗</button>
+      </div>
+      <h1 class="title">Pick a game</h1>
+      <p class="subtitle">A small home for the games we build here.</p>
+
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input id="search" type="search" placeholder="Search games or tags…" autocomplete="off" />
+        <span class="count" id="count" aria-live="polite"></span>
+      </div>
     </header>
 
-    <div class="scoreboard">
-      <div class="stat">
-        <span class="stat-label">Score</span>
-        <span class="stat-value" id="score">0</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Best</span>
-        <span class="stat-value" id="best">0</span>
-      </div>
-    </div>
+    <ul id="grid" class="grid" role="list"></ul>
 
-    <div class="canvas-wrap">
-      <canvas id="game" width="480" height="480" aria-label="Snake game board"></canvas>
-      <div class="overlay" id="overlay" data-state="ready">
-        <h2 id="overlay-title">Snake</h2>
-        <p id="overlay-text">Eat the glowing dots. Don't bite yourself.</p>
-        <button id="action-btn" type="button">Start</button>
-      </div>
-    </div>
+    <p id="empty" class="empty" hidden>No games match that search.</p>
 
-    <div class="dpad" role="group" aria-label="Direction controls">
-      <button class="dpad-btn dpad-up"    data-dir="up"    type="button" aria-label="Move up">↑</button>
-      <button class="dpad-btn dpad-left"  data-dir="left"  type="button" aria-label="Move left">←</button>
-      <button class="dpad-btn dpad-pause" id="pause-btn"   type="button" aria-label="Pause">⏸</button>
-      <button class="dpad-btn dpad-right" data-dir="right" type="button" aria-label="Move right">→</button>
-      <button class="dpad-btn dpad-down"  data-dir="down"  type="button" aria-label="Move down">↓</button>
-    </div>
-
-    <div class="controls-hint">
-      <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd> to move &nbsp;·&nbsp;
-      <kbd>Space</kbd> to pause &nbsp;·&nbsp; <kbd>Enter</kbd> to restart
-    </div>
-    <div class="touch-hint">Swipe on the board to move &nbsp;·&nbsp; tap to pause</div>
+    <footer class="foot">
+      Built for fun. More games coming.
+    </footer>
   </main>
 
   <script src="app.js"></script>
