@@ -142,8 +142,10 @@ body {
 .search-icon {
   width: 18px;
   height: 18px;
+  min-width: 18px;
   color: var(--muted);
   flex-shrink: 0;
+  display: block;
 }
 
 #search {
@@ -156,6 +158,9 @@ body {
   font-size: 15px;
   padding: 12px 0;
   min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
 }
 
 #search::placeholder { color: var(--muted); }
@@ -206,9 +211,13 @@ body {
   display: grid;
   place-items: center;
   font-size: 64px;
+  line-height: 1;
   background: linear-gradient(135deg, var(--g1, var(--accent)), var(--g2, var(--accent-3)));
   filter: saturate(110%);
 }
+
+.card-art > span { display: inline-flex; align-items: center; justify-content: center; }
+.card-art svg { display: block; }
 
 .card-art::after {
   content: "";
