@@ -113,6 +113,7 @@ body {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -189,6 +190,58 @@ body {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.4;
+}
+
+/* Coming-soon card */
+.card.locked { cursor: pointer; }
+.card.locked .card-art { filter: saturate(0.55) brightness(0.78); }
+.card.locked .card-title,
+.card.locked .card-tagline { opacity: 0.7; }
+.card.locked:hover { transform: none; box-shadow: none; border-color: var(--surface-border); }
+
+.coming-soon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(15, 16, 32, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Tap animations */
+@keyframes card-pop {
+  0%   { transform: scale(1);    filter: brightness(1); }
+  35%  { transform: scale(0.97); filter: brightness(1.15); }
+  100% { transform: scale(1.03); filter: brightness(1.25); opacity: 0.85; }
+}
+
+@keyframes card-shake {
+  0%, 100% { transform: translateX(0)    rotate(0deg); }
+  15%      { transform: translateX(-8px) rotate(-1.5deg); }
+  30%      { transform: translateX(8px)  rotate(1.5deg); }
+  45%      { transform: translateX(-6px) rotate(-1deg); }
+  60%      { transform: translateX(6px)  rotate(1deg); }
+  75%      { transform: translateX(-3px) rotate(-0.5deg); }
+}
+
+.card.tapped {
+  animation: card-pop 220ms ease-out forwards;
+  pointer-events: none;
+}
+
+.card.shake { animation: card-shake 420ms ease-in-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card.tapped, .card.shake { animation: none; }
 }
 
 .foot {

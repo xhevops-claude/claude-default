@@ -16,6 +16,14 @@
       gradient: ['#ff7ad9', '#7c5cff'],
       url: 'games/tic-tac-toe/',
     },
+    {
+      slug: 'memory',
+      name: 'Memory',
+      tagline: 'Flip cards. Match the pairs.',
+      icon: '🎴',
+      gradient: ['#4ade80', '#06b6d4'],
+      comingSoon: true,
+    },
   ];
 
   const grid = document.getElementById('grid');
@@ -26,21 +34,57 @@
     }[c]));
   }
 
-  function render() {
-    grid.innerHTML = games.map((g) => `
-      <li class="card">
-        <a href="${escapeHTML(g.url)}">
-          <div class="card-art" style="--g1: ${escapeHTML(g.gradient[0])}; --g2: ${escapeHTML(g.gradient[1])};">
-            <span class="card-icon" aria-hidden="true">${escapeHTML(g.icon)}</span>
-          </div>
-          <div class="card-body">
-            <h2 class="card-title">${escapeHTML(g.name)}</h2>
-            <p class="card-tagline">${escapeHTML(g.tagline)}</p>
-          </div>
-        </a>
-      </li>
-    `).join('');
+  function cardInner(g) {
+    return `
+      <div class="card-art" style="--g1: ${escapeHTML(g.gradient[0])}; --g2: ${escapeHTML(g.gradient[1])};">
+        <span class="card-icon" aria-hidden="true">${escapeHTML(g.icon)}</span>
+      </div>
+      <div class="card-body">
+        <h2 class="card-title">${escapeHTML(g.name)}</h2>
+        <p class="card-tagline">${escapeHTML(g.tagline)}</p>
+      </div>
+    `;
   }
+
+  function render() {
+    grid.innerHTML = games.map((g) => {
+      if (g.comingSoon) {
+        return `
+          <li class="card locked" data-locked="1">
+            <span class="coming-soon">Coming soon</span>
+            ${cardInner(g)}
+          </li>
+        `;
+      }
+      return `
+        <li class="card" data-url="${escapeHTML(g.url)}">
+          <a href="${escapeHTML(g.url)}">
+            ${cardInner(g)}
+          </a>
+        </li>
+      `;
+    }).join('');
+  }
+
+  grid.addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (!card) return;
+
+    if (card.dataset.locked === '1') {
+      e.preventDefault();
+      card.classList.remove('shake');
+      // Force reflow so the animation can replay on rapid taps.
+      void card.offsetWidth;
+      card.classList.add('shake');
+      return;
+    }
+
+    const url = card.dataset.url;
+    if (!url) return;
+    e.preventDefault();
+    card.classList.add('tapped');
+    setTimeout(() => { window.location.href = url; }, 220);
+  });
 
   render();
 })();
