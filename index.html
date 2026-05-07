@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hello, World</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="aurora" aria-hidden="true">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+  </div>
+
+  <main class="card">
+    <span class="badge">a tiny app</span>
+    <h1 id="greeting">Hello, World</h1>
+    <p class="subtitle" id="subtitle">A friendly hello from somewhere on the internet.</p>
+
+    <div class="controls">
+      <label for="name-input" class="sr-only">Your name</label>
+      <input id="name-input" type="text" placeholder="What's your name?" autocomplete="off" />
+      <button id="greet-btn" type="button">Say hi</button>
+    </div>
+
+    <div class="footer">
+      <p class="time" id="time"></p>
+      <button id="theme-btn" class="ghost" type="button" aria-label="Toggle theme">🌗</button>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
