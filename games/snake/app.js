@@ -7,6 +7,16 @@
   const overlayTitle = document.getElementById('overlay-title');
   const overlayText = document.getElementById('overlay-text');
   const actionBtn = document.getElementById('action-btn');
+  const quitBtn = document.getElementById('quit-btn');
+
+  function quit() {
+    if (window.self !== window.top) {
+      try { window.parent.postMessage({ type: 'close-game' }, '*'); } catch (_) {}
+    } else {
+      location.href = '../../';
+    }
+  }
+  quitBtn.addEventListener('click', quit);
 
   const GRID = 20;
   const CELL = canvas.width / GRID;
@@ -69,7 +79,7 @@
 
   function pause() {
     if (state !== 'playing') return;
-    setOverlay('paused', 'Paused', 'Take a breath. Press Space or Resume.', 'Resume');
+    setOverlay('paused', 'PAUSED', 'Press space, tap, or hit RESUME to continue.', 'RESUME');
   }
 
   function resume() {
@@ -86,7 +96,7 @@
       bestEl.textContent = best;
       try { localStorage.setItem('snake-best', String(best)); } catch (_) {}
     }
-    setOverlay('over', 'Game Over', `You scored ${score}. Best: ${best}.`, 'Play again');
+    setOverlay('over', 'GAME OVER', `Score: ${score}    Best: ${best}`, 'PLAY AGAIN');
   }
 
   function step() {
