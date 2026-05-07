@@ -213,15 +213,6 @@
   color: var(--bg);
 }
 
-[data-theme="mono"] .game-zoom::before,
-[data-theme="mono"] .game-zoom::after,
-[data-theme="solarized"] .game-zoom::before,
-[data-theme="solarized"] .game-zoom::after,
-[data-theme="gameboy"] .game-zoom::before,
-[data-theme="gameboy"] .game-zoom::after {
-  display: none;
-}
-
 [data-theme="mono"] .card-icon,
 [data-theme="mono"] .game-zoom-icon {
   filter: grayscale(1);
