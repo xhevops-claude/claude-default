@@ -31,7 +31,6 @@
 
   // Match the CSS transition on .frame-wrap.
   const ZOOM_MS = 550;
-  const OVERLAY_FADE_MS = 300;
   // Microscopic starting / ending scale.
   const SMALL_SCALE = 0.04;
 
@@ -158,11 +157,10 @@
       wrap.style.transform = `scale(${SMALL_SCALE})`;
     });
 
-    // After the shrink finishes, fade the overlay out and finalize.
-    setTimeout(() => {
-      overlay.dataset.state = 'closing';
-      setTimeout(finalizeClose, OVERLAY_FADE_MS + 20);
-    }, ZOOM_MS + 40);
+    // After the shrink finishes, hide the overlay immediately — no
+    // black-fade phase. The gallery has been visible behind the
+    // shrinking wrapper the whole time.
+    setTimeout(finalizeClose, ZOOM_MS + 40);
   }
 
   function finalizeClose() {
