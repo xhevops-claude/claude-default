@@ -5,7 +5,6 @@
       name: 'Snake',
       tagline: "Eat the dots. Don't bite yourself.",
       icon: '🐍',
-      gradient: ['#21d4fd', '#7c5cff'],
       url: 'games/snake/',
     },
     {
@@ -13,7 +12,6 @@
       name: 'Tic-Tac-Toe',
       tagline: 'Three in a row. Hot-seat for two.',
       icon: '#️⃣',
-      gradient: ['#ff7ad9', '#7c5cff'],
       url: 'games/tic-tac-toe/',
     },
     {
@@ -21,7 +19,6 @@
       name: 'Memory',
       tagline: 'Flip cards. Match the pairs.',
       icon: '🎴',
-      gradient: ['#4ade80', '#06b6d4'],
       comingSoon: true,
     },
   ];
@@ -34,13 +31,16 @@
   const zoomIcon = document.getElementById('zoom-icon');
   const zoomName = document.getElementById('zoom-name');
 
-  // Splash sequence timings.
-  const ZOOM_MS = 420;
-  const DARKEN_AT = 180;
-  const SHOW_LOADER_AT = 420;
-  const MIN_TOTAL_MS = 750;
-  const REVEAL_MS = 350;
-  const CLOSE_MS = 320;
+  // Open / close timings.
+  const ZOOM_MS = 560;
+  const DARKEN_AT = 220;
+  const SHOW_LOADER_AT = 480;
+  const MIN_TOTAL_MS = 850;
+  const CLOSE_MS = 480;
+  const ZOOM_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+
+  // Track which tile launched the current overlay so we can shrink back into it.
+  let lastCard = null;
 
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -50,7 +50,7 @@
 
   function cardInner(g) {
     return `
-      <div class="card-art" style="--g1: ${escapeHTML(g.gradient[0])}; --g2: ${escapeHTML(g.gradient[1])};">
+      <div class="card-art">
         <span class="card-icon" aria-hidden="true">${escapeHTML(g.icon)}</span>
       </div>
       <div class="card-body">
@@ -85,15 +85,26 @@
     zoom.style.transform = '';
     zoom.style.transformOrigin = '';
     zoom.style.borderRadius = '';
+    zoom.style.opacity = '';
     zoom.classList.remove('darkened', 'show-loader', 'reveal');
   }
 
   function openGame(card, game) {
     if (overlay.dataset.state === 'open') return;
+    lastCard = card;
 
-    // Configure zoom layer with this game's gradient and icon.
-    zoom.style.setProperty('--g1', game.gradient[0]);
-    zoom.style.setProperty('--g2', game.gradient[1]);
+    // Zoom inherits the tapped card's --g1/--g2 (theme-driven via nth-child)
+    // so the splash visually continues from the tile's gradient.
+    if (card) {
+      const cs = getComputedStyle(card);
+      const g1 = cs.getPropertyValue('--g1').trim();
+      const g2 = cs.getPropertyValue('--g2').trim();
+      if (g1) zoom.style.setProperty('--g1', g1);
+      if (g2) zoom.style.setProperty('--g2', g2);
+    } else {
+      zoom.style.removeProperty('--g1');
+      zoom.style.removeProperty('--g2');
+    }
     zoomIcon.textContent = game.icon;
     zoomName.textContent = game.name;
     resetZoom();
@@ -117,6 +128,7 @@
 
     overlay.hidden = false;
     overlay.style.opacity = '';
+    overlay.style.transition = '';
     overlay.dataset.state = 'open';
 
     // Force layout so the next frame's transition runs from this state.
@@ -124,14 +136,14 @@
 
     // Phase 1: zoom expands to fullscreen.
     zoom.style.transition =
-      `transform ${ZOOM_MS}ms cubic-bezier(0.16, 1, 0.3, 1), ` +
-      `border-radius ${ZOOM_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+      `transform ${ZOOM_MS}ms ${ZOOM_EASING}, ` +
+      `border-radius ${ZOOM_MS}ms ${ZOOM_EASING}`;
     zoom.style.transform = 'translate(0, 0) scale(1, 1)';
     zoom.style.borderRadius = '0';
 
-    // Phase 2: gradient cross-fades to dark.
+    // Phase 2: gradient cross-fades to the theme bg.
     setTimeout(() => zoom.classList.add('darkened'), DARKEN_AT);
-    // Phase 3: name + bar fade in over the dark background.
+    // Phase 3: name + bar fade in over the loader bg.
     setTimeout(() => zoom.classList.add('show-loader'), SHOW_LOADER_AT);
 
     // Phase 4: load the iframe; reveal once loaded AND minimum elapsed.
@@ -145,27 +157,70 @@
     try { history.pushState({ gameOpen: true }, '', '#' + game.url); } catch (_) {}
   }
 
+  // Reverse-zoom close: bring the splash back over the iframe, then shrink it
+  // to the originating tile while fading out. Falls back to a simple fade if
+  // we don't know which tile to shrink to.
   function closeGame() {
     if (overlay.dataset.state !== 'open') return;
     overlay.dataset.state = 'closing';
 
-    setTimeout(() => {
-      overlay.hidden = true;
-      overlay.dataset.state = '';
-      frame.onload = null;
-      frame.src = 'about:blank';
-      resetZoom();
-      // The iframe may have changed the theme; re-sync the gallery.
-      try {
-        const t = localStorage.getItem('arcade-theme');
-        if (t) {
-          document.documentElement.dataset.theme = t;
-          document.querySelectorAll('.swatch').forEach((s) => {
-            s.classList.toggle('active', s.dataset.theme === t);
-          });
-        }
-      } catch (_) {}
-    }, CLOSE_MS);
+    if (lastCard && document.contains(lastCard)) {
+      // Hide the iframe so only the zoom layer shows during the shrink.
+      frame.style.transition = 'opacity 0.1s ease';
+      frame.style.opacity = '0';
+
+      // Bring zoom back to opaque immediately (it was in `reveal` once loaded).
+      zoom.style.transition = 'none';
+      zoom.classList.remove('reveal');
+      zoom.style.opacity = '1';
+
+      void zoom.offsetWidth;
+
+      const r = lastCard.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // Shrink + radius animate together; opacity tails off near the end.
+      zoom.style.transition =
+        `transform ${CLOSE_MS}ms ${ZOOM_EASING}, ` +
+        `border-radius ${CLOSE_MS}ms ${ZOOM_EASING}, ` +
+        `opacity 220ms ease ${CLOSE_MS - 220}ms`;
+      zoom.style.transformOrigin = '0 0';
+      zoom.style.transform =
+        `translate(${r.left}px, ${r.top}px) scale(${r.width / vw}, ${r.height / vh})`;
+      zoom.style.borderRadius = '16px';
+      zoom.style.opacity = '0';
+
+      setTimeout(finalizeClose, CLOSE_MS + 40);
+    } else {
+      // No source tile to land on (deep-linked, or tile gone) — just fade.
+      overlay.style.transition = 'opacity 0.28s ease';
+      overlay.style.opacity = '0';
+      setTimeout(finalizeClose, 320);
+    }
+  }
+
+  function finalizeClose() {
+    overlay.hidden = true;
+    overlay.dataset.state = '';
+    overlay.style.opacity = '';
+    overlay.style.transition = '';
+    frame.onload = null;
+    frame.style.opacity = '';
+    frame.style.transition = '';
+    frame.src = 'about:blank';
+    resetZoom();
+    lastCard = null;
+    // The iframe may have changed the theme; re-sync the gallery.
+    try {
+      const t = localStorage.getItem('arcade-theme');
+      if (t) {
+        document.documentElement.dataset.theme = t;
+        document.querySelectorAll('.swatch').forEach((s) => {
+          s.classList.toggle('active', s.dataset.theme === t);
+        });
+      }
+    } catch (_) {}
   }
 
   grid.addEventListener('click', (e) => {
@@ -191,8 +246,15 @@
   });
 
   closeBtn.addEventListener('click', () => {
-    if (history.state && history.state.gameOpen) history.back();
-    else closeGame();
+    if (history.state && history.state.gameOpen) {
+      history.back();
+    } else {
+      closeGame();
+      // Deep-link case: clear the hash so the URL is back at home.
+      if (location.hash) {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    }
   });
 
   window.addEventListener('popstate', () => {

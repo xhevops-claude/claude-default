@@ -153,6 +153,80 @@
    back link is redundant — the gallery has its own close button. */
 .embedded .back-link { display: none; }
 
+/* --- Per-card theme-driven colors ---
+   Each tile rotates through the active theme's accents instead of
+   hardcoded per-game colors, so the gallery stays in sync with the
+   chosen theme. */
+.card:nth-child(1) { --g1: var(--accent);   --g2: var(--accent-2); }
+.card:nth-child(2) { --g1: var(--accent-3); --g2: var(--accent); }
+.card:nth-child(3) { --g1: var(--accent-2); --g2: var(--accent-3); }
+.card:nth-child(4) { --g1: var(--accent);   --g2: var(--accent-3); }
+.card:nth-child(5) { --g1: var(--accent-2); --g2: var(--accent); }
+.card:nth-child(6) { --g1: var(--accent-3); --g2: var(--accent-2); }
+
+/* --- Classic-theme overrides ---
+   The classic palettes (mono, solarized, gameboy) drop the gradient/
+   shimmer flair so the UI reads as solid and grounded. */
+[data-theme="mono"] .blob,
+[data-theme="solarized"] .blob,
+[data-theme="gameboy"] .blob {
+  display: none;
+}
+
+[data-theme="mono"] .title,
+[data-theme="solarized"] .title,
+[data-theme="gameboy"] .title,
+[data-theme="mono"] .stat-value,
+[data-theme="solarized"] .stat-value,
+[data-theme="gameboy"] .stat-value,
+[data-theme="mono"] .status,
+[data-theme="solarized"] .status,
+[data-theme="gameboy"] .status,
+[data-theme="mono"] .overlay h2,
+[data-theme="solarized"] .overlay h2,
+[data-theme="gameboy"] .overlay h2 {
+  background: none;
+  -webkit-text-fill-color: var(--ink);
+  color: var(--ink);
+  animation: none;
+}
+
+[data-theme="mono"] .card-art,
+[data-theme="solarized"] .card-art,
+[data-theme="gameboy"] .card-art {
+  background: var(--g1);
+}
+
+[data-theme="mono"] .card-art::after,
+[data-theme="solarized"] .card-art::after,
+[data-theme="gameboy"] .card-art::after {
+  display: none;
+}
+
+[data-theme="mono"] #action-btn,
+[data-theme="mono"] #reset-btn,
+[data-theme="solarized"] #action-btn,
+[data-theme="solarized"] #reset-btn,
+[data-theme="gameboy"] #action-btn,
+[data-theme="gameboy"] #reset-btn {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+[data-theme="mono"] .game-zoom::before,
+[data-theme="mono"] .game-zoom::after,
+[data-theme="solarized"] .game-zoom::before,
+[data-theme="solarized"] .game-zoom::after,
+[data-theme="gameboy"] .game-zoom::before,
+[data-theme="gameboy"] .game-zoom::after {
+  display: none;
+}
+
+[data-theme="mono"] .card-icon,
+[data-theme="mono"] .game-zoom-icon {
+  filter: grayscale(1);
+}
+
 /* ---------- Theme picker (shared) ---------- */
 
 .theme-picker {

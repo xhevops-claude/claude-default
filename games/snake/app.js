@@ -229,30 +229,54 @@
     else start();
   });
 
-  // Swipe + tap on the canvas.
+  // Continuous swipe on the canvas: each touchmove past a small threshold
+  // (relative to the previous registered point) fires a direction change,
+  // so the player can keep their finger down and turn repeatedly without
+  // lifting. A no-movement touchend toggles pause.
   let touchStart = null;
-  const SWIPE_MIN = 24;
+  let swipePivot = null;
+  let didSwipe = false;
+  const SWIPE_STEP = 22;
+  const TAP_TOLERANCE = 10;
+
   canvas.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
     const t = e.touches[0];
     touchStart = { x: t.clientX, y: t.clientY };
+    swipePivot = { x: t.clientX, y: t.clientY };
+    didSwipe = false;
     e.preventDefault();
   }, { passive: false });
-  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!swipePivot) return;
+    const t = e.touches[0];
+    const dx = t.clientX - swipePivot.x;
+    const dy = t.clientY - swipePivot.y;
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    if (ax < SWIPE_STEP && ay < SWIPE_STEP) return;
+
+    if (ax > ay) applyDir(dx > 0 ? 'right' : 'left');
+    else applyDir(dy > 0 ? 'down' : 'up');
+
+    // Re-anchor the pivot to the current point so the next step is measured
+    // from here — the player can curl their finger and keep turning.
+    swipePivot = { x: t.clientX, y: t.clientY };
+    didSwipe = true;
+  }, { passive: false });
+
   canvas.addEventListener('touchend', (e) => {
     if (!touchStart) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStart.x;
     const dy = t.clientY - touchStart.y;
-    const ax = Math.abs(dx), ay = Math.abs(dy);
-    touchStart = null;
-    if (ax < SWIPE_MIN && ay < SWIPE_MIN) {
+    if (!didSwipe && Math.abs(dx) < TAP_TOLERANCE && Math.abs(dy) < TAP_TOLERANCE) {
       togglePause();
-    } else if (ax > ay) {
-      applyDir(dx > 0 ? 'right' : 'left');
-    } else {
-      applyDir(dy > 0 ? 'down' : 'up');
     }
+    touchStart = null;
+    swipePivot = null;
+    didSwipe = false;
     e.preventDefault();
   }, { passive: false });
 
