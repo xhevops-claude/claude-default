@@ -27,17 +27,20 @@
   const overlay = document.getElementById('game-overlay');
   const frame = document.getElementById('game-frame');
   const closeBtn = document.getElementById('game-close');
-  const zoom = document.getElementById('game-zoom');
-  const zoomIcon = document.getElementById('zoom-icon');
 
-  // Splash visible for at least 3s so the loading bar reads cleanly.
-  const MIN_SPLASH_MS = 3000;
-  const SPLASH_FADE_MS = 350;
-  const CLOSE_FADE_MS = 320;
-  // Initial scale of the splash — small enough to read as a "dot" at the
-  // tile's center, large enough that the icon doesn't snap on the first
-  // frame.
-  const START_SCALE = 0.04;
+  // Match the CSS transition on #game-frame.
+  const ZOOM_MS = 550;
+  const OVERLAY_FADE_MS = 300;
+  // Microscopic starting / ending scale — small enough to read as a dot
+  // at the tile's center, large enough that the iframe content doesn't
+  // pop in on the first frame.
+  const SMALL_SCALE = 0.04;
+
+  // Tracks the tile that launched the current overlay so we can shrink
+  // the iframe back into it on close.
+  let lastCard = null;
+  let lastOriginX = null;
+  let lastOriginY = null;
 
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -77,92 +80,94 @@
     }).join('');
   }
 
+  function originFromCard(card) {
+    if (card) {
+      const r = card.getBoundingClientRect();
+      return [r.left + r.width / 2, r.top + r.height / 2];
+    }
+    return [window.innerWidth / 2, window.innerHeight / 2];
+  }
+
   function openGame(card, game) {
     if (overlay.dataset.state === 'open') return;
 
-    zoomIcon.textContent = game.icon;
+    const [originX, originY] = originFromCard(card);
+    lastCard = card || null;
+    lastOriginX = originX;
+    lastOriginY = originY;
 
-    // Compute the splash's grow-from origin: the tapped tile's center,
-    // or the viewport center as a fallback (deep links).
-    let originX, originY;
-    if (card) {
-      const r = card.getBoundingClientRect();
-      originX = r.left + r.width / 2;
-      originY = r.top + r.height / 2;
-    } else {
-      originX = window.innerWidth / 2;
-      originY = window.innerHeight / 2;
-    }
-
-    // Hide the iframe behind the splash. While the splash is still small,
-    // the iframe would otherwise show through the rest of the overlay area,
-    // briefly flashing the game (or the previous game's residue) before
-    // the splash grows to cover everything.
+    // Set iframe src first so the inline loading screen inside the game
+    // paints early (before the grow finishes), but the iframe is held at
+    // microscopic scale so we don't see the about:blank or layout flash
+    // around the dot.
     frame.style.transition = 'none';
-    frame.style.opacity = '0';
-
-    // Snap the splash to its starting "microscopic" state without animating.
-    zoom.style.transition = 'none';
-    zoom.style.transformOrigin = `${originX}px ${originY}px`;
-    zoom.style.transform = `scale(${START_SCALE})`;
-    zoom.classList.remove('faded-out');
+    frame.style.transformOrigin = `${originX}px ${originY}px`;
+    frame.style.transform = `scale(${SMALL_SCALE})`;
+    frame.style.pointerEvents = 'none';
+    frame.src = game.url;
 
     overlay.hidden = false;
-    overlay.style.opacity = '';
-    overlay.style.transition = '';
 
-    // Force a layout pass so the starting transform is committed before we
-    // re-enable transitions.
-    void zoom.offsetWidth;
+    // Force a layout pass so the starting transform is committed before
+    // we re-enable transitions and animate to fullscreen.
+    void frame.offsetWidth;
 
-    // Now run the actual zoom: overlay fades in (CSS), splash scales up to
-    // 1 (CSS transition on .game-zoom).
-    zoom.style.transition = '';
+    frame.style.transition = '';
     overlay.dataset.state = 'open';
-    zoom.style.transform = 'scale(1)';
+    frame.style.transform = 'scale(1)';
 
-    // Load iframe; reveal once loaded AND the minimum splash time elapsed.
-    const t0 = Date.now();
-    frame.onload = () => {
-      const remaining = Math.max(0, MIN_SPLASH_MS - (Date.now() - t0));
-      setTimeout(() => {
-        // Reveal the iframe just before the splash starts fading out, so
-        // it cross-fades cleanly without ever flashing through the splash.
-        frame.style.transition = 'opacity 0.2s ease';
-        frame.style.opacity = '1';
-        zoom.classList.add('faded-out');
-      }, remaining);
-    };
-    frame.src = game.url;
+    // Re-enable iframe interactions once the grow completes.
+    setTimeout(() => { frame.style.pointerEvents = ''; }, ZOOM_MS);
 
     try { history.pushState({ gameOpen: true }, '', '#' + game.url); } catch (_) {}
   }
 
-  // Close: splash fades in over the iframe, then overlay fades out to home.
+  // Close: shrink the iframe back to a microscopic dot at the tile's
+  // center, then fade the overlay out.
   function closeGame() {
     if (overlay.dataset.state !== 'open') return;
     overlay.dataset.state = 'closing';
-    zoom.classList.remove('faded-out');
 
+    // Recompute the destination from the live card if it's still in the
+    // DOM (the gallery may have scrolled while the game was open).
+    let ox, oy;
+    if (lastCard && document.contains(lastCard)) {
+      const r = lastCard.getBoundingClientRect();
+      ox = r.left + r.width / 2;
+      oy = r.top + r.height / 2;
+    } else if (lastOriginX != null && lastOriginY != null) {
+      ox = lastOriginX;
+      oy = lastOriginY;
+    } else {
+      ox = window.innerWidth / 2;
+      oy = window.innerHeight / 2;
+    }
+
+    frame.style.pointerEvents = 'none';
+    frame.style.transition = 'none';
+    frame.style.transformOrigin = `${ox}px ${oy}px`;
+    void frame.offsetWidth;
+    frame.style.transition = '';
+    frame.style.transform = `scale(${SMALL_SCALE})`;
+
+    // After the shrink finishes, fade the overlay out and finalize.
     setTimeout(() => {
       overlay.removeAttribute('data-state');
-      setTimeout(finalizeClose, CLOSE_FADE_MS + 20);
-    }, SPLASH_FADE_MS + 20);
+      setTimeout(finalizeClose, OVERLAY_FADE_MS + 20);
+    }, ZOOM_MS + 20);
   }
 
   function finalizeClose() {
     overlay.hidden = true;
-    overlay.style.opacity = '';
-    overlay.style.transition = '';
     frame.onload = null;
     frame.src = 'about:blank';
-    frame.style.opacity = '';
-    frame.style.transition = '';
-    // Reset splash for the next open without animating.
-    zoom.style.transition = 'none';
-    zoom.style.transform = '';
-    zoom.style.transformOrigin = '';
-    zoom.classList.remove('faded-out');
+    frame.style.transition = 'none';
+    frame.style.transform = '';
+    frame.style.transformOrigin = '';
+    frame.style.pointerEvents = '';
+    lastCard = null;
+    lastOriginX = null;
+    lastOriginY = null;
   }
 
   grid.addEventListener('click', (e) => {
