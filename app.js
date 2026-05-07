@@ -34,10 +34,17 @@
   const MIN_SPLASH_MS = 3000;
   const SPLASH_FADE_MS = 350;
   const CLOSE_FADE_MS = 320;
+  const SHRINK_MS = 550;
   // Initial scale of the splash — small enough to read as a "dot" at the
   // tile's center, large enough that the icon doesn't snap on the first
   // frame.
   const START_SCALE = 0.04;
+
+  // Tracks the tile that launched the current overlay so we can shrink
+  // the splash back into it on close.
+  let lastCard = null;
+  let lastOriginX = null;
+  let lastOriginY = null;
 
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -94,6 +101,11 @@
       originY = window.innerHeight / 2;
     }
 
+    // Remember the source tile so closeGame can shrink back into it.
+    lastCard = card || null;
+    lastOriginX = originX;
+    lastOriginY = originY;
+
     // Hide the iframe behind the splash. While the splash is still small,
     // the iframe would otherwise show through the rest of the overlay area,
     // briefly flashing the game (or the previous game's residue) before
@@ -138,15 +150,49 @@
     try { history.pushState({ gameOpen: true }, '', '#' + game.url); } catch (_) {}
   }
 
-  // Close: splash fades in over the iframe, then overlay fades out to home.
+  // Close: reverse of the open. Splash fades back in over the iframe (and
+  // the iframe fades out under it), then the splash shrinks to a tiny dot
+  // at the originating tile's center, then the overlay fades out to home.
   function closeGame() {
     if (overlay.dataset.state !== 'open') return;
     overlay.dataset.state = 'closing';
+
+    // Phase 1: cross-fade — splash back to opaque, iframe to invisible so
+    // we don't see the game leaking around the splash during the shrink.
     zoom.classList.remove('faded-out');
+    frame.style.transition = 'opacity 0.25s ease';
+    frame.style.opacity = '0';
 
     setTimeout(() => {
-      overlay.removeAttribute('data-state');
-      setTimeout(finalizeClose, CLOSE_FADE_MS + 20);
+      // Recompute the destination from the live card if it's still in the
+      // DOM (the gallery may have scrolled while the game was open).
+      // Otherwise fall back to the saved coords or the viewport center.
+      let ox, oy;
+      if (lastCard && document.contains(lastCard)) {
+        const r = lastCard.getBoundingClientRect();
+        ox = r.left + r.width / 2;
+        oy = r.top + r.height / 2;
+      } else if (lastOriginX != null && lastOriginY != null) {
+        ox = lastOriginX;
+        oy = lastOriginY;
+      } else {
+        ox = window.innerWidth / 2;
+        oy = window.innerHeight / 2;
+      }
+
+      // Move the transform-origin without animating, then animate the
+      // scale down via the .game-zoom CSS transition.
+      zoom.style.transition = 'none';
+      zoom.style.transformOrigin = `${ox}px ${oy}px`;
+      void zoom.offsetWidth;
+      zoom.style.transition = '';
+      zoom.style.transform = `scale(${START_SCALE})`;
+
+      // Phase 3: after the shrink completes, fade the whole overlay out.
+      setTimeout(() => {
+        overlay.removeAttribute('data-state');
+        setTimeout(finalizeClose, CLOSE_FADE_MS + 20);
+      }, SHRINK_MS + 20);
     }, SPLASH_FADE_MS + 20);
   }
 
@@ -163,6 +209,9 @@
     zoom.style.transform = '';
     zoom.style.transformOrigin = '';
     zoom.classList.remove('faded-out');
+    lastCard = null;
+    lastOriginX = null;
+    lastOriginY = null;
   }
 
   grid.addEventListener('click', (e) => {
