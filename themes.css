@@ -80,6 +80,75 @@
   --blob-blend: screen;
 }
 
+/* Classic: pure black & white — minimal, no chroma */
+[data-theme="mono"] {
+  --bg: #000000;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.10);
+  --surface-border: rgba(255, 255, 255, 0.14);
+  --overlay-bg: rgba(0, 0, 0, 0.7);
+  --ink: #ffffff;
+  --muted: #9a9a9a;
+  --accent: #ffffff;
+  --accent-2: #cfcfcf;
+  --accent-3: #888888;
+  --snake: #ffffff;
+  --snake-head: #cfcfcf;
+  --food: #ffffff;
+  --grid-line: rgba(255, 255, 255, 0.06);
+  --x-color: #ffffff;
+  --o-color: #cfcfcf;
+  --shadow: 0 30px 80px -30px rgba(255, 255, 255, 0.18), 0 10px 30px -15px rgba(0, 0, 0, 0.7);
+  --blob-opacity: 0.20;
+  --blob-blend: screen;
+}
+
+/* Classic: Solarized (Ethan Schoonover) — warm light variant */
+[data-theme="solarized"] {
+  --bg: #fdf6e3;
+  --surface: rgba(238, 232, 213, 0.55);
+  --surface-strong: rgba(238, 232, 213, 0.85);
+  --surface-border: rgba(101, 123, 131, 0.20);
+  --overlay-bg: rgba(253, 246, 227, 0.75);
+  --ink: #073642;
+  --muted: #586e75;
+  --accent: #268bd2;
+  --accent-2: #2aa198;
+  --accent-3: #d33682;
+  --snake: #859900;
+  --snake-head: #268bd2;
+  --food: #dc322f;
+  --grid-line: rgba(101, 123, 131, 0.10);
+  --x-color: #268bd2;
+  --o-color: #d33682;
+  --shadow: 0 30px 80px -30px rgba(38, 139, 210, 0.30), 0 10px 30px -15px rgba(0, 0, 0, 0.10);
+  --blob-opacity: 0.28;
+  --blob-blend: multiply;
+}
+
+/* Classic: Game Boy DMG palette — four shades of olive green */
+[data-theme="gameboy"] {
+  --bg: #9bbc0f;
+  --surface: rgba(15, 56, 15, 0.10);
+  --surface-strong: rgba(15, 56, 15, 0.16);
+  --surface-border: rgba(15, 56, 15, 0.30);
+  --overlay-bg: rgba(155, 188, 15, 0.75);
+  --ink: #0f380f;
+  --muted: #306230;
+  --accent: #306230;
+  --accent-2: #8bac0f;
+  --accent-3: #0f380f;
+  --snake: #0f380f;
+  --snake-head: #306230;
+  --food: #0f380f;
+  --grid-line: rgba(15, 56, 15, 0.10);
+  --x-color: #0f380f;
+  --o-color: #306230;
+  --shadow: 0 30px 80px -30px rgba(15, 56, 15, 0.35), 0 10px 30px -15px rgba(15, 56, 15, 0.20);
+  --blob-opacity: 0.45;
+  --blob-blend: multiply;
+}
+
 /* When a game is rendered inside the gallery's iframe, the in-game
    back link is redundant — the gallery has its own close button. */
 .embedded .back-link { display: none; }
@@ -97,8 +166,8 @@
 }
 
 .swatch {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 2px solid transparent;
   background: linear-gradient(135deg, var(--s1), var(--s2));
@@ -116,7 +185,15 @@
 .swatch:focus-visible { border-color: var(--ink); }
 .swatch.active { border-color: var(--ink); }
 
-.swatch[data-theme="dark"]   { --s1: #7c5cff; --s2: #21d4fd; }
-.swatch[data-theme="light"]  { --s1: #f6f4ff; --s2: #d8c8ff; }
-.swatch[data-theme="space"]  { --s1: #050816; --s2: #5b9eff; }
-.swatch[data-theme="sunset"] { --s1: #ff6b6b; --s2: #ffae57; }
+.swatch[data-theme="dark"]      { --s1: #7c5cff; --s2: #21d4fd; }
+.swatch[data-theme="light"]     { --s1: #f6f4ff; --s2: #d8c8ff; }
+.swatch[data-theme="space"]     { --s1: #050816; --s2: #5b9eff; }
+.swatch[data-theme="sunset"]    { --s1: #ff6b6b; --s2: #ffae57; }
+.swatch[data-theme="mono"]      { --s1: #000000; --s2: #ffffff; }
+.swatch[data-theme="solarized"] { --s1: #fdf6e3; --s2: #268bd2; }
+.swatch[data-theme="gameboy"]   { --s1: #9bbc0f; --s2: #0f380f; }
+
+@media (max-width: 360px) {
+  .swatch { width: 18px; height: 18px; }
+  .theme-picker { gap: 3px; padding: 3px; }
+}

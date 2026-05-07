@@ -1,5 +1,5 @@
 (function () {
-  const THEMES = ['dark', 'light', 'space', 'sunset'];
+  const THEMES = ['dark', 'light', 'space', 'sunset', 'mono', 'solarized', 'gameboy'];
   const KEY = 'arcade-theme';
 
   function applyTheme(theme) {
