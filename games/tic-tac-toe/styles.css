@@ -65,6 +65,8 @@ body {
   padding: 6px 10px;
   border: 1px solid var(--surface-border);
   border-radius: 8px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .back-link:hover { color: var(--ink); background: var(--surface-strong); }

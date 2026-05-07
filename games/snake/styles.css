@@ -84,6 +84,8 @@ body {
   border: 1px solid var(--surface-border);
   border-radius: 8px;
   transition: color 0.15s ease, background-color 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .back-link:hover { color: var(--ink); background: var(--surface-strong); }
