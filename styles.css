@@ -280,13 +280,11 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   inset: 0;
   z-index: 100;
   background: var(--bg);
-  display: flex;
-  flex-direction: column;
   opacity: 0;
-  transform: scale(0.85);
+  transform: scale(0.78);
   transform-origin: center;
   pointer-events: none;
-  transition: opacity 0.32s ease, transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.34s ease, transform 0.34s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .game-overlay[data-state="open"] {
@@ -296,11 +294,102 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 }
 
 #game-frame {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   width: 100%;
+  height: 100%;
   border: 0;
   background: var(--bg);
   display: block;
+}
+
+/* Splash: iOS-app-style loading screen between tap and game ready */
+.game-splash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: linear-gradient(135deg, var(--g1, var(--accent)), var(--g2, var(--accent-3)));
+  color: #fff;
+  opacity: 1;
+  transition: opacity 0.35s ease;
+}
+
+.game-splash[data-state="hide"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.game-splash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 45%),
+    radial-gradient(circle at 80% 80%, rgba(0,0,0,0.18), transparent 50%);
+  pointer-events: none;
+}
+
+.game-splash-icon {
+  font-size: 96px;
+  line-height: 1;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.35));
+  animation: splash-icon-pop 0.5s cubic-bezier(0.2, 1.2, 0.4, 1) both,
+             splash-icon-breathe 2.4s ease-in-out 0.5s infinite;
+}
+
+.game-splash-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  animation: splash-fade-in 0.5s 0.1s both ease-out;
+}
+
+.game-splash-bar {
+  position: relative;
+  width: 180px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+  animation: splash-fade-in 0.5s 0.2s both ease-out;
+}
+
+.game-splash-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: inherit;
+  animation: splash-bar 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes splash-icon-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes splash-icon-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+
+@keyframes splash-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splash-bar {
+  0%   { left: -40%; }
+  100% { left: 100%; }
 }
 
 .game-close {
@@ -332,4 +421,5 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 @media (prefers-reduced-motion: reduce) {
   .blob, .title { animation: none; }
   .game-overlay { transition: opacity 0.15s ease; transform: none !important; }
+  .game-splash-icon, .game-splash-name, .game-splash-bar, .game-splash-bar-fill { animation: none; }
 }
