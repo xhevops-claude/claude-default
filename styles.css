@@ -276,17 +276,17 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 
 /* Game-in-iframe overlay.
 
-   Open: a microscopic black square at the tapped tile's center grows
-   to fullscreen, with the logo and loading bar visible the whole time.
-   Loader stays on screen for at least 3 seconds.
-
-   Close: splash fades in over the iframe, then overlay fades out to
-   reveal the home menu. */
+   The iframe itself is the thing that grows from a microscopic dot at
+   the tapped tile's center to fullscreen on open, and shrinks back into
+   the same tile on close. Each game ships its own loading screen inside
+   the iframe (with inline critical CSS so it paints on the first frame),
+   so there is no separate splash element on the gallery side. */
 .game-overlay {
   position: fixed;
   inset: 0;
   z-index: 100;
   pointer-events: none;
+  background: #000;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -305,69 +305,7 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   background: #000;
   display: block;
   z-index: 1;
-}
-
-/* The splash is pure black — only the logo and loading bar are visible,
-   no gradient, no card design. The transform-origin is set inline by JS
-   to the tapped tile's center so the splash grows from that point. */
-.game-zoom {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background: #000;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 22px;
-  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.35s ease;
-}
-
-.game-zoom.faded-out {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.game-zoom-icon {
-  font-size: 96px;
-  line-height: 1;
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4));
-  animation: zoom-icon-breathe 2.4s ease-in-out infinite;
-}
-
-/* Game name is hidden — the splash is logo + loader only. */
-.game-zoom-name { display: none; }
-
-.game-zoom-bar {
-  position: relative;
-  width: 180px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  overflow: hidden;
-}
-
-.game-zoom-bar-fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 40%;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: inherit;
-  animation: zoom-bar 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
-@keyframes zoom-icon-breathe {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.08); }
-}
-
-@keyframes zoom-bar {
-  0%   { left: -40%; }
-  100% { left: 100%; }
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .game-close {
@@ -398,6 +336,5 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 
 @media (prefers-reduced-motion: reduce) {
   .blob, .title { animation: none; }
-  .game-overlay, .game-zoom { transition: opacity 0.15s ease; }
-  .game-zoom-icon, .game-zoom-bar-fill { animation: none; }
+  .game-overlay, #game-frame { transition: opacity 0.15s ease; }
 }

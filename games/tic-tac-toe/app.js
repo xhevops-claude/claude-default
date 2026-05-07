@@ -100,4 +100,18 @@
   scores = loadScores();
   renderScores();
   newRound();
+
+  // Hide the inline loading screen once ready and at least 3s have
+  // elapsed since the document started loading.
+  (function hideLoadingWhenReady() {
+    const loading = document.getElementById('game-loading');
+    if (!loading) return;
+    const navStart = (performance && performance.timeOrigin) || Date.now();
+    const elapsed = Date.now() - navStart;
+    const remaining = Math.max(0, 3000 - elapsed);
+    setTimeout(() => {
+      loading.classList.add('hidden');
+      setTimeout(() => loading.remove(), 500);
+    }, remaining);
+  })();
 })();
