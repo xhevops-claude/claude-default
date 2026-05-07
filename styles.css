@@ -274,18 +274,24 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   .card-body { padding: 10px 12px 12px; }
 }
 
-/* Game-in-iframe overlay */
+/* Game-in-iframe overlay.
+   Open  = overlay fades IN with the splash already at theme color, then
+           the splash fades OUT to reveal the iframe.
+   Close = splash fades IN over the iframe, then overlay fades OUT to
+           reveal the home menu. */
 .game-overlay {
   position: fixed;
   inset: 0;
   z-index: 100;
   pointer-events: none;
-  opacity: 1;
-  transition: opacity 0.3s ease;
+  opacity: 0;
+  transition: opacity 0.32s ease;
 }
 
-.game-overlay[data-state="open"] { pointer-events: auto; }
-.game-overlay[data-state="closing"] { opacity: 0; }
+.game-overlay[data-state="open"] {
+  pointer-events: auto;
+  opacity: 1;
+}
 
 #game-frame {
   position: absolute;
@@ -298,76 +304,33 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   z-index: 1;
 }
 
-/* The card-zoom: a real FLIP layer that starts at the tapped card's
-   bounding rect, expands to fullscreen, cross-fades from the card's
-   gradient to a dark loading screen, then fades out to reveal the
-   iframe behind it. */
+/* The splash sits over the iframe in the theme's bg color and shows the
+   game's icon, name, and a loading bar. It's opaque while the iframe is
+   loading, then fades out. On close it fades back in. */
 .game-zoom {
   position: absolute;
   inset: 0;
   z-index: 2;
   background: var(--bg);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 18px;
-  /* transform / border-radius / transition are set inline by JS for FLIP. */
+  opacity: 1;
+  transition: opacity 0.35s ease;
 }
 
-.game-zoom::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(135deg, var(--g1, var(--accent)), var(--g2, var(--accent-3)));
-  opacity: 1;
-  transition: opacity 0.5s ease;
-  z-index: 0;
-}
-
-.game-zoom::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 45%),
-    radial-gradient(circle at 80% 80%, rgba(0,0,0,0.18), transparent 50%);
-  opacity: 1;
-  transition: opacity 0.5s ease;
+.game-zoom.faded-out {
+  opacity: 0;
   pointer-events: none;
-  z-index: 0;
 }
-
-.game-zoom.darkened::before,
-.game-zoom.darkened::after { opacity: 0; }
 
 .game-zoom-icon {
-  position: relative;
-  z-index: 1;
   font-size: 96px;
   line-height: 1;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.25));
-}
-
-.game-zoom.show-loader .game-zoom-icon {
   animation: zoom-icon-breathe 2.4s ease-in-out infinite;
-}
-
-.game-zoom-name,
-.game-zoom-bar {
-  position: relative;
-  z-index: 1;
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-
-.game-zoom.show-loader .game-zoom-name,
-.game-zoom.show-loader .game-zoom-bar {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .game-zoom-name {
@@ -378,6 +341,7 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 }
 
 .game-zoom-bar {
+  position: relative;
   width: 180px;
   height: 4px;
   border-radius: 999px;
@@ -394,12 +358,6 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   background: var(--ink);
   border-radius: inherit;
   animation: zoom-bar 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
-.game-zoom.reveal {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.35s ease;
 }
 
 @keyframes zoom-icon-breathe {
@@ -440,7 +398,6 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 
 @media (prefers-reduced-motion: reduce) {
   .blob, .title { animation: none; }
-  .game-overlay { transition: opacity 0.15s ease; }
-  .game-zoom { transition: none !important; }
+  .game-overlay, .game-zoom { transition: opacity 0.15s ease; }
   .game-zoom-icon, .game-zoom-bar-fill { animation: none; }
 }
