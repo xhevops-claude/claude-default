@@ -9,6 +9,27 @@
       tags: ['arcade', 'classic', 'solo'],
       url: 'games/snake/',
     },
+    {
+      slug: 'tic-tac-toe',
+      name: 'Tic-Tac-Toe',
+      tagline: 'Hot-seat for two. Three in a row wins.',
+      icon: `<svg viewBox="0 0 100 100" width="78" height="78" aria-hidden="true">
+        <g stroke="rgba(255,255,255,0.55)" stroke-width="3" stroke-linecap="round">
+          <line x1="40" y1="18" x2="40" y2="82"/>
+          <line x1="60" y1="18" x2="60" y2="82"/>
+          <line x1="18" y1="40" x2="82" y2="40"/>
+          <line x1="18" y1="60" x2="82" y2="60"/>
+        </g>
+        <g stroke="white" stroke-width="5" stroke-linecap="round" fill="none">
+          <line x1="24" y1="24" x2="34" y2="34"/>
+          <line x1="34" y1="24" x2="24" y2="34"/>
+          <circle cx="50" cy="50" r="8"/>
+        </g>
+      </svg>`,
+      gradient: ['#ff7ad9', '#7c5cff'],
+      tags: ['classic', 'two-player', 'turn-based'],
+      url: 'games/tic-tac-toe/',
+    },
   ];
 
   const grid = document.getElementById('grid');
