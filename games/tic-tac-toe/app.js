@@ -7,7 +7,6 @@
   const scoreDEl = document.getElementById('score-d');
   const resetBtn = document.getElementById('reset-btn');
   const clearBtn = document.getElementById('clear-btn');
-  const themeBtn = document.getElementById('theme-btn');
 
   const LINES = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -97,20 +96,6 @@
     renderScores();
     newRound();
   });
-
-  themeBtn.addEventListener('click', () => {
-    const cur = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-    const next = cur === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    themeBtn.textContent = next === 'light' ? '🌙' : '☀️';
-    try { localStorage.setItem('arcade-theme', next); } catch (_) {}
-  });
-
-  let savedTheme = null;
-  try { savedTheme = localStorage.getItem('arcade-theme'); } catch (_) {}
-  const initial = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-  document.documentElement.dataset.theme = initial;
-  themeBtn.textContent = initial === 'light' ? '🌙' : '☀️';
 
   scores = loadScores();
   renderScores();
