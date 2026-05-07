@@ -299,16 +299,94 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
   position: absolute;
   inset: 0;
   z-index: 1;
-  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform;
+  overflow: hidden;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              border-radius 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, border-radius;
 }
 
 #game-frame {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border: 0;
   background: #000;
   display: block;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+#game-frame.visible { opacity: 1; }
+
+/* Card-skin overlay sits on top of the iframe inside the wrap. It
+   carries the tile's gradient + icon + name + tagline so that, when the
+   wrap is at card size at one end of the animation, the whole thing
+   reads as the card itself. The skin crossfades faster than the wrap
+   resizes — the user sees "card design at card size" briefly, then
+   the wrap morphs to fullscreen with the iframe taking over. */
+.frame-skin {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #0f1020);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.frame-skin.visible { opacity: 1; }
+
+.skin-art {
+  flex: 7;
+  background: linear-gradient(135deg, var(--g1, #21d4fd), var(--g2, #7c5cff));
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.skin-art::after {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(0,0,0,0.15), transparent 40%);
+  pointer-events: none;
+}
+
+.skin-icon {
+  font-size: clamp(56px, 14vw, 130px);
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.skin-body {
+  flex: 3;
+  padding: clamp(12px, 3vw, 28px) clamp(14px, 4vw, 36px);
+  background: var(--surface, rgba(255, 255, 255, 0.06));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(2px, 0.5vw, 6px);
+}
+
+.skin-title {
+  margin: 0;
+  font-size: clamp(20px, 5vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink, #f5f6fa);
+}
+
+.skin-tagline {
+  margin: 0;
+  font-size: clamp(14px, 3.4vw, 30px);
+  color: var(--muted, #a0a3b8);
+  line-height: 1.4;
 }
 
 .game-close {
@@ -339,5 +417,6 @@ button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
 
 @media (prefers-reduced-motion: reduce) {
   .blob, .title { animation: none; }
-  .frame-wrap { transition: transform 0.15s ease; }
+  .frame-wrap { transition: transform 0.15s ease, border-radius 0.15s ease; }
+  .frame-skin, #game-frame { transition: opacity 0.1s ease; }
 }

@@ -27,18 +27,22 @@
   const overlay = document.getElementById('game-overlay');
   const wrap = document.getElementById('frame-wrap');
   const frame = document.getElementById('game-frame');
+  const skin = document.getElementById('frame-skin');
+  const skinIcon = document.getElementById('skin-icon');
+  const skinTitle = document.getElementById('skin-title');
+  const skinTagline = document.getElementById('skin-tagline');
   const closeBtn = document.getElementById('game-close');
 
-  // Match the CSS transition on .frame-wrap.
+  // Match the CSS transitions on .frame-wrap.
   const ZOOM_MS = 550;
-  // Microscopic starting / ending scale.
-  const SMALL_SCALE = 0.04;
+  // Card border-radius applied at the small end of the morph.
+  const CARD_RADIUS = 16;
 
   // Tracks the tile that launched the current overlay so we can shrink
-  // the iframe back into it on close.
+  // the iframe wrapper back into it on close.
   let lastCard = null;
-  let lastOriginX = null;
-  let lastOriginY = null;
+  let lastCardRect = null;
+  let lastGame = null;
 
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -78,17 +82,44 @@
     }).join('');
   }
 
-  function originFromCard(card) {
+  function rectFromCard(card) {
     if (card) {
       const r = card.getBoundingClientRect();
-      return [r.left + r.width / 2, r.top + r.height / 2];
+      return { left: r.left, top: r.top, width: r.width, height: r.height };
     }
-    return [window.innerWidth / 2, window.innerHeight / 2];
+    // Deep-link fallback: a card-shaped rect at the viewport center.
+    const w = Math.min(180, window.innerWidth - 32);
+    const h = w * 1.3;
+    return {
+      left: (window.innerWidth - w) / 2,
+      top: (window.innerHeight - h) / 2,
+      width: w,
+      height: h,
+    };
+  }
+
+  function transformForRect(rect) {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    return `translate(${rect.left}px, ${rect.top}px)`
+         + ` scale(${rect.width / vw}, ${rect.height / vh})`;
+  }
+
+  function applySkinFromCard(card, game) {
+    if (card) {
+      const cs = getComputedStyle(card);
+      const g1 = cs.getPropertyValue('--g1').trim();
+      const g2 = cs.getPropertyValue('--g2').trim();
+      if (g1) skin.style.setProperty('--g1', g1);
+      if (g2) skin.style.setProperty('--g2', g2);
+    }
+    skinIcon.textContent = game.icon;
+    skinTitle.textContent = game.name;
+    skinTagline.textContent = game.tagline;
   }
 
   // Double-rAF guarantees the browser commits the "before" state to the
   // compositor before we set the "after" state, so the transition runs.
-  // A single rAF or `void offsetWidth` is sometimes not enough on Safari.
   function nextFrame(fn) {
     requestAnimationFrame(() => requestAnimationFrame(fn));
   }
@@ -96,29 +127,39 @@
   function openGame(card, game) {
     if (overlay.dataset.state) return;
 
-    const [originX, originY] = originFromCard(card);
+    const rect = rectFromCard(card);
     lastCard = card || null;
-    lastOriginX = originX;
-    lastOriginY = originY;
+    lastCardRect = rect;
+    lastGame = game;
 
-    // Reveal the overlay (it's already opaque thanks to CSS opacity:1)
-    // and put the wrapper at its starting microscopic state without
-    // animating.
+    applySkinFromCard(card, game);
+
     overlay.hidden = false;
     overlay.dataset.state = 'open';
 
+    // Place the wrap at the card's rect with card-shaped border-radius,
+    // skin visible (looks like the card), iframe hidden.
     wrap.style.transition = 'none';
-    wrap.style.transformOrigin = `${originX}px ${originY}px`;
-    wrap.style.transform = `scale(${SMALL_SCALE})`;
+    wrap.style.transformOrigin = '0 0';
+    wrap.style.transform = transformForRect(rect);
+    wrap.style.borderRadius = CARD_RADIUS + 'px';
     wrap.style.pointerEvents = 'none';
+
+    skin.classList.add('visible');
+    frame.classList.remove('visible');
     frame.src = game.url;
 
-    // Force layout commit, then wait two frames so the browser actually
-    // paints the starting transform before we change to scale(1).
     void wrap.offsetWidth;
+
+    // Animate: wrap grows over 550ms, skin/iframe crossfade over 220ms
+    // (faster than the size animation, so the user sees the card design
+    // briefly then the iframe takes over while the wrap is still mid-grow).
     nextFrame(() => {
       wrap.style.transition = '';
-      wrap.style.transform = 'scale(1)';
+      wrap.style.transform = 'translate(0, 0) scale(1, 1)';
+      wrap.style.borderRadius = '0';
+      skin.classList.remove('visible');
+      frame.classList.add('visible');
     });
 
     setTimeout(() => { wrap.style.pointerEvents = ''; }, ZOOM_MS + 40);
@@ -126,40 +167,42 @@
     try { history.pushState({ gameOpen: true }, '', '#' + game.url); } catch (_) {}
   }
 
-  // Close: shrink the iframe back to a microscopic dot at the tile's
-  // center, then fade the overlay out.
   function closeGame() {
     if (overlay.dataset.state !== 'open') return;
     overlay.dataset.state = 'shrinking';
 
-    // Recompute the destination from the live card if it's still in the
-    // DOM (the gallery may have scrolled while the game was open).
-    let ox, oy;
+    // Recompute destination rect from the live card (gallery may have
+    // scrolled while the game was open).
+    let rect;
     if (lastCard && document.contains(lastCard)) {
-      const r = lastCard.getBoundingClientRect();
-      ox = r.left + r.width / 2;
-      oy = r.top + r.height / 2;
-    } else if (lastOriginX != null && lastOriginY != null) {
-      ox = lastOriginX;
-      oy = lastOriginY;
+      rect = rectFromCard(lastCard);
+    } else if (lastCardRect) {
+      rect = lastCardRect;
     } else {
-      ox = window.innerWidth / 2;
-      oy = window.innerHeight / 2;
+      rect = rectFromCard(null);
     }
+    lastCardRect = rect;
+
+    // Make sure the skin still has the right gradient / icon (in case
+    // the user navigated back via popstate before openGame configured it).
+    if (lastGame) applySkinFromCard(lastCard, lastGame);
 
     wrap.style.pointerEvents = 'none';
     wrap.style.transition = 'none';
-    wrap.style.transformOrigin = `${ox}px ${oy}px`;
+    wrap.style.transformOrigin = '0 0';
     void wrap.offsetWidth;
 
     nextFrame(() => {
       wrap.style.transition = '';
-      wrap.style.transform = `scale(${SMALL_SCALE})`;
+      wrap.style.transform = transformForRect(rect);
+      wrap.style.borderRadius = CARD_RADIUS + 'px';
+      // Crossfade — skin fades in faster than the wrap resizes, so by
+      // the time the wrap is at card size the content already reads as
+      // the card.
+      skin.classList.add('visible');
+      frame.classList.remove('visible');
     });
 
-    // After the shrink finishes, hide the overlay immediately — no
-    // black-fade phase. The gallery has been visible behind the
-    // shrinking wrapper the whole time.
     setTimeout(finalizeClose, ZOOM_MS + 40);
   }
 
@@ -168,13 +211,16 @@
     overlay.removeAttribute('data-state');
     frame.onload = null;
     frame.src = 'about:blank';
+    frame.classList.remove('visible');
+    skin.classList.remove('visible');
     wrap.style.transition = 'none';
     wrap.style.transform = '';
     wrap.style.transformOrigin = '';
+    wrap.style.borderRadius = '';
     wrap.style.pointerEvents = '';
     lastCard = null;
-    lastOriginX = null;
-    lastOriginY = null;
+    lastCardRect = null;
+    lastGame = null;
   }
 
   grid.addEventListener('click', (e) => {
