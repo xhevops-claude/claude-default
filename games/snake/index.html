@@ -5,16 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Snake</title>
   <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('arcade-theme');
-        if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-        document.documentElement.dataset.theme = t;
-        if (window.self !== window.top) document.documentElement.classList.add('embedded');
-      } catch (e) {}
-    })();
+    if (window.self !== window.top) document.documentElement.classList.add('embedded');
   </script>
-  <link rel="stylesheet" href="../../themes.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -28,15 +20,7 @@
     <header class="header">
       <a class="back-link" href="../../">←</a>
       <span class="badge">snake</span>
-      <div class="theme-picker" role="group" aria-label="Theme">
-        <button class="swatch" data-theme="dark"      type="button" aria-label="Dark theme"></button>
-        <button class="swatch" data-theme="light"     type="button" aria-label="Light theme"></button>
-        <button class="swatch" data-theme="space"     type="button" aria-label="Space theme"></button>
-        <button class="swatch" data-theme="sunset"    type="button" aria-label="Sunset theme"></button>
-        <button class="swatch" data-theme="mono"      type="button" aria-label="Mono theme"></button>
-        <button class="swatch" data-theme="solarized" type="button" aria-label="Solarized theme"></button>
-        <button class="swatch" data-theme="gameboy"   type="button" aria-label="Game Boy theme"></button>
-      </div>
+      <span class="header-spacer" aria-hidden="true"></span>
     </header>
 
     <div class="scoreboard">
@@ -66,7 +50,6 @@
     <div class="touch-hint">Swipe to move &nbsp;·&nbsp; tap to pause</div>
   </main>
 
-  <script src="../../theme.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

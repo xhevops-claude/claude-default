@@ -1,4 +1,30 @@
-:root { --radius: 22px; }
+/* Snake is standalone: its own black theme, independent of the
+   gallery's arcade-theme. */
+:root {
+  --radius: 22px;
+  --bg: #000;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.10);
+  --surface-border: rgba(255, 255, 255, 0.14);
+  --overlay-bg: rgba(0, 0, 0, 0.7);
+  --ink: #ffffff;
+  --muted: #9a9a9a;
+  --accent: #ffffff;
+  --accent-2: #cfcfcf;
+  --accent-3: #888888;
+  --snake: #ffffff;
+  --snake-head: #cfcfcf;
+  --food: #ffffff;
+  --grid-line: rgba(255, 255, 255, 0.06);
+  --shadow: 0 30px 80px -30px rgba(255, 255, 255, 0.18), 0 10px 30px -15px rgba(0, 0, 0, 0.7);
+  --blob-opacity: 0;
+  --blob-blend: screen;
+}
+
+/* Hide the back link when running inside the gallery's iframe. */
+.embedded .back-link { display: none; }
+
+.header-spacer { display: inline-block; width: 32px; }
 
 * { box-sizing: border-box; }
 
@@ -129,11 +155,7 @@ body {
   font-size: 22px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  background: linear-gradient(120deg, var(--accent), var(--accent-2), var(--accent-3));
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ink);
 }
 
 .canvas-wrap {
@@ -178,17 +200,7 @@ canvas {
   margin: 0;
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
-  background: linear-gradient(120deg, var(--accent), var(--accent-2), var(--accent-3));
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: shimmer 6s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50%      { background-position: 100% 50%; }
+  color: var(--ink);
 }
 
 .overlay p {
@@ -201,13 +213,12 @@ button {
   padding: 12px 22px;
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
-  background: linear-gradient(120deg, var(--accent), var(--accent-3));
+  color: var(--bg);
+  background: var(--accent);
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 10px 24px -10px rgba(124, 92, 255, 0.7);
+  transition: transform 0.08s ease, filter 0.15s ease;
   margin-top: 6px;
 }
 

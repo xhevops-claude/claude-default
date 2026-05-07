@@ -280,10 +280,6 @@
     e.preventDefault();
   }, { passive: false });
 
-  window.addEventListener('themechange', () => {
-    if (state !== 'playing') draw();
-  });
-
   // Initial draw so the board is visible behind the start overlay.
   reset();
   draw();
