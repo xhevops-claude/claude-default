@@ -229,17 +229,6 @@
     else start();
   });
 
-  // On-screen D-pad (touch + click).
-  document.querySelectorAll('.dpad-btn[data-dir]').forEach((btn) => {
-    const dir = btn.dataset.dir;
-    const handler = (e) => { applyDir(dir); e.preventDefault(); };
-    btn.addEventListener('click', handler);
-    btn.addEventListener('touchstart', handler, { passive: false });
-  });
-
-  const pauseBtn = document.getElementById('pause-btn');
-  pauseBtn.addEventListener('click', (e) => { togglePause(); e.preventDefault(); });
-
   // Swipe + tap on the canvas.
   let touchStart = null;
   const SWIPE_MIN = 24;

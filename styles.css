@@ -3,16 +3,22 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; min-height: 100%; }
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
   background: var(--bg);
   color: var(--ink);
-  min-height: 100vh;
   position: relative;
   transition: background-color 0.4s ease, color 0.4s ease;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .aurora {
@@ -50,10 +56,14 @@ body {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 32px 16px 40px;
+  padding: 24px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
-.hero { margin-bottom: 22px; }
+.hero { flex-shrink: 0; margin-bottom: 18px; }
 
 .hero-top {
   display: flex;
@@ -99,10 +109,15 @@ body {
 .grid {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 2px 8px;
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (min-width: 720px) {
@@ -177,7 +192,9 @@ body {
 }
 
 .foot {
-  margin-top: 40px;
+  flex-shrink: 0;
+  margin-top: 14px;
+  padding-bottom: env(safe-area-inset-bottom);
   text-align: center;
   color: var(--muted);
   font-size: 13px;
