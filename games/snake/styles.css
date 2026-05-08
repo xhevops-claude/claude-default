@@ -1,26 +1,47 @@
-/* Snake — Nokia 3310 LCD vibe. The whole page is the LCD: olive-green
-   background, dark olive ink, monospace numbers in the corners, and a
-   thick dark frame around the playfield like the cut-out on the phone.
-   No phone chrome — just the screen. */
+/* Snake — two skins:
+     [data-skin="classic"]  black bg, bright green snake, red food, sans-serif
+     [data-skin="nokia"]    olive LCD bg, dark olive snake/food, monospace,
+                            no score labels, thick frame around the playfield.
 
-:root {
-  --lcd: #a8b820;            /* olive-yellow LCD background */
-  --lcd-deep: #97a818;
-  --ink: #0f380f;            /* dark olive — snake, text, frame */
+   Skins are toggled by the start menu and persisted in localStorage.
+   The canvas reads colors via getComputedStyle, so swapping the
+   data-skin attribute on <html> immediately re-themes the drawing on
+   the next frame. */
+
+:root, html[data-skin="classic"] {
+  --bg: #0a0a0a;
+  --ink: #f5f5f5;
+  --ink-soft: rgba(245, 245, 245, 0.55);
+  --muted: rgba(245, 245, 245, 0.55);
+  --surface-strong: rgba(255, 255, 255, 0.06);
+  --surface-border: rgba(255, 255, 255, 0.10);
+
+  --snake: #4ade80;
+  --snake-head: #4ade80;
+  --food: #ef4444;
+  --grid-line: rgba(255, 255, 255, 0.04);
+  --overlay-bg: rgba(10, 10, 10, 0.96);
+  --accent: #f5f5f5;
+
+  --canvas-frame: 1px;
+}
+
+html[data-skin="nokia"] {
+  --bg: #a8b820;
+  --ink: #0f380f;
   --ink-soft: rgba(15, 56, 15, 0.55);
-
-  --bg: var(--lcd);
+  --muted: rgba(15, 56, 15, 0.55);
   --surface-strong: rgba(15, 56, 15, 0.10);
   --surface-border: rgba(15, 56, 15, 0.50);
-  --muted: var(--ink-soft);
 
-  /* Drawing colors used by the canvas via getComputedStyle. */
   --snake: #0f380f;
-  --snake-head: #1f4e1f;
+  --snake-head: #0f380f;
   --food: #0f380f;
   --grid-line: rgba(15, 56, 15, 0.05);
   --overlay-bg: rgba(168, 184, 32, 0.94);
   --accent: #0f380f;
+
+  --canvas-frame: 6px;
 }
 
 * { box-sizing: border-box; }
@@ -36,6 +57,10 @@ html, body {
 body {
   background: var(--bg);
   color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+html[data-skin="nokia"] body {
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
@@ -45,7 +70,7 @@ body {
   flex-direction: column;
 }
 
-/* Top score row — Nokia-style "0035" left, "0008" right, no labels. */
+/* Score row */
 .scoreboard {
   flex-shrink: 0;
   display: flex;
@@ -57,31 +82,36 @@ body {
 .stat {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 10px;
   background: transparent;
   border: 0;
   padding: 0;
 }
 
 .stat-label {
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: var(--muted);
 }
 
+/* Nokia skin hides the labels — original 3310 just shows the number. */
+html[data-skin="nokia"] .stat-label { display: none; }
+
 .stat-value {
-  font-family: inherit;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+
+html[data-skin="nokia"] .stat-value {
+  font-size: 22px;
   letter-spacing: 0.08em;
 }
 
-/* Playfield. The dark frame is what you see through the cut-out on the
-   phone body — drawn here as a thick dark border around the canvas. */
+/* Playfield */
 .canvas-wrap {
   position: relative;
   flex: 1;
@@ -96,13 +126,17 @@ canvas {
   width: min(100%, calc(100vh - 160px));
   aspect-ratio: 1 / 1;
   max-height: 100%;
-  background: var(--lcd);
-  border: 6px solid var(--ink);
+  background: var(--bg);
+  border: var(--canvas-frame) solid var(--ink);
   image-rendering: pixelated;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+html[data-skin="classic"] canvas {
+  border-color: var(--surface-border);
 }
 
 .overlay {
@@ -125,23 +159,66 @@ canvas {
 
 .overlay h2 {
   margin: 0;
-  font-family: inherit;
   font-size: clamp(28px, 7vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+html[data-skin="nokia"] .overlay h2 {
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--ink);
 }
 
 .overlay p {
   margin: 0;
-  color: var(--ink-soft);
+  color: var(--muted);
   max-width: 280px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+html[data-skin="nokia"] .overlay p {
   font-size: 12px;
   letter-spacing: 0.05em;
-  line-height: 1.6;
-  font-family: inherit;
 }
+
+/* Skin picker — small toggle in the start menu. */
+.skin-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.skin-btn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--ink);
+  border: 1.5px solid var(--surface-border);
+  padding: 7px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+
+.skin-btn:hover { border-color: var(--ink); }
+
+.skin-btn.active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+html[data-skin="nokia"] .skin-btn { border-radius: 0; }
 
 .overlay-actions {
   display: flex;
@@ -151,17 +228,18 @@ canvas {
   margin-top: 4px;
 }
 
-button {
+button#action-btn,
+button#quit-btn {
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--lcd);
+  color: var(--bg);
   background: var(--ink);
-  padding: 12px 26px;
+  padding: 12px 28px;
   border: 0;
-  border-radius: 0;
+  border-radius: 6px;
   cursor: pointer;
   margin: 0;
   touch-action: manipulation;
@@ -169,26 +247,38 @@ button {
   transition: filter 0.1s ease;
 }
 
-button:hover { filter: brightness(1.15); }
-button:active { transform: translateY(1px); }
-
-.ghost {
-  background: transparent;
-  color: var(--ink);
-  border: 2px solid var(--ink);
+html[data-skin="nokia"] button#action-btn,
+html[data-skin="nokia"] button#quit-btn {
+  border-radius: 0;
 }
 
-.ghost:hover { background: var(--ink); color: var(--lcd); filter: none; }
+button#action-btn:hover,
+button#quit-btn:hover { filter: brightness(0.92); }
+
+html[data-skin="nokia"] button#action-btn:hover,
+html[data-skin="nokia"] button#quit-btn:hover { filter: brightness(1.15); }
+
+.ghost {
+  background: transparent !important;
+  color: var(--ink) !important;
+  border: 1.5px solid var(--ink) !important;
+}
+
+.ghost:hover { background: var(--ink) !important; color: var(--bg) !important; filter: none; }
 
 .hint {
   flex-shrink: 0;
   text-align: center;
-  font-size: 10px;
-  color: var(--ink-soft);
+  font-size: 11px;
+  color: var(--muted);
   padding: 10px 20px 14px;
+  letter-spacing: 0.04em;
+}
+
+html[data-skin="nokia"] .hint {
+  font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  font-family: inherit;
 }
 
 .hint-keys { display: inline; }
@@ -202,21 +292,27 @@ button:active { transform: translateY(1px); }
 kbd {
   display: inline-block;
   padding: 1px 5px;
-  font-family: inherit;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 10px;
   color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  margin: 0 1px;
+}
+
+html[data-skin="nokia"] kbd {
   background: rgba(15, 56, 15, 0.10);
   border: 1px solid rgba(15, 56, 15, 0.30);
   border-radius: 0;
-  margin: 0 1px;
 }
 
 .embedded .back-link { display: none; }
 
 @media (max-width: 480px) {
-  .scoreboard { padding: 12px 16px 8px; }
-  .stat-value { font-size: 19px; }
+  .scoreboard { padding: 10px 16px; }
+  .stat-value { font-size: 16px; }
+  html[data-skin="nokia"] .stat-value { font-size: 19px; }
   .canvas-wrap { padding: 8px; }
-  canvas { border-width: 4px; }
-  .hint { padding: 8px 16px 10px; }
+  html[data-skin="nokia"] { --canvas-frame: 4px; }
+  .hint { padding: 8px 16px 12px; }
 }

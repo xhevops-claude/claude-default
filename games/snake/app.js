@@ -8,6 +8,39 @@
   const overlayText = document.getElementById('overlay-text');
   const actionBtn = document.getElementById('action-btn');
   const quitBtn = document.getElementById('quit-btn');
+  const skinBtns = Array.from(document.querySelectorAll('.skin-btn'));
+
+  // ---- Skin selection ----
+  const SKINS = ['classic', 'nokia'];
+  const SKIN_KEY = 'snake-skin';
+
+  function currentSkin() {
+    return document.documentElement.dataset.skin === 'nokia' ? 'nokia' : 'classic';
+  }
+
+  // Score formatting depends on skin: Nokia pads to 4 digits like 0035.
+  function fmt(n) {
+    const v = String(n || 0);
+    return currentSkin() === 'nokia' ? v.padStart(4, '0') : v;
+  }
+
+  function applySkin(skin) {
+    if (!SKINS.includes(skin)) skin = 'classic';
+    document.documentElement.dataset.skin = skin;
+    try { localStorage.setItem(SKIN_KEY, skin); } catch (_) {}
+    skinBtns.forEach((b) => {
+      b.classList.toggle('active', b.dataset.skin === skin);
+    });
+    // Re-render score formatting for the new skin.
+    if (typeof score === 'number') scoreEl.textContent = fmt(score);
+    bestEl.textContent = fmt(best);
+    // Repaint canvas with new colors when not actively running.
+    if (state !== 'playing' && typeof food !== 'undefined') draw();
+  }
+
+  skinBtns.forEach((b) => {
+    b.addEventListener('click', () => applySkin(b.dataset.skin));
+  });
 
   function quit() {
     if (window.self !== window.top) {
@@ -26,9 +59,6 @@
 
   let snake, dir, queuedDir, food, score, best, tickMs, lastTick, raf;
   let state = 'ready'; // ready | playing | paused | over
-
-  // Format scores Nokia-style: zero-padded to 4 digits.
-  const fmt = (n) => String(n).padStart(4, '0');
 
   try { best = parseInt(localStorage.getItem('snake-best') || '0', 10) || 0; } catch (_) { best = 0; }
   bestEl.textContent = fmt(best);
@@ -174,13 +204,13 @@
       CELL - fInset * 2
     );
 
-    // Snake — sharp dark pixel blocks, no rounding, no glow.
-    const bodyColor = getCss('--snake');
-    const headColor = getCss('--snake-head');
+    // Snake — solid connected blocks. Each segment fills its full cell
+    // so adjacent segments touch and the body reads as one continuous
+    // shape, like the original.
+    ctx.fillStyle = getCss('--snake');
     for (let i = snake.length - 1; i >= 0; i--) {
       const seg = snake[i];
-      ctx.fillStyle = i === 0 ? headColor : bodyColor;
-      ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
+      ctx.fillRect(seg.x * CELL, seg.y * CELL, CELL, CELL);
     }
   }
 
@@ -278,6 +308,11 @@
   // Initial draw so the board is visible behind the start overlay.
   reset();
   draw();
+
+  // Apply the saved skin (an inline <head> script also sets the
+  // attribute pre-paint to avoid a flash; this call wires the active
+  // class on the picker buttons and re-formats the score for Nokia).
+  applySkin(currentSkin());
 
   // Hide the inline loading screen once the game is ready and at least
   // 3s have elapsed since the document started loading. This is the
