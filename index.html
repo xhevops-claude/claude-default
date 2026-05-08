@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Game Arcade</title>
+  <title>Arcade</title>
   <script>
     (function () {
       try {
         var t = localStorage.getItem('arcade-theme');
-        if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        var valid = ['noir', 'bone', 'steel', 'jade', 'ember'];
+        if (!t || valid.indexOf(t) === -1) {
+          t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'bone' : 'noir';
+        }
         document.documentElement.dataset.theme = t;
       } catch (e) {}
     })();
@@ -17,34 +20,32 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="aurora" aria-hidden="true">
-    <span class="blob blob-1"></span>
-    <span class="blob blob-2"></span>
-    <span class="blob blob-3"></span>
-  </div>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Arcade</span>
+    </div>
+    <div class="theme-picker" role="group" aria-label="Theme">
+      <button class="swatch" data-theme="noir"  type="button" aria-label="Noir theme"></button>
+      <button class="swatch" data-theme="bone"  type="button" aria-label="Bone theme"></button>
+      <button class="swatch" data-theme="steel" type="button" aria-label="Steel theme"></button>
+      <button class="swatch" data-theme="jade"  type="button" aria-label="Jade theme"></button>
+      <button class="swatch" data-theme="ember" type="button" aria-label="Ember theme"></button>
+    </div>
+  </header>
 
   <main class="page">
-    <header class="hero">
-      <div class="hero-top">
-        <span class="badge">arcade</span>
-        <div class="theme-picker" role="group" aria-label="Theme">
-          <button class="swatch" data-theme="dark"      type="button" aria-label="Dark theme"></button>
-          <button class="swatch" data-theme="light"     type="button" aria-label="Light theme"></button>
-          <button class="swatch" data-theme="space"     type="button" aria-label="Space theme"></button>
-          <button class="swatch" data-theme="sunset"    type="button" aria-label="Sunset theme"></button>
-          <button class="swatch" data-theme="mono"      type="button" aria-label="Mono theme"></button>
-          <button class="swatch" data-theme="solarized" type="button" aria-label="Solarized theme"></button>
-          <button class="swatch" data-theme="gameboy"   type="button" aria-label="Game Boy theme"></button>
-        </div>
-      </div>
-      <h1 class="title">Pick a game</h1>
-      <p class="subtitle">Tap a tile to play.</p>
-    </header>
-
+    <div class="page-head">
+      <h1 class="page-title">Games</h1>
+      <span class="page-meta" id="page-meta"></span>
+    </div>
     <ul id="grid" class="grid" role="list"></ul>
-
-    <footer class="foot">Built for fun. More games coming.</footer>
   </main>
+
+  <footer class="footbar">
+    <span>Built for fun</span>
+    <span id="foot-meta"></span>
+  </footer>
 
   <div id="game-overlay" class="game-overlay" hidden>
     <div id="frame-wrap" class="frame-wrap">
