@@ -11,6 +11,8 @@
   const playBtn = document.getElementById('play-btn');
   const resetBtn = document.getElementById('reset-btn');
   const quitBtn = document.getElementById('quit-btn');
+  const winLineSvg = document.getElementById('win-line');
+  const winLineSeg = document.getElementById('win-line-segment');
 
   const LINES = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -69,6 +71,31 @@
   // Lowercase mark for the handwriting font (× / ○ render nicer).
   const MARK = { X: '×', O: '○' };
 
+  // Convert a winning line (e.g. [0, 1, 2]) into SVG endpoints in cell
+  // coordinates (the SVG viewBox is 0 0 3 3, so each unit = one cell).
+  function lineEndpoints(line) {
+    const a = line[0], b = line[line.length - 1];
+    const ax = (a % 3) + 0.5, ay = Math.floor(a / 3) + 0.5;
+    const bx = (b % 3) + 0.5, by = Math.floor(b / 3) + 0.5;
+    return { ax, ay, bx, by };
+  }
+
+  function showWinLine(line) {
+    const { ax, ay, bx, by } = lineEndpoints(line);
+    winLineSeg.setAttribute('x1', ax);
+    winLineSeg.setAttribute('y1', ay);
+    winLineSeg.setAttribute('x2', bx);
+    winLineSeg.setAttribute('y2', by);
+    // Force a reflow so the dash-offset animation runs every time.
+    winLineSvg.classList.remove('visible');
+    void winLineSvg.getBoundingClientRect();
+    winLineSvg.classList.add('visible');
+  }
+
+  function hideWinLine() {
+    winLineSvg.classList.remove('visible');
+  }
+
   function newRound() {
     grid = Array(9).fill(null);
     turn = 'X';
@@ -78,6 +105,7 @@
       c.classList.remove('win');
       c.disabled = false;
     });
+    hideWinLine();
     status.textContent = `${MARK[turn]} to play`;
   }
 
@@ -111,6 +139,7 @@
         status.textContent = `${MARK[result.winner]} wins`;
         scores[result.winner] += 1;
         result.line.forEach((idx) => cells[idx].classList.add('win'));
+        showWinLine(result.line);
       }
       saveScores();
       renderScores();

@@ -78,6 +78,7 @@ body {
 /* The 3×3 grid — drawn as pencil # symbol: only the 4 inner lines, no
    outer border (just like a hand-drawn tic-tac-toe). */
 .board {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
@@ -86,6 +87,45 @@ body {
   background: transparent;
   border: 0;
   padding: 0;
+}
+
+/* SVG overlay over the grid that draws a pencil line through the
+   winning cells. Positioned absolutely so it doesn't take a grid slot,
+   coordinate space is 3x3 (one unit per cell). */
+.win-line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.win-line.visible { opacity: 1; }
+
+.win-line line {
+  stroke: var(--ink);
+  stroke-width: 0.10;
+  stroke-linecap: round;
+  fill: none;
+  /* Animated draw-on: dasharray makes the line "draw" itself when the
+     visible class is added. */
+  stroke-dasharray: 5;
+  stroke-dashoffset: 5;
+}
+
+.win-line.visible line {
+  animation: draw-line 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes draw-line {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .win-line.visible line { animation: none; stroke-dashoffset: 0; }
 }
 
 .cell {
