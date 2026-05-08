@@ -10,6 +10,8 @@
   <!-- Critical inline CSS so the loading screen paints on the first
        frame, before styles.css resolves. -->
   <style>
+    /* The page is the LCD for both skins; only the snake drawing
+       changes between Classic and Nokia 3310. */
     html, body { margin: 0; padding: 0; background: #a8b820; color: #0f380f;
       font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
     #game-loading {
@@ -33,6 +35,17 @@
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
+  <script>
+    // Apply the saved skin BEFORE the loader paints. Layout is the same
+    // for both skins; this attribute only affects how the snake renders
+    // on the canvas.
+    try {
+      var s = localStorage.getItem('snake-skin');
+      document.documentElement.dataset.skin = (s === 'nokia' ? 'nokia' : 'classic');
+    } catch (e) {
+      document.documentElement.dataset.skin = 'classic';
+    }
+  </script>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -58,6 +71,10 @@
       <div class="overlay" id="overlay" data-state="ready">
         <h2 id="overlay-title">Snake</h2>
         <p id="overlay-text">Eat the dots. Don't bite yourself.</p>
+        <div class="skin-options" role="group" aria-label="Skin">
+          <button class="skin-btn" data-skin="classic" type="button">Classic</button>
+          <button class="skin-btn" data-skin="nokia"   type="button">Nokia 3310</button>
+        </div>
         <div class="overlay-actions">
           <button id="action-btn" type="button">Play</button>
           <button id="quit-btn" type="button" class="ghost">Quit</button>

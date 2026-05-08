@@ -1,26 +1,30 @@
-/* Snake — Nokia 3310 LCD vibe. The whole page is the LCD: olive-green
-   background, dark olive ink, monospace numbers in the corners, and a
-   thick dark frame around the playfield like the cut-out on the phone.
-   No phone chrome — just the screen. */
+/* Snake — single LCD layout for both skins. The skin picker only
+   changes how the snake (and food) are drawn on the canvas; the page
+   chrome, palette, font, and scoreboard format are the same:
+
+     classic   solid dark-olive snake, simple inset food dot
+     nokia     stippled 5-dot pixel-art snake, 4-dot diamond food
+
+   The drawing split lives in app.js' draw(); CSS doesn't need
+   skin-specific overrides anymore. */
 
 :root {
   --lcd: #a8b820;            /* olive-yellow LCD background */
-  --lcd-deep: #97a818;
   --ink: #0f380f;            /* dark olive — snake, text, frame */
   --ink-soft: rgba(15, 56, 15, 0.55);
 
   --bg: var(--lcd);
+  --muted: var(--ink-soft);
   --surface-strong: rgba(15, 56, 15, 0.10);
   --surface-border: rgba(15, 56, 15, 0.50);
-  --muted: var(--ink-soft);
 
-  /* Drawing colors used by the canvas via getComputedStyle. */
   --snake: #0f380f;
-  --snake-head: #1f4e1f;
   --food: #0f380f;
   --grid-line: rgba(15, 56, 15, 0.05);
   --overlay-bg: rgba(168, 184, 32, 0.94);
   --accent: #0f380f;
+
+  --canvas-frame: 6px;
 }
 
 * { box-sizing: border-box; }
@@ -43,9 +47,17 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  /* Whole-page swipe controls — disable browser pan/zoom so the
+     touch handlers in app.js own all gestures. Buttons remain
+     tappable because click events are unaffected. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Top score row — Nokia-style "0035" left, "0008" right, no labels. */
+/* Score row — Nokia-style, no labels, just the padded numbers in the
+   corners of the LCD. */
 .scoreboard {
   flex-shrink: 0;
   display: flex;
@@ -57,19 +69,13 @@ body {
 .stat {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 10px;
   background: transparent;
   border: 0;
   padding: 0;
 }
 
-.stat-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
+.stat-label { display: none; }
 
 .stat-value {
   font-family: inherit;
@@ -80,8 +86,7 @@ body {
   letter-spacing: 0.08em;
 }
 
-/* Playfield. The dark frame is what you see through the cut-out on the
-   phone body — drawn here as a thick dark border around the canvas. */
+/* Playfield */
 .canvas-wrap {
   position: relative;
   flex: 1;
@@ -96,8 +101,8 @@ canvas {
   width: min(100%, calc(100vh - 160px));
   aspect-ratio: 1 / 1;
   max-height: 100%;
-  background: var(--lcd);
-  border: 6px solid var(--ink);
+  background: var(--bg);
+  border: var(--canvas-frame) solid var(--ink);
   image-rendering: pixelated;
   touch-action: none;
   -webkit-user-select: none;
@@ -126,9 +131,9 @@ canvas {
 .overlay h2 {
   margin: 0;
   font-family: inherit;
-  font-size: clamp(28px, 7vw, 44px);
+  font-size: clamp(28px, 8vw, 44px);
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -143,6 +148,41 @@ canvas {
   font-family: inherit;
 }
 
+/* Skin picker — small toggle in the start menu. Only affects the
+   snake/food drawing; layout is identical between skins. */
+.skin-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.skin-btn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--ink);
+  border: 1.5px solid var(--surface-border);
+  padding: 7px 14px;
+  border-radius: 0;
+  cursor: pointer;
+  margin: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+
+.skin-btn:hover { border-color: var(--ink); }
+
+.skin-btn.active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
 .overlay-actions {
   display: flex;
   gap: 10px;
@@ -151,15 +191,16 @@ canvas {
   margin-top: 4px;
 }
 
-button {
+button#action-btn,
+button#quit-btn {
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--lcd);
+  color: var(--bg);
   background: var(--ink);
-  padding: 12px 26px;
+  padding: 12px 28px;
   border: 0;
   border-radius: 0;
   cursor: pointer;
@@ -169,16 +210,18 @@ button {
   transition: filter 0.1s ease;
 }
 
-button:hover { filter: brightness(1.15); }
-button:active { transform: translateY(1px); }
+button#action-btn:hover,
+button#quit-btn:hover { filter: brightness(1.15); }
+button#action-btn:active,
+button#quit-btn:active { transform: translateY(1px); }
 
 .ghost {
-  background: transparent;
-  color: var(--ink);
-  border: 2px solid var(--ink);
+  background: transparent !important;
+  color: var(--ink) !important;
+  border: 2px solid var(--ink) !important;
 }
 
-.ghost:hover { background: var(--ink); color: var(--lcd); filter: none; }
+.ghost:hover { background: var(--ink) !important; color: var(--bg) !important; filter: none; }
 
 .hint {
   flex-shrink: 0;
@@ -217,6 +260,6 @@ kbd {
   .scoreboard { padding: 12px 16px 8px; }
   .stat-value { font-size: 19px; }
   .canvas-wrap { padding: 8px; }
-  canvas { border-width: 4px; }
-  .hint { padding: 8px 16px 10px; }
+  :root { --canvas-frame: 4px; }
+  .hint { padding: 8px 16px 12px; }
 }
