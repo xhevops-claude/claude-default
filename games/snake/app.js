@@ -176,9 +176,46 @@
     raf = requestAnimationFrame(loop);
   }
 
+  // Pixel-art patterns for the Nokia 3310 skin. Each cell is divided
+  // into a 3x3 sub-grid; 1 = filled sub-pixel, 0 = empty. The classic
+  // 3310 snake body reads as 5-dot "X" stipples and the food is the
+  // inverse 4-dot diamond, so the food can be told apart from the body.
+  const NOKIA_BODY = [
+    [1, 0, 1],
+    [0, 1, 0],
+    [1, 0, 1],
+  ];
+  const NOKIA_FOOD = [
+    [0, 1, 0],
+    [1, 0, 1],
+    [0, 1, 0],
+  ];
+
+  function drawPattern(cellX, cellY, pattern) {
+    const SIZE = pattern.length;
+    const sub = CELL / SIZE;
+    const px = cellX * CELL;
+    const py = cellY * CELL;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (pattern[r][c]) {
+          // Math.ceil prevents thin gaps between sub-pixels caused by
+          // sub-pixel rounding when sub isn't a whole pixel.
+          ctx.fillRect(
+            Math.floor(px + c * sub),
+            Math.floor(py + r * sub),
+            Math.ceil(sub),
+            Math.ceil(sub)
+          );
+        }
+      }
+    }
+  }
+
   function draw() {
-    // Background grid.
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background grid (subtle).
     const gridLine = getCss('--grid-line');
     ctx.strokeStyle = gridLine;
     ctx.lineWidth = 1;
@@ -193,24 +230,32 @@
       ctx.stroke();
     }
 
-    // Food — small dark pixel block, no glow.
-    const foodColor = getCss('--food');
-    ctx.fillStyle = foodColor;
-    const fInset = Math.floor(CELL / 4);
-    ctx.fillRect(
-      food.x * CELL + fInset,
-      food.y * CELL + fInset,
-      CELL - fInset * 2,
-      CELL - fInset * 2
-    );
+    if (currentSkin() === 'nokia') {
+      // Nokia 3310: stippled snake + 4-dot food, like the original LCD.
+      ctx.fillStyle = getCss('--food');
+      drawPattern(food.x, food.y, NOKIA_FOOD);
 
-    // Snake — solid connected blocks. Each segment fills its full cell
-    // so adjacent segments touch and the body reads as one continuous
-    // shape, like the original.
-    ctx.fillStyle = getCss('--snake');
-    for (let i = snake.length - 1; i >= 0; i--) {
-      const seg = snake[i];
-      ctx.fillRect(seg.x * CELL, seg.y * CELL, CELL, CELL);
+      ctx.fillStyle = getCss('--snake');
+      for (let i = 0; i < snake.length; i++) {
+        const seg = snake[i];
+        drawPattern(seg.x, seg.y, NOKIA_BODY);
+      }
+    } else {
+      // Classic: solid connected snake, inset food block.
+      ctx.fillStyle = getCss('--food');
+      const fInset = Math.floor(CELL / 4);
+      ctx.fillRect(
+        food.x * CELL + fInset,
+        food.y * CELL + fInset,
+        CELL - fInset * 2,
+        CELL - fInset * 2
+      );
+
+      ctx.fillStyle = getCss('--snake');
+      for (let i = snake.length - 1; i >= 0; i--) {
+        const seg = snake[i];
+        ctx.fillRect(seg.x * CELL, seg.y * CELL, CELL, CELL);
+      }
     }
   }
 
