@@ -27,8 +27,11 @@
   let snake, dir, queuedDir, food, score, best, tickMs, lastTick, raf;
   let state = 'ready'; // ready | playing | paused | over
 
+  // Format scores Nokia-style: zero-padded to 4 digits.
+  const fmt = (n) => String(n).padStart(4, '0');
+
   try { best = parseInt(localStorage.getItem('snake-best') || '0', 10) || 0; } catch (_) { best = 0; }
-  bestEl.textContent = best;
+  bestEl.textContent = fmt(best);
 
   function reset() {
     snake = [
@@ -41,7 +44,7 @@
     score = 0;
     tickMs = TICK_START;
     placeFood();
-    scoreEl.textContent = score;
+    scoreEl.textContent = fmt(score);
   }
 
   function placeFood() {
@@ -93,7 +96,7 @@
   function gameOver() {
     if (score > best) {
       best = score;
-      bestEl.textContent = best;
+      bestEl.textContent = fmt(best);
       try { localStorage.setItem('snake-best', String(best)); } catch (_) {}
     }
     setOverlay('over', 'GAME OVER', `Score: ${score}    Best: ${best}`, 'PLAY AGAIN');
@@ -121,7 +124,7 @@
     snake.unshift(next);
     if (willEat) {
       score += 1;
-      scoreEl.textContent = score;
+      scoreEl.textContent = fmt(score);
       tickMs = Math.max(TICK_MIN, tickMs - TICK_STEP);
       placeFood();
     } else {
@@ -160,43 +163,25 @@
       ctx.stroke();
     }
 
-    // Food (pulsing glow).
-    const t = performance.now() / 400;
-    const pulse = 0.6 + Math.sin(t) * 0.2;
+    // Food — small dark pixel block, no glow.
     const foodColor = getCss('--food');
-    ctx.save();
-    ctx.shadowColor = foodColor;
-    ctx.shadowBlur = 18 * pulse;
     ctx.fillStyle = foodColor;
-    drawRoundRect(food.x * CELL + 4, food.y * CELL + 4, CELL - 8, CELL - 8, 6);
-    ctx.fill();
-    ctx.restore();
+    const fInset = Math.floor(CELL / 4);
+    ctx.fillRect(
+      food.x * CELL + fInset,
+      food.y * CELL + fInset,
+      CELL - fInset * 2,
+      CELL - fInset * 2
+    );
 
-    // Snake.
+    // Snake — sharp dark pixel blocks, no rounding, no glow.
     const bodyColor = getCss('--snake');
     const headColor = getCss('--snake-head');
     for (let i = snake.length - 1; i >= 0; i--) {
       const seg = snake[i];
       ctx.fillStyle = i === 0 ? headColor : bodyColor;
-      ctx.save();
-      if (i === 0) {
-        ctx.shadowColor = headColor;
-        ctx.shadowBlur = 14;
-      }
-      drawRoundRect(seg.x * CELL + 2, seg.y * CELL + 2, CELL - 4, CELL - 4, 6);
-      ctx.fill();
-      ctx.restore();
+      ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
     }
-  }
-
-  function drawRoundRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
   }
 
   function getCss(name) {

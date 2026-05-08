@@ -10,25 +10,25 @@
   <!-- Critical inline CSS so the loading screen paints on the first
        frame, before styles.css resolves. -->
   <style>
-    html, body { margin: 0; padding: 0; background: #0a0a0a; color: #f5f5f5;
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; }
+    html, body { margin: 0; padding: 0; background: #a8b820; color: #0f380f;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
     #game-loading {
       position: fixed; inset: 0; z-index: 9999;
-      background: #0a0a0a;
+      background: #a8b820;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 22px;
       transition: opacity 0.4s ease;
     }
     #game-loading.hidden { opacity: 0; pointer-events: none; }
-    #game-loading .gl-icon { font-size: 96px; line-height: 1; }
+    #game-loading .gl-icon { font-size: 88px; line-height: 1; filter: saturate(0.85) brightness(0.85); }
     #game-loading .gl-bar {
-      position: relative; width: 180px; height: 3px;
-      background: rgba(255,255,255,0.18); overflow: hidden;
+      position: relative; width: 180px; height: 4px;
+      background: rgba(15,56,15,0.20); overflow: hidden;
     }
     #game-loading .gl-bar::after {
       content: ""; position: absolute; top: 0; left: -40%;
-      width: 40%; height: 100%; background: #f5f5f5;
+      width: 40%; height: 100%; background: #0f380f;
       animation: gl-bar 1.2s cubic-bezier(0.45,0,0.55,1) infinite;
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
