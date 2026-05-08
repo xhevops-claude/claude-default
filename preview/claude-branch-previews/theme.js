@@ -1,9 +1,9 @@
 (function () {
-  const THEMES = ['dark', 'light', 'space', 'sunset', 'mono', 'solarized', 'gameboy'];
+  const THEMES = ['noir', 'bone', 'steel', 'jade', 'ember'];
   const KEY = 'arcade-theme';
 
   function applyTheme(theme) {
-    if (!THEMES.includes(theme)) theme = 'dark';
+    if (!THEMES.includes(theme)) theme = 'noir';
     document.documentElement.dataset.theme = theme;
     try { localStorage.setItem(KEY, theme); } catch (_) {}
     document.querySelectorAll('.swatch').forEach((s) => {
@@ -17,7 +17,7 @@
     try { saved = localStorage.getItem(KEY); } catch (_) {}
     const theme = THEMES.includes(saved)
       ? saved
-      : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'bone' : 'noir');
     applyTheme(theme);
 
     document.querySelectorAll('.swatch').forEach((s) => {
@@ -31,3 +31,4 @@
     init();
   }
 })();
+
