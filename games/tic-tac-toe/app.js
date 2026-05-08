@@ -161,7 +161,7 @@
     if (!loading) return;
     const navStart = (performance && performance.timeOrigin) || Date.now();
     const elapsed = Date.now() - navStart;
-    const remaining = Math.max(0, 3000 - elapsed);
+    const remaining = Math.max(0, 1000 - elapsed);
     setTimeout(() => {
       loading.classList.add('hidden');
       setTimeout(() => loading.remove(), 500);
