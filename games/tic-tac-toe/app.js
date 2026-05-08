@@ -43,21 +43,21 @@
 
   function showMenu(state) {
     if (state === 'ready') {
-      menuTitle.innerHTML = 'TIC<br>TAC<br>TOE';
-      menuTagline.innerHTML = 'Three in a row.<br>Hot-seat for two.';
-      playBtn.textContent = 'PLAY';
+      menuTitle.textContent = 'tic tac toe';
+      menuTagline.textContent = 'three in a row · hot-seat for two';
+      playBtn.textContent = 'play';
     } else if (state === 'over-x') {
-      menuTitle.innerHTML = 'X<br>WINS';
-      menuTagline.textContent = 'One more?';
-      playBtn.textContent = 'PLAY AGAIN';
+      menuTitle.textContent = 'x wins';
+      menuTagline.textContent = 'one more?';
+      playBtn.textContent = 'play again';
     } else if (state === 'over-o') {
-      menuTitle.innerHTML = 'O<br>WINS';
-      menuTagline.textContent = 'One more?';
-      playBtn.textContent = 'PLAY AGAIN';
+      menuTitle.textContent = 'o wins';
+      menuTagline.textContent = 'one more?';
+      playBtn.textContent = 'play again';
     } else if (state === 'draw') {
-      menuTitle.innerHTML = 'DRAW';
-      menuTagline.textContent = 'Try again?';
-      playBtn.textContent = 'PLAY AGAIN';
+      menuTitle.textContent = 'draw';
+      menuTagline.textContent = 'try again?';
+      playBtn.textContent = 'play again';
     }
     menu.dataset.state = 'ready';
   }
@@ -66,17 +66,19 @@
     menu.dataset.state = 'hidden';
   }
 
+  // Lowercase mark for the handwriting font (× / ○ render nicer).
+  const MARK = { X: '×', O: '○' };
+
   function newRound() {
     grid = Array(9).fill(null);
     turn = 'X';
     over = false;
     cells.forEach((c) => {
-      c.textContent = '';
       c.removeAttribute('data-mark');
       c.classList.remove('win');
       c.disabled = false;
     });
-    status.textContent = `${turn} TO PLAY`;
+    status.textContent = `${MARK[turn]} to play`;
   }
 
   function checkWinner() {
@@ -93,8 +95,9 @@
   function play(i) {
     if (over || grid[i]) return;
     grid[i] = turn;
-    cells[i].textContent = turn;
-    cells[i].setAttribute('data-mark', turn);
+    // Set the data attribute only — CSS draws the mark via ::after, so
+    // we can per-cell rotate the X/O without touching the DOM tree.
+    cells[i].setAttribute('data-mark', MARK[turn]);
     cells[i].disabled = true;
 
     const result = checkWinner();
@@ -102,10 +105,10 @@
       over = true;
       cells.forEach((c) => { c.disabled = true; });
       if (result.winner === 'D') {
-        status.textContent = 'DRAW';
+        status.textContent = 'draw';
         scores.D += 1;
       } else {
-        status.textContent = `${result.winner} WINS`;
+        status.textContent = `${MARK[result.winner]} wins`;
         scores[result.winner] += 1;
         result.line.forEach((idx) => cells[idx].classList.add('win'));
       }
@@ -120,7 +123,7 @@
       }, 1200);
     } else {
       turn = turn === 'X' ? 'O' : 'X';
-      status.textContent = `${turn} TO PLAY`;
+      status.textContent = `${MARK[turn]} to play`;
     }
   }
 
