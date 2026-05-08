@@ -1,0 +1,204 @@
+/* Snake — classic, fullscreen. Black playfield, green snake, red food.
+   No card chrome, no scanlines, no neon glow. */
+
+:root {
+  --bg: #0a0a0a;
+  --surface-strong: #161616;
+  --surface-border: rgba(255, 255, 255, 0.10);
+  --ink: #f5f5f5;
+  --muted: #888888;
+  --snake: #4ade80;          /* classic green */
+  --snake-head: #86efac;     /* lighter green */
+  --food: #ef4444;           /* classic red */
+  --grid-line: rgba(255, 255, 255, 0.04);
+  --overlay-bg: rgba(10, 10, 10, 0.96);
+  --accent: #f5f5f5;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Stage fills the viewport; scoreboard / canvas / hint stack vertically. */
+.stage {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.scoreboard {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--surface-border);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+canvas {
+  display: block;
+  width: min(100%, calc(100vh - 140px));
+  aspect-ratio: 1 / 1;
+  max-height: 100%;
+  background: #000;
+  border: 1px solid var(--surface-border);
+  image-rendering: pixelated;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  background: var(--overlay-bg);
+  text-align: center;
+  padding: 24px;
+  transition: opacity 0.3s ease;
+}
+
+.overlay[data-state="hidden"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.overlay h2 {
+  margin: 0;
+  font-size: clamp(34px, 8vw, 56px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.overlay p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0a0a0a;
+  background: var(--ink);
+  padding: 12px 28px;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  margin: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 0.1s ease;
+}
+
+button:hover { filter: brightness(0.92); }
+button:active { transform: scale(0.98); }
+
+.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+}
+
+.ghost:hover { background: var(--ink); color: var(--bg); filter: none; }
+
+.hint {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 12px 20px;
+  border-top: 1px solid var(--surface-border);
+  letter-spacing: 0.04em;
+}
+
+.hint-keys { display: inline; }
+.hint-touch { display: none; }
+
+@media (hover: none), (max-width: 640px) {
+  .hint-keys { display: none; }
+  .hint-touch { display: inline; }
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  margin: 0 1px;
+}
+
+.embedded .back-link { display: none; }
+
+@media (max-width: 480px) {
+  .scoreboard { padding: 10px 16px; }
+  .stat-value { font-size: 16px; }
+  .canvas-wrap { padding: 8px; }
+  .hint { padding: 10px 16px; }
+}
