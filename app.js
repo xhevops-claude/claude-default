@@ -3,6 +3,7 @@
     {
       slug: 'snake',
       name: 'Snake',
+      meta: 'Arcade',
       tagline: "Eat the dots. Don't bite yourself.",
       icon: '🐍',
       url: 'games/snake/',
@@ -10,6 +11,7 @@
     {
       slug: 'tic-tac-toe',
       name: 'Tic-Tac-Toe',
+      meta: 'Classic',
       tagline: 'Three in a row. Hot-seat for two.',
       icon: '#️⃣',
       url: 'games/tic-tac-toe/',
@@ -17,6 +19,7 @@
     {
       slug: 'memory',
       name: 'Memory',
+      meta: 'Coming soon',
       tagline: 'Flip cards. Match the pairs.',
       icon: '🎴',
       comingSoon: true,
@@ -31,14 +34,14 @@
   const skinIcon = document.getElementById('skin-icon');
   const skinTitle = document.getElementById('skin-title');
   const skinTagline = document.getElementById('skin-tagline');
+  const pageMeta = document.getElementById('page-meta');
+  const footMeta = document.getElementById('foot-meta');
 
   // Match the CSS transitions on .frame-wrap.
   const ZOOM_MS = 550;
   // Card border-radius applied at the small end of the morph.
-  const CARD_RADIUS = 16;
+  const CARD_RADIUS = 0;
 
-  // Tracks the tile that launched the current overlay so we can shrink
-  // the iframe wrapper back into it on close.
   let lastCard = null;
   let lastCardRect = null;
   let lastGame = null;
@@ -56,7 +59,7 @@
       </div>
       <div class="card-body">
         <h2 class="card-title">${escapeHTML(g.name)}</h2>
-        <p class="card-tagline">${escapeHTML(g.tagline)}</p>
+        <p class="card-meta">${escapeHTML(g.meta)}</p>
       </div>
     `;
   }
@@ -65,20 +68,24 @@
     grid.innerHTML = games.map((g) => {
       if (g.comingSoon) {
         return `
-          <li class="card locked" data-locked="1">
-            <span class="coming-soon">Coming soon</span>
+          <li class="card locked" data-tile="${escapeHTML(g.slug)}" data-locked="1">
             ${cardInner(g)}
           </li>
         `;
       }
       return `
-        <li class="card" data-url="${escapeHTML(g.url)}">
+        <li class="card" data-tile="${escapeHTML(g.slug)}" data-url="${escapeHTML(g.url)}">
           <a href="${escapeHTML(g.url)}">
             ${cardInner(g)}
           </a>
         </li>
       `;
     }).join('');
+
+    const total = games.length;
+    const playable = games.filter((g) => !g.comingSoon).length;
+    if (pageMeta) pageMeta.textContent = `${playable} / ${total}`;
+    if (footMeta) footMeta.textContent = `${total} games`;
   }
 
   function rectFromCard(card) {
@@ -86,7 +93,6 @@
       const r = card.getBoundingClientRect();
       return { left: r.left, top: r.top, width: r.width, height: r.height };
     }
-    // Deep-link fallback: a card-shaped rect at the viewport center.
     const w = Math.min(180, window.innerWidth - 32);
     const h = w * 1.3;
     return {
@@ -108,17 +114,13 @@
     if (card) {
       const cs = getComputedStyle(card);
       const g1 = cs.getPropertyValue('--g1').trim();
-      const g2 = cs.getPropertyValue('--g2').trim();
       if (g1) skin.style.setProperty('--g1', g1);
-      if (g2) skin.style.setProperty('--g2', g2);
     }
     skinIcon.textContent = game.icon;
     skinTitle.textContent = game.name;
-    skinTagline.textContent = game.tagline;
+    skinTagline.textContent = game.meta || '';
   }
 
-  // Double-rAF guarantees the browser commits the "before" state to the
-  // compositor before we set the "after" state, so the transition runs.
   function nextFrame(fn) {
     requestAnimationFrame(() => requestAnimationFrame(fn));
   }
@@ -136,8 +138,6 @@
     overlay.hidden = false;
     overlay.dataset.state = 'open';
 
-    // Place the wrap at the card's rect with card-shaped border-radius,
-    // skin visible (looks like the card), iframe hidden.
     wrap.style.transition = 'none';
     wrap.style.transformOrigin = '0 0';
     wrap.style.transform = transformForRect(rect);
@@ -150,9 +150,6 @@
 
     void wrap.offsetWidth;
 
-    // Animate: wrap grows over 550ms, skin/iframe crossfade over 220ms
-    // (faster than the size animation, so the user sees the card design
-    // briefly then the iframe takes over while the wrap is still mid-grow).
     nextFrame(() => {
       wrap.style.transition = '';
       wrap.style.transform = 'translate(0, 0) scale(1, 1)';
@@ -170,8 +167,6 @@
     if (overlay.dataset.state !== 'open') return;
     overlay.dataset.state = 'shrinking';
 
-    // Recompute destination rect from the live card (gallery may have
-    // scrolled while the game was open).
     let rect;
     if (lastCard && document.contains(lastCard)) {
       rect = rectFromCard(lastCard);
@@ -182,8 +177,6 @@
     }
     lastCardRect = rect;
 
-    // Make sure the skin still has the right gradient / icon (in case
-    // the user navigated back via popstate before openGame configured it).
     if (lastGame) applySkinFromCard(lastCard, lastGame);
 
     wrap.style.pointerEvents = 'none';
@@ -195,9 +188,6 @@
       wrap.style.transition = '';
       wrap.style.transform = transformForRect(rect);
       wrap.style.borderRadius = CARD_RADIUS + 'px';
-      // Crossfade — skin fades in faster than the wrap resizes, so by
-      // the time the wrap is at card size the content already reads as
-      // the card.
       skin.classList.add('visible');
       frame.classList.remove('visible');
     });
@@ -253,7 +243,7 @@
     }
   });
 
-  // Allow embedded games to request close (e.g. via their own back button).
+  // Allow embedded games to request close (their Quit button posts this).
   window.addEventListener('message', (e) => {
     if (e.data && e.data.type === 'close-game') {
       if (history.state && history.state.gameOpen) history.back();
@@ -263,8 +253,7 @@
 
   render();
 
-  // Deep link: opening /#games/<slug>/ goes straight into the game. We
-  // wipe the hash first so the back stack lands on home cleanly.
+  // Deep link: opening /#games/<slug>/ goes straight into the game.
   (function deepLink() {
     const hash = decodeURIComponent(location.hash.slice(1));
     if (!hash) return;
