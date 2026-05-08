@@ -1,37 +1,57 @@
-name: Deploy to GitHub Pages
+name: Deploy
+
+# Pushes to `main` deploy to the live URL.
+# Pushes to any other branch deploy to /preview/<slug>/ on the same site
+# so you can test the branch on the actual live origin before merging.
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write   # peaceiris/actions-gh-pages pushes to gh-pages
 
+# Serialize so concurrent deploys don't fight over the gh-pages branch.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pages-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
+      - name: Compute target directory
+        id: target
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "dir=" >> "$GITHUB_OUTPUT"
+            echo "url_path=/" >> "$GITHUB_OUTPUT"
+            echo "label=production" >> "$GITHUB_OUTPUT"
+          else
+            slug=$(printf '%s' "$GITHUB_REF_NAME" | tr '/_ ' '-' | tr -cd 'a-zA-Z0-9-' | tr 'A-Z' 'a-z')
+            echo "dir=preview/${slug}" >> "$GITHUB_OUTPUT"
+            echo "url_path=/preview/${slug}/" >> "$GITHUB_OUTPUT"
+            echo "label=preview" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          destination_dir: ${{ steps.target.outputs.dir }}
+          keep_files: true
+          exclude_assets: '.github,node_modules,.gitignore,package.json,package-lock.json,.htmlhintrc,.stylelintrc.json,README.md'
+          commit_message: 'deploy(${{ steps.target.outputs.label }}): ${{ github.event.head_commit.message || github.ref_name }}'
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Print deploy URL
+        run: |
+          echo "::notice title=Deployed::https://xhevops-claude.github.io/claude-default${{ steps.target.outputs.url_path }}"
