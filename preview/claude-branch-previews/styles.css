@@ -1,0 +1,422 @@
+:root {
+  --radius: 22px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  position: relative;
+  transition: background-color 0.4s ease, color 0.4s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+.blob {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  opacity: var(--blob-opacity);
+  mix-blend-mode: var(--blob-blend);
+  animation: drift 18s ease-in-out infinite;
+}
+
+.blob-1 { background: var(--accent);   top: -140px; left: -140px; }
+.blob-2 { background: var(--accent-2); bottom: -180px; right: -140px; animation-delay: -6s; }
+.blob-3 { background: var(--accent-3); top: 35%; left: 45%; animation-delay: -12s; }
+
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(40px, -30px) scale(1.08); }
+  66%      { transform: translate(-30px, 40px) scale(0.95); }
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.hero { flex-shrink: 0; margin-bottom: 18px; }
+
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: clamp(30px, 6vw, 48px);
+  letter-spacing: -0.025em;
+  background: linear-gradient(120deg, var(--accent), var(--accent-2), var(--accent-3));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0 2px 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 720px) {
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+}
+@media (min-width: 1000px) {
+  .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.card {
+  position: relative;
+  background: var(--surface);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(124, 92, 255, 0.35);
+  box-shadow: 0 18px 40px -20px rgba(124, 92, 255, 0.5);
+}
+
+.card a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card-art {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--g1, var(--accent)), var(--g2, var(--accent-3)));
+  filter: saturate(110%);
+}
+
+.card-icon {
+  font-size: clamp(48px, 12vw, 72px);
+  line-height: 1;
+}
+
+.card-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(0,0,0,0.15), transparent 40%);
+  pointer-events: none;
+}
+
+.card-body { padding: 12px 14px 14px; }
+
+.card-title {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.card-tagline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Coming-soon card */
+.card.locked { cursor: pointer; }
+.card.locked .card-art { filter: saturate(0.55) brightness(0.78); }
+.card.locked .card-title,
+.card.locked .card-tagline { opacity: 0.7; }
+.card.locked:hover { transform: none; box-shadow: none; border-color: var(--surface-border); }
+
+.coming-soon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(15, 16, 32, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Tap animations */
+@keyframes card-pop {
+  0%   { transform: scale(1);    filter: brightness(1); }
+  35%  { transform: scale(0.97); filter: brightness(1.15); }
+  100% { transform: scale(1.03); filter: brightness(1.25); opacity: 0.85; }
+}
+
+@keyframes card-shake {
+  0%, 100% { transform: translateX(0)    rotate(0deg); }
+  15%      { transform: translateX(-8px) rotate(-1.5deg); }
+  30%      { transform: translateX(8px)  rotate(1.5deg); }
+  45%      { transform: translateX(-6px) rotate(-1deg); }
+  60%      { transform: translateX(6px)  rotate(1deg); }
+  75%      { transform: translateX(-3px) rotate(-0.5deg); }
+}
+
+.card.tapped {
+  animation: card-pop 220ms ease-out forwards;
+  pointer-events: none;
+}
+
+.card.shake { animation: card-shake 420ms ease-in-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card.tapped, .card.shake { animation: none; }
+}
+
+.foot {
+  flex-shrink: 0;
+  margin-top: 14px;
+  padding-bottom: env(safe-area-inset-bottom);
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 10px;
+  font-size: 18px;
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+button.ghost:hover { color: var(--ink); background: var(--surface-strong); }
+
+@media (max-width: 380px) {
+  .card-title { font-size: 15px; }
+  .card-tagline { font-size: 12px; }
+  .card-body { padding: 10px 12px 12px; }
+}
+
+/* Game-in-iframe overlay.
+
+   The iframe is wrapped in a div that grows from a microscopic dot at
+   the tapped tile's center to fullscreen on open, and shrinks back to
+   the same tile on close. The overlay itself has no background and no
+   opacity transition, so during the grow/shrink the gallery is visible
+   around the moving wrapper — no instant-black flash, no fade-from-
+   black after the shrink. iOS-app-icon-style morph.
+
+   The wrapper carries the transform because mobile Safari can be flaky
+   about transforming iframe elements directly. */
+.game-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.game-overlay[data-state="open"] { pointer-events: auto; }
+.game-overlay[data-state="shrinking"] { pointer-events: none; }
+
+.frame-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              border-radius 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, border-radius;
+}
+
+#game-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+  display: block;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+#game-frame.visible { opacity: 1; }
+
+/* Card-skin overlay sits on top of the iframe inside the wrap. It
+   carries the tile's gradient + icon + name + tagline so that, when the
+   wrap is at card size at one end of the animation, the whole thing
+   reads as the card itself. The skin crossfades faster than the wrap
+   resizes — the user sees "card design at card size" briefly, then
+   the wrap morphs to fullscreen with the iframe taking over. */
+.frame-skin {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #0f1020);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.frame-skin.visible { opacity: 1; }
+
+.skin-art {
+  flex: 7;
+  background: linear-gradient(135deg, var(--g1, #21d4fd), var(--g2, #7c5cff));
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.skin-art::after {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(0,0,0,0.15), transparent 40%);
+  pointer-events: none;
+}
+
+.skin-icon {
+  font-size: clamp(56px, 14vw, 130px);
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.skin-body {
+  flex: 3;
+  padding: clamp(12px, 3vw, 28px) clamp(14px, 4vw, 36px);
+  background: var(--surface, rgba(255, 255, 255, 0.06));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(2px, 0.5vw, 6px);
+}
+
+.skin-title {
+  margin: 0;
+  font-size: clamp(20px, 5vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink, #f5f6fa);
+}
+
+.skin-tagline {
+  margin: 0;
+  font-size: clamp(14px, 3.4vw, 30px);
+  color: var(--muted, #a0a3b8);
+  line-height: 1.4;
+}
+
+.game-close {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  z-index: 101;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-strong);
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background-color 0.15s ease, transform 0.08s ease;
+}
+
+.game-close:hover { background: var(--surface); }
+.game-close:active { transform: scale(0.94); }
+
+@media (prefers-reduced-motion: reduce) {
+  .blob, .title { animation: none; }
+  .frame-wrap { transition: transform 0.15s ease, border-radius 0.15s ease; }
+  .frame-skin, #game-frame { transition: opacity 0.1s ease; }
+}
