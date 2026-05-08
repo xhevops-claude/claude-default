@@ -10,40 +10,35 @@
   <!-- Critical inline CSS so the loading screen paints on the first
        frame, before styles.css resolves. -->
   <style>
-    /* Neutral loading screen — picks up the saved skin's palette before
-       the user has a chance to interact, via inline class hooks below. */
-    html, body { margin: 0; padding: 0; background: #0a0a0a; color: #f5f5f5;
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; }
-    html[data-skin="nokia"], html[data-skin="nokia"] body {
-      background: #a8b820; color: #0f380f;
-      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-    }
+    /* The page is the LCD for both skins; only the snake drawing
+       changes between Classic and Nokia 3310. */
+    html, body { margin: 0; padding: 0; background: #a8b820; color: #0f380f;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
     #game-loading {
       position: fixed; inset: 0; z-index: 9999;
-      background: inherit;
+      background: #a8b820;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 22px;
       transition: opacity 0.4s ease;
     }
     #game-loading.hidden { opacity: 0; pointer-events: none; }
-    #game-loading .gl-icon { font-size: 88px; line-height: 1; }
+    #game-loading .gl-icon { font-size: 88px; line-height: 1; filter: saturate(0.85) brightness(0.85); }
     #game-loading .gl-bar {
-      position: relative; width: 180px; height: 3px;
-      background: rgba(255,255,255,0.18); overflow: hidden;
+      position: relative; width: 180px; height: 4px;
+      background: rgba(15,56,15,0.20); overflow: hidden;
     }
     #game-loading .gl-bar::after {
       content: ""; position: absolute; top: 0; left: -40%;
-      width: 40%; height: 100%; background: #f5f5f5;
+      width: 40%; height: 100%; background: #0f380f;
       animation: gl-bar 1.2s cubic-bezier(0.45,0,0.55,1) infinite;
     }
-    html[data-skin="nokia"] #game-loading .gl-bar { background: rgba(15,56,15,0.20); }
-    html[data-skin="nokia"] #game-loading .gl-bar::after { background: #0f380f; }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
   <script>
-    // Apply the saved skin BEFORE the loader paints so colours are correct
-    // on the very first frame.
+    // Apply the saved skin BEFORE the loader paints. Layout is the same
+    // for both skins; this attribute only affects how the snake renders
+    // on the canvas.
     try {
       var s = localStorage.getItem('snake-skin');
       document.documentElement.dataset.skin = (s === 'nokia' ? 'nokia' : 'classic');

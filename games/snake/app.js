@@ -18,10 +18,9 @@
     return document.documentElement.dataset.skin === 'nokia' ? 'nokia' : 'classic';
   }
 
-  // Score formatting depends on skin: Nokia pads to 4 digits like 0035.
+  // Both skins share the LCD scoreboard, so always pad to 4 digits like 0035.
   function fmt(n) {
-    const v = String(n || 0);
-    return currentSkin() === 'nokia' ? v.padStart(4, '0') : v;
+    return String(n || 0).padStart(4, '0');
   }
 
   function applySkin(skin) {
@@ -31,10 +30,7 @@
     skinBtns.forEach((b) => {
       b.classList.toggle('active', b.dataset.skin === skin);
     });
-    // Re-render score formatting for the new skin.
-    if (typeof score === 'number') scoreEl.textContent = fmt(score);
-    bestEl.textContent = fmt(best);
-    // Repaint canvas with new colors when not actively running.
+    // Repaint canvas with new snake/food drawing when not actively running.
     if (state !== 'playing' && typeof food !== 'undefined') draw();
   }
 
