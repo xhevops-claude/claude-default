@@ -51,9 +51,35 @@ Each game's `index.html` includes a critical inline `<style>` block plus a `#gam
 
 The iframe is wrapped in `#frame-wrap`. On open, the wrap is positioned at the tapped tile's bounding rect with `transform: translate(...) scale(...)` and `border-radius: 16px`, then transitioned to fullscreen. A `.frame-skin` layer carries the tile's gradient + icon + name + tagline so the wrap visually reads as the card at the small end. The skin and iframe crossfade in 220ms — faster than the wrap's 550ms size animation — so the user sees the card design morph into the game smoothly. Close runs the same animation in reverse.
 
+## Local development
+
+```sh
+npm install
+npm run dev      # http://localhost:8080
+```
+
+## Linting
+
+CI runs on every PR to `main` and every push to a non-`main` branch (`.github/workflows/ci.yml`):
+
+- JS syntax check via `node --check` for every `.js` file
+- HTML linting via [`htmlhint`](https://htmlhint.com/) using `.htmlhintrc`
+- CSS linting via [`stylelint`](https://stylelint.io/) using `.stylelintrc.json`
+
+Run them locally:
+
+```sh
+npm run lint            # all of the below
+npm run lint:html
+npm run lint:css
+```
+
 ## Deployment
 
-GitHub Pages serves the repo root via a workflow at `.github/workflows/pages.yml`. Pushes to `main` redeploy automatically.
+GitHub Pages serves the repo root via `.github/workflows/pages.yml`. Two ways to deploy:
+
+- **Auto** — push to `main` → deploys to the live URL.
+- **Manual (stage a branch)** — Actions → *Deploy to GitHub Pages* → *Run workflow* → pick a branch. This temporarily replaces the live URL with that branch's content; trigger a `main` deploy afterward to restore production. Useful for testing a feature branch on the actual live URL before merging.
 
 ## Themes
 
