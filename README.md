@@ -76,10 +76,29 @@ npm run lint:css
 
 ## Deployment
 
-GitHub Pages serves the repo root via `.github/workflows/pages.yml`. Two ways to deploy:
+`.github/workflows/pages.yml` deploys every push:
 
-- **Auto** — push to `main` → deploys to the live URL.
-- **Manual (stage a branch)** — Actions → *Deploy to GitHub Pages* → *Run workflow* → pick a branch. This temporarily replaces the live URL with that branch's content; trigger a `main` deploy afterward to restore production. Useful for testing a feature branch on the actual live URL before merging.
+| Branch | Path on Pages | URL |
+|---|---|---|
+| `main` | `/` (root) | `https://xhevops-claude.github.io/claude-default/` |
+| any other | `/preview/<slug>/` | `https://xhevops-claude.github.io/claude-default/preview/<slug>/` |
+
+`<slug>` is the branch name lowercased with `/`, `_`, and spaces turned into `-`. So pushing `claude/foo-bar` deploys to `…/preview/claude-foo-bar/`.
+
+The workflow uses [`peaceiris/actions-gh-pages`](https://github.com/peaceiris/actions-gh-pages) to publish to the `gh-pages` branch with `keep_files: true`, so production and previews coexist without overwriting each other.
+
+### One-time setup
+
+GitHub Pages must be configured to serve from the `gh-pages` branch. Go to **Settings → Pages → Build and deployment**:
+
+- **Source**: *Deploy from a branch*
+- **Branch**: `gh-pages` / `(root)`
+
+The first push after this PR merges will create the `gh-pages` branch automatically.
+
+### Cleaning up old previews
+
+Preview folders accumulate on `gh-pages` over time. To remove a stale preview, just delete the folder on the `gh-pages` branch (e.g. via the GitHub web UI) and the URL stops resolving on the next deploy.
 
 ## Themes
 
