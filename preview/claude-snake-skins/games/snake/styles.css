@@ -47,6 +47,13 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  /* Whole-page swipe controls — disable browser pan/zoom so the
+     touch handlers in app.js own all gestures. Buttons remain
+     tappable because click events are unaffected. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Score row — Nokia-style, no labels, just the padded numbers in the

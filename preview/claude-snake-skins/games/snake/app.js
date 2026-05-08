@@ -295,18 +295,30 @@
     else start();
   });
 
-  // Continuous swipe on the canvas: each touchmove past a small threshold
-  // (relative to the previous registered point) fires a direction change,
-  // so the player can keep their finger down and turn repeatedly without
-  // lifting. A no-movement touchend toggles pause.
+  // Continuous swipe across the entire page: bigger touch surface plays
+  // nicer on tablets and larger phones. Each touchmove past a small
+  // threshold (relative to the previous registered point) fires a
+  // direction change, so the player can keep their finger down and turn
+  // repeatedly without lifting. A no-movement touchend toggles pause.
+  // Touches that start on a button or on the visible overlay are ignored
+  // so the menu (Play / Quit / skin picker) stays tappable.
   let touchStart = null;
   let swipePivot = null;
   let didSwipe = false;
   const SWIPE_STEP = 22;
   const TAP_TOLERANCE = 10;
 
-  canvas.addEventListener('touchstart', (e) => {
+  function isInteractiveTarget(el) {
+    if (!el || !(el instanceof Element)) return false;
+    if (el.closest('button, a, input, select, textarea, [role="button"]')) return true;
+    const ov = el.closest('.overlay');
+    if (ov && ov.dataset.state !== 'hidden') return true;
+    return false;
+  }
+
+  document.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
+    if (isInteractiveTarget(e.target)) return;
     const t = e.touches[0];
     touchStart = { x: t.clientX, y: t.clientY };
     swipePivot = { x: t.clientX, y: t.clientY };
@@ -314,9 +326,9 @@
     e.preventDefault();
   }, { passive: false });
 
-  canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
+  document.addEventListener('touchmove', (e) => {
     if (!swipePivot) return;
+    e.preventDefault();
     const t = e.touches[0];
     const dx = t.clientX - swipePivot.x;
     const dy = t.clientY - swipePivot.y;
@@ -332,7 +344,7 @@
     didSwipe = true;
   }, { passive: false });
 
-  canvas.addEventListener('touchend', (e) => {
+  document.addEventListener('touchend', (e) => {
     if (!touchStart) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStart.x;
@@ -343,8 +355,13 @@
     touchStart = null;
     swipePivot = null;
     didSwipe = false;
-    e.preventDefault();
   }, { passive: false });
+
+  document.addEventListener('touchcancel', () => {
+    touchStart = null;
+    swipePivot = null;
+    didSwipe = false;
+  });
 
   // Initial draw so the board is visible behind the start overlay.
   reset();
