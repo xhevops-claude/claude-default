@@ -1,17 +1,26 @@
-/* Snake — arcade / CRT aesthetic. Standalone palette, monospace font,
-   phosphor green glow, sharp corners, subtle scanlines. */
+/* Snake — Nokia 3310 LCD vibe. The whole page is the LCD: olive-green
+   background, dark olive ink, monospace numbers in the corners, and a
+   thick dark frame around the playfield like the cut-out on the phone.
+   No phone chrome — just the screen. */
+
 :root {
-  --bg: #000;
-  --ink: #39ff14;
-  --ink-dim: #15803d;
-  --snake: #39ff14;
-  --snake-head: #b6ff8a;
-  --food: #ff3838;
-  --grid-line: rgba(57, 255, 20, 0.06);
-  --surface-border: rgba(57, 255, 20, 0.30);
-  --overlay-bg: rgba(0, 0, 0, 0.94);
-  --shadow: 0 0 60px rgba(57, 255, 20, 0.18);
-  --radius: 0;
+  --lcd: #a8b820;            /* olive-yellow LCD background */
+  --lcd-deep: #97a818;
+  --ink: #0f380f;            /* dark olive — snake, text, frame */
+  --ink-soft: rgba(15, 56, 15, 0.55);
+
+  --bg: var(--lcd);
+  --surface-strong: rgba(15, 56, 15, 0.10);
+  --surface-border: rgba(15, 56, 15, 0.50);
+  --muted: var(--ink-soft);
+
+  /* Drawing colors used by the canvas via getComputedStyle. */
+  --snake: #0f380f;
+  --snake-head: #1f4e1f;
+  --food: #0f380f;
+  --grid-line: rgba(15, 56, 15, 0.05);
+  --overlay-bg: rgba(168, 184, 32, 0.94);
+  --accent: #0f380f;
 }
 
 * { box-sizing: border-box; }
@@ -28,93 +37,38 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+.stage {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: safe center;
-  padding: 16px;
-  position: relative;
-  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
-/* CRT scanlines */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0) 0,
-    rgba(0, 0, 0, 0) 2px,
-    rgba(0, 0, 0, 0.18) 2px,
-    rgba(0, 0, 0, 0.18) 3px
-  );
-  z-index: 9000;
-  opacity: 0.5;
-  mix-blend-mode: multiply;
-}
-
-.aurora { display: none; }
-
-.card {
-  position: relative;
-  width: min(520px, 100%);
-  max-height: 100%;
-  background: transparent;
-  border: 1px solid var(--surface-border);
-  padding: 16px;
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  border-radius: 0;
-}
-
-.header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0 0 12px;
-  border-bottom: 1px solid var(--surface-border);
-  margin-bottom: 14px;
-}
-
-.back-link, .header-spacer { display: none; }
-
-.badge {
-  font-family: inherit;
-  font-size: 14px;
-  letter-spacing: 0.45em;
-  text-transform: uppercase;
-  color: var(--ink);
-  padding: 0;
-  border: 0;
-  text-shadow: 0 0 12px currentColor;
-  font-weight: normal;
-}
-
+/* Top score row — Nokia-style "0035" left, "0008" right, no labels. */
 .scoreboard {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.stat {
-  border: 1px solid var(--surface-border);
-  border-radius: 0;
-  padding: 8px 14px;
+  flex-shrink: 0;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  padding: 14px 24px 10px;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   background: transparent;
+  border: 0;
+  padding: 0;
 }
 
 .stat-label {
-  font-family: inherit;
-  font-size: 11px;
-  letter-spacing: 0.25em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink-dim);
+  color: var(--ink-soft);
 }
 
 .stat-value {
@@ -122,26 +76,28 @@ body::after {
   font-size: 22px;
   font-weight: 700;
   color: var(--ink);
-  text-shadow: 0 0 10px currentColor;
   font-variant-numeric: tabular-nums;
-  background: none;
-  -webkit-text-fill-color: var(--ink);
-  animation: none;
+  letter-spacing: 0.08em;
 }
 
+/* Playfield. The dark frame is what you see through the cut-out on the
+   phone body — drawn here as a thick dark border around the canvas. */
 .canvas-wrap {
   position: relative;
-  aspect-ratio: 1 / 1;
-  width: 100%;
-  border: 1px solid var(--surface-border);
-  background: #000;
-  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
 }
 
 canvas {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: min(100%, calc(100vh - 160px));
+  aspect-ratio: 1 / 1;
+  max-height: 100%;
+  background: var(--lcd);
+  border: 6px solid var(--ink);
   image-rendering: pixelated;
   touch-action: none;
   -webkit-user-select: none;
@@ -152,11 +108,10 @@ canvas {
 .overlay {
   position: absolute;
   inset: 0;
-  z-index: 10;
   display: grid;
   place-items: center;
   align-content: center;
-  gap: 18px;
+  gap: 16px;
   background: var(--overlay-bg);
   text-align: center;
   padding: 24px;
@@ -171,21 +126,20 @@ canvas {
 .overlay h2 {
   margin: 0;
   font-family: inherit;
-  font-size: clamp(28px, 8vw, 44px);
-  letter-spacing: 0.2em;
+  font-size: clamp(28px, 7vw, 44px);
+  font-weight: 700;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--ink);
-  text-shadow: 0 0 16px currentColor, 0 0 30px rgba(57, 255, 20, 0.5);
-  font-weight: normal;
 }
 
 .overlay p {
   margin: 0;
-  color: var(--ink-dim);
+  color: var(--ink-soft);
   max-width: 280px;
   font-size: 12px;
-  letter-spacing: 0.12em;
-  line-height: 1.7;
+  letter-spacing: 0.05em;
+  line-height: 1.6;
   font-family: inherit;
 }
 
@@ -199,78 +153,60 @@ canvas {
 
 button {
   font-family: inherit;
-  font-size: 13px;
-  letter-spacing: 0.3em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--bg);
+  color: var(--lcd);
   background: var(--ink);
   padding: 12px 26px;
-  border: 1px solid var(--ink);
-  cursor: pointer;
-  font-weight: 700;
-  text-shadow: none;
-  box-shadow: 0 0 24px var(--ink);
+  border: 0;
   border-radius: 0;
+  cursor: pointer;
   margin: 0;
-  transition: filter 0.1s ease, box-shadow 0.1s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: filter 0.1s ease;
 }
 
-button:hover { filter: brightness(1.15); box-shadow: 0 0 36px var(--ink); }
-button:active { filter: brightness(0.85); }
+button:hover { filter: brightness(1.15); }
+button:active { transform: translateY(1px); }
 
 .ghost {
   background: transparent;
   color: var(--ink);
-  border: 1px solid var(--ink);
-  box-shadow: none;
-  text-shadow: 0 0 8px currentColor;
+  border: 2px solid var(--ink);
 }
 
-.ghost:hover {
-  background: var(--ink);
-  color: var(--bg);
-  text-shadow: none;
-  filter: none;
-}
+.ghost:hover { background: var(--ink); color: var(--lcd); filter: none; }
 
-.controls-hint {
-  margin-top: 14px;
+.hint {
+  flex-shrink: 0;
   text-align: center;
   font-size: 10px;
-  color: var(--ink-dim);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  font-family: inherit;
-  line-height: 1.8;
-}
-
-.touch-hint {
-  display: none;
-  margin-top: 10px;
-  text-align: center;
-  font-size: 10px;
-  color: var(--ink-dim);
-  letter-spacing: 0.25em;
+  color: var(--ink-soft);
+  padding: 10px 20px 14px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   font-family: inherit;
 }
+
+.hint-keys { display: inline; }
+.hint-touch { display: none; }
 
 @media (hover: none), (max-width: 640px) {
-  .controls-hint { display: none; }
-  .touch-hint { display: block; }
+  .hint-keys { display: none; }
+  .hint-touch { display: inline; }
 }
 
 kbd {
   display: inline-block;
-  padding: 1px 6px;
+  padding: 1px 5px;
   font-family: inherit;
   font-size: 10px;
-  font-weight: 700;
   color: var(--ink);
-  background: transparent;
-  border: 1px solid var(--surface-border);
+  background: rgba(15, 56, 15, 0.10);
+  border: 1px solid rgba(15, 56, 15, 0.30);
   border-radius: 0;
   margin: 0 1px;
 }
@@ -278,13 +214,9 @@ kbd {
 .embedded .back-link { display: none; }
 
 @media (max-width: 480px) {
-  body { padding: 8px; }
-  .card { padding: 10px; }
-  .stat-value { font-size: 18px; }
-  .stat { padding: 6px 10px; }
-  .header { margin-bottom: 10px; padding-bottom: 8px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body::after { display: none; }
+  .scoreboard { padding: 12px 16px 8px; }
+  .stat-value { font-size: 19px; }
+  .canvas-wrap { padding: 8px; }
+  canvas { border-width: 4px; }
+  .hint { padding: 8px 16px 10px; }
 }
