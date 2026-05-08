@@ -1,17 +1,18 @@
-/* Snake — arcade / CRT aesthetic. Standalone palette, monospace font,
-   phosphor green glow, sharp corners, subtle scanlines. */
+/* Snake — classic, fullscreen. Black playfield, green snake, red food.
+   No card chrome, no scanlines, no neon glow. */
+
 :root {
-  --bg: #000;
-  --ink: #39ff14;
-  --ink-dim: #15803d;
-  --snake: #39ff14;
-  --snake-head: #b6ff8a;
-  --food: #ff3838;
-  --grid-line: rgba(57, 255, 20, 0.06);
-  --surface-border: rgba(57, 255, 20, 0.30);
-  --overlay-bg: rgba(0, 0, 0, 0.94);
-  --shadow: 0 0 60px rgba(57, 255, 20, 0.18);
-  --radius: 0;
+  --bg: #0a0a0a;
+  --surface-strong: #161616;
+  --surface-border: rgba(255, 255, 255, 0.10);
+  --ink: #f5f5f5;
+  --muted: #888888;
+  --snake: #4ade80;          /* classic green */
+  --snake-head: #86efac;     /* lighter green */
+  --food: #ef4444;           /* classic red */
+  --grid-line: rgba(255, 255, 255, 0.04);
+  --overlay-bg: rgba(10, 10, 10, 0.96);
+  --accent: #f5f5f5;
 }
 
 * { box-sizing: border-box; }
@@ -27,121 +28,65 @@ html, body {
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Stage fills the viewport; scoreboard / canvas / hint stack vertically. */
+.stage {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: safe center;
-  padding: 16px;
-  position: relative;
-  transition: background-color 0.4s ease, color 0.4s ease;
-}
-
-/* CRT scanlines */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0) 0,
-    rgba(0, 0, 0, 0) 2px,
-    rgba(0, 0, 0, 0.18) 2px,
-    rgba(0, 0, 0, 0.18) 3px
-  );
-  z-index: 9000;
-  opacity: 0.5;
-  mix-blend-mode: multiply;
-}
-
-.aurora { display: none; }
-
-.card {
-  position: relative;
-  width: min(520px, 100%);
-  max-height: 100%;
-  background: transparent;
-  border: 1px solid var(--surface-border);
-  padding: 16px;
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  border-radius: 0;
-}
-
-.header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0 0 12px;
-  border-bottom: 1px solid var(--surface-border);
-  margin-bottom: 14px;
-}
-
-.back-link, .header-spacer { display: none; }
-
-.badge {
-  font-family: inherit;
-  font-size: 14px;
-  letter-spacing: 0.45em;
-  text-transform: uppercase;
-  color: var(--ink);
-  padding: 0;
-  border: 0;
-  text-shadow: 0 0 12px currentColor;
-  font-weight: normal;
 }
 
 .scoreboard {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--surface-border);
+  font-variant-numeric: tabular-nums;
 }
 
 .stat {
-  border: 1px solid var(--surface-border);
-  border-radius: 0;
-  padding: 8px 14px;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  gap: 10px;
   background: transparent;
+  border: 0;
+  padding: 0;
 }
 
 .stat-label {
-  font-family: inherit;
   font-size: 11px;
-  letter-spacing: 0.25em;
+  font-weight: 600;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink-dim);
+  color: var(--muted);
 }
 
 .stat-value {
-  font-family: inherit;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--ink);
-  text-shadow: 0 0 10px currentColor;
-  font-variant-numeric: tabular-nums;
-  background: none;
-  -webkit-text-fill-color: var(--ink);
-  animation: none;
 }
 
 .canvas-wrap {
   position: relative;
-  aspect-ratio: 1 / 1;
-  width: 100%;
-  border: 1px solid var(--surface-border);
-  background: #000;
-  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
 }
 
 canvas {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: min(100%, calc(100vh - 140px));
+  aspect-ratio: 1 / 1;
+  max-height: 100%;
+  background: #000;
+  border: 1px solid var(--surface-border);
   image-rendering: pixelated;
   touch-action: none;
   -webkit-user-select: none;
@@ -152,7 +97,6 @@ canvas {
 .overlay {
   position: absolute;
   inset: 0;
-  z-index: 10;
   display: grid;
   place-items: center;
   align-content: center;
@@ -170,23 +114,18 @@ canvas {
 
 .overlay h2 {
   margin: 0;
-  font-family: inherit;
-  font-size: clamp(28px, 8vw, 44px);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  font-size: clamp(34px, 8vw, 56px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--ink);
-  text-shadow: 0 0 16px currentColor, 0 0 30px rgba(57, 255, 20, 0.5);
-  font-weight: normal;
 }
 
 .overlay p {
   margin: 0;
-  color: var(--ink-dim);
-  max-width: 280px;
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  line-height: 1.7;
-  font-family: inherit;
+  color: var(--muted);
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .overlay-actions {
@@ -194,97 +133,72 @@ canvas {
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 button {
   font-family: inherit;
   font-size: 13px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--bg);
-  background: var(--ink);
-  padding: 12px 26px;
-  border: 1px solid var(--ink);
-  cursor: pointer;
   font-weight: 700;
-  text-shadow: none;
-  box-shadow: 0 0 24px var(--ink);
-  border-radius: 0;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0a0a0a;
+  background: var(--ink);
+  padding: 12px 28px;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
   margin: 0;
-  transition: filter 0.1s ease, box-shadow 0.1s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: filter 0.1s ease;
 }
 
-button:hover { filter: brightness(1.15); box-shadow: 0 0 36px var(--ink); }
-button:active { filter: brightness(0.85); }
+button:hover { filter: brightness(0.92); }
+button:active { transform: scale(0.98); }
 
 .ghost {
   background: transparent;
   color: var(--ink);
-  border: 1px solid var(--ink);
-  box-shadow: none;
-  text-shadow: 0 0 8px currentColor;
+  border: 1.5px solid var(--ink);
 }
 
-.ghost:hover {
-  background: var(--ink);
-  color: var(--bg);
-  text-shadow: none;
-  filter: none;
-}
+.ghost:hover { background: var(--ink); color: var(--bg); filter: none; }
 
-.controls-hint {
-  margin-top: 14px;
+.hint {
+  flex-shrink: 0;
   text-align: center;
-  font-size: 10px;
-  color: var(--ink-dim);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  font-family: inherit;
-  line-height: 1.8;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 12px 20px;
+  border-top: 1px solid var(--surface-border);
+  letter-spacing: 0.04em;
 }
 
-.touch-hint {
-  display: none;
-  margin-top: 10px;
-  text-align: center;
-  font-size: 10px;
-  color: var(--ink-dim);
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  font-family: inherit;
-}
+.hint-keys { display: inline; }
+.hint-touch { display: none; }
 
 @media (hover: none), (max-width: 640px) {
-  .controls-hint { display: none; }
-  .touch-hint { display: block; }
+  .hint-keys { display: none; }
+  .hint-touch { display: inline; }
 }
 
 kbd {
   display: inline-block;
-  padding: 1px 6px;
-  font-family: inherit;
+  padding: 1px 5px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 10px;
-  font-weight: 700;
   color: var(--ink);
-  background: transparent;
-  border: 1px solid var(--surface-border);
-  border-radius: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
   margin: 0 1px;
 }
 
 .embedded .back-link { display: none; }
 
 @media (max-width: 480px) {
-  body { padding: 8px; }
-  .card { padding: 10px; }
-  .stat-value { font-size: 18px; }
-  .stat { padding: 6px 10px; }
-  .header { margin-bottom: 10px; padding-bottom: 8px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body::after { display: none; }
+  .scoreboard { padding: 10px 16px; }
+  .stat-value { font-size: 16px; }
+  .canvas-wrap { padding: 8px; }
+  .hint { padding: 10px 16px; }
 }

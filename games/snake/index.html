@@ -7,38 +7,30 @@
   <script>
     if (window.self !== window.top) document.documentElement.classList.add('embedded');
   </script>
-  <!-- Critical inline CSS so the loading screen paints on the very first
-       frame, before styles.css has a chance to load. -->
+  <!-- Critical inline CSS so the loading screen paints on the first
+       frame, before styles.css resolves. -->
   <style>
-    html, body { margin: 0; padding: 0; background: #000; color: #39ff14;
-      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+    html, body { margin: 0; padding: 0; background: #0a0a0a; color: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; }
     #game-loading {
       position: fixed; inset: 0; z-index: 9999;
-      background: #000;
+      background: #0a0a0a;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 22px;
       transition: opacity 0.4s ease;
     }
     #game-loading.hidden { opacity: 0; pointer-events: none; }
-    #game-loading .gl-icon {
-      font-size: 96px; line-height: 1;
-      filter: drop-shadow(0 0 24px rgba(57,255,20,0.5));
-      animation: gl-breathe 2.4s ease-in-out infinite;
-    }
+    #game-loading .gl-icon { font-size: 96px; line-height: 1; }
     #game-loading .gl-bar {
       position: relative; width: 180px; height: 3px;
-      background: rgba(57,255,20,0.18); border-radius: 0;
-      overflow: hidden;
+      background: rgba(255,255,255,0.18); overflow: hidden;
     }
     #game-loading .gl-bar::after {
       content: ""; position: absolute; top: 0; left: -40%;
-      width: 40%; height: 100%;
-      background: #39ff14; border-radius: inherit;
-      box-shadow: 0 0 12px #39ff14;
+      width: 40%; height: 100%; background: #f5f5f5;
       animation: gl-bar 1.2s cubic-bezier(0.45,0,0.55,1) infinite;
     }
-    @keyframes gl-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
   <link rel="stylesheet" href="styles.css" />
@@ -49,18 +41,14 @@
     <div class="gl-bar" aria-label="Loading"></div>
   </div>
 
-  <main class="card">
-    <header class="header">
-      <span class="badge">SNAKE</span>
-    </header>
-
+  <main class="stage">
     <div class="scoreboard">
       <div class="stat">
-        <span class="stat-label">SCORE</span>
+        <span class="stat-label">Score</span>
         <span class="stat-value" id="score">0</span>
       </div>
       <div class="stat">
-        <span class="stat-label">BEST</span>
+        <span class="stat-label">Best</span>
         <span class="stat-value" id="best">0</span>
       </div>
     </div>
@@ -68,19 +56,19 @@
     <div class="canvas-wrap">
       <canvas id="game" width="480" height="480" aria-label="Snake game board"></canvas>
       <div class="overlay" id="overlay" data-state="ready">
-        <h2 id="overlay-title">SNAKE</h2>
+        <h2 id="overlay-title">Snake</h2>
         <p id="overlay-text">Eat the dots. Don't bite yourself.</p>
         <div class="overlay-actions">
-          <button id="action-btn" type="button">PLAY</button>
-          <button id="quit-btn" type="button" class="ghost">QUIT</button>
+          <button id="action-btn" type="button">Play</button>
+          <button id="quit-btn" type="button" class="ghost">Quit</button>
         </div>
       </div>
     </div>
 
-    <div class="controls-hint">
-      <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> · WASD · <kbd>SPACE</kbd> pause · <kbd>ENTER</kbd> restart
+    <div class="hint">
+      <span class="hint-keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd> · <kbd>Space</kbd> pause · <kbd>Enter</kbd> restart</span>
+      <span class="hint-touch">Swipe to move · tap to pause</span>
     </div>
-    <div class="touch-hint">SWIPE TO MOVE · TAP TO PAUSE</div>
   </main>
 
   <script src="app.js"></script>
