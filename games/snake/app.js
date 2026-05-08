@@ -174,13 +174,14 @@
       CELL - fInset * 2
     );
 
-    // Snake — sharp dark pixel blocks, no rounding, no glow.
+    // Snake — solid connected blocks. Each segment fills its cell
+    // completely so adjacent segments touch and the snake reads as a
+    // single continuous shape, like the original.
     const bodyColor = getCss('--snake');
-    const headColor = getCss('--snake-head');
+    ctx.fillStyle = bodyColor;
     for (let i = snake.length - 1; i >= 0; i--) {
       const seg = snake[i];
-      ctx.fillStyle = i === 0 ? headColor : bodyColor;
-      ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
+      ctx.fillRect(seg.x * CELL, seg.y * CELL, CELL, CELL);
     }
   }
 
