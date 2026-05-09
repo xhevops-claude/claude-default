@@ -34,13 +34,57 @@
     </div>
   </header>
 
-  <main class="page">
-    <div class="page-head">
-      <h1 class="page-title">Games</h1>
-      <span class="page-meta" id="page-meta"></span>
-    </div>
-    <ul id="grid" class="grid" role="list"></ul>
+  <main class="pager" id="pager">
+    <section class="page" data-page="home" aria-labelledby="title-home">
+      <div class="page-head">
+        <h1 class="page-title" id="title-home">Home</h1>
+        <span class="page-meta">Welcome</span>
+      </div>
+      <div class="hero">
+        <span class="hero-icon" aria-hidden="true">🕹️</span>
+        <p class="hero-title">Arcade</p>
+        <p class="hero-text">Swipe to switch sections</p>
+      </div>
+    </section>
+
+    <section class="page" data-page="apps" aria-labelledby="title-apps">
+      <div class="page-head">
+        <h1 class="page-title" id="title-apps">Apps</h1>
+        <span class="page-meta">Coming soon</span>
+      </div>
+      <div class="empty">
+        <span class="empty-icon" aria-hidden="true">📱</span>
+        <p class="empty-title">Nothing here yet</p>
+        <p class="empty-text">Mini apps will live here</p>
+      </div>
+    </section>
+
+    <section class="page" data-page="tools" aria-labelledby="title-tools">
+      <div class="page-head">
+        <h1 class="page-title" id="title-tools">Tools</h1>
+        <span class="page-meta">Coming soon</span>
+      </div>
+      <div class="empty">
+        <span class="empty-icon" aria-hidden="true">🛠️</span>
+        <p class="empty-title">Nothing here yet</p>
+        <p class="empty-text">Utilities will live here</p>
+      </div>
+    </section>
+
+    <section class="page" data-page="games" aria-labelledby="title-games">
+      <div class="page-head">
+        <h1 class="page-title" id="title-games">Games</h1>
+        <span class="page-meta" id="page-meta"></span>
+      </div>
+      <ul id="grid" class="grid" role="list"></ul>
+    </section>
   </main>
+
+  <nav class="pager-nav" id="pager-nav" aria-label="Sections">
+    <button class="pager-nav-btn pager-nav-prev" id="nav-prev" type="button"></button>
+    <span class="pager-nav-current" id="nav-current" aria-live="polite"></span>
+    <button class="pager-nav-btn pager-nav-next" id="nav-next" type="button"></button>
+  </nav>
 
   <footer class="footbar">
     <span>Built for fun</span>
