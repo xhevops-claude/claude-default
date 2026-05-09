@@ -255,12 +255,16 @@
 
   // ---- Section pager (Home / Apps / Tools / Games) ----
   // Native horizontal scroll-snap drives the swipe. The carousel loops
-  // both ways: a clone of the last slide sits before the first, and a
-  // clone of the first sits after the last; once a swipe settles on
-  // either clone, scrollLeft jumps silently to its real twin so the
-  // user can keep paging in either direction without ever hitting an
-  // edge. The footer nav shows previous · current · next, with the
-  // current section emphasized; tapping prev/next paginates by one.
+  // both ways via clone slides — one before the first, one after the
+  // last — that match their real twins pixel-for-pixel. When the user
+  // ends up on a clone, we silently swap scrollLeft to the twin's
+  // position; because the content is identical, the swap is invisible.
+  //
+  // Wrap timing matters for fast swipes: scrollend can lag behind
+  // momentum, so we pre-empt on pointerdown — the moment the next
+  // gesture begins, we reset scrollLeft if we're sitting on a clone.
+  // That way the new swipe starts from the real slide and never gets
+  // stuck at the scroll container's edge.
   (function pager() {
     const pagerEl = document.getElementById('pager');
     const navEl = document.getElementById('pager-nav');
@@ -277,8 +281,6 @@
       home: 'Home', apps: 'Apps', tools: 'Tools', games: 'Games',
     };
 
-    // Loop clones — last before first, first after last. Marked inert
-    // so they stay out of the tab order and a11y tree.
     function makeClone(src, name) {
       const c = src.cloneNode(true);
       c.setAttribute('aria-hidden', 'true');
@@ -286,23 +288,58 @@
       c.dataset.page = name;
       return c;
     }
-    const headClone = makeClone(pages[pages.length - 1], 'loop-head'); // games' twin
-    const tailClone = makeClone(pages[0], 'loop-tail');                // home's twin
+    const headClone = makeClone(pages[pages.length - 1], 'loop-head');
+    const tailClone = makeClone(pages[0], 'loop-tail');
     pagerEl.insertBefore(headClone, pages[0]);
     pagerEl.appendChild(tailClone);
 
-    // Layout: [headClone, ...pages, tailClone]. Index in slides[] for a
-    // real page name is order.indexOf(name) + 1.
+    // slides = [headClone, ...pages, tailClone]; the real page at name
+    // lives at slides[order.indexOf(name) + 1]. The two clones are at
+    // index 0 (twin of last real) and slides.length - 1 (twin of first).
     const slides = [headClone].concat(pages).concat([tailClone]);
+    const FIRST_REAL = 1;
+    const LAST_REAL = slides.length - 2;
 
     function realIndex(name) {
       const i = order.indexOf(name);
-      return i === -1 ? order.indexOf('home') : i;
+      return i === -1 ? 0 : i;
+    }
+
+    function nearestSlideIdx() {
+      const x = pagerEl.scrollLeft;
+      let best = 0, bestDist = Infinity;
+      for (let i = 0; i < slides.length; i++) {
+        const d = Math.abs(slides[i].offsetLeft - x);
+        if (d < bestDist) { bestDist = d; best = i; }
+      }
+      return best;
+    }
+
+    function visibleName() {
+      const i = nearestSlideIdx();
+      if (i === 0) return order[order.length - 1];
+      if (i === slides.length - 1) return order[0];
+      return order[i - 1];
+    }
+
+    // If we're sitting on a clone, jump scrollLeft to its real twin.
+    // Visually identical content, so no flicker. Returns true if it
+    // actually wrapped.
+    function wrapIfOnClone() {
+      const i = nearestSlideIdx();
+      if (i === 0) {
+        pagerEl.scrollLeft = slides[LAST_REAL].offsetLeft;
+        return true;
+      }
+      if (i === slides.length - 1) {
+        pagerEl.scrollLeft = slides[FIRST_REAL].offsetLeft;
+        return true;
+      }
+      return false;
     }
 
     function scrollToReal(name, smooth) {
-      const i = realIndex(name);
-      const left = pages[i].offsetLeft;
+      const left = slides[FIRST_REAL + realIndex(name)].offsetLeft;
       pagerEl.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
     }
 
@@ -334,20 +371,6 @@
       setActive(initial);
     });
 
-    // Map the closest slide index to a real section name, treating
-    // clones as their twin so the nav reads correctly mid-swipe.
-    function visibleName() {
-      const x = pagerEl.scrollLeft;
-      let best = 0, bestDist = Infinity;
-      for (let i = 0; i < slides.length; i++) {
-        const d = Math.abs(slides[i].offsetLeft - x);
-        if (d < bestDist) { bestDist = d; best = i; }
-      }
-      if (best === 0) return order[order.length - 1];
-      if (best === slides.length - 1) return order[0];
-      return order[best - 1];
-    }
-
     let scrollRaf = 0;
     pagerEl.addEventListener('scroll', () => {
       if (scrollRaf) return;
@@ -357,49 +380,41 @@
       });
     }, { passive: true });
 
-    // After scroll-snap settles on a clone, swap to its real twin
-    // without animation so the loop is seamless.
-    function maybeWrap() {
-      const x = pagerEl.scrollLeft;
-      if (Math.abs(x - headClone.offsetLeft) < 2) {
-        pagerEl.scrollLeft = pages[pages.length - 1].offsetLeft;
-      } else if (Math.abs(x - tailClone.offsetLeft) < 2) {
-        pagerEl.scrollLeft = pages[0].offsetLeft;
-      }
-    }
+    // Pre-empt the wrap on the next user gesture. pointerdown fires the
+    // instant the user touches — long before scrollend would — so a
+    // rapid burst of swipes never has to wait for momentum to settle.
+    pagerEl.addEventListener('pointerdown', wrapIfOnClone, { passive: true });
+
+    // Safety net for users who let go and don't swipe again. Keeps the
+    // dot indicator honest after a slow drift onto a clone.
     if ('onscrollend' in window) {
-      pagerEl.addEventListener('scrollend', maybeWrap);
+      pagerEl.addEventListener('scrollend', wrapIfOnClone);
     } else {
       let stopT = 0;
       pagerEl.addEventListener('scroll', () => {
         clearTimeout(stopT);
-        stopT = setTimeout(maybeWrap, 140);
+        stopT = setTimeout(wrapIfOnClone, 120);
       }, { passive: true });
     }
 
     function paginate(delta) {
       const cur = visibleName();
-      const target = neighbor(cur, delta);
-      // Going from Home backwards or Games forwards crosses a clone;
-      // for a smooth animation, scroll to the clone first, then let
-      // maybeWrap settle us on the real twin.
-      const curIdx = realIndex(cur);
+      const i = realIndex(cur);
+      // Going backward from the first real slide / forward from the
+      // last real slide animates onto the matching clone, then
+      // wrapIfOnClone snaps us to the real twin once it settles.
       let leftTarget;
-      if (delta < 0 && curIdx === 0) {
-        leftTarget = headClone.offsetLeft;
-      } else if (delta > 0 && curIdx === order.length - 1) {
-        leftTarget = tailClone.offsetLeft;
-      } else {
-        leftTarget = pages[realIndex(target)].offsetLeft;
-      }
+      if (delta < 0 && i === 0) leftTarget = headClone.offsetLeft;
+      else if (delta > 0 && i === order.length - 1) leftTarget = tailClone.offsetLeft;
+      else leftTarget = slides[FIRST_REAL + ((i + delta) % order.length + order.length) % order.length].offsetLeft;
       pagerEl.scrollTo({ left: leftTarget, behavior: 'smooth' });
     }
 
     prevBtn.addEventListener('click', () => paginate(-1));
     nextBtn.addEventListener('click', () => paginate(+1));
 
-    // Re-snap on resize so the active slide stays aligned after layout
-    // changes (orientation, window resize, etc.).
+    // Re-snap to the active slide after layout changes (orientation,
+    // resize) so the carousel stays aligned.
     let resizeRaf = 0;
     window.addEventListener('resize', () => {
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
