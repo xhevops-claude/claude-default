@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locator</title>
+  <script>
+    if (window.self !== window.top) document.documentElement.classList.add('embedded');
+  </script>
+  <style>
+    /* Critical inline CSS so the loading screen paints on the first
+       frame, before styles.css and Leaflet have resolved. */
+    html, body { margin: 0; padding: 0; background: #1a1d24; color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; }
+    #app-loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #1a1d24;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 22px;
+      transition: opacity 0.4s ease;
+    }
+    #app-loading.hidden { opacity: 0; pointer-events: none; }
+    #app-loading .gl-icon { font-size: 88px; line-height: 1; }
+    #app-loading .gl-bar {
+      position: relative; width: 180px; height: 3px;
+      background: rgba(255, 255, 255, 0.18); overflow: hidden;
+    }
+    #app-loading .gl-bar::after {
+      content: ""; position: absolute; top: 0; left: -40%;
+      width: 40%; height: 100%; background: #fb923c;
+      animation: gl-bar 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    }
+    @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
+  </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app-loading">
+    <span class="gl-icon" aria-hidden="true">📍</span>
+    <div class="gl-bar" aria-label="Loading"></div>
+  </div>
+
+  <main class="locator">
+    <div id="map" aria-label="Map of your location"></div>
+
+    <div class="hud-top">
+      <div class="status" id="status" data-state="waiting">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span class="status-text" id="status-text">Waiting…</span>
+      </div>
+      <div class="meta">
+        <span class="meta-item" id="meta-acc">—</span>
+        <span class="meta-sep" aria-hidden="true">·</span>
+        <span class="meta-item" id="meta-time">—</span>
+      </div>
+    </div>
+
+    <div class="hud-bottom">
+      <button id="retry-btn" type="button" class="hud-btn primary" hidden>Locate me</button>
+      <button id="follow-btn" type="button" class="hud-btn" aria-pressed="true">Follow</button>
+      <button id="quit-btn" type="button" class="hud-btn ghost">Quit</button>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/protomaps-leaflet@5.0.1/dist/protomaps-leaflet.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
