@@ -50,13 +50,9 @@
     <section class="page" data-page="apps" aria-labelledby="title-apps">
       <div class="page-head">
         <h1 class="page-title" id="title-apps">Apps</h1>
-        <span class="page-meta">Coming soon</span>
+        <span class="page-meta" id="apps-meta"></span>
       </div>
-      <div class="empty">
-        <span class="empty-icon" aria-hidden="true">📱</span>
-        <p class="empty-title">Nothing here yet</p>
-        <p class="empty-text">Mini apps will live here</p>
-      </div>
+      <ul id="apps-grid" class="grid" role="list"></ul>
     </section>
 
     <section class="page" data-page="tools" aria-labelledby="title-tools">
@@ -93,7 +89,7 @@
 
   <div id="game-overlay" class="game-overlay" hidden>
     <div id="frame-wrap" class="frame-wrap">
-      <iframe id="game-frame" title="Game" src="about:blank"></iframe>
+      <iframe id="game-frame" title="Game" src="about:blank" allow="geolocation"></iframe>
       <div id="frame-skin" class="frame-skin" aria-hidden="true">
         <div class="skin-art">
           <span class="skin-icon" id="skin-icon">🎮</span>

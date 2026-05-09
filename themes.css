@@ -57,12 +57,14 @@
   --accent-ink: #170a08;
 }
 
-/* Per-game tile colors — constant across themes so each tile keeps its
+/* Per-tile colors — constant across themes so each card keeps its
    identity. Flat solid colors. */
 :root {
   --tile-snake: #22c55e;        /* emerald-500 */
   --tile-tic-tac-toe: #f97316;  /* orange-500 */
   --tile-memory: #8b5cf6;       /* violet-500 */
+  --tile-locator: #fb923c;      /* amber-400 */
+  --tile-directions: #38bdf8;   /* sky-400 */
 }
 
 /* Hide the in-game back link when the page is rendered inside the
