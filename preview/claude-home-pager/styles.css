@@ -60,31 +60,33 @@ body {
    horizontal scroll with mandatory snap; the user lands on Games by
    default (set in JS) and can swipe across to the other sections.
    ========================================================================== */
+/* ==========================================================================
+   Pager — transform-driven barrel carousel. Each slide is absolutely
+   positioned over the pager; JS renders them at their visually-nearest
+   copy of a continuous logical position (modulo N), so the carousel
+   loops infinitely with no clones, no native scroll-snap, no edges.
+   touch-action: pan-y lets the inner Games grid scroll vertically
+   while we own the horizontal axis.
+   ========================================================================== */
 .pager {
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: row;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.pager::-webkit-scrollbar { display: none; }
-
 .page {
-  flex: 0 0 100%;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  min-width: 100%;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
   display: flex;
   flex-direction: column;
   padding: 24px 20px 0;
   overflow: hidden;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .page-head {
