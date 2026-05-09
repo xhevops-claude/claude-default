@@ -1,3 +1,7 @@
 node_modules/
 .DS_Store
 *.log
+
+# Output of the data-refresh action — the action publishes this
+# directly to the gh-pages branch under /cdn/, never to main.
+cdn/

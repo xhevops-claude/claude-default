@@ -1,0 +1,94 @@
+name: Refresh data
+
+# Daily fetch of upstream open datasets. Each file under
+# `data-sources/` declares one type of data; this workflow reads them,
+# downloads the listed assets, and publishes them to the live site
+# under `/cdn/<type>/` on the `gh-pages` branch.
+#
+# Currently handles:
+#   - data-sources/maps-osm.txt  →  cdn/maps/osm/<slug>.osm.pbf
+#
+# Extending: add a new file under data-sources/ and a matching step
+# below.
+
+on:
+  schedule:
+    # 05:30 UTC daily — Geofabrik rebuilds regional extracts around
+    # 02:30 UTC; running 3h later means we always pick up that day's
+    # snapshot.
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you running this manually?'
+        required: false
+        default: 'manual refresh'
+
+permissions:
+  contents: write   # peaceiris/actions-gh-pages pushes to gh-pages
+
+# Don't fight the deploy workflow over gh-pages writes.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download OSM regional extracts
+        run: |
+          set -euo pipefail
+          mkdir -p cdn/maps/osm
+          changed=0
+          while IFS= read -r raw || [[ -n "$raw" ]]; do
+            line="${raw%%#*}"
+            line="$(echo "$line" | xargs || true)"
+            [[ -z "$line" ]] && continue
+            slug="$(echo "$line" | awk '{print $1}')"
+            url="$(echo "$line" | awk '{print $2}')"
+            [[ -z "$slug" || -z "$url" ]] && {
+              echo "::warning::Skipping malformed line: $raw"
+              continue
+            }
+            target="cdn/maps/osm/${slug}.osm.pbf"
+            tmp="${target}.new"
+            echo "::group::$slug"
+            echo "Source: $url"
+            curl -fsSL --retry 3 --retry-delay 5 -o "$tmp" "$url"
+            mv "$tmp" "$target"
+            ls -lh "$target"
+            changed=1
+            echo "::endgroup::"
+          done < data-sources/maps-osm.txt
+
+          if [[ "$changed" == "0" ]]; then
+            echo "No regions configured; nothing to publish."
+          fi
+
+      - name: Publish /cdn/ to gh-pages
+        if: hashFiles('cdn/**/*') != ''
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./cdn
+          publish_branch: gh-pages
+          destination_dir: cdn
+          keep_files: true
+          commit_message: 'data: refresh ${{ github.event.inputs.reason || 'scheduled' }}'
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Print served URLs
+        run: |
+          echo "::notice title=Data published::https://xhevops-claude.github.io/claude-default/cdn/maps/osm/"
+          if [[ -d cdn/maps/osm ]]; then
+            for f in cdn/maps/osm/*.osm.pbf; do
+              [[ -e "$f" ]] || continue
+              name="$(basename "$f")"
+              echo "  https://xhevops-claude.github.io/claude-default/cdn/maps/osm/$name"
+            done
+          fi
