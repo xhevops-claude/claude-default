@@ -126,6 +126,124 @@
   };
   const TEXT_FONT = ['Noto Sans Regular'];
 
+  // POI icon emojis. Keys are the OMT `poi.class` values we care
+  // about; the matching icon is rendered to a tiny canvas at
+  // PIXEL_RATIO and registered with MapLibre via map.addImage —
+  // because the demo glyph stack we use is Noto Sans Regular, which
+  // doesn't carry colour-emoji glyphs, so `text-field: '🍽'` would
+  // come back as a missing-glyph box. Canvas-rendered icons
+  // sidestep that entirely.
+  const POI_ICONS = {
+    // Food & drink
+    restaurant: '🍽',
+    cafe: '☕',
+    bar: '🍻',
+    pub: '🍺',
+    fast_food: '🍔',
+    bakery: '🥖',
+    ice_cream: '🍦',
+    // Shopping
+    shop: '🛍',
+    supermarket: '🛒',
+    mall: '🏬',
+    marketplace: '🏪',
+    alcohol_shop: '🍷',
+    bookshop: '📖',
+    book_shop: '📖',
+    florist: '💐',
+    // Lodging
+    hotel: '🏨',
+    hostel: '🛌',
+    motel: '🛏',
+    // Health
+    hospital: '🏥',
+    clinic: '🏥',
+    pharmacy: '💊',
+    dentist: '🦷',
+    veterinary: '🐾',
+    // Education
+    school: '🏫',
+    college: '🎓',
+    university: '🎓',
+    library: '📚',
+    kindergarten: '🧸',
+    // Recreation
+    park: '🌳',
+    garden: '🌸',
+    museum: '🏛',
+    art_gallery: '🖼',
+    gallery: '🖼',
+    theatre: '🎭',
+    cinema: '🎬',
+    attraction: '🎡',
+    theme_park: '🎢',
+    viewpoint: '🔭',
+    monument: '🗽',
+    zoo: '🦁',
+    // Transport
+    fuel: '⛽',
+    parking: '🅿',
+    bus: '🚌',
+    railway: '🚉',
+    taxi: '🚕',
+    ferry_terminal: '⛴',
+    bicycle_rental: '🚲',
+    // Money
+    atm: '🏧',
+    bank: '🏦',
+    // Public services
+    post_office: '📬',
+    post_box: '📮',
+    police: '🚓',
+    fire_station: '🚒',
+    place_of_worship: '⛪',
+    toilets: '🚻',
+    information: 'ℹ',
+    drinking_water: '🚰',
+    // Sports
+    sports_centre: '🏃',
+    stadium: '🏟',
+    pitch: '⚽',
+    swimming_pool: '🏊',
+    golf: '⛳',
+  };
+  const POI_CLASS_LIST = Object.keys(POI_ICONS);
+
+  // ---- Emoji → MapLibre image registration ----
+  // Render at 2x so the icons stay crisp on Retina; MapLibre is told
+  // pixelRatio=2 so it scales them down at draw time.
+  const POI_PIXEL_RATIO = 2;
+  const POI_LOGICAL_SIZE = 28;
+
+  function emojiToImage(emoji) {
+    const w = POI_LOGICAL_SIZE * POI_PIXEL_RATIO;
+    const h = POI_LOGICAL_SIZE * POI_PIXEL_RATIO;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.font =
+      `${Math.floor(POI_LOGICAL_SIZE * 0.85 * POI_PIXEL_RATIO)}px ` +
+      '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, w / 2, h / 2);
+    const imgData = ctx.getImageData(0, 0, w, h);
+    return { width: w, height: h, data: imgData.data };
+  }
+
+  function registerPoiIcons() {
+    POI_CLASS_LIST.forEach((cls) => {
+      const id = 'poi-' + cls;
+      if (map.hasImage(id)) return;
+      try {
+        map.addImage(id, emojiToImage(POI_ICONS[cls]), { pixelRatio: POI_PIXEL_RATIO });
+      } catch (e) {
+        if (typeof console !== 'undefined' && console.warn) console.warn('addImage failed', id, e);
+      }
+    });
+  }
+
   // Logical groups organised into categories for the Layers UI. Each
   // group toggles one or more style layer ids; keys also drive the
   // localStorage entry name (`locator-layer-<key>`).
@@ -157,7 +275,7 @@
       name: 'Detail',
       groups: {
         buildings:  { label: 'Buildings', defaultOn: true, layers: ['building'] },
-        pois:       { label: 'POIs',      defaultOn: true, layers: ['poi-dot', 'poi-label'] },
+        pois:       { label: 'POIs',      defaultOn: true, layers: ['poi-icon', 'poi-label'] },
         boundaries: { label: 'Borders',   defaultOn: true, layers: ['boundary'] },
       },
     },
@@ -270,18 +388,28 @@
           },
           paint: { 'text-color': C.label, 'text-halo-color': C.bg, 'text-halo-width': 1.5 } },
 
-        // ---- POIs at high zoom ----
-        { id: 'poi-dot', type: 'circle', source: 'omt', 'source-layer': 'poi',
+        // ---- POIs at high zoom (emoji icons + name below) ----
+        // Icon images are registered separately via map.addImage; the
+        // filter limits the layer to the classes we actually have an
+        // icon for so MapLibre never asks for a missing image.
+        { id: 'poi-icon', type: 'symbol', source: 'omt', 'source-layer': 'poi',
           minzoom: 14,
-          paint: { 'circle-radius': 2, 'circle-color': C.poi, 'circle-opacity': 0.7 } },
+          filter: ['in', ['get', 'class'], ['literal', POI_CLASS_LIST]],
+          layout: {
+            'icon-image': ['concat', 'poi-', ['get', 'class']],
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 14, 0.45, 18, 0.7],
+            'icon-allow-overlap': false,
+            'icon-padding': 2,
+          } },
         { id: 'poi-label', type: 'symbol', source: 'omt', 'source-layer': 'poi',
           minzoom: 16,
+          filter: ['in', ['get', 'class'], ['literal', POI_CLASS_LIST]],
           layout: {
             'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name'], ''],
             'text-font': TEXT_FONT,
-            'text-size': 9,
+            'text-size': 10,
             'text-anchor': 'top',
-            'text-offset': [0, 0.5],
+            'text-offset': [0, 1.0],
           },
           paint: { 'text-color': C.poi, 'text-halo-color': C.bg, 'text-halo-width': 1.5 } },
 
@@ -462,13 +590,18 @@
   let mapReady = false;
   let pendingFix = null;
   map.on('load', () => {
+    registerPoiIcons();
     addUserLayers();
     applyAllGroupVisibility();
     mapReady = true;
     if (pendingFix) { applyFix(pendingFix); pendingFix = null; }
   });
+  // setStyle (theme swap) clears all images registered with addImage,
+  // so we re-register icons + re-add the user-position source/layers
+  // every time the new style finishes loading.
   map.on('style.load', () => {
     if (!mapReady) return;
+    registerPoiIcons();
     addUserLayers();
     applyAllGroupVisibility();
   });

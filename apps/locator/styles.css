@@ -41,6 +41,12 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+  /* Map UI is mostly buttons + status text, none of which should
+     be selectable on long-press. The debug log opts back in below
+     so copy still works. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .locator {
@@ -372,6 +378,10 @@ body {
   word-break: break-word;
   background: var(--bg);
   -webkit-overflow-scrolling: touch;
+  /* Allow text selection here so the user can copy/paste log lines
+     even without using the Copy button. */
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .debug-actions {
