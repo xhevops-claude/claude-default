@@ -323,19 +323,18 @@
     }
 
     // If we're sitting on a clone, jump scrollLeft to its real twin.
-    // Visually identical content, so no flicker. Returns true if it
-    // actually wrapped.
+    // Visually identical content, so no flicker. snap-type is briefly
+    // toggled off so the browser doesn't fight us by re-snapping back
+    // to the clone if a settle was already in flight.
     function wrapIfOnClone() {
       const i = nearestSlideIdx();
-      if (i === 0) {
-        pagerEl.scrollLeft = slides[LAST_REAL].offsetLeft;
-        return true;
-      }
-      if (i === slides.length - 1) {
-        pagerEl.scrollLeft = slides[FIRST_REAL].offsetLeft;
-        return true;
-      }
-      return false;
+      if (i !== 0 && i !== slides.length - 1) return false;
+      const target = (i === 0 ? slides[LAST_REAL] : slides[FIRST_REAL]).offsetLeft;
+      pagerEl.style.scrollSnapType = 'none';
+      pagerEl.scrollLeft = target;
+      void pagerEl.offsetWidth;
+      pagerEl.style.scrollSnapType = '';
+      return true;
     }
 
     function scrollToReal(name, smooth) {
@@ -371,31 +370,43 @@
       setActive(initial);
     });
 
-    let scrollRaf = 0;
+    // rAF-driven scroll observer: every scroll event kicks off a poll
+    // that runs each frame until scrollLeft is steady for two frames
+    // in a row, then wraps if we're parked on a clone. This lands
+    // ~30ms after motion stops — far quicker than scrollend, which
+    // can lag a full second behind a fast momentum scroll, and was
+    // the source of the "stuck" feeling between rapid swipes.
+    let pollRaf = 0;
+    let lastX = -1;
+    let stableFrames = 0;
+
+    function poll() {
+      pollRaf = 0;
+      const x = pagerEl.scrollLeft;
+      setActive(visibleName());
+      if (x === lastX) {
+        stableFrames++;
+        if (stableFrames >= 2) { wrapIfOnClone(); return; }
+      } else {
+        lastX = x;
+        stableFrames = 0;
+      }
+      pollRaf = requestAnimationFrame(poll);
+    }
+
     pagerEl.addEventListener('scroll', () => {
-      if (scrollRaf) return;
-      scrollRaf = requestAnimationFrame(() => {
-        scrollRaf = 0;
-        setActive(visibleName());
-      });
+      if (pollRaf) return;
+      lastX = -1; stableFrames = 0;
+      pollRaf = requestAnimationFrame(poll);
     }, { passive: true });
 
-    // Pre-empt the wrap on the next user gesture. pointerdown fires the
-    // instant the user touches — long before scrollend would — so a
-    // rapid burst of swipes never has to wait for momentum to settle.
+    // Pre-empt the wrap the moment the next gesture begins so the
+    // user's swipe starts from the real slide instead of a clone
+    // edge. touchstart with capture catches it even earlier than
+    // pointerdown on iOS, and both fire before any momentum from the
+    // previous gesture has a chance to interfere.
+    pagerEl.addEventListener('touchstart', wrapIfOnClone, { passive: true, capture: true });
     pagerEl.addEventListener('pointerdown', wrapIfOnClone, { passive: true });
-
-    // Safety net for users who let go and don't swipe again. Keeps the
-    // dot indicator honest after a slow drift onto a clone.
-    if ('onscrollend' in window) {
-      pagerEl.addEventListener('scrollend', wrapIfOnClone);
-    } else {
-      let stopT = 0;
-      pagerEl.addEventListener('scroll', () => {
-        clearTimeout(stopT);
-        stopT = setTimeout(wrapIfOnClone, 120);
-      }, { passive: true });
-    }
 
     function paginate(delta) {
       const cur = visibleName();
