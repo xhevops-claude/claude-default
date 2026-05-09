@@ -253,91 +253,117 @@
 
   render();
 
-  // ---- Section pager (Tools / Apps / Games) ----
-  // Native horizontal scroll-snap drives the swipe; this just keeps the
-  // dot indicator in sync with the visible slide and persists the last
-  // section between visits. Default landing page is Games.
-  //
-  // One-way loop: a hidden clone of the Tools slide is appended after
-  // Games so a forward swipe past Games lands on a Tools-looking slide,
-  // then we silently snap scrollLeft back to the real Tools without
-  // animation. Swiping backward from Tools does not loop (no clone in
-  // front of slide 0), per the requested behaviour.
+  // ---- Section pager (Home / Apps / Tools / Games) ----
+  // Native horizontal scroll-snap drives the swipe. The carousel loops
+  // both ways: a clone of the last slide sits before the first, and a
+  // clone of the first sits after the last; once a swipe settles on
+  // either clone, scrollLeft jumps silently to its real twin so the
+  // user can keep paging in either direction without ever hitting an
+  // edge. The footer nav shows previous · current · next, with the
+  // current section emphasized; tapping prev/next paginates by one.
   (function pager() {
     const pagerEl = document.getElementById('pager');
-    const dotsEl = document.getElementById('dots');
-    if (!pagerEl || !dotsEl) return;
+    const navEl = document.getElementById('pager-nav');
+    if (!pagerEl || !navEl) return;
 
     const PAGE_KEY = 'arcade-section';
-    const dots = Array.from(dotsEl.querySelectorAll('.dot'));
+    const prevBtn = document.getElementById('nav-prev');
+    const nextBtn = document.getElementById('nav-next');
+    const currLbl = document.getElementById('nav-current');
+
     const pages = Array.from(pagerEl.querySelectorAll('.page'));
     const order = pages.map((p) => p.dataset.page);
+    const labels = {
+      home: 'Home', apps: 'Apps', tools: 'Tools', games: 'Games',
+    };
 
-    // Append a non-interactive clone of slide 0 (Tools) at the end so
-    // the user can swipe past Games and "wrap around" to Tools.
-    const loopClone = pages[0].cloneNode(true);
-    loopClone.setAttribute('aria-hidden', 'true');
-    loopClone.setAttribute('inert', '');
-    loopClone.dataset.page = 'tools-loop';
-    pagerEl.appendChild(loopClone);
-    const allSlides = pages.concat([loopClone]);
+    // Loop clones — last before first, first after last. Marked inert
+    // so they stay out of the tab order and a11y tree.
+    function makeClone(src, name) {
+      const c = src.cloneNode(true);
+      c.setAttribute('aria-hidden', 'true');
+      c.setAttribute('inert', '');
+      c.dataset.page = name;
+      return c;
+    }
+    const headClone = makeClone(pages[pages.length - 1], 'loop-head'); // games' twin
+    const tailClone = makeClone(pages[0], 'loop-tail');                // home's twin
+    pagerEl.insertBefore(headClone, pages[0]);
+    pagerEl.appendChild(tailClone);
 
-    function indexOfPage(name) {
+    // Layout: [headClone, ...pages, tailClone]. Index in slides[] for a
+    // real page name is order.indexOf(name) + 1.
+    const slides = [headClone].concat(pages).concat([tailClone]);
+
+    function realIndex(name) {
       const i = order.indexOf(name);
-      return i === -1 ? order.indexOf('games') : i;
+      return i === -1 ? order.indexOf('home') : i;
     }
 
-    function scrollToPage(name, smooth) {
-      const i = indexOfPage(name);
+    function scrollToReal(name, smooth) {
+      const i = realIndex(name);
       const left = pages[i].offsetLeft;
       pagerEl.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
     }
 
+    function neighbor(name, delta) {
+      const i = realIndex(name);
+      const n = order.length;
+      return order[((i + delta) % n + n) % n];
+    }
+
     function setActive(name) {
-      dots.forEach((d) => {
-        if (d.dataset.page === name) d.setAttribute('aria-current', 'page');
-        else d.removeAttribute('aria-current');
-      });
+      currLbl.textContent = labels[name] || name;
+      const prev = neighbor(name, -1);
+      const next = neighbor(name, +1);
+      prevBtn.textContent = labels[prev];
+      nextBtn.textContent = labels[next];
+      prevBtn.dataset.page = prev;
+      nextBtn.dataset.page = next;
       try { localStorage.setItem(PAGE_KEY, name); } catch (_) {}
     }
 
-    // Restore last section, fall back to Games. Use auto scroll so the
-    // user doesn't see a swipe animation on first paint.
-    let initial = 'games';
+    // Restore last section, fall back to Home.
+    let initial = 'home';
     try {
       const saved = localStorage.getItem(PAGE_KEY);
       if (saved && order.indexOf(saved) !== -1) initial = saved;
     } catch (_) {}
     requestAnimationFrame(() => {
-      scrollToPage(initial, false);
+      scrollToReal(initial, false);
       setActive(initial);
     });
 
-    // Track the visible slide on scroll; pick whichever slide's left
-    // edge is closest to the current scrollLeft. The trailing clone
-    // maps to "tools" for the indicator.
+    // Map the closest slide index to a real section name, treating
+    // clones as their twin so the nav reads correctly mid-swipe.
+    function visibleName() {
+      const x = pagerEl.scrollLeft;
+      let best = 0, bestDist = Infinity;
+      for (let i = 0; i < slides.length; i++) {
+        const d = Math.abs(slides[i].offsetLeft - x);
+        if (d < bestDist) { bestDist = d; best = i; }
+      }
+      if (best === 0) return order[order.length - 1];
+      if (best === slides.length - 1) return order[0];
+      return order[best - 1];
+    }
+
     let scrollRaf = 0;
     pagerEl.addEventListener('scroll', () => {
       if (scrollRaf) return;
       scrollRaf = requestAnimationFrame(() => {
         scrollRaf = 0;
-        const x = pagerEl.scrollLeft;
-        let best = 0, bestDist = Infinity;
-        for (let i = 0; i < allSlides.length; i++) {
-          const d = Math.abs(allSlides[i].offsetLeft - x);
-          if (d < bestDist) { bestDist = d; best = i; }
-        }
-        const name = (best === allSlides.length - 1) ? 'tools' : order[best];
-        setActive(name);
+        setActive(visibleName());
       });
     }, { passive: true });
 
-    // After scroll-snap settles, if we landed on the clone, jump
-    // instantly to the real Tools slide. Use scrollend where supported
-    // and fall back to a debounce on scroll otherwise.
+    // After scroll-snap settles on a clone, swap to its real twin
+    // without animation so the loop is seamless.
     function maybeWrap() {
-      const cloneAt = loopClone.offsetLeft;
-      if (Math.abs(pagerEl.scrollLeft - cloneAt) < 2) {
+      const x = pagerEl.scrollLeft;
+      if (Math.abs(x - headClone.offsetLeft) < 2) {
+        pagerEl.scrollLeft = pages[pages.length - 1].offsetLeft;
+      } else if (Math.abs(x - tailClone.offsetLeft) < 2) {
         pagerEl.scrollLeft = pages[0].offsetLeft;
       }
     }
@@ -351,13 +377,26 @@
       }, { passive: true });
     }
 
-    dots.forEach((d) => {
-      d.addEventListener('click', () => {
-        const name = d.dataset.page;
-        scrollToPage(name, true);
-        setActive(name);
-      });
-    });
+    function paginate(delta) {
+      const cur = visibleName();
+      const target = neighbor(cur, delta);
+      // Going from Home backwards or Games forwards crosses a clone;
+      // for a smooth animation, scroll to the clone first, then let
+      // maybeWrap settle us on the real twin.
+      const curIdx = realIndex(cur);
+      let leftTarget;
+      if (delta < 0 && curIdx === 0) {
+        leftTarget = headClone.offsetLeft;
+      } else if (delta > 0 && curIdx === order.length - 1) {
+        leftTarget = tailClone.offsetLeft;
+      } else {
+        leftTarget = pages[realIndex(target)].offsetLeft;
+      }
+      pagerEl.scrollTo({ left: leftTarget, behavior: 'smooth' });
+    }
+
+    prevBtn.addEventListener('click', () => paginate(-1));
+    nextBtn.addEventListener('click', () => paginate(+1));
 
     // Re-snap on resize so the active slide stays aligned after layout
     // changes (orientation, window resize, etc.).
@@ -365,8 +404,7 @@
     window.addEventListener('resize', () => {
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
       resizeRaf = requestAnimationFrame(() => {
-        const active = dots.find((d) => d.getAttribute('aria-current') === 'page');
-        if (active) scrollToPage(active.dataset.page, false);
+        scrollToReal(visibleName(), false);
       });
     });
   })();
