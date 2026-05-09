@@ -253,6 +253,88 @@
 
   render();
 
+  // ---- Section pager (Tools / Apps / Games) ----
+  // Native horizontal scroll-snap drives the swipe; this just keeps the
+  // dot indicator in sync with the visible slide and persists the last
+  // section between visits. Default landing page is Games.
+  (function pager() {
+    const pagerEl = document.getElementById('pager');
+    const dotsEl = document.getElementById('dots');
+    if (!pagerEl || !dotsEl) return;
+
+    const PAGE_KEY = 'arcade-section';
+    const dots = Array.from(dotsEl.querySelectorAll('.dot'));
+    const pages = Array.from(pagerEl.querySelectorAll('.page'));
+    const order = pages.map((p) => p.dataset.page);
+
+    function indexOfPage(name) {
+      const i = order.indexOf(name);
+      return i === -1 ? order.indexOf('games') : i;
+    }
+
+    function scrollToPage(name, smooth) {
+      const i = indexOfPage(name);
+      const left = pages[i].offsetLeft;
+      pagerEl.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
+    }
+
+    function setActive(name) {
+      dots.forEach((d) => {
+        if (d.dataset.page === name) d.setAttribute('aria-current', 'page');
+        else d.removeAttribute('aria-current');
+      });
+      try { localStorage.setItem(PAGE_KEY, name); } catch (_) {}
+    }
+
+    // Restore last section, fall back to Games. Use auto scroll so the
+    // user doesn't see a swipe animation on first paint.
+    let initial = 'games';
+    try {
+      const saved = localStorage.getItem(PAGE_KEY);
+      if (saved && order.indexOf(saved) !== -1) initial = saved;
+    } catch (_) {}
+    requestAnimationFrame(() => {
+      scrollToPage(initial, false);
+      setActive(initial);
+    });
+
+    // Track the visible slide on scroll; pick whichever page's left
+    // edge is closest to the current scrollLeft.
+    let scrollRaf = 0;
+    pagerEl.addEventListener('scroll', () => {
+      if (scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0;
+        const x = pagerEl.scrollLeft;
+        let best = 0, bestDist = Infinity;
+        for (let i = 0; i < pages.length; i++) {
+          const d = Math.abs(pages[i].offsetLeft - x);
+          if (d < bestDist) { bestDist = d; best = i; }
+        }
+        setActive(order[best]);
+      });
+    }, { passive: true });
+
+    dots.forEach((d) => {
+      d.addEventListener('click', () => {
+        const name = d.dataset.page;
+        scrollToPage(name, true);
+        setActive(name);
+      });
+    });
+
+    // Re-snap on resize so the active slide stays aligned after layout
+    // changes (orientation, window resize, etc.).
+    let resizeRaf = 0;
+    window.addEventListener('resize', () => {
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => {
+        const active = dots.find((d) => d.getAttribute('aria-current') === 'page');
+        if (active) scrollToPage(active.dataset.page, false);
+      });
+    });
+  })();
+
   // Deep link: opening /#games/<slug>/ goes straight into the game.
   (function deepLink() {
     const hash = decodeURIComponent(location.hash.slice(1));
