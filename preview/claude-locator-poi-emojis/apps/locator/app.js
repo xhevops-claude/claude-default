@@ -215,7 +215,7 @@
   // size sets the upper bound for how big icons get on screen — the
   // layer's icon-size scales between 0 and 1 against this size.
   const POI_PIXEL_RATIO = 2;
-  const POI_LOGICAL_SIZE = 36;
+  const POI_LOGICAL_SIZE = 40;
 
   function emojiToImage(emoji) {
     const w = POI_LOGICAL_SIZE * POI_PIXEL_RATIO;
@@ -277,7 +277,7 @@
       name: 'Detail',
       groups: {
         buildings:  { label: 'Buildings', defaultOn: true, layers: ['building'] },
-        pois:       { label: 'POIs',      defaultOn: true, layers: ['poi-icon', 'poi-label'] },
+        pois:       { label: 'POIs',      defaultOn: true, layers: ['poi'] },
         boundaries: { label: 'Borders',   defaultOn: true, layers: ['boundary'] },
       },
     },
@@ -390,30 +390,39 @@
           },
           paint: { 'text-color': C.label, 'text-halo-color': C.bg, 'text-halo-width': 1.5 } },
 
-        // ---- POIs at high zoom (emoji icons + name below) ----
-        // Icon images are registered separately via map.addImage; the
-        // filter limits the layer to the classes we actually have an
-        // icon for so MapLibre never asks for a missing image.
-        { id: 'poi-icon', type: 'symbol', source: 'omt', 'source-layer': 'poi',
+        // ---- POIs at high zoom (emoji icons; name below from z16) ----
+        // Icon and text live in the SAME symbol layer so they don't
+        // collide with each other — `text-optional: true` says
+        // "place the icon first, only add the text if it fits."
+        // The `step` expression on text-field keeps the icon alone
+        // until z16, then surfaces the name underneath it.
+        { id: 'poi', type: 'symbol', source: 'omt', 'source-layer': 'poi',
           minzoom: 14,
           filter: ['in', ['get', 'class'], ['literal', POI_CLASS_LIST]],
           layout: {
             'icon-image': ['concat', 'poi-', ['get', 'class']],
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 14, 0.6, 18, 1.0],
+            'icon-size': ['interpolate', ['linear'], ['zoom'],
+              14, 0.6,
+              16, 0.85,
+              19, 1.0,
+            ],
             'icon-allow-overlap': false,
             'icon-padding': 2,
-          } },
-        { id: 'poi-label', type: 'symbol', source: 'omt', 'source-layer': 'poi',
-          minzoom: 16,
-          filter: ['in', ['get', 'class'], ['literal', POI_CLASS_LIST]],
-          layout: {
-            'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name'], ''],
+            'text-field': ['step', ['zoom'],
+              '',
+              16, ['coalesce', ['get', 'name:en'], ['get', 'name'], ''],
+            ],
             'text-font': TEXT_FONT,
             'text-size': 11,
             'text-anchor': 'top',
-            'text-offset': [0, 1.3],
+            'text-offset': [0, 1.4],
+            'text-optional': true,
           },
-          paint: { 'text-color': C.poi, 'text-halo-color': C.bg, 'text-halo-width': 1.5 } },
+          paint: {
+            'text-color': C.poi,
+            'text-halo-color': C.bg,
+            'text-halo-width': 1.5,
+          } },
 
         // ---- Place hierarchy (last so labels win the depth fight) ----
         // Country: visible from world zoom; uppercase, big.
