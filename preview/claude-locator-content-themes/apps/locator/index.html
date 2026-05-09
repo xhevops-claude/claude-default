@@ -85,7 +85,21 @@
         </div>
       </div>
       <button id="theme-btn"  type="button" class="hud-btn" aria-label="Toggle light/dark theme">Light</button>
+      <button id="debug-btn"  type="button" class="hud-btn ghost" hidden aria-label="Open debug console">Debug</button>
       <button id="quit-btn"   type="button" class="hud-btn ghost">Quit</button>
+    </div>
+
+    <div id="debug-sheet" class="debug-sheet" hidden role="dialog" aria-label="Debug console">
+      <div class="debug-head">
+        <span class="debug-title">Debug</span>
+        <button id="debug-close" class="debug-close" type="button" aria-label="Close">×</button>
+      </div>
+      <pre id="debug-log" class="debug-log"></pre>
+      <div class="debug-actions">
+        <button id="debug-copy"  type="button" class="hud-btn">Copy</button>
+        <button id="debug-share" type="button" class="hud-btn">Share</button>
+        <button id="debug-clear" type="button" class="hud-btn ghost">Clear</button>
+      </div>
     </div>
   </main>
 

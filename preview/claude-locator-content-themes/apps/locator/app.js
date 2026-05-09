@@ -1,4 +1,58 @@
 (function () {
+  // ---- Debug console (gated on ?debug=1 or localStorage flag) ----
+  // Capture is on from boot regardless of the flag, so flipping debug
+  // on after-the-fact still has context. The visible UI only renders
+  // when the flag is set.
+  const DEBUG_KEY = 'locator-debug';
+  const isDebug = (() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (params.has('debug')) {
+        const v = params.get('debug');
+        if (v === '0' || v === 'false' || v === 'off') {
+          try { localStorage.removeItem(DEBUG_KEY); } catch (_) {}
+          return false;
+        }
+        try { localStorage.setItem(DEBUG_KEY, 'true'); } catch (_) {}
+        return true;
+      }
+      return localStorage.getItem(DEBUG_KEY) === 'true';
+    } catch (_) { return false; }
+  })();
+
+  const logBuffer = [];
+  const MAX_BUFFER = 500;
+  function pushLog(level, parts) {
+    const time = new Date().toISOString().slice(11, 23);
+    let text;
+    try {
+      text = Array.from(parts).map((a) => {
+        if (a == null) return String(a);
+        if (a instanceof Error) return a.stack || a.message;
+        if (typeof a === 'object') {
+          try { return JSON.stringify(a); } catch (_) { return String(a); }
+        }
+        return String(a);
+      }).join(' ');
+    } catch (_) { text = '<unstringifiable>'; }
+    logBuffer.push(`[${time}] ${(level + '    ').slice(0, 5)} ${text}`);
+    if (logBuffer.length > MAX_BUFFER) logBuffer.shift();
+  }
+  ['log', 'info', 'warn', 'error'].forEach((level) => {
+    const orig = console[level] && console[level].bind(console);
+    console[level] = function () {
+      pushLog(level, arguments);
+      if (orig) orig.apply(null, arguments);
+    };
+  });
+  window.addEventListener('error', (e) => {
+    pushLog('error', [`Uncaught: ${e.message} (${e.filename}:${e.lineno}:${e.colno})`]);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const reason = e.reason && (e.reason.stack || e.reason.message || e.reason);
+    pushLog('error', [`Unhandled rejection: ${reason}`]);
+  });
+
   const statusEl = document.getElementById('status');
   const statusText = document.getElementById('status-text');
   const metaAcc = document.getElementById('meta-acc');
@@ -604,6 +658,75 @@
     if (layersPopover.contains(e.target) || layersBtn.contains(e.target)) return;
     setLayersOpen(false);
   });
+
+  // ---- Debug UI (only when ?debug=1 / localStorage flag set) ----
+  if (isDebug) {
+    const debugBtn = document.getElementById('debug-btn');
+    const debugSheet = document.getElementById('debug-sheet');
+    const debugLog = document.getElementById('debug-log');
+    const debugCopy = document.getElementById('debug-copy');
+    const debugShare = document.getElementById('debug-share');
+    const debugClear = document.getElementById('debug-clear');
+    const debugClose = document.getElementById('debug-close');
+
+    function debugBlob() {
+      const meta = [
+        `URL: ${location.href}`,
+        `UserAgent: ${navigator.userAgent}`,
+        `Pixel ratio: ${window.devicePixelRatio}`,
+        `Viewport: ${window.innerWidth}×${window.innerHeight}`,
+        `Now: ${new Date().toISOString()}`,
+        `MapLibre tiles loaded: ${tilesLoaded}`,
+        `MapLibre map error: ${mapErrorMessage || '(none)'}`,
+        `Theme: ${currentTheme}`,
+        '---',
+      ].join('\n');
+      return meta + '\n' + logBuffer.join('\n');
+    }
+    function refreshDebug() {
+      debugLog.textContent = debugBlob();
+      debugLog.scrollTop = debugLog.scrollHeight;
+    }
+    function openDebug() { debugSheet.hidden = false; refreshDebug(); }
+    function closeDebug() { debugSheet.hidden = true; }
+    function flashLabel(btn, text) {
+      const orig = btn.textContent;
+      btn.textContent = text;
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    }
+
+    debugBtn.hidden = false;
+    debugBtn.addEventListener('click', openDebug);
+    debugClose.addEventListener('click', closeDebug);
+    debugCopy.addEventListener('click', async () => {
+      const text = debugBlob();
+      try { await navigator.clipboard.writeText(text); flashLabel(debugCopy, 'Copied'); }
+      catch (_) { flashLabel(debugCopy, 'Failed'); }
+    });
+    debugShare.addEventListener('click', async () => {
+      const text = debugBlob();
+      if (navigator.share) {
+        try { await navigator.share({ title: 'Locator debug', text }); } catch (_) {}
+      } else {
+        // Fallback: download a .txt file.
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `locator-debug-${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    });
+    debugClear.addEventListener('click', () => {
+      logBuffer.length = 0;
+      refreshDebug();
+    });
+    // Auto-refresh while the sheet is open so live errors appear.
+    setInterval(() => { if (!debugSheet.hidden) refreshDebug(); }, 1000);
+  }
 
   // ---- Buttons ----
   retryBtn.addEventListener('click', () => { stopWatch(); startWatch(); });
