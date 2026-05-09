@@ -275,6 +275,20 @@ body {
   padding: 0;
 }
 
+.layers-cat-head {
+  padding: 10px 14px 4px;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: default;
+  user-select: none;
+}
+
+.layers-cat-head:first-child { padding-top: 6px; }
+
 .layers-list li label {
   display: flex;
   align-items: center;

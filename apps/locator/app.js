@@ -72,22 +72,48 @@
   };
   const TEXT_FONT = ['Noto Sans Regular'];
 
-  // Logical groups for the Layers UI. Each group toggles the
-  // visibility of one or more style layer ids. Keys also drive the
+  // Logical groups organised into categories for the Layers UI. Each
+  // group toggles one or more style layer ids; keys also drive the
   // localStorage entry name (`locator-layer-<key>`).
-  const LAYER_GROUPS = {
-    landuse:      { label: 'Landuse',     defaultOn: true,  layers: ['landcover', 'landuse', 'park'] },
-    water:        { label: 'Water',       defaultOn: true,  layers: ['water', 'waterway'] },
-    'water-names':{ label: 'Water names', defaultOn: true,  layers: ['water-name'] },
-    roads:        { label: 'Roads',       defaultOn: true,  layers: ['road-rail', 'road-minor', 'road-secondary', 'road-primary', 'road-motorway'] },
-    'road-names': { label: 'Road names',  defaultOn: true,  layers: ['road-label-major', 'road-label-minor'] },
-    buildings:    { label: 'Buildings',   defaultOn: true,  layers: ['building'] },
-    boundaries:   { label: 'Borders',     defaultOn: true,  layers: ['boundary'] },
-    aeroways:     { label: 'Airports',    defaultOn: true,  layers: ['aeroway-fill', 'aeroway-line', 'aerodrome-label'] },
-    pois:         { label: 'POIs',        defaultOn: true,  layers: ['poi-dot', 'poi-label'] },
-    peaks:        { label: 'Peaks',       defaultOn: true,  layers: ['peak'] },
-    places:       { label: 'Places',      defaultOn: true,  layers: ['place-country', 'place-state', 'place-city', 'place-town', 'place-village'] },
-  };
+  const LAYER_CATEGORIES = [
+    {
+      name: 'Land',
+      groups: {
+        landuse:       { label: 'Landuse',     defaultOn: true, layers: ['landcover', 'landuse', 'park'] },
+        water:         { label: 'Water',       defaultOn: true, layers: ['water', 'waterway'] },
+        'water-names': { label: 'Water names', defaultOn: true, layers: ['water-name'] },
+      },
+    },
+    {
+      name: 'Transport',
+      groups: {
+        roads:        { label: 'Roads',      defaultOn: true, layers: ['road-rail', 'road-minor', 'road-secondary', 'road-primary', 'road-motorway'] },
+        'road-names': { label: 'Road names', defaultOn: true, layers: ['road-label-major', 'road-label-minor'] },
+        aeroways:     { label: 'Airports',   defaultOn: true, layers: ['aeroway-fill', 'aeroway-line', 'aerodrome-label'] },
+      },
+    },
+    {
+      name: 'Places',
+      groups: {
+        places: { label: 'Places', defaultOn: true, layers: ['place-country', 'place-state', 'place-city', 'place-town', 'place-village'] },
+        peaks:  { label: 'Peaks',  defaultOn: true, layers: ['peak'] },
+      },
+    },
+    {
+      name: 'Detail',
+      groups: {
+        buildings:  { label: 'Buildings', defaultOn: true, layers: ['building'] },
+        pois:       { label: 'POIs',      defaultOn: true, layers: ['poi-dot', 'poi-label'] },
+        boundaries: { label: 'Borders',   defaultOn: true, layers: ['boundary'] },
+      },
+    },
+  ];
+  // Flat lookup so setGroupVisible / isGroupVisible can resolve a
+  // group key without walking the categories.
+  const LAYER_GROUPS = {};
+  LAYER_CATEGORIES.forEach((cat) => {
+    Object.entries(cat.groups).forEach(([k, v]) => { LAYER_GROUPS[k] = v; });
+  });
 
   function buildStyle(themeName) {
     const C = THEMES[themeName] || THEMES.dark;
@@ -346,10 +372,15 @@
   });
 
   // ---- Helpers ----
+  // The Locate-me button is hidden only when we have a live fix.
+  // Keeping it visible during 'locating' matters because some
+  // platforms (notably iOS Safari in iframes) silently block
+  // watchPosition until the user makes an explicit gesture — the
+  // visible button gives them a way to retry.
   function setStatus(state, text) {
     statusEl.dataset.state = state;
     statusText.textContent = text;
-    retryBtn.hidden = (state === 'active' || state === 'locating');
+    retryBtn.hidden = (state === 'active');
   }
   function fmtAccuracy(m) {
     if (!isFinite(m)) return '—';
@@ -385,6 +416,7 @@
   function applyFix(pos) {
     const { latitude, longitude, accuracy } = pos.coords;
     lastFixCoords = [longitude, latitude, accuracy];
+    clearWatchdog();
     pinMarker.setLngLat([longitude, latitude]).addTo(map);
     map.getSource('me-accuracy').setData(circlePolygon(longitude, latitude, accuracy));
 
@@ -409,15 +441,30 @@
     else if (err && err.code === 3) msg = 'Location timed out';
     setStatus('error', msg);
   }
+  let watchdog = null;
+  function clearWatchdog() {
+    if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+  }
   function startWatch() {
     if (!navigator.geolocation) { setStatus('error', 'Not supported'); return; }
     if (watchId !== null) return;
     setStatus('locating', 'Locating…');
+    // Some platforms (notably iOS Safari in iframes) stall
+    // watchPosition silently — no fix, no error. After 8s without
+    // progress, surface a clearer hint so the user knows to tap
+    // Locate me to nudge it.
+    clearWatchdog();
+    watchdog = setTimeout(() => {
+      if (lastFixTs === 0 && statusEl.dataset.state === 'locating') {
+        setStatus('locating', 'Tap Locate me');
+      }
+    }, 8000);
     watchId = navigator.geolocation.watchPosition(onFix, onError, {
-      enableHighAccuracy: true, maximumAge: 5000, timeout: 20000,
+      enableHighAccuracy: true, maximumAge: 5000, timeout: 15000,
     });
   }
   function stopWatch() {
+    clearWatchdog();
     if (watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
@@ -478,9 +525,12 @@
   }
 
   function buildLayersPanel() {
-    layersList.innerHTML = Object.entries(LAYER_GROUPS).map(([key, def]) => {
-      const checked = isGroupVisible(key) ? ' checked' : '';
-      return `<li><label><input type="checkbox" data-group="${key}"${checked}>${def.label}</label></li>`;
+    layersList.innerHTML = LAYER_CATEGORIES.map((cat) => {
+      const items = Object.entries(cat.groups).map(([key, def]) => {
+        const checked = isGroupVisible(key) ? ' checked' : '';
+        return `<li><label><input type="checkbox" data-group="${key}"${checked}>${def.label}</label></li>`;
+      }).join('');
+      return `<li class="layers-cat-head">${cat.name}</li>${items}`;
     }).join('');
     layersList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
       input.addEventListener('change', (e) => {
