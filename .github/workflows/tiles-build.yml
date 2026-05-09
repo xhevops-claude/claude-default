@@ -54,6 +54,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Bring gh-pages into the local git db so we can read PBFs and
+      # md5 sidecars with `git show` instead of HTTP. HTTP races
+      # against Pages republishing the branch (~30–90s after the
+      # data-refresh push), so the public URL is briefly stale on
+      # workflow_run-triggered builds — the branch isn't.
+      - name: Fetch gh-pages branch
+        run: |
+          git fetch --depth=1 origin gh-pages 2>/dev/null \
+            && echo "gh-pages fetched" \
+            || echo "gh-pages does not exist yet (first run); proceeding."
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -90,9 +101,18 @@ jobs:
           FORCE: ${{ github.event.inputs.force }}
         run: |
           set -euo pipefail
-          SITE="https://xhevops-claude.github.io/claude-default"
           mkdir -p cdn/maps/pmtiles work/pbf
           any_built=0
+
+          # Read whatever is currently on gh-pages without HTTP — the
+          # branch is the source of truth, the public URL trails it.
+          read_published() {
+            local path="$1"
+            git show "origin/gh-pages:${path}" 2>/dev/null || true
+          }
+          read_published_md5() {
+            read_published "$1" | awk '{print $1}'
+          }
 
           while IFS= read -r raw || [[ -n "$raw" ]]; do
             line="${raw%%#*}"
@@ -104,9 +124,9 @@ jobs:
             echo "::group::$slug"
 
             # Source PBF MD5 — published next to the PBF by data-refresh.
-            src_md5="$(curl -fsSL "${SITE}/cdn/maps/osm/${slug}.osm.pbf.md5" 2>/dev/null | awk '{print $1}' || true)"
+            src_md5="$(read_published_md5 "cdn/maps/osm/${slug}.osm.pbf.md5")"
             if [[ -z "$src_md5" ]]; then
-              echo "::warning::No source MD5 for $slug yet — data-refresh hasn't published it. Skipping."
+              echo "::warning::No source MD5 for $slug on gh-pages — data-refresh hasn't run yet for this region. Skipping."
               echo "::endgroup::"
               continue
             fi
@@ -115,7 +135,7 @@ jobs:
             # source PBF MD5 plus our build-version constant. Either
             # changing forces a rebuild; both matching skips entirely.
             want="${src_md5} ${BUILD_VERSION}"
-            have="$(curl -fsSL "${SITE}/cdn/maps/pmtiles/${slug}.pmtiles.source-md5" 2>/dev/null || true)"
+            have="$(read_published "cdn/maps/pmtiles/${slug}.pmtiles.source-md5")"
 
             if [[ "${FORCE:-false}" != "true" && "$want" == "$have" ]]; then
               echo "Up to date (source $src_md5, build $BUILD_VERSION). Skipping."
@@ -123,13 +143,12 @@ jobs:
               continue
             fi
 
-            # Pull the PBF straight from the live site so we use the
-            # same artefact data-refresh just published, not a stale
-            # checkout. Verify against the published MD5.
+            # Stream the PBF straight from the gh-pages branch — same
+            # bytes data-refresh just pushed, no Pages propagation lag.
+            # `git show` writes binaries verbatim to stdout.
             pbf="work/pbf/${slug}.osm.pbf"
-            echo "Fetching ${SITE}/cdn/maps/osm/${slug}.osm.pbf"
-            curl -fsSL --retry 3 --retry-delay 5 -o "$pbf" \
-              "${SITE}/cdn/maps/osm/${slug}.osm.pbf"
+            echo "Reading PBF from gh-pages..."
+            git show "origin/gh-pages:cdn/maps/osm/${slug}.osm.pbf" > "$pbf"
             actual="$(md5sum "$pbf" | awk '{print $1}')"
             if [[ "$actual" != "$src_md5" ]]; then
               echo "::error::PBF MD5 mismatch for $slug (got $actual, expected $src_md5)"
