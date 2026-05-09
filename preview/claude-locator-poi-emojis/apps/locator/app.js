@@ -211,9 +211,11 @@
 
   // ---- Emoji → MapLibre image registration ----
   // Render at 2x so the icons stay crisp on Retina; MapLibre is told
-  // pixelRatio=2 so it scales them down at draw time.
+  // pixelRatio=2 so it scales them down at draw time. The logical
+  // size sets the upper bound for how big icons get on screen — the
+  // layer's icon-size scales between 0 and 1 against this size.
   const POI_PIXEL_RATIO = 2;
-  const POI_LOGICAL_SIZE = 28;
+  const POI_LOGICAL_SIZE = 36;
 
   function emojiToImage(emoji) {
     const w = POI_LOGICAL_SIZE * POI_PIXEL_RATIO;
@@ -397,7 +399,7 @@
           filter: ['in', ['get', 'class'], ['literal', POI_CLASS_LIST]],
           layout: {
             'icon-image': ['concat', 'poi-', ['get', 'class']],
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 14, 0.45, 18, 0.7],
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 14, 0.6, 18, 1.0],
             'icon-allow-overlap': false,
             'icon-padding': 2,
           } },
@@ -407,9 +409,9 @@
           layout: {
             'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name'], ''],
             'text-font': TEXT_FONT,
-            'text-size': 10,
+            'text-size': 11,
             'text-anchor': 'top',
-            'text-offset': [0, 1.0],
+            'text-offset': [0, 1.3],
           },
           paint: { 'text-color': C.poi, 'text-halo-color': C.bg, 'text-halo-width': 1.5 } },
 
