@@ -7,6 +7,12 @@
   const retryBtn = document.getElementById('retry-btn');
   const quitBtn = document.getElementById('quit-btn');
 
+  // Self-hosted vector tiles from our daily Geofabrik → planetiler
+  // pipeline; same origin as this iframe, so no CORS dance. The
+  // file lives at the production site's /cdn/ on gh-pages.
+  const PMTILES_URL =
+    'https://xhevops-claude.github.io/claude-default/cdn/maps/pmtiles/north-macedonia.pmtiles';
+
   // Defaults — North Macedonia centred until we get a first fix.
   const NMK_CENTER = [41.6086, 21.7453];
   const NMK_ZOOM = 8;
@@ -14,9 +20,77 @@
 
   const map = L.map('map', { zoomControl: false }).setView(NMK_CENTER, NMK_ZOOM);
   L.control.zoom({ position: 'topright' }).addTo(map);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+
+  // Dark paint ruleset for planetiler's default OpenMapTiles schema.
+  // Each rule binds a vector-tile data layer (and optional filter) to
+  // a Leaflet-compatible symbolizer; protomaps-leaflet does the
+  // canvas drawing per tile via byte-range reads from the PMTiles.
+  const PR = window.protomapsL;
+  const COLOR = {
+    bg: '#1a1d24',
+    land: '#22262e',
+    landuse: '#252a33',
+    water: '#0f1419',
+    park: '#1f2a23',
+    road: '#3d4148',
+    roadHi: '#5a6068',
+    roadMid: '#4a4f57',
+    rail: '#3a3f45',
+    boundary: '#3a4048',
+    building: '#262a32',
+    label: '#cbd5e1',
+    labelDim: '#94a3b8',
+  };
+  const paintRules = [
+    { dataLayer: 'landcover', symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.land }) },
+    { dataLayer: 'park',      symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.park }) },
+    { dataLayer: 'landuse',   symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.landuse }) },
+    { dataLayer: 'water',     symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.water }) },
+    { dataLayer: 'waterway',  symbolizer: new PR.LineSymbolizer({ color: COLOR.water, width: 1 }) },
+
+    // Roads — minor classes first, then primary/motorway on top so
+    // they read as a hierarchy.
+    { dataLayer: 'transportation', filter: (z, f) => ['service', 'minor', 'track'].includes(f.props.class), symbolizer: new PR.LineSymbolizer({ color: COLOR.road, width: 0.6 }) },
+    { dataLayer: 'transportation', filter: (z, f) => ['secondary', 'tertiary'].includes(f.props.class), symbolizer: new PR.LineSymbolizer({ color: COLOR.roadMid, width: 1 }) },
+    { dataLayer: 'transportation', filter: (z, f) => ['primary', 'trunk'].includes(f.props.class), symbolizer: new PR.LineSymbolizer({ color: COLOR.roadHi, width: 1.4 }) },
+    { dataLayer: 'transportation', filter: (z, f) => f.props.class === 'motorway', symbolizer: new PR.LineSymbolizer({ color: COLOR.roadHi, width: 1.8 }) },
+    { dataLayer: 'transportation', filter: (z, f) => f.props.class === 'rail', symbolizer: new PR.LineSymbolizer({ color: COLOR.rail, width: 0.6 }) },
+
+    { dataLayer: 'boundary', filter: (z, f) => (f.props.admin_level || 99) <= 2, symbolizer: new PR.LineSymbolizer({ color: COLOR.boundary, width: 0.8 }) },
+
+    { dataLayer: 'building', minzoom: 14, symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.building }) },
+  ];
+  const labelRules = [
+    {
+      dataLayer: 'place',
+      filter: (z, f) => ['country', 'state', 'city'].includes(f.props.class),
+      symbolizer: new PR.TextSymbolizer({
+        properties: ['name:en', 'name'],
+        font: '600 12px ui-sans-serif, system-ui, sans-serif',
+        fill: COLOR.label,
+        stroke: COLOR.bg,
+        width: 3,
+      }),
+    },
+    {
+      dataLayer: 'place',
+      filter: (z, f) => ['town', 'village'].includes(f.props.class),
+      minzoom: 9,
+      symbolizer: new PR.TextSymbolizer({
+        properties: ['name:en', 'name'],
+        font: '500 11px ui-sans-serif, system-ui, sans-serif',
+        fill: COLOR.labelDim,
+        stroke: COLOR.bg,
+        width: 2,
+      }),
+    },
+  ];
+
+  PR.leafletLayer({
+    url: PMTILES_URL,
+    paintRules,
+    labelRules,
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · tiles built with <a href="https://github.com/onthegomap/planetiler">planetiler</a>',
   }).addTo(map);
 
   const pinIcon = L.divIcon({
