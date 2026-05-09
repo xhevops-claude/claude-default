@@ -209,6 +209,26 @@
   };
   const POI_CLASS_LIST = Object.keys(POI_ICONS);
 
+  // POI sub-categories — drive the per-category checkboxes in the
+  // Layers panel and define which `poi.class` values belong to each.
+  // Tuple: [key, label, classes].
+  const POI_CATEGORIES_DEF = [
+    ['food',       'Food & drink', ['restaurant', 'cafe', 'bar', 'pub', 'fast_food', 'bakery', 'ice_cream']],
+    ['shopping',   'Shopping',     ['shop', 'supermarket', 'mall', 'marketplace', 'alcohol_shop', 'bookshop', 'book_shop', 'florist']],
+    ['lodging',    'Lodging',      ['hotel', 'hostel', 'motel']],
+    ['health',     'Health',       ['hospital', 'clinic', 'pharmacy', 'dentist', 'veterinary']],
+    ['education',  'Education',    ['school', 'college', 'university', 'library', 'kindergarten']],
+    ['recreation', 'Recreation',   ['park', 'garden', 'museum', 'art_gallery', 'gallery', 'theatre', 'cinema', 'attraction', 'theme_park', 'viewpoint', 'monument', 'zoo']],
+    ['transport',  'Transport',    ['fuel', 'parking', 'bus', 'railway', 'taxi', 'ferry_terminal', 'bicycle_rental']],
+    ['money',      'Money',        ['atm', 'bank']],
+    ['public',     'Public',       ['post_office', 'post_box', 'police', 'fire_station', 'place_of_worship', 'toilets', 'information', 'drinking_water']],
+    ['sports',     'Sports',       ['sports_centre', 'stadium', 'pitch', 'swimming_pool', 'golf']],
+  ];
+
+  // Iconography for the place layer — gives big cities a visible
+  // emoji even at country zoom. Same canvas-icon mechanism as POIs.
+  const PLACE_ICONS = { city: '🏙' };
+
   // ---- Emoji → MapLibre image registration ----
   // Render at 2x so the icons stay crisp on Retina; MapLibre is told
   // pixelRatio=2 so it scales them down at draw time. The logical
@@ -244,11 +264,26 @@
         if (typeof console !== 'undefined' && console.warn) console.warn('addImage failed', id, e);
       }
     });
+    Object.entries(PLACE_ICONS).forEach(([cls, emoji]) => {
+      const id = 'place-' + cls;
+      if (map.hasImage(id)) return;
+      try {
+        map.addImage(id, emojiToImage(emoji), { pixelRatio: POI_PIXEL_RATIO });
+      } catch (e) {
+        if (typeof console !== 'undefined' && console.warn) console.warn('addImage failed', id, e);
+      }
+    });
   }
 
-  // Logical groups organised into categories for the Layers UI. Each
-  // group toggles one or more style layer ids; keys also drive the
-  // localStorage entry name (`locator-layer-<key>`).
+  // Logical groups organised into categories for the Layers UI.
+  // Two flavours:
+  //   - { layers: [...] }              — toggles visibility on style
+  //                                      layer ids (setLayoutProperty)
+  //   - { type: 'poi-filter', classes: [...] }
+  //                                    — toggles a subset of POI
+  //                                      classes by rewriting the
+  //                                      `poi` layer's filter
+  // Keys also drive the localStorage entry name (locator-layer-<key>).
   const LAYER_CATEGORIES = [
     {
       name: 'Land',
@@ -277,9 +312,17 @@
       name: 'Detail',
       groups: {
         buildings:  { label: 'Buildings', defaultOn: true, layers: ['building'] },
-        pois:       { label: 'POIs',      defaultOn: true, layers: ['poi'] },
         boundaries: { label: 'Borders',   defaultOn: true, layers: ['boundary'] },
       },
+    },
+    {
+      name: 'POIs',
+      groups: Object.fromEntries(
+        POI_CATEGORIES_DEF.map(([key, label, classes]) => [
+          'poi-' + key,
+          { label, defaultOn: true, classes, type: 'poi-filter' },
+        ]),
+      ),
     },
   ];
   // Flat lookup so setGroupVisible / isGroupVisible can resolve a
@@ -390,19 +433,25 @@
           },
           paint: { 'text-color': C.label, 'text-halo-color': C.bg, 'text-halo-width': 1.5 } },
 
-        // ---- POIs at high zoom (emoji icons; name below from z16) ----
+        // ---- POIs (emoji icons; name below from z16) ----
+        // minzoom 12 because OMT only generates POI features from z12
+        // and up — going lower has nothing in the tiles to show.
+        // symbol-sort-key uses OMT's `rank` (lower = more important),
+        // so when collision detection has to drop overlapping icons
+        // at low zoom, the important ones win.
         // Icon and text live in the SAME symbol layer so they don't
-        // collide with each other — `text-optional: true` says
-        // "place the icon first, only add the text if it fits."
-        // The `step` expression on text-field keeps the icon alone
-        // until z16, then surfaces the name underneath it.
+        // collide with each other — text-optional means MapLibre
+        // places the icon first and only adds the name if it fits.
+        // text-field uses `step` to delay names until z16.
         { id: 'poi', type: 'symbol', source: 'omt', 'source-layer': 'poi',
-          minzoom: 14,
+          minzoom: 12,
           filter: ['in', ['get', 'class'], ['literal', POI_CLASS_LIST]],
           layout: {
+            'symbol-sort-key': ['coalesce', ['get', 'rank'], 99],
             'icon-image': ['concat', 'poi-', ['get', 'class']],
             'icon-size': ['interpolate', ['linear'], ['zoom'],
-              14, 0.6,
+              12, 0.4,
+              14, 0.65,
               16, 0.85,
               19, 1.0,
             ],
@@ -449,15 +498,26 @@
             'text-letter-spacing': 0.08,
           },
           paint: { 'text-color': C.labelDim, 'text-halo-color': C.bg, 'text-halo-width': 1.5 } },
-        // Cities — capital + major cities visible early.
+        // Cities — capital + major cities visible early. Icon
+        // anchors to bottom-of-icon at the city's point so the 🏙
+        // sits just above the dot; text-anchor: top puts the name
+        // just below the dot. Both stay legible at country zoom.
         { id: 'place-city', type: 'symbol', source: 'omt', 'source-layer': 'place',
           filter: ['==', ['get', 'class'], 'city'],
           minzoom: 5,
           layout: {
+            'icon-image': 'place-city',
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 12, 0.6],
+            'icon-anchor': 'bottom',
+            'icon-offset': [0, -2],
+            'icon-allow-overlap': true,
             'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
             'text-font': TEXT_FONT,
             'text-size': ['interpolate', ['linear'], ['zoom'], 5, 13, 12, 20],
             'text-letter-spacing': 0.05,
+            'text-anchor': 'top',
+            'text-offset': [0, 0.4],
+            'text-optional': true,
           },
           paint: { 'text-color': C.label, 'text-halo-color': C.bg, 'text-halo-width': 1.8 } },
         // Towns — medium settlements.
@@ -757,17 +817,38 @@
   function setGroupVisible(group, visible, persist = true) {
     const def = LAYER_GROUPS[group];
     if (!def) return;
-    def.layers.forEach((id) => {
+    if (persist) {
+      try { localStorage.setItem(LAYER_KEY_PREFIX + group, String(visible)); } catch (_) {}
+    }
+    if (def.type === 'poi-filter') {
+      // POI sub-category — re-derive the layer's filter from the
+      // union of currently-enabled categories.
+      refreshPoiFilter();
+      return;
+    }
+    (def.layers || []).forEach((id) => {
       if (map.getLayer(id)) {
         map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
       }
     });
-    if (persist) {
-      try { localStorage.setItem(LAYER_KEY_PREFIX + group, String(visible)); } catch (_) {}
-    }
+  }
+  function refreshPoiFilter() {
+    if (!map.getLayer('poi')) return;
+    const enabled = [];
+    POI_CATEGORIES_DEF.forEach(([key, , classes]) => {
+      if (isGroupVisible('poi-' + key)) enabled.push.apply(enabled, classes);
+    });
+    map.setFilter('poi', ['in', ['get', 'class'], ['literal', enabled]]);
   }
   function applyAllGroupVisibility() {
-    Object.keys(LAYER_GROUPS).forEach((g) => setGroupVisible(g, isGroupVisible(g), false));
+    // Visibility-toggle groups first, then a single setFilter for
+    // the POI layer (one rewrite instead of one per category).
+    Object.keys(LAYER_GROUPS).forEach((g) => {
+      const def = LAYER_GROUPS[g];
+      if (def && def.type === 'poi-filter') return;
+      setGroupVisible(g, isGroupVisible(g), false);
+    });
+    refreshPoiFilter();
   }
 
   function buildLayersPanel() {
