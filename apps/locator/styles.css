@@ -1,7 +1,31 @@
-/* Locator — flat dark UI floating over OpenStreetMap raster tiles.
-   The map fills the viewport; a translucent status bar sits at the
-   top, and a small column of action buttons sits bottom-right. The
-   user pin is a custom divIcon (no marker images needed). */
+/* Locator — flat UI floating over MapLibre vector tiles. The map fills
+   the viewport; a translucent status bar sits at the top, and a small
+   column of action buttons sits bottom-right. The user pin is a custom
+   HTML element marker. The chrome flips with [data-theme="light"]. */
+
+:root, [data-theme="dark"] {
+  --bg: #1a1d24;
+  --ink: #f1f5f9;
+  --muted: #94a3b8;
+  --hud-bg: rgba(26, 29, 36, 0.85);
+  --hud-bg-faint: rgba(26, 29, 36, 0.78);
+  --hud-border: rgba(241, 245, 249, 0.18);
+  --hud-border-soft: rgba(241, 245, 249, 0.12);
+  --hud-hover-bg: rgba(40, 45, 56, 0.95);
+  --ctrl-icon-filter: invert(1) brightness(1.6);
+}
+
+[data-theme="light"] {
+  --bg: #f5f3ee;
+  --ink: #1a1d24;
+  --muted: #525866;
+  --hud-bg: rgba(255, 255, 255, 0.88);
+  --hud-bg-faint: rgba(255, 255, 255, 0.82);
+  --hud-border: rgba(26, 29, 36, 0.20);
+  --hud-border-soft: rgba(26, 29, 36, 0.12);
+  --hud-hover-bg: rgba(220, 218, 210, 0.95);
+  --ctrl-icon-filter: none;
+}
 
 * { box-sizing: border-box; }
 
@@ -14,8 +38,8 @@ html, body {
 }
 
 body {
-  background: #1a1d24;
-  color: #f1f5f9;
+  background: var(--bg);
+  color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -29,39 +53,39 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: #1a1d24;
+  background: var(--bg);
 }
 
 .maplibregl-canvas-container,
-.maplibregl-canvas { background: #1a1d24; }
+.maplibregl-canvas { background: var(--bg); }
 
-/* OSM attribution — keep it readable but unobtrusive. */
+/* Attribution — keep readable but unobtrusive. */
 .maplibregl-ctrl-attrib {
   font-size: 9px !important;
-  background: rgba(26, 29, 36, 0.78) !important;
-  color: #94a3b8 !important;
+  background: var(--hud-bg-faint) !important;
+  color: var(--muted) !important;
   padding: 2px 6px !important;
 }
 
-.maplibregl-ctrl-attrib a { color: #cbd5e1 !important; }
+.maplibregl-ctrl-attrib a { color: var(--ink) !important; opacity: 0.85; }
 
 .maplibregl-ctrl-attrib-button {
-  background-color: rgba(26, 29, 36, 0.78) !important;
+  background-color: var(--hud-bg-faint) !important;
 }
 
-/* Recolour the default zoom control to match the dark chrome. */
+/* Recolour the default zoom control to match the chrome. */
 .maplibregl-ctrl button {
-  background-color: rgba(26, 29, 36, 0.85) !important;
-  color: #f1f5f9 !important;
+  background-color: var(--hud-bg) !important;
+  color: var(--ink) !important;
 }
 .maplibregl-ctrl-group {
-  border: 1px solid rgba(241, 245, 249, 0.18) !important;
+  border: 1px solid var(--hud-border) !important;
   background: transparent !important;
 }
 .maplibregl-ctrl-group:not(:empty) { box-shadow: none !important; }
-.maplibregl-ctrl button:hover { background-color: rgba(40, 45, 56, 0.95) !important; }
+.maplibregl-ctrl button:hover { background-color: var(--hud-hover-bg) !important; }
 .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
-.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon { filter: invert(1) brightness(1.6); }
+.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon { filter: var(--ctrl-icon-filter); }
 
 /* ---- Top status bar ---- */
 .hud-top {
@@ -75,10 +99,10 @@ body {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  background: rgba(26, 29, 36, 0.85);
+  background: var(--hud-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(241, 245, 249, 0.12);
+  border: 1px solid var(--hud-border-soft);
   border-radius: 6px;
 }
 
@@ -96,7 +120,7 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #94a3b8;
+  background: var(--muted);
   flex-shrink: 0;
   transition: background 0.2s ease;
 }
@@ -128,7 +152,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -153,11 +177,11 @@ body {
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #f1f5f9;
-  background: rgba(26, 29, 36, 0.85);
+  color: var(--ink);
+  background: var(--hud-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(241, 245, 249, 0.18);
+  border: 1px solid var(--hud-border);
   border-radius: 6px;
   padding: 10px 16px;
   cursor: pointer;
@@ -166,7 +190,7 @@ body {
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.hud-btn:hover { border-color: rgba(241, 245, 249, 0.4); }
+.hud-btn:hover { border-color: var(--ink); }
 
 .hud-btn[aria-pressed="true"] {
   background: #fb923c;
