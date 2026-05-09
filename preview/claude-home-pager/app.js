@@ -257,6 +257,12 @@
   // Native horizontal scroll-snap drives the swipe; this just keeps the
   // dot indicator in sync with the visible slide and persists the last
   // section between visits. Default landing page is Games.
+  //
+  // One-way loop: a hidden clone of the Tools slide is appended after
+  // Games so a forward swipe past Games lands on a Tools-looking slide,
+  // then we silently snap scrollLeft back to the real Tools without
+  // animation. Swiping backward from Tools does not loop (no clone in
+  // front of slide 0), per the requested behaviour.
   (function pager() {
     const pagerEl = document.getElementById('pager');
     const dotsEl = document.getElementById('dots');
@@ -266,6 +272,15 @@
     const dots = Array.from(dotsEl.querySelectorAll('.dot'));
     const pages = Array.from(pagerEl.querySelectorAll('.page'));
     const order = pages.map((p) => p.dataset.page);
+
+    // Append a non-interactive clone of slide 0 (Tools) at the end so
+    // the user can swipe past Games and "wrap around" to Tools.
+    const loopClone = pages[0].cloneNode(true);
+    loopClone.setAttribute('aria-hidden', 'true');
+    loopClone.setAttribute('inert', '');
+    loopClone.dataset.page = 'tools-loop';
+    pagerEl.appendChild(loopClone);
+    const allSlides = pages.concat([loopClone]);
 
     function indexOfPage(name) {
       const i = order.indexOf(name);
@@ -298,8 +313,9 @@
       setActive(initial);
     });
 
-    // Track the visible slide on scroll; pick whichever page's left
-    // edge is closest to the current scrollLeft.
+    // Track the visible slide on scroll; pick whichever slide's left
+    // edge is closest to the current scrollLeft. The trailing clone
+    // maps to "tools" for the indicator.
     let scrollRaf = 0;
     pagerEl.addEventListener('scroll', () => {
       if (scrollRaf) return;
@@ -307,13 +323,33 @@
         scrollRaf = 0;
         const x = pagerEl.scrollLeft;
         let best = 0, bestDist = Infinity;
-        for (let i = 0; i < pages.length; i++) {
-          const d = Math.abs(pages[i].offsetLeft - x);
+        for (let i = 0; i < allSlides.length; i++) {
+          const d = Math.abs(allSlides[i].offsetLeft - x);
           if (d < bestDist) { bestDist = d; best = i; }
         }
-        setActive(order[best]);
+        const name = (best === allSlides.length - 1) ? 'tools' : order[best];
+        setActive(name);
       });
     }, { passive: true });
+
+    // After scroll-snap settles, if we landed on the clone, jump
+    // instantly to the real Tools slide. Use scrollend where supported
+    // and fall back to a debounce on scroll otherwise.
+    function maybeWrap() {
+      const cloneAt = loopClone.offsetLeft;
+      if (Math.abs(pagerEl.scrollLeft - cloneAt) < 2) {
+        pagerEl.scrollLeft = pages[0].offsetLeft;
+      }
+    }
+    if ('onscrollend' in window) {
+      pagerEl.addEventListener('scrollend', maybeWrap);
+    } else {
+      let stopT = 0;
+      pagerEl.addEventListener('scroll', () => {
+        clearTimeout(stopT);
+        stopT = setTimeout(maybeWrap, 140);
+      }, { passive: true });
+    }
 
     dots.forEach((d) => {
       d.addEventListener('click', () => {
