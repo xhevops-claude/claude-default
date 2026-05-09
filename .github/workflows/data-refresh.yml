@@ -39,13 +39,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Bring gh-pages into the local git db so we can read the
+      # currently-published md5 sidecars with `git show` instead of
+      # HTTP. HTTP would race against Pages republishing the branch
+      # (~30–90s lag) and miss the file we just pushed last run.
+      - name: Fetch gh-pages branch
+        run: |
+          git fetch --depth=1 origin gh-pages 2>/dev/null \
+            && echo "gh-pages fetched" \
+            || echo "gh-pages does not exist yet (first run); proceeding."
+
       - name: Download OSM regional extracts
         id: fetch
         run: |
           set -euo pipefail
-          SITE="https://xhevops-claude.github.io/claude-default"
           mkdir -p cdn/maps/osm
           any_changed=0
+
+          # Read whatever is currently on gh-pages without network
+          # roundtrips — the branch state is the source of truth, the
+          # public URL is just a delayed reflection of it.
+          read_published_md5() {
+            local path="$1"
+            git show "origin/gh-pages:${path}" 2>/dev/null | awk '{print $1}' || true
+          }
 
           while IFS= read -r raw || [[ -n "$raw" ]]; do
             line="${raw%%#*}"
@@ -67,10 +84,9 @@ jobs:
               echo "::warning::No upstream MD5 for $slug; will re-download to be safe."
             fi
 
-            # Last-published checksum lives next to the PBF on gh-pages,
-            # served by Pages. 404 on first publish is fine — treat as
-            # "we've never seen this slug before" and proceed.
-            local_md5="$(curl -fsSL "${SITE}/cdn/maps/osm/${slug}.osm.pbf.md5" 2>/dev/null | awk '{print $1}' || true)"
+            # Last-published checksum sits on gh-pages; read directly
+            # from the branch (no HTTP propagation race).
+            local_md5="$(read_published_md5 "cdn/maps/osm/${slug}.osm.pbf.md5")"
 
             if [[ -n "$upstream_md5" && "$upstream_md5" == "$local_md5" ]]; then
               echo "Up to date (MD5 $upstream_md5). Skipping."
