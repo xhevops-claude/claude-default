@@ -47,7 +47,7 @@ jobs:
           publish_branch: gh-pages
           destination_dir: ${{ steps.target.outputs.dir }}
           keep_files: true
-          exclude_assets: '.github,node_modules,.gitignore,package.json,package-lock.json,.htmlhintrc,.stylelintrc.json,README.md'
+          exclude_assets: '.github,node_modules,data-sources,.gitignore,package.json,package-lock.json,.htmlhintrc,.stylelintrc.json,README.md'
           commit_message: 'deploy(${{ steps.target.outputs.label }}): ${{ github.event.head_commit.message || github.ref_name }}'
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'

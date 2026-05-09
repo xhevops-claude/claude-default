@@ -1,0 +1,184 @@
+name: Build map tiles
+
+# Builds vector tiles (PMTiles) from the OSM PBFs published by the
+# data-refresh workflow. Per-region skip-if-unchanged check against a
+# `<region>.pmtiles.source-md5` sidecar that records both the source
+# PBF MD5 and a BUILD_VERSION key. Either changing forces a rebuild;
+# both matching skips the region entirely. If no region needs work,
+# the publish step is also skipped — gh-pages stays untouched.
+#
+# Provisional builder: planetiler. The shape of this workflow doesn't
+# depend on the choice; swapping to tilemaker / OpenMapTiles tooling
+# is just a different "Build PMTiles" step.
+
+on:
+  workflow_run:
+    workflows: [Refresh data]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you running this manually?'
+        required: false
+        default: 'manual rebuild'
+      force:
+        description: 'Rebuild every region, ignoring sidecars (true/false)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+# Share the gh-pages-deploy concurrency group with the deploy and
+# data-refresh workflows so commits to gh-pages serialize cleanly.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+env:
+  PLANETILER_VERSION: '0.8.3'
+  # Bumping this invalidates every region's sidecar and forces a
+  # rebuild even when source PBFs are unchanged. Bump it whenever the
+  # build pipeline produces materially different output (planetiler
+  # upgrade, schema/style change, zoom range change, etc.).
+  BUILD_VERSION: planetiler-0.8.3+omt-default-v1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Skip on a failed upstream run (manual dispatch always runs).
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cache planetiler jar
+        uses: actions/cache@v4
+        with:
+          path: tools/planetiler.jar
+          key: planetiler-jar-${{ env.PLANETILER_VERSION }}
+
+      # Planetiler's OpenMapTiles schema downloads ~750 MB of
+      # supplementary data (Natural Earth, water polygons, land
+      # polygons) on first run; cache it so subsequent runs are fast.
+      - name: Cache planetiler supplementary data
+        uses: actions/cache@v4
+        with:
+          path: data/sources
+          key: planetiler-sources-${{ env.PLANETILER_VERSION }}
+
+      - name: Download planetiler if not cached
+        run: |
+          mkdir -p tools
+          if [[ ! -f tools/planetiler.jar ]]; then
+            curl -fsSL -o tools/planetiler.jar \
+              "https://github.com/onthegomap/planetiler/releases/download/v${PLANETILER_VERSION}/planetiler.jar"
+          fi
+          ls -lh tools/planetiler.jar
+
+      - name: Build PMTiles per region
+        id: build
+        env:
+          FORCE: ${{ github.event.inputs.force }}
+        run: |
+          set -euo pipefail
+          SITE="https://xhevops-claude.github.io/claude-default"
+          mkdir -p cdn/maps/pmtiles work/pbf
+          any_built=0
+
+          while IFS= read -r raw || [[ -n "$raw" ]]; do
+            line="${raw%%#*}"
+            line="$(echo "$line" | xargs || true)"
+            [[ -z "$line" ]] && continue
+            slug="$(echo "$line" | awk '{print $1}')"
+            [[ -z "$slug" ]] && continue
+
+            echo "::group::$slug"
+
+            # Source PBF MD5 — published next to the PBF by data-refresh.
+            src_md5="$(curl -fsSL "${SITE}/cdn/maps/osm/${slug}.osm.pbf.md5" 2>/dev/null | awk '{print $1}' || true)"
+            if [[ -z "$src_md5" ]]; then
+              echo "::warning::No source MD5 for $slug yet — data-refresh hasn't published it. Skipping."
+              echo "::endgroup::"
+              continue
+            fi
+
+            # The "did anything that affects the build change?" key:
+            # source PBF MD5 plus our build-version constant. Either
+            # changing forces a rebuild; both matching skips entirely.
+            want="${src_md5} ${BUILD_VERSION}"
+            have="$(curl -fsSL "${SITE}/cdn/maps/pmtiles/${slug}.pmtiles.source-md5" 2>/dev/null || true)"
+
+            if [[ "${FORCE:-false}" != "true" && "$want" == "$have" ]]; then
+              echo "Up to date (source $src_md5, build $BUILD_VERSION). Skipping."
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Pull the PBF straight from the live site so we use the
+            # same artefact data-refresh just published, not a stale
+            # checkout. Verify against the published MD5.
+            pbf="work/pbf/${slug}.osm.pbf"
+            echo "Fetching ${SITE}/cdn/maps/osm/${slug}.osm.pbf"
+            curl -fsSL --retry 3 --retry-delay 5 -o "$pbf" \
+              "${SITE}/cdn/maps/osm/${slug}.osm.pbf"
+            actual="$(md5sum "$pbf" | awk '{print $1}')"
+            if [[ "$actual" != "$src_md5" ]]; then
+              echo "::error::PBF MD5 mismatch for $slug (got $actual, expected $src_md5)"
+              exit 1
+            fi
+
+            echo "Building tiles with planetiler..."
+            java -Xmx2g -jar tools/planetiler.jar \
+              --osm_path="$pbf" \
+              --output="cdn/maps/pmtiles/${slug}.pmtiles" \
+              --download \
+              --force
+
+            # Sidecar so the next run can compare and skip.
+            echo "$want" > "cdn/maps/pmtiles/${slug}.pmtiles.source-md5"
+
+            ls -lh "cdn/maps/pmtiles/${slug}.pmtiles"
+            any_built=1
+
+            # Free disk for the next region in big multi-country runs.
+            rm -f "$pbf"
+
+            echo "::endgroup::"
+          done < data-sources/maps-osm.txt
+
+          echo "any_built=$any_built" >> "$GITHUB_OUTPUT"
+          if [[ "$any_built" == "0" ]]; then
+            echo "::notice title=No rebuild needed::All tiles already match the current source + build version."
+          fi
+
+      - name: Publish /cdn/maps/pmtiles/ to gh-pages
+        if: steps.build.outputs.any_built == '1'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./cdn
+          publish_branch: gh-pages
+          destination_dir: cdn
+          keep_files: true
+          commit_message: 'tiles: rebuild ${{ github.event.inputs.reason || ''scheduled'' }}'
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Print served URLs
+        if: steps.build.outputs.any_built == '1'
+        run: |
+          echo "::notice title=Tiles published::https://xhevops-claude.github.io/claude-default/cdn/maps/pmtiles/"
+          for f in cdn/maps/pmtiles/*.pmtiles; do
+            [[ -e "$f" ]] || continue
+            name="$(basename "$f")"
+            echo "  https://xhevops-claude.github.io/claude-default/cdn/maps/pmtiles/$name"
+          done
