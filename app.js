@@ -26,7 +26,31 @@
     },
   ];
 
+  const apps = [
+    {
+      slug: 'locator',
+      name: 'Locator',
+      meta: 'Map',
+      tagline: 'See where you are, in real time.',
+      icon: '📍',
+      url: 'apps/locator/',
+    },
+    {
+      slug: 'directions',
+      name: 'Directions',
+      meta: 'Coming soon',
+      tagline: 'Plot a route between two points.',
+      icon: '🧭',
+      comingSoon: true,
+    },
+  ];
+
+  // Same morph + deep-link plumbing serves both grids; we look up by
+  // url across the union so games/<slug> and apps/<slug> both work.
+  const tiles = games.concat(apps);
+
   const grid = document.getElementById('grid');
+  const appsGrid = document.getElementById('apps-grid');
   const overlay = document.getElementById('game-overlay');
   const wrap = document.getElementById('frame-wrap');
   const frame = document.getElementById('game-frame');
@@ -35,6 +59,7 @@
   const skinTitle = document.getElementById('skin-title');
   const skinTagline = document.getElementById('skin-tagline');
   const pageMeta = document.getElementById('page-meta');
+  const appsMeta = document.getElementById('apps-meta');
   const footMeta = document.getElementById('foot-meta');
 
   // Match the CSS transitions on .frame-wrap.
@@ -64,28 +89,40 @@
     `;
   }
 
-  function render() {
-    grid.innerHTML = games.map((g) => {
-      if (g.comingSoon) {
-        return `
-          <li class="card locked" data-tile="${escapeHTML(g.slug)}" data-locked="1">
-            ${cardInner(g)}
-          </li>
-        `;
-      }
+  function cardHtml(g) {
+    if (g.comingSoon) {
       return `
-        <li class="card" data-tile="${escapeHTML(g.slug)}" data-url="${escapeHTML(g.url)}">
-          <a href="${escapeHTML(g.url)}">
-            ${cardInner(g)}
-          </a>
+        <li class="card locked" data-tile="${escapeHTML(g.slug)}" data-locked="1">
+          ${cardInner(g)}
         </li>
       `;
-    }).join('');
+    }
+    return `
+      <li class="card" data-tile="${escapeHTML(g.slug)}" data-url="${escapeHTML(g.url)}">
+        <a href="${escapeHTML(g.url)}">
+          ${cardInner(g)}
+        </a>
+      </li>
+    `;
+  }
 
-    const total = games.length;
-    const playable = games.filter((g) => !g.comingSoon).length;
-    if (pageMeta) pageMeta.textContent = `${playable} / ${total}`;
-    if (footMeta) footMeta.textContent = `${total} games`;
+  function renderTiles(gridEl, items, metaEl) {
+    if (!gridEl) return;
+    gridEl.innerHTML = items.map(cardHtml).join('');
+    if (metaEl) {
+      const total = items.length;
+      const ready = items.filter((g) => !g.comingSoon).length;
+      metaEl.textContent = `${ready} / ${total}`;
+    }
+  }
+
+  function render() {
+    renderTiles(grid, games, pageMeta);
+    renderTiles(appsGrid, apps, appsMeta);
+    if (footMeta) {
+      const totalReady = tiles.filter((t) => !t.comingSoon).length;
+      footMeta.textContent = `${totalReady} apps & games`;
+    }
   }
 
   function rectFromCard(card) {
@@ -212,7 +249,7 @@
     lastGame = null;
   }
 
-  grid.addEventListener('click', (e) => {
+  function onGridClick(e) {
     const card = e.target.closest('.card');
     if (!card) return;
 
@@ -226,13 +263,16 @@
 
     const url = card.dataset.url;
     if (!url) return;
-    const game = games.find((g) => g.url === url);
-    if (!game) return;
+    const tile = tiles.find((t) => t.url === url);
+    if (!tile) return;
     e.preventDefault();
     card.classList.add('tapped');
     setTimeout(() => { card.classList.remove('tapped'); }, 240);
-    setTimeout(() => { openGame(card, game); }, 90);
-  });
+    setTimeout(() => { openGame(card, tile); }, 90);
+  }
+
+  if (grid) grid.addEventListener('click', onGridClick);
+  if (appsGrid) appsGrid.addEventListener('click', onGridClick);
 
   window.addEventListener('popstate', () => {
     if (overlay.dataset.state === 'open') {
@@ -486,14 +526,15 @@
     paint();
   })();
 
-  // Deep link: opening /#games/<slug>/ goes straight into the game.
+  // Deep link: opening /#games/<slug>/ or /#apps/<slug>/ goes
+  // straight into the tile.
   (function deepLink() {
     const hash = decodeURIComponent(location.hash.slice(1));
     if (!hash) return;
-    const game = games.find((g) => g.url === hash && !g.comingSoon);
-    if (game) {
+    const tile = tiles.find((t) => t.url === hash && !t.comingSoon);
+    if (tile) {
       history.replaceState(null, '', location.pathname + location.search);
-      openGame(null, game);
+      openGame(null, tile);
     }
   })();
 })();

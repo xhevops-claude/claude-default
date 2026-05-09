@@ -320,6 +320,8 @@ body {
 .card[data-tile="snake"]         { --g1: var(--tile-snake); }
 .card[data-tile="tic-tac-toe"]   { --g1: var(--tile-tic-tac-toe); }
 .card[data-tile="memory"]        { --g1: var(--tile-memory); }
+.card[data-tile="locator"]       { --g1: var(--tile-locator); }
+.card[data-tile="directions"]    { --g1: var(--tile-directions); }
 
 .card-icon {
   font-size: clamp(40px, 11vw, 72px);
