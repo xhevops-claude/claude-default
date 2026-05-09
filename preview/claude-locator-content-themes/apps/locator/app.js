@@ -257,8 +257,6 @@
             'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name'], ''],
             'text-font': TEXT_FONT,
             'text-size': ['interpolate', ['linear'], ['zoom'], 8, 11, 14, 14],
-            'text-transform': 'none',
-            'text-font-style': 'italic',
           },
           paint: { 'text-color': C.waterLabel, 'text-halo-color': C.bg, 'text-halo-width': 1.5 } },
 
