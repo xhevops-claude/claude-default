@@ -78,6 +78,12 @@
     <div class="hud-bottom">
       <button id="retry-btn"  type="button" class="hud-btn primary" hidden>Locate me</button>
       <button id="follow-btn" type="button" class="hud-btn" aria-pressed="true">Follow</button>
+      <div class="layers-popover-wrap">
+        <button id="layers-btn" type="button" class="hud-btn" aria-expanded="false" aria-controls="layers-popover">Layers</button>
+        <div id="layers-popover" class="layers-popover" role="dialog" aria-label="Map layers" hidden>
+          <ul id="layers-list" class="layers-list"></ul>
+        </div>
+      </div>
       <button id="theme-btn"  type="button" class="hud-btn" aria-label="Toggle light/dark theme">Light</button>
       <button id="quit-btn"   type="button" class="hud-btn ghost">Quit</button>
     </div>
