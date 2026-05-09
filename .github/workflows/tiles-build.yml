@@ -157,7 +157,7 @@ jobs:
 
             echo "Building tiles with planetiler..."
             java -Xmx2g -jar tools/planetiler.jar \
-              --osm_path="$pbf" \
+              --osm-path="$pbf" \
               --output="cdn/maps/pmtiles/${slug}.pmtiles" \
               --download \
               --force
