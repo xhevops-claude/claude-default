@@ -7,121 +7,179 @@
   const retryBtn = document.getElementById('retry-btn');
   const quitBtn = document.getElementById('quit-btn');
 
-  // Self-hosted vector tiles from our daily Geofabrik → planetiler
-  // pipeline; same origin as this iframe, so no CORS dance. The
-  // file lives at the production site's /cdn/ on gh-pages.
+  // Self-hosted vector tiles from the daily Geofabrik → planetiler
+  // pipeline. Same origin as this iframe, so no CORS dance. We hardcode
+  // the production gh-pages URL so production, preview deploys, and
+  // embedded iframes all read from the same place.
   const PMTILES_URL =
     'https://xhevops-claude.github.io/claude-default/cdn/maps/pmtiles/north-macedonia.pmtiles';
 
-  // Defaults — North Macedonia centred until we get a first fix.
-  const NMK_CENTER = [41.6086, 21.7453];
-  const NMK_ZOOM = 8;
+  // North Macedonia centred until we get a first fix.
+  // (lng, lat) for MapLibre — note the order flip vs Leaflet.
+  const NMK_CENTER = [21.7453, 41.6086];
+  const NMK_ZOOM = 7;
   const FIX_ZOOM = 15;
 
-  const map = L.map('map', { zoomControl: false }).setView(NMK_CENTER, NMK_ZOOM);
-  L.control.zoom({ position: 'topright' }).addTo(map);
+  // ---- pmtiles plugin → MapLibre custom protocol ----
+  // Registers the `pmtiles://...` URL scheme so the source URL below
+  // can resolve into byte-range reads against the PMTiles file.
+  const pmtilesProtocol = new pmtiles.Protocol();
+  maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
 
-  // Dark paint ruleset for planetiler's default OpenMapTiles schema.
-  // Each rule binds a vector-tile data layer (and optional filter) to
-  // a Leaflet-compatible symbolizer; protomaps-leaflet does the
-  // canvas drawing per tile via byte-range reads from the PMTiles.
-  const PR = window.protomapsL;
+  // Dark style for planetiler's default OpenMapTiles schema. Plain
+  // MapLibre style spec — every layer points at a known OMT
+  // source-layer with a small filter expression where needed.
   const COLOR = {
     bg: '#1a1d24',
     land: '#22262e',
     landuse: '#252a33',
-    water: '#0f1419',
     park: '#1f2a23',
+    water: '#0f1419',
     road: '#3d4148',
-    roadHi: '#5a6068',
     roadMid: '#4a4f57',
+    roadHi: '#5a6068',
+    roadTop: '#6b7178',
     rail: '#3a3f45',
     boundary: '#3a4048',
     building: '#262a32',
     label: '#cbd5e1',
     labelDim: '#94a3b8',
   };
-  const paintRules = [
-    { dataLayer: 'landcover', symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.land }) },
-    { dataLayer: 'park',      symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.park }) },
-    { dataLayer: 'landuse',   symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.landuse }) },
-    { dataLayer: 'water',     symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.water }) },
-    { dataLayer: 'waterway',  symbolizer: new PR.LineSymbolizer({ color: COLOR.water, width: 1 }) },
-
-    // Roads — minor classes first, then primary/motorway on top so
-    // they read as a hierarchy.
-    { dataLayer: 'transportation', filter: (z, f) => ['service', 'minor', 'track'].includes(f.props.class), symbolizer: new PR.LineSymbolizer({ color: COLOR.road, width: 0.6 }) },
-    { dataLayer: 'transportation', filter: (z, f) => ['secondary', 'tertiary'].includes(f.props.class), symbolizer: new PR.LineSymbolizer({ color: COLOR.roadMid, width: 1 }) },
-    { dataLayer: 'transportation', filter: (z, f) => ['primary', 'trunk'].includes(f.props.class), symbolizer: new PR.LineSymbolizer({ color: COLOR.roadHi, width: 1.4 }) },
-    { dataLayer: 'transportation', filter: (z, f) => f.props.class === 'motorway', symbolizer: new PR.LineSymbolizer({ color: COLOR.roadHi, width: 1.8 }) },
-    { dataLayer: 'transportation', filter: (z, f) => f.props.class === 'rail', symbolizer: new PR.LineSymbolizer({ color: COLOR.rail, width: 0.6 }) },
-
-    { dataLayer: 'boundary', filter: (z, f) => (f.props.admin_level || 99) <= 2, symbolizer: new PR.LineSymbolizer({ color: COLOR.boundary, width: 0.8 }) },
-
-    { dataLayer: 'building', minzoom: 14, symbolizer: new PR.PolygonSymbolizer({ fill: COLOR.building }) },
-  ];
-  const labelRules = [
-    {
-      dataLayer: 'place',
-      filter: (z, f) => ['country', 'state', 'city'].includes(f.props.class),
-      symbolizer: new PR.TextSymbolizer({
-        properties: ['name:en', 'name'],
-        font: '600 12px ui-sans-serif, system-ui, sans-serif',
-        fill: COLOR.label,
-        stroke: COLOR.bg,
-        width: 3,
-      }),
+  const TEXT_FONT = ['Noto Sans Regular'];
+  const STYLE = {
+    version: 8,
+    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+    sources: {
+      omt: { type: 'vector', url: 'pmtiles://' + PMTILES_URL },
     },
-    {
-      dataLayer: 'place',
-      filter: (z, f) => ['town', 'village'].includes(f.props.class),
-      minzoom: 9,
-      symbolizer: new PR.TextSymbolizer({
-        properties: ['name:en', 'name'],
-        font: '500 11px ui-sans-serif, system-ui, sans-serif',
-        fill: COLOR.labelDim,
-        stroke: COLOR.bg,
-        width: 2,
-      }),
-    },
-  ];
+    layers: [
+      { id: 'bg', type: 'background', paint: { 'background-color': COLOR.bg } },
+      { id: 'landcover', type: 'fill', source: 'omt', 'source-layer': 'landcover', paint: { 'fill-color': COLOR.land } },
+      { id: 'landuse',   type: 'fill', source: 'omt', 'source-layer': 'landuse',   paint: { 'fill-color': COLOR.landuse } },
+      { id: 'park',      type: 'fill', source: 'omt', 'source-layer': 'park',      paint: { 'fill-color': COLOR.park } },
+      { id: 'water',     type: 'fill', source: 'omt', 'source-layer': 'water',     paint: { 'fill-color': COLOR.water } },
+      { id: 'waterway',  type: 'line', source: 'omt', 'source-layer': 'waterway',  paint: { 'line-color': COLOR.water, 'line-width': 1 } },
 
-  PR.leafletLayer({
-    url: PMTILES_URL,
-    paintRules,
-    labelRules,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · tiles built with <a href="https://github.com/onthegomap/planetiler">planetiler</a>',
-  }).addTo(map);
+      { id: 'road-rail',     type: 'line', source: 'omt', 'source-layer': 'transportation',
+        filter: ['==', ['get', 'class'], 'rail'],
+        paint: { 'line-color': COLOR.rail, 'line-width': 0.6 } },
+      { id: 'road-minor',    type: 'line', source: 'omt', 'source-layer': 'transportation',
+        filter: ['in', ['get', 'class'], ['literal', ['service', 'minor', 'track', 'path']]],
+        paint: { 'line-color': COLOR.road, 'line-width': 0.6 } },
+      { id: 'road-secondary', type: 'line', source: 'omt', 'source-layer': 'transportation',
+        filter: ['in', ['get', 'class'], ['literal', ['secondary', 'tertiary']]],
+        paint: { 'line-color': COLOR.roadMid, 'line-width': 1 } },
+      { id: 'road-primary',  type: 'line', source: 'omt', 'source-layer': 'transportation',
+        filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk']]],
+        paint: { 'line-color': COLOR.roadHi, 'line-width': 1.4 } },
+      { id: 'road-motorway', type: 'line', source: 'omt', 'source-layer': 'transportation',
+        filter: ['==', ['get', 'class'], 'motorway'],
+        paint: { 'line-color': COLOR.roadTop, 'line-width': 1.8 } },
 
-  const pinIcon = L.divIcon({
-    className: 'me-pin-icon',
-    html: '<div class="me-pin"><div class="me-pin-ring"></div><div class="me-pin-dot"></div></div>',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+      { id: 'building', type: 'fill', source: 'omt', 'source-layer': 'building',
+        minzoom: 14, paint: { 'fill-color': COLOR.building } },
+
+      { id: 'boundary', type: 'line', source: 'omt', 'source-layer': 'boundary',
+        filter: ['<=', ['coalesce', ['get', 'admin_level'], 99], 4],
+        paint: { 'line-color': COLOR.boundary, 'line-width': 0.8, 'line-dasharray': [2, 2] } },
+
+      { id: 'place-city', type: 'symbol', source: 'omt', 'source-layer': 'place',
+        filter: ['in', ['get', 'class'], ['literal', ['country', 'state', 'city']]],
+        layout: {
+          'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+          'text-font': TEXT_FONT,
+          'text-size': 13,
+          'text-letter-spacing': 0.05,
+        },
+        paint: {
+          'text-color': COLOR.label,
+          'text-halo-color': COLOR.bg,
+          'text-halo-width': 1.5,
+        } },
+      { id: 'place-town', type: 'symbol', source: 'omt', 'source-layer': 'place',
+        filter: ['in', ['get', 'class'], ['literal', ['town', 'village']]],
+        minzoom: 9,
+        layout: {
+          'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+          'text-font': TEXT_FONT,
+          'text-size': 11,
+        },
+        paint: {
+          'text-color': COLOR.labelDim,
+          'text-halo-color': COLOR.bg,
+          'text-halo-width': 1.5,
+        } },
+    ],
+  };
+
+  // ---- Map ----
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: STYLE,
+    center: NMK_CENTER,
+    zoom: NMK_ZOOM,
+    attributionControl: false,
   });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right');
+  map.addControl(new maplibregl.AttributionControl({
+    compact: true,
+    customAttribution:
+      '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · tiles built with <a href="https://github.com/onthegomap/planetiler">planetiler</a>',
+  }), 'bottom-right');
 
-  let pinMarker = null;
-  let accCircle = null;
-  let watchId = null;
-  let firstFix = true;
-  let follow = true;
-  let lastFixTs = 0;
-  let suspended = false;
+  // ---- User position pin (HTML element marker) ----
+  const pinEl = document.createElement('div');
+  pinEl.className = 'me-pin';
+  pinEl.innerHTML = '<div class="me-pin-ring"></div><div class="me-pin-dot"></div>';
+  const pinMarker = new maplibregl.Marker({ element: pinEl, anchor: 'center' });
+
+  // ---- Accuracy circle as a GeoJSON polygon source ----
+  // MapLibre doesn't have a built-in "circle in metres" primitive, so
+  // we bake the polygon ourselves and update the source on each fix.
+  function circlePolygon(lng, lat, radiusMeters, points = 64) {
+    const dLat = radiusMeters / 111320;
+    const dLng = radiusMeters / (111320 * Math.cos((lat * Math.PI) / 180));
+    const ring = [];
+    for (let i = 0; i < points; i++) {
+      const t = (i / points) * 2 * Math.PI;
+      ring.push([lng + dLng * Math.cos(t), lat + dLat * Math.sin(t)]);
+    }
+    ring.push(ring[0]);
+    return {
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [ring] },
+      properties: {},
+    };
+  }
+  const EMPTY_FC = { type: 'FeatureCollection', features: [] };
+
+  let mapReady = false;
+  let pendingFix = null;
+  map.on('load', () => {
+    map.addSource('me-accuracy', { type: 'geojson', data: EMPTY_FC });
+    map.addLayer({
+      id: 'me-accuracy-fill', type: 'fill', source: 'me-accuracy',
+      paint: { 'fill-color': '#fb923c', 'fill-opacity': 0.08 },
+    });
+    map.addLayer({
+      id: 'me-accuracy-line', type: 'line', source: 'me-accuracy',
+      paint: { 'line-color': '#fb923c', 'line-width': 1.5, 'line-opacity': 0.5 },
+    });
+    mapReady = true;
+    if (pendingFix) { applyFix(pendingFix); pendingFix = null; }
+  });
 
   // ---- Helpers ----
   function setStatus(state, text) {
     statusEl.dataset.state = state;
     statusText.textContent = text;
-    // Show the Locate button only when we don't have an active watch.
     retryBtn.hidden = (state === 'active' || state === 'locating');
   }
-
   function fmtAccuracy(m) {
     if (!isFinite(m)) return '—';
     if (m < 1000) return `±${Math.round(m)}m`;
     return `±${(m / 1000).toFixed(1)}km`;
   }
-
   function fmtTime(ts) {
     const d = Math.max(0, Date.now() - ts);
     if (d < 1500) return 'now';
@@ -129,15 +187,12 @@
     if (d < 3600000) return `${Math.floor(d / 60000)}m ago`;
     return `${Math.floor(d / 3600000)}h ago`;
   }
-
   function refreshTime() {
     if (lastFixTs) metaTime.textContent = fmtTime(lastFixTs);
   }
 
-  // Wrap programmatic moves so the dragstart handler can tell user
-  // pans apart from our auto-recentre. Using map.once('moveend') flips
-  // the flag back exactly once, so concurrent fly/pan calls don't get
-  // tangled.
+  // Wrap programmatic camera moves so dragstart can tell user pans
+  // apart from our auto-recentre. flag flips back on the next moveend.
   let movingUs = false;
   function moveProgrammatically(fn) {
     movingUs = true;
@@ -146,44 +201,33 @@
   }
 
   // ---- Geolocation handlers ----
-  function onFix(pos) {
+  let firstFix = true;
+  let follow = true;
+  let lastFixTs = 0;
+  let watchId = null;
+  let suspended = false;
+
+  function applyFix(pos) {
     const { latitude, longitude, accuracy } = pos.coords;
-    const ll = [latitude, longitude];
-    lastFixTs = pos.timestamp || Date.now();
-
-    if (!pinMarker) {
-      pinMarker = L.marker(ll, { icon: pinIcon, keyboard: false, interactive: false }).addTo(map);
-    } else {
-      pinMarker.setLatLng(ll);
-    }
-
-    if (!accCircle) {
-      accCircle = L.circle(ll, {
-        radius: accuracy,
-        color: '#fb923c',
-        weight: 1.5,
-        opacity: 0.5,
-        fillColor: '#fb923c',
-        fillOpacity: 0.08,
-        interactive: false,
-      }).addTo(map);
-    } else {
-      accCircle.setLatLng(ll);
-      accCircle.setRadius(accuracy);
-    }
+    pinMarker.setLngLat([longitude, latitude]).addTo(map);
+    map.getSource('me-accuracy').setData(circlePolygon(longitude, latitude, accuracy));
 
     if (firstFix) {
-      moveProgrammatically(() => map.flyTo(ll, FIX_ZOOM, { duration: 0.8 }));
+      moveProgrammatically(() => map.flyTo({ center: [longitude, latitude], zoom: FIX_ZOOM, duration: 800 }));
       firstFix = false;
     } else if (follow) {
-      moveProgrammatically(() => map.panTo(ll, { animate: true, duration: 0.4 }));
+      moveProgrammatically(() => map.panTo([longitude, latitude], { duration: 400 }));
     }
-
     setStatus('active', 'Live');
     metaAcc.textContent = fmtAccuracy(accuracy);
     refreshTime();
   }
 
+  function onFix(pos) {
+    lastFixTs = pos.timestamp || Date.now();
+    if (!mapReady) { pendingFix = pos; return; }
+    applyFix(pos);
+  }
   function onError(err) {
     let msg = 'Location unavailable';
     if (err && err.code === 1) msg = 'Location denied';
@@ -192,10 +236,7 @@
   }
 
   function startWatch() {
-    if (!navigator.geolocation) {
-      setStatus('error', 'Not supported');
-      return;
-    }
+    if (!navigator.geolocation) { setStatus('error', 'Not supported'); return; }
     if (watchId !== null) return;
     setStatus('locating', 'Locating…');
     watchId = navigator.geolocation.watchPosition(onFix, onError, {
@@ -204,7 +245,6 @@
       timeout: 20000,
     });
   }
-
   function stopWatch() {
     if (watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
@@ -212,8 +252,7 @@
     }
   }
 
-  // ---- Visibility: pause the watch when the iframe is hidden so we
-  // aren't draining battery in the background. Resume on return. ----
+  // Pause the watch when the iframe is hidden; resume on return.
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       suspended = true;
@@ -228,25 +267,18 @@
   function setFollow(on) {
     follow = on;
     followBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    if (on && pinMarker) {
-      moveProgrammatically(() => map.panTo(pinMarker.getLatLng(), { animate: true, duration: 0.3 }));
+    if (on && pinMarker.getLngLat()) {
+      moveProgrammatically(() => map.panTo(pinMarker.getLngLat(), { duration: 300 }));
     }
   }
-
   followBtn.addEventListener('click', () => setFollow(!follow));
 
-  // User pan turns Follow off so the map doesn't snap back; user
-  // zoom is left alone so they can scale freely while still
-  // following. Programmatic moves set movingUs = true to opt out.
-  map.on('dragstart', () => {
-    if (!movingUs && follow) setFollow(false);
-  });
+  // User-initiated drag turns Follow off; programmatic moves opt out
+  // via movingUs.
+  map.on('dragstart', () => { if (!movingUs && follow) setFollow(false); });
 
   // ---- Buttons ----
-  retryBtn.addEventListener('click', () => {
-    stopWatch();
-    startWatch();
-  });
+  retryBtn.addEventListener('click', () => { stopWatch(); startWatch(); });
 
   function quit() {
     stopWatch();
@@ -256,15 +288,13 @@
       location.href = '../../';
     }
   }
-
   quitBtn.addEventListener('click', quit);
 
   // ---- Boot ----
   setInterval(refreshTime, 1000);
   startWatch();
 
-  // Hide the inline loading screen once Leaflet has painted at least
-  // one tile, with a 1s minimum so the splash isn't a flash.
+  // Hide the inline splash with a 1s minimum so it's not a flash.
   (function hideLoading() {
     const loading = document.getElementById('app-loading');
     if (!loading) return;
