@@ -318,6 +318,56 @@
       '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · tiles built with <a href="https://github.com/onthegomap/planetiler">planetiler</a>',
   }), 'bottom-right');
 
+  // ---- Map error surfacing + tile watchdog ----
+  // Some platforms (notably iOS Safari in private mode) silently
+  // reject the PMTiles byte-range fetch or Web Worker init —
+  // MapLibre logs to console but the canvas just stays blank. We
+  // catch errors directly and bubble them to the status pill so the
+  // user has actionable info without devtools.
+  let tilesLoaded = 0;
+  let mapErrorMessage = '';
+  map.on('error', (e) => {
+    const msg = (e && e.error && e.error.message) || 'Map error';
+    // Surface only the first error; flooding the status pill is noise.
+    if (!mapErrorMessage) {
+      mapErrorMessage = msg.slice(0, 60);
+      // Don't override an active fix.
+      if (statusEl.dataset.state !== 'active') {
+        setStatus('error', mapErrorMessage);
+      }
+    }
+    if (typeof console !== 'undefined' && console.error) console.error('Map error:', e);
+  });
+  map.on('data', (e) => {
+    if (e.sourceId === 'omt' && e.dataType === 'source' && e.tile) tilesLoaded++;
+  });
+
+  // Quick HEAD probe of the PMTiles URL — if the server / network
+  // refuses, we know immediately rather than staring at a blank
+  // canvas. Doesn't replace MapLibre's own fetch; it's just early
+  // diagnostic.
+  fetch(PMTILES_URL, { method: 'HEAD' })
+    .then((r) => {
+      if (!r.ok) {
+        const m = `PMTiles ${r.status}`;
+        if (!mapErrorMessage) { mapErrorMessage = m; setStatus('error', m); }
+      }
+    })
+    .catch((err) => {
+      const m = 'PMTiles unreachable';
+      if (!mapErrorMessage) { mapErrorMessage = m; setStatus('error', m); }
+      if (typeof console !== 'undefined' && console.error) console.error('PMTiles HEAD failed:', err);
+    });
+
+  // If after 10s no tiles have arrived AND no other error has been
+  // surfaced, emit one. Helps when MapLibre/pmtiles fail silently
+  // (Web Worker blocked, range request rejected, etc.).
+  setTimeout(() => {
+    if (tilesLoaded === 0 && !mapErrorMessage && statusEl.dataset.state !== 'active') {
+      setStatus('error', 'No tiles loaded');
+    }
+  }, 10000);
+
   // ---- User pin + accuracy circle ----
   const pinEl = document.createElement('div');
   pinEl.className = 'me-pin';
