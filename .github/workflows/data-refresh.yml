@@ -40,37 +40,75 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download OSM regional extracts
+        id: fetch
         run: |
           set -euo pipefail
+          SITE="https://xhevops-claude.github.io/claude-default"
           mkdir -p cdn/maps/osm
-          changed=0
+          any_changed=0
+
           while IFS= read -r raw || [[ -n "$raw" ]]; do
             line="${raw%%#*}"
             line="$(echo "$line" | xargs || true)"
             [[ -z "$line" ]] && continue
             slug="$(echo "$line" | awk '{print $1}')"
             url="$(echo "$line" | awk '{print $2}')"
-            [[ -z "$slug" || -z "$url" ]] && {
+            if [[ -z "$slug" || -z "$url" ]]; then
               echo "::warning::Skipping malformed line: $raw"
               continue
-            }
-            target="cdn/maps/osm/${slug}.osm.pbf"
-            tmp="${target}.new"
+            fi
+
             echo "::group::$slug"
-            echo "Source: $url"
-            curl -fsSL --retry 3 --retry-delay 5 -o "$tmp" "$url"
-            mv "$tmp" "$target"
+
+            # Upstream checksum — Geofabrik publishes <pbf>.md5 next to
+            # every extract. Tiny file, cheap to fetch, definitive.
+            upstream_md5="$(curl -fsSL "${url}.md5" 2>/dev/null | awk '{print $1}' || true)"
+            if [[ -z "$upstream_md5" ]]; then
+              echo "::warning::No upstream MD5 for $slug; will re-download to be safe."
+            fi
+
+            # Last-published checksum lives next to the PBF on gh-pages,
+            # served by Pages. 404 on first publish is fine — treat as
+            # "we've never seen this slug before" and proceed.
+            local_md5="$(curl -fsSL "${SITE}/cdn/maps/osm/${slug}.osm.pbf.md5" 2>/dev/null | awk '{print $1}' || true)"
+
+            if [[ -n "$upstream_md5" && "$upstream_md5" == "$local_md5" ]]; then
+              echo "Up to date (MD5 $upstream_md5). Skipping."
+              echo "::endgroup::"
+              continue
+            fi
+
+            echo "Fetching $url"
+            target="cdn/maps/osm/${slug}.osm.pbf"
+            curl -fsSL --retry 3 --retry-delay 5 -o "$target" "$url"
+
+            # Verify what we got matches what Geofabrik published, so a
+            # mid-flight rebuild on their side can't quietly corrupt us.
+            if [[ -n "$upstream_md5" ]]; then
+              actual="$(md5sum "$target" | awk '{print $1}')"
+              if [[ "$actual" != "$upstream_md5" ]]; then
+                echo "::error::MD5 mismatch for $slug: expected $upstream_md5, got $actual"
+                exit 1
+              fi
+            fi
+
+            # Sidecar in the same `md5sum`-compatible format the
+            # comparison reads back.
+            checksum="${upstream_md5:-$(md5sum "$target" | awk '{print $1}')}"
+            echo "${checksum}  $(basename "$target")" > "${target}.md5"
+
             ls -lh "$target"
-            changed=1
+            any_changed=1
             echo "::endgroup::"
           done < data-sources/maps-osm.txt
 
-          if [[ "$changed" == "0" ]]; then
-            echo "No regions configured; nothing to publish."
+          echo "any_changed=$any_changed" >> "$GITHUB_OUTPUT"
+          if [[ "$any_changed" == "0" ]]; then
+            echo "::notice title=No changes::All regions already up to date upstream."
           fi
 
       - name: Publish /cdn/ to gh-pages
-        if: hashFiles('cdn/**/*') != ''
+        if: steps.fetch.outputs.any_changed == '1'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -78,11 +116,12 @@ jobs:
           publish_branch: gh-pages
           destination_dir: cdn
           keep_files: true
-          commit_message: 'data: refresh ${{ github.event.inputs.reason || 'scheduled' }}'
+          commit_message: 'data: refresh ${{ github.event.inputs.reason || ''scheduled'' }}'
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
 
       - name: Print served URLs
+        if: steps.fetch.outputs.any_changed == '1'
         run: |
           echo "::notice title=Data published::https://xhevops-claude.github.io/claude-default/cdn/maps/osm/"
           if [[ -d cdn/maps/osm ]]; then
