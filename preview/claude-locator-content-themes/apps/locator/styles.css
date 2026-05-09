@@ -326,6 +326,11 @@ body {
   flex-direction: column;
 }
 
+/* `display: flex` above clobbers the [hidden] attribute's default
+   display: none — without this rule the sheet renders on page load
+   and the X button has no visible effect. */
+.debug-sheet[hidden] { display: none; }
+
 .debug-head {
   flex-shrink: 0;
   display: flex;
