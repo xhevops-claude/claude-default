@@ -56,12 +56,45 @@ jobs:
           mkdir -p cdn/maps/osm
           any_changed=0
 
+          # Browser-ish UA so Geofabrik's CDN doesn't filter us as a bot.
+          UA="Mozilla/5.0 (compatible; claude-default-data-refresh/1.0; +https://github.com/${{ github.repository }})"
+          CURL=(curl -fsSL --retry 3 --retry-delay 5 -A "$UA")
+
           # Read whatever is currently on gh-pages without network
           # roundtrips — the branch state is the source of truth, the
           # public URL is just a delayed reflection of it.
           read_published_md5() {
             local path="$1"
             git show "origin/gh-pages:${path}" 2>/dev/null | awk '{print $1}' || true
+          }
+
+          # Sanity-check a downloaded PBF. Catches the failure mode
+          # where Geofabrik (or a CDN in front) returns 200 with an
+          # HTML index page or a truncated body instead of the binary
+          # — both of which md5/checksum logic alone would happily
+          # save and ship downstream as a "valid file".
+          assert_pbf() {
+            local path="$1"
+            local size first
+            size="$(wc -c < "$path")"
+            # OSM PBFs start with a big-endian uint32 length followed
+            # by a protobuf BlobHeader. The very first byte is part
+            # of that length and is essentially always 0x00 for
+            # country-sized files. An HTML response starts with "<".
+            first="$(head -c 1 "$path" | od -An -tx1 | tr -d ' \n')"
+            if [[ "$first" == "3c" ]]; then
+              echo "::error::Downloaded body looks like HTML (starts with '<'), not a PBF. First 200 bytes:"
+              head -c 200 "$path" | sed 's/^/  /'
+              return 1
+            fi
+            # Even Liechtenstein's PBF is ~500 KB. Anything under
+            # 100 KB for a country extract is almost certainly a
+            # mistake (404 page, soft redirect, partial transfer).
+            if (( size < 102400 )); then
+              echo "::error::Downloaded file is suspiciously small (${size} bytes). Aborting."
+              return 1
+            fi
+            echo "PBF looks valid: ${size} bytes."
           }
 
           while IFS= read -r raw || [[ -n "$raw" ]]; do
@@ -78,17 +111,22 @@ jobs:
             echo "::group::$slug"
 
             # Upstream checksum — Geofabrik publishes <pbf>.md5 next to
-            # every extract. Tiny file, cheap to fetch, definitive.
-            upstream_md5="$(curl -fsSL "${url}.md5" 2>/dev/null | awk '{print $1}' || true)"
-            if [[ -z "$upstream_md5" ]]; then
-              echo "::warning::No upstream MD5 for $slug; will re-download to be safe."
+            # every extract. Tiny, definitive, and treated as required:
+            # if it isn't there, the URL is wrong (or Geofabrik is
+            # broken) and we should NOT fall back to "trust whatever
+            # bytes we got" because that's exactly how an HTML index
+            # page got shipped as a PBF.
+            upstream_md5="$("${CURL[@]}" "${url}.md5" 2>/dev/null | awk '{print $1}' || true)"
+            if [[ -z "$upstream_md5" || ! "$upstream_md5" =~ ^[0-9a-f]{32}$ ]]; then
+              echo "::error::No valid upstream MD5 for $slug at ${url}.md5 — refusing to download. Either the URL is wrong or Geofabrik is unreachable."
+              exit 1
             fi
 
             # Last-published checksum sits on gh-pages; read directly
             # from the branch (no HTTP propagation race).
             local_md5="$(read_published_md5 "cdn/maps/osm/${slug}.osm.pbf.md5")"
 
-            if [[ -n "$upstream_md5" && "$upstream_md5" == "$local_md5" ]]; then
+            if [[ "$upstream_md5" == "$local_md5" ]]; then
               echo "Up to date (MD5 $upstream_md5). Skipping."
               echo "::endgroup::"
               continue
@@ -96,22 +134,23 @@ jobs:
 
             echo "Fetching $url"
             target="cdn/maps/osm/${slug}.osm.pbf"
-            curl -fsSL --retry 3 --retry-delay 5 -o "$target" "$url"
+            "${CURL[@]}" -o "$target" "$url"
 
-            # Verify what we got matches what Geofabrik published, so a
-            # mid-flight rebuild on their side can't quietly corrupt us.
-            if [[ -n "$upstream_md5" ]]; then
-              actual="$(md5sum "$target" | awk '{print $1}')"
-              if [[ "$actual" != "$upstream_md5" ]]; then
-                echo "::error::MD5 mismatch for $slug: expected $upstream_md5, got $actual"
-                exit 1
-              fi
+            # Defensive check: did we actually get a PBF, or HTML /
+            # truncated junk masquerading as one?
+            assert_pbf "$target"
+
+            # MD5 must match upstream — guards against mid-flight
+            # rebuilds and any silent corruption on the wire.
+            actual="$(md5sum "$target" | awk '{print $1}')"
+            if [[ "$actual" != "$upstream_md5" ]]; then
+              echo "::error::MD5 mismatch for $slug: expected $upstream_md5, got $actual"
+              exit 1
             fi
 
-            # Sidecar in the same `md5sum`-compatible format the
-            # comparison reads back.
-            checksum="${upstream_md5:-$(md5sum "$target" | awk '{print $1}')}"
-            echo "${checksum}  $(basename "$target")" > "${target}.md5"
+            # Sidecar in `md5sum`-compatible format so the next run
+            # can diff it directly.
+            echo "${upstream_md5}  $(basename "$target")" > "${target}.md5"
 
             ls -lh "$target"
             any_changed=1
