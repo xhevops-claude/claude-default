@@ -1158,6 +1158,103 @@
   // class collapse into a single badge instead of two icons.
   const CLUSTER_OPTS = { radius: 60, maxZoom: 16, minPoints: 2 };
 
+  // ---- Hex packing ----
+  // After per-class supercluster passes, multiple class-clusters can
+  // still pile up on the same screen pixel (a block with cafes +
+  // restaurants + bars produces three overlapping badges). The
+  // packer detects colocated badges and lays them out in a hex
+  // honeycomb around the group centroid: 1 = solo, 2 = side-by-side,
+  // 3 = triangle, 4 = parallelogram, 5 = trapezoid, 7 = full flower
+  // (1 center + 6 petals), then continues outward into ring 2+.
+  // Slot ordering is fixed (counterclockwise from east) so the same
+  // class always lands in the same slot frame to frame.
+  const HEX_SPACING_PX = 30;          // axial unit, pixels
+  const HEX_MERGE_PX  = 50;           // proximity threshold for grouping
+  const HEX_MAX_SLOTS = 50;
+  const HEX_SLOTS = (() => {
+    const slots = [[0, 0]];
+    // Walk directions for each side of a ring, in the order needed
+    // to make ring 1 read counterclockwise from East: NW, W, SW, SE,
+    // E, NE.
+    const walkDirs = [[0, -1], [-1, 0], [-1, 1], [0, 1], [1, 0], [1, -1]];
+    for (let ring = 1; slots.length < HEX_MAX_SLOTS; ring++) {
+      let q = ring;
+      let r = 0;
+      slots.push([q, r]);
+      if (slots.length >= HEX_MAX_SLOTS) break;
+      for (let s = 0; s < 6 && slots.length < HEX_MAX_SLOTS; s++) {
+        const steps = (s === 5) ? ring - 1 : ring;
+        const [dq, dr] = walkDirs[s];
+        for (let i = 0; i < steps && slots.length < HEX_MAX_SLOTS; i++) {
+          q += dq;
+          r += dr;
+          slots.push([q, r]);
+        }
+      }
+    }
+    return slots;
+  })();
+  function hexSlotPx(index) {
+    const slot = HEX_SLOTS[Math.min(index, HEX_SLOTS.length - 1)];
+    const q = slot[0];
+    const r = slot[1];
+    // Pointy-top axial → pixel.
+    return {
+      dx: HEX_SPACING_PX * Math.sqrt(3) * (q + r / 2),
+      dy: HEX_SPACING_PX * 1.5 * r,
+    };
+  }
+
+  function packIntoHex(features) {
+    if (!features || features.length < 2) return;
+    const items = features.map((f) => {
+      const c = f.geometry && f.geometry.coordinates;
+      if (!Array.isArray(c) || c.length < 2) return null;
+      const px = map.project([c[0], c[1]]);
+      return { feature: f, px };
+    }).filter(Boolean);
+
+    // Greedy single-pass grouping: each item joins the first group
+    // whose running centroid is within HEX_MERGE_PX, otherwise it
+    // seeds a new group. Quadratic in the worst case, but per-frame
+    // item counts are small (~tens per viewport).
+    const merge2 = HEX_MERGE_PX * HEX_MERGE_PX;
+    const groups = [];
+    for (const it of items) {
+      let placed = false;
+      for (const g of groups) {
+        const dx = it.px.x - g.cx;
+        const dy = it.px.y - g.cy;
+        if (dx * dx + dy * dy < merge2) {
+          g.items.push(it);
+          const n = g.items.length;
+          g.cx = (g.cx * (n - 1) + it.px.x) / n;
+          g.cy = (g.cy * (n - 1) + it.px.y) / n;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) groups.push({ items: [it], cx: it.px.x, cy: it.px.y });
+    }
+
+    for (const g of groups) {
+      if (g.items.length < 2) continue;
+      // Stable per-class slot assignment so the same class keeps the
+      // same slot across frames as long as the group composition
+      // doesn't change.
+      g.items.sort((a, b) => {
+        const ca = (a.feature.properties && (a.feature.properties.topClass || a.feature.properties.class)) || '';
+        const cb = (b.feature.properties && (b.feature.properties.topClass || b.feature.properties.class)) || '';
+        return ca < cb ? -1 : ca > cb ? 1 : 0;
+      });
+      g.items.forEach((it, idx) => {
+        const off = hexSlotPx(idx);
+        const ll = map.unproject([g.cx + off.dx, g.cy + off.dy]);
+        it.feature.geometry.coordinates = [ll.lng, ll.lat];
+      });
+    }
+  }
+
   function initSupercluster() {
     if (typeof window.Supercluster === 'undefined') {
       if (typeof console !== 'undefined' && console.warn) console.warn('Supercluster not loaded; clustering disabled.');
@@ -1235,6 +1332,9 @@
         out.push(c);
       }
     }
+    // Spread overlapping per-class badges into a hex honeycomb so
+    // colocated classes don't visually pile up.
+    packIntoHex(out);
     src.setData({ type: 'FeatureCollection', features: out });
   }
 
