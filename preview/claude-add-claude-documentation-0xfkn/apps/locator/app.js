@@ -370,6 +370,20 @@
   LAYER_CATEGORIES.forEach((cat) => {
     Object.entries(cat.groups).forEach(([k, v]) => { LAYER_GROUPS[k] = v; });
   });
+  // Reverse map: POI class → containing category key (e.g.
+  // 'restaurant' → 'poi-food'). Built once; used by the cluster
+  // pipeline to apply per-category debug zoom overrides.
+  const CLASS_TO_CATEGORY = {};
+  Object.entries(LAYER_GROUPS).forEach(([key, def]) => {
+    if (def.type === 'poi-filter' && Array.isArray(def.classes)) {
+      def.classes.forEach((cls) => { CLASS_TO_CATEGORY[cls] = key; });
+    }
+  });
+  // In-memory debug overrides keyed by category. Each value is an
+  // additional minzoom floor (number 0–22). Always additive — a
+  // higher slider value can only HIDE more, never resurrect content
+  // the active profile already gates. Cleared on reload.
+  const DEBUG_OVERRIDES = {};
 
   function buildStyle(themeName) {
     const C = THEMES[themeName] || THEMES.dark;
@@ -968,7 +982,8 @@
       map.setLayoutProperty(layerId, 'visibility', visibility);
       const origMin = ORIGINAL_MINZOOMS[layerId] != null ? ORIGINAL_MINZOOMS[layerId] : 0;
       const ruleMin = (parsedRule && parsedRule.type === 'zoom') ? parsedRule.zoomLevel : 0;
-      try { map.setLayerZoomRange(layerId, Math.max(origMin, ruleMin), 24); } catch (_) {}
+      const debugMin = DEBUG_OVERRIDES[group] != null ? DEBUG_OVERRIDES[group] : 0;
+      try { map.setLayerZoomRange(layerId, Math.max(origMin, ruleMin, debugMin), 24); } catch (_) {}
     });
   }
   function applyAllLayerRules() {
@@ -1200,6 +1215,10 @@
       const r = effectiveRule(profile, cls);
       if (!r) continue;
       if (r.type === 'zoom' && z < r.zoomLevel) continue;
+      // Debug-only category zoom floor (additive — never resurrects
+      // classes that the profile already disabled).
+      const cat = CLASS_TO_CATEGORY[cls];
+      if (cat && DEBUG_OVERRIDES[cat] != null && z < DEBUG_OVERRIDES[cat]) continue;
       const c = f.geometry && f.geometry.coordinates;
       if (!Array.isArray(c) || c.length < 2) continue;
       const key = cls + '|' + c[0].toFixed(6) + '|' + c[1].toFixed(6);
@@ -1408,6 +1427,52 @@
       btn.textContent = text;
       setTimeout(() => { btn.textContent = orig; }, 1500);
     }
+
+    // Per-category min-zoom override sliders. In-memory only —
+    // never persists. Useful for eyeballing "what does the map look
+    // like if buildings only appeared at z16?" without editing the
+    // profile JSON. Additive: a slider can only HIDE more, never
+    // resurrect a class the active profile already disabled.
+    const debugZoomList = document.getElementById('debug-zoom-list');
+    const debugZoomReset = document.getElementById('debug-zoom-reset');
+    function fmtZoom(n) { return 'z' + n; }
+    function buildDebugZoomSliders() {
+      const html = LAYER_CATEGORIES.map((cat) => {
+        const rows = Object.entries(cat.groups).map(([key, def]) => {
+          const cur = DEBUG_OVERRIDES[key] != null ? DEBUG_OVERRIDES[key] : 0;
+          return `<li class="debug-zoom-row" data-group="${key}">
+            <span class="debug-zoom-label">${def.label}</span>
+            <span class="debug-zoom-val">${fmtZoom(cur)}</span>
+            <input type="range" min="0" max="22" step="1" value="${cur}" aria-label="${def.label} min zoom">
+          </li>`;
+        }).join('');
+        return `<li class="debug-zoom-cat">${cat.name}</li>${rows}`;
+      }).join('');
+      debugZoomList.innerHTML = html;
+      debugZoomList.querySelectorAll('.debug-zoom-row').forEach((row) => {
+        const group = row.dataset.group;
+        const input = row.querySelector('input[type="range"]');
+        const val = row.querySelector('.debug-zoom-val');
+        input.addEventListener('input', () => {
+          const n = parseInt(input.value, 10);
+          if (n > 0) DEBUG_OVERRIDES[group] = n;
+          else delete DEBUG_OVERRIDES[group];
+          val.textContent = fmtZoom(n);
+          // Non-POI groups respond via the layer-rules path; POI
+          // groups are gated inside the cluster pipeline. Run both
+          // — each is cheap and idempotent.
+          applyAllLayerRules();
+          refreshClusters();
+        });
+      });
+    }
+    debugZoomReset.addEventListener('click', () => {
+      for (const k in DEBUG_OVERRIDES) delete DEBUG_OVERRIDES[k];
+      buildDebugZoomSliders();
+      applyAllLayerRules();
+      refreshClusters();
+    });
+    buildDebugZoomSliders();
 
     debugBtn.hidden = false;
     debugBtn.addEventListener('click', openDebug);
