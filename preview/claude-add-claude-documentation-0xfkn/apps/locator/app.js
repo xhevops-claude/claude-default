@@ -1153,7 +1153,10 @@
   let superclusterAvailable = false;
   let clusterRefreshScheduled = false;
   const CLUSTER_DEBOUNCE_MS = 150;
-  const CLUSTER_OPTS = { radius: 60, maxZoom: 16, minPoints: 3 };
+  // Per-class buckets are sparse (a typical block has 1–2 of any
+  // given POI class), so `minPoints: 2` makes pairs of the same
+  // class collapse into a single badge instead of two icons.
+  const CLUSTER_OPTS = { radius: 60, maxZoom: 16, minPoints: 2 };
 
   function initSupercluster() {
     if (typeof window.Supercluster === 'undefined') {
