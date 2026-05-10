@@ -1,5 +1,5 @@
 {
-  "_comment": "POI display profiles. Each profile gates classes either by a zoom rule (icon appears at value zoom) or a radius rule (icon only when feature lies within value distance of the user). A null rule disables a class. Classes not listed in `rules` fall back to `default`; if `default` is null they are hidden.",
+  "_comment": "Display profiles. `default` + `rules` gate POI classes (zoom or radius rule, null to disable). `layers` gates non-POI category groups (zoom rule or null; radius is not meaningful for fills/lines). Category keys come from `LAYER_CATEGORIES` in app.js — landuse, water, water-names, roads, road-names, aeroways, places, peaks, buildings, boundaries.",
   "active": "default",
   "profiles": [
     {
@@ -8,7 +8,8 @@
       "emoji": "📍",
       "description": "All POIs from zoom 12 — the everyday view.",
       "default": { "type": "zoom", "value": "z12" },
-      "rules": {}
+      "rules": {},
+      "layers": {}
     },
     {
       "id": "walking",
@@ -39,6 +40,11 @@
         "parking":         null,
         "taxi":            null,
         "ferry_terminal":  null
+      },
+      "layers": {
+        "aeroways":     null,
+        "boundaries":   null,
+        "water-names":  { "type": "zoom", "value": "z13" }
       }
     },
     {
@@ -81,6 +87,11 @@
         "theatre":         null,
         "cinema":          null,
         "kindergarten":    null
+      },
+      "layers": {
+        "aeroways":   null,
+        "peaks":      null,
+        "buildings":  { "type": "zoom", "value": "z16" }
       }
     },
     {
@@ -106,6 +117,11 @@
         "monument":        { "type": "zoom", "value": "z13" },
         "place_of_worship":{ "type": "zoom", "value": "z14" },
         "information":     { "type": "zoom", "value": "z13" }
+      },
+      "layers": {
+        "aeroways":     null,
+        "boundaries":   null,
+        "buildings":    { "type": "zoom", "value": "z16" }
       }
     }
   ]
