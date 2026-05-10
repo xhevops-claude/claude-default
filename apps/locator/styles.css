@@ -392,6 +392,62 @@ body {
   border-top: 1px solid var(--hud-border-soft);
 }
 
+/* ---- Debug zoom-override sliders ---- */
+.debug-section {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hud-border-soft);
+  padding: 10px 18px 12px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.debug-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--hud-fg-dim);
+  margin-bottom: 8px;
+}
+.debug-zoom-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.debug-zoom-cat {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hud-fg-dim);
+  padding: 8px 0 2px;
+}
+.debug-zoom-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.debug-zoom-row .debug-zoom-label {
+  font-size: 13px;
+  color: var(--hud-fg);
+}
+.debug-zoom-row .debug-zoom-val {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--hud-fg-dim);
+  min-width: 30px;
+  text-align: right;
+}
+.debug-zoom-row input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+}
+
 .debug-actions .hud-btn { flex: 1; }
 
 /* ---- Profile sheet (built-in POI profiles, read-only) ---- */
