@@ -1168,8 +1168,14 @@
   // (1 center + 6 petals), then continues outward into ring 2+.
   // Slot ordering is fixed (counterclockwise from east) so the same
   // class always lands in the same slot frame to frame.
-  const HEX_SPACING_PX = 30;          // axial unit, pixels
-  const HEX_MERGE_PX  = 50;           // proximity threshold for grouping
+  // Source emoji bitmap is POI_LOGICAL_SIZE px (40); at the cluster
+  // layer's icon-size (~0.85 around z14) the rendered icon is ~34 px
+  // wide, plus the count text to the right brings the full badge to
+  // ~70 px. The hex grid's neighbour-to-neighbour distance is
+  // sqrt(3) * SPACING, so SPACING≈42 keeps neighbours just clear of
+  // each other. MERGE_PX≈75 catches every pair whose badges overlap.
+  const HEX_SPACING_PX = 42;
+  const HEX_MERGE_PX  = 75;
   const HEX_MAX_SLOTS = 50;
   const HEX_SLOTS = (() => {
     const slots = [[0, 0]];
@@ -1214,27 +1220,31 @@
       return { feature: f, px };
     }).filter(Boolean);
 
-    // Greedy single-pass grouping: each item joins the first group
-    // whose running centroid is within HEX_MERGE_PX, otherwise it
-    // seeds a new group. Quadratic in the worst case, but per-frame
-    // item counts are small (~tens per viewport).
+    // Single-link clustering: an item joins a group if it's within
+    // HEX_MERGE_PX of ANY existing member, not just the centroid.
+    // Centroid-only merging dropped chained overlaps where an item
+    // overlapped an edge member but the centroid had drifted away.
+    // Worst-case O(n²); fine for the tens-of-items per viewport.
     const merge2 = HEX_MERGE_PX * HEX_MERGE_PX;
     const groups = [];
     for (const it of items) {
-      let placed = false;
+      let target = null;
       for (const g of groups) {
-        const dx = it.px.x - g.cx;
-        const dy = it.px.y - g.cy;
-        if (dx * dx + dy * dy < merge2) {
-          g.items.push(it);
-          const n = g.items.length;
-          g.cx = (g.cx * (n - 1) + it.px.x) / n;
-          g.cy = (g.cy * (n - 1) + it.px.y) / n;
-          placed = true;
-          break;
+        for (const m of g.items) {
+          const dx = it.px.x - m.px.x;
+          const dy = it.px.y - m.px.y;
+          if (dx * dx + dy * dy < merge2) { target = g; break; }
         }
+        if (target) break;
       }
-      if (!placed) groups.push({ items: [it], cx: it.px.x, cy: it.px.y });
+      if (target) {
+        target.items.push(it);
+        const n = target.items.length;
+        target.cx = (target.cx * (n - 1) + it.px.x) / n;
+        target.cy = (target.cy * (n - 1) + it.px.y) / n;
+      } else {
+        groups.push({ items: [it], cx: it.px.x, cy: it.px.y });
+      }
     }
 
     for (const g of groups) {
