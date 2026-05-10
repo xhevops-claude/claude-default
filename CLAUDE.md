@@ -71,6 +71,16 @@ The `exclude_assets` list in `pages.yml` controls what gets excluded from the de
 
 After pushing changes, the final line of every reply must be a clickable Markdown link to the deployed preview, in the form `[Preview](https://xhevops-claude.github.io/claude-default/preview/<slug>/...)`. No bold, no surrounding `**`, no extra prose on that line — just the link. If the change targets a specific sub-experience, deep-link directly into it (e.g. `.../preview/<slug>/apps/locator/`). If pushed to `main`, link to the corresponding production path under `https://xhevops-claude.github.io/claude-default/`.
 
+### Merging to main — always via a PR with green CI
+
+Direct pushes to `main` are blocked. To land changes on production:
+
+1. Open a pull request from the feature branch into `main`.
+2. Wait for CI on the PR to go green — the `lint` and `node --check` jobs in `.github/workflows/ci.yml` plus the preview deploy in `pages.yml`. Inspect any failures and fix them before merging; do not merge a PR with a red or pending check unless the user explicitly tells you to override.
+3. Only then merge the PR (default to a normal merge commit so the feature-branch history stays inspectable; squash if the user asks).
+
+This applies even when the user just says "merge it" — the PR + green-checks loop is the merge mechanism, not an extra step.
+
 ## Data pipeline (cdn/)
 
 Two scheduled workflows publish open data to `gh-pages` under `/cdn/`, **decoupled from the app source** — apps fetch from `https://xhevops-claude.github.io/claude-default/cdn/...`, never from a path inside this repo. The repo `.gitignore` excludes `cdn/`.
