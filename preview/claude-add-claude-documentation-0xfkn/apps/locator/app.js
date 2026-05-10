@@ -778,6 +778,7 @@
     addUserLayers();
     initSupercluster();
     hidePoiDataLayer();
+    captureOriginalMinzooms();
     applyAllGroupVisibility();
     mapReady = true;
     if (pendingFix) { applyFix(pendingFix); pendingFix = null; }
@@ -790,6 +791,7 @@
     registerPoiIcons();
     addUserLayers();
     hidePoiDataLayer();
+    captureOriginalMinzooms();
     applyAllGroupVisibility();
   });
   // Recluster on movement; tile-arrival hook lives next to the
@@ -926,6 +928,21 @@
   });
 
   // ---- Layers UI ----
+  // Snapshot of each style layer's original `minzoom` so profile zoom
+  // rules can override without losing the floor (e.g. `building` is
+  // minzoom:14 in the style; a profile rule of z16 raises that to
+  // z16, but a profile with no rule still respects the original 14).
+  const ORIGINAL_MINZOOMS = {};
+  function captureOriginalMinzooms() {
+    const style = map.getStyle();
+    const layers = (style && style.layers) || [];
+    layers.forEach((l) => {
+      if (l.minzoom != null && ORIGINAL_MINZOOMS[l.id] == null) {
+        ORIGINAL_MINZOOMS[l.id] = l.minzoom;
+      }
+    });
+  }
+
   function isGroupVisible(group) {
     try {
       const v = localStorage.getItem(LAYER_KEY_PREFIX + group);
@@ -933,6 +950,32 @@
     } catch (_) {}
     const def = LAYER_GROUPS[group];
     return def ? def.defaultOn : true;
+  }
+  function applyLayerRulesForGroup(group) {
+    const def = LAYER_GROUPS[group];
+    if (!def || def.type === 'poi-filter') return;
+    const profile = getActiveProfile();
+    const layerRules = (profile && profile.layers) || {};
+    const userOn = isGroupVisible(group);
+    const hasRule = Object.prototype.hasOwnProperty.call(layerRules, group);
+    const ruleVal = hasRule ? layerRules[group] : undefined;
+    const ruleDisabled = ruleVal === null;
+    const parsedRule = (ruleVal && typeof ruleVal === 'object') ? parseRule(ruleVal) : null;
+    const visibility = (userOn && !ruleDisabled) ? 'visible' : 'none';
+    (def.layers || []).forEach((layerId) => {
+      if (!map.getLayer(layerId)) return;
+      map.setLayoutProperty(layerId, 'visibility', visibility);
+      const origMin = ORIGINAL_MINZOOMS[layerId] != null ? ORIGINAL_MINZOOMS[layerId] : 0;
+      const ruleMin = (parsedRule && parsedRule.type === 'zoom') ? parsedRule.zoomLevel : 0;
+      try { map.setLayerZoomRange(layerId, Math.max(origMin, ruleMin), 24); } catch (_) {}
+    });
+  }
+  function applyAllLayerRules() {
+    Object.keys(LAYER_GROUPS).forEach((g) => {
+      const def = LAYER_GROUPS[g];
+      if (def && def.type === 'poi-filter') return;
+      applyLayerRulesForGroup(g);
+    });
   }
   function setGroupVisible(group, visible, persist = true) {
     const def = LAYER_GROUPS[group];
@@ -946,11 +989,7 @@
       refreshPoiFilter();
       return;
     }
-    (def.layers || []).forEach((id) => {
-      if (map.getLayer(id)) {
-        map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
-      }
-    });
+    applyLayerRulesForGroup(group);
   }
   // ---- POI profiles ----
   // A profile is a per-class display rule. Two rule shapes:
@@ -1196,13 +1235,11 @@
     applyPoiProfile();
   }
   function applyAllGroupVisibility() {
-    // Visibility-toggle groups first, then a single setFilter for
-    // the POI layer (one rewrite instead of one per category).
-    Object.keys(LAYER_GROUPS).forEach((g) => {
-      const def = LAYER_GROUPS[g];
-      if (def && def.type === 'poi-filter') return;
-      setGroupVisible(g, isGroupVisible(g), false);
-    });
+    // Non-POI categories drive visibility + zoom range from the
+    // user toggle and the active profile's `layers` block. The POI
+    // layer's filter is rewritten once after, to avoid one
+    // setFilter per category.
+    applyAllLayerRules();
     refreshPoiFilter();
   }
 
@@ -1256,6 +1293,7 @@
     activeProfileId = id;
     try { localStorage.setItem(PROFILE_KEY, id); } catch (_) {}
     syncProfileUI();
+    applyAllLayerRules();
     applyPoiProfile();
   }
 
@@ -1302,6 +1340,7 @@
         else if (ids.includes(profilesData.active)) activeProfileId = profilesData.active;
         else activeProfileId = ids[0];
         buildProfilePanel();
+        applyAllLayerRules();
         applyPoiProfile();
       });
   }
