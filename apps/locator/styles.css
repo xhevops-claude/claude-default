@@ -394,6 +394,129 @@ body {
 
 .debug-actions .hud-btn { flex: 1; }
 
+/* ---- Profile sheet (built-in POI profiles, read-only) ---- */
+.profile-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 18px 22px;
+  gap: 12px;
+  overflow: auto;
+}
+
+/* Same flex/[hidden] pitfall as .debug-sheet — restore display:none. */
+.profile-sheet[hidden] { display: none; }
+
+.profile-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profile-sheet-title {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.profile-close {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 12px;
+}
+
+.profile-sheet-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  font-family: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border-soft);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.profile-card:hover { border-color: var(--hud-border); }
+
+.profile-card[aria-checked="true"] {
+  border-color: #fb923c;
+  background: rgba(251, 146, 60, 0.12);
+}
+
+.profile-card-emoji {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.profile-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-card-name {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.profile-card-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.profile-card-mark {
+  margin-left: auto;
+  font-size: 18px;
+  color: #fb923c;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.profile-card[aria-checked="true"] .profile-card-mark { opacity: 1; }
+
+#profile-btn .profile-btn-emoji {
+  margin-right: 6px;
+  font-size: 13px;
+  line-height: 1;
+  vertical-align: -1px;
+}
+
 .embedded .back-link { display: none; }
 
 @media (max-width: 380px) {
