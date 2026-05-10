@@ -130,6 +130,9 @@
       labelStrong: '#e2e8f0',
       labelDim: '#94a3b8',
       poi: '#94a3b8',
+      cluster: '#fb923c',
+      clusterStroke: '#1a1d24',
+      clusterText: '#1a1d24',
     },
     light: {
       bg: '#f5f3ee',
@@ -150,6 +153,9 @@
       labelStrong: '#0c1118',
       labelDim: '#525866',
       poi: '#525866',
+      cluster: '#fb923c',
+      clusterStroke: '#ffffff',
+      clusterText: '#1a1d24',
     },
   };
   const TEXT_FONT = ['Noto Sans Regular'];
@@ -376,7 +382,16 @@
     return {
       version: 8,
       glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
-      sources: { omt: { type: 'vector', url: 'pmtiles://' + PMTILES_URL } },
+      sources: {
+        omt: { type: 'vector', url: 'pmtiles://' + PMTILES_URL },
+        // POI clusters live in their own GeoJSON source. The `poi`
+        // vector tile layer above stays as the read-only data source
+        // (queried via querySourceFeatures); supercluster reduces
+        // those features to either a count cluster or a passthrough
+        // singleton, and writes the result here. setData() refreshes
+        // the contents on every map idle.
+        'poi-clusters': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+      },
       layers: [
         { id: 'bg', type: 'background', paint: { 'background-color': C.bg } },
 
@@ -512,6 +527,56 @@
             'text-halo-width': 1.5,
           } },
 
+        // ---- POI clusters ----
+        // Three layers reading from the same GeoJSON source. `circle`
+        // and `count` only render when a feature has `point_count`
+        // (supercluster's marker for an aggregated cluster); `leaf`
+        // renders the individual emoji for singletons (point_count
+        // absent), preserving the per-class visual cue at high zoom.
+        { id: 'poi-cluster-circle', type: 'circle', source: 'poi-clusters',
+          filter: ['has', 'point_count'],
+          paint: {
+            'circle-color': C.cluster,
+            'circle-stroke-color': C.clusterStroke,
+            'circle-stroke-width': 1.5,
+            'circle-radius': ['step', ['get', 'point_count'], 14, 10, 20, 50, 28],
+            'circle-opacity': 0.9,
+          } },
+        { id: 'poi-cluster-count', type: 'symbol', source: 'poi-clusters',
+          filter: ['has', 'point_count'],
+          layout: {
+            'text-field': ['get', 'point_count_abbreviated'],
+            'text-font': TEXT_FONT,
+            'text-size': ['step', ['get', 'point_count'], 11, 10, 13, 50, 15],
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+          },
+          paint: { 'text-color': C.clusterText } },
+        { id: 'poi-cluster-leaf', type: 'symbol', source: 'poi-clusters',
+          filter: ['!', ['has', 'point_count']],
+          layout: {
+            'icon-image': ['concat', 'poi-', ['get', 'class']],
+            'icon-size': ['interpolate', ['linear'], ['zoom'],
+              12, 0.4,
+              14, 0.65,
+              16, 0.85,
+              19, 1.0,
+            ],
+            'icon-allow-overlap': true,
+            'icon-padding': 2,
+            'text-field': ['step', ['zoom'], '', 16, ['coalesce', ['get', 'name:en'], ['get', 'name'], '']],
+            'text-font': TEXT_FONT,
+            'text-size': 11,
+            'text-anchor': 'top',
+            'text-offset': [0, 1.4],
+            'text-optional': true,
+          },
+          paint: {
+            'text-color': C.poi,
+            'text-halo-color': C.bg,
+            'text-halo-width': 1.5,
+          } },
+
         // ---- Place hierarchy (last so labels win the depth fight) ----
         // Country: visible from world zoom; uppercase, big.
         { id: 'place-country', type: 'symbol', source: 'omt', 'source-layer': 'place',
@@ -629,7 +694,10 @@
     if (typeof console !== 'undefined' && console.error) console.error('Map error:', e);
   });
   map.on('data', (e) => {
-    if (e.sourceId === 'omt' && e.dataType === 'source' && e.tile) tilesLoaded++;
+    if (e.sourceId === 'omt' && e.dataType === 'source' && e.tile) {
+      tilesLoaded++;
+      refreshClusters();
+    }
   });
 
   // Quick HEAD probe of the PMTiles URL — if the server / network
@@ -699,9 +767,17 @@
 
   let mapReady = false;
   let pendingFix = null;
+  function hidePoiDataLayer() {
+    // Original POI symbol layer is the data source for clustering;
+    // never paint it directly. Setting visibility=none does NOT
+    // affect querySourceFeatures.
+    if (map.getLayer('poi')) map.setLayoutProperty('poi', 'visibility', 'none');
+  }
   map.on('load', () => {
     registerPoiIcons();
     addUserLayers();
+    initSupercluster();
+    hidePoiDataLayer();
     applyAllGroupVisibility();
     mapReady = true;
     if (pendingFix) { applyFix(pendingFix); pendingFix = null; }
@@ -713,8 +789,12 @@
     if (!mapReady) return;
     registerPoiIcons();
     addUserLayers();
+    hidePoiDataLayer();
     applyAllGroupVisibility();
   });
+  // Recluster on movement; tile-arrival hook lives next to the
+  // tilesLoaded counter above to keep `data` listeners in one place.
+  map.on('moveend', refreshClusters);
 
   // ---- Helpers ----
   // The Locate-me button is hidden only when we have a live fix.
@@ -1002,6 +1082,92 @@
     const layerEnabled = getEnabledLayerClasses();
     map.setFilter('poi', buildPoiFilter(profile, layerEnabled, lastFixForFilter));
     map.setLayoutProperty('poi', 'icon-image', buildIconImageForProfile(profile));
+    refreshClusters();
+  }
+
+  // ---- POI clustering ----
+  // The vector-tile `poi` layer is rendered invisible — it exists
+  // purely as a data source for querySourceFeatures. Supercluster
+  // reduces the matching features into either a count cluster or a
+  // singleton (passthrough), which then renders via `poi-cluster-*`
+  // layers. Refresh runs debounced on every map move/zoom and after
+  // tile loads. Profile zoom rules are enforced in JS at refresh
+  // time; radius rules are honoured by passing the `poi` filter
+  // expression (which already encodes `within(...)`) to
+  // querySourceFeatures.
+  let supercluster = null;
+  let clusterRefreshScheduled = false;
+  const CLUSTER_DEBOUNCE_MS = 150;
+
+  function initSupercluster() {
+    if (supercluster) return;
+    if (typeof window.Supercluster === 'undefined') {
+      if (typeof console !== 'undefined' && console.warn) console.warn('Supercluster not loaded; clustering disabled.');
+      return;
+    }
+    supercluster = new window.Supercluster({
+      radius: 60,
+      maxZoom: 16,
+      minPoints: 3,
+    });
+  }
+
+  function refreshClusters() {
+    if (clusterRefreshScheduled) return;
+    clusterRefreshScheduled = true;
+    setTimeout(() => {
+      clusterRefreshScheduled = false;
+      doRefreshClusters();
+    }, CLUSTER_DEBOUNCE_MS);
+  }
+
+  function doRefreshClusters() {
+    if (!supercluster) return;
+    const src = map.getSource('poi-clusters');
+    if (!src) return;
+    if (!map.getLayer('poi')) return;
+    const profile = getActiveProfile();
+    if (!profile) return;
+    const filter = map.getFilter('poi');
+    let features;
+    try {
+      features = map.querySourceFeatures('omt', { sourceLayer: 'poi', filter });
+    } catch (e) {
+      if (typeof console !== 'undefined' && console.warn) console.warn('querySourceFeatures failed:', e);
+      return;
+    }
+
+    const z = map.getZoom();
+    const seen = new Set();
+    const points = [];
+    for (const f of features) {
+      const props = f.properties || {};
+      const cls = props.class;
+      const r = effectiveRule(profile, cls);
+      if (!r) continue;
+      if (r.type === 'zoom' && z < r.zoomLevel) continue;
+      const c = f.geometry && f.geometry.coordinates;
+      if (!Array.isArray(c) || c.length < 2) continue;
+      const key = cls + '|' + c[0].toFixed(6) + '|' + c[1].toFixed(6);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      points.push({
+        type: 'Feature',
+        properties: {
+          class: cls,
+          name: props.name,
+          'name:en': props['name:en'],
+        },
+        geometry: { type: 'Point', coordinates: [c[0], c[1]] },
+      });
+    }
+
+    supercluster.load(points);
+    const bounds = map.getBounds().toArray().flat();
+    src.setData({
+      type: 'FeatureCollection',
+      features: supercluster.getClusters(bounds, Math.floor(z)),
+    });
   }
 
   function profileUsesRadius(profile) {
