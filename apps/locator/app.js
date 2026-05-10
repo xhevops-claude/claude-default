@@ -63,6 +63,12 @@
   const layersBtn = document.getElementById('layers-btn');
   const layersPopover = document.getElementById('layers-popover');
   const layersList = document.getElementById('layers-list');
+  const profileBtn = document.getElementById('profile-btn');
+  const profileBtnEmoji = profileBtn.querySelector('.profile-btn-emoji');
+  const profileBtnLabel = profileBtn.querySelector('.profile-btn-label');
+  const profileSheet = document.getElementById('profile-sheet');
+  const profileSheetClose = document.getElementById('profile-close');
+  const profileList = document.getElementById('profile-list');
   const quitBtn = document.getElementById('quit-btn');
 
   // Self-hosted vector tiles from the daily Geofabrik → planetiler
@@ -75,6 +81,28 @@
   const FIX_ZOOM = 15;
   const THEME_KEY = 'locator-theme';
   const LAYER_KEY_PREFIX = 'locator-layer-';
+  const PROFILE_KEY = 'locator-poi-profile';
+  const PROFILES_URL = './poi-profiles.json';
+  // Re-evaluate the radius part of the POI filter only after the user
+  // moves at least this far. Avoids a full setFilter on every fix.
+  const RADIUS_REFRESH_THRESHOLD_M = 25;
+
+  // Embedded fallback so the app still has *something* if the JSON
+  // fetch fails (offline, 404, parse error). Mirrors the on-disk
+  // poi-profiles.json's default profile.
+  const FALLBACK_PROFILES = {
+    active: 'default',
+    profiles: [
+      {
+        id: 'default',
+        label: 'Default',
+        emoji: '📍',
+        description: 'All POIs from zoom 12.',
+        default: { type: 'zoom', value: 'z12' },
+        rules: {},
+      },
+    ],
+  };
 
   // pmtiles → MapLibre custom protocol
   const pmtilesProtocol = new pmtiles.Protocol();
@@ -255,6 +283,17 @@
   }
 
   function registerPoiIcons() {
+    // 1x1 transparent placeholder. Profile rules below their zoom
+    // threshold map to this image so the symbol is *present* (the
+    // expression doesn't fall through to "image not found") but takes
+    // virtually no collision space.
+    if (!map.hasImage('poi-blank')) {
+      try {
+        map.addImage('poi-blank', { width: 1, height: 1, data: new Uint8Array(4) }, { pixelRatio: POI_PIXEL_RATIO });
+      } catch (e) {
+        if (typeof console !== 'undefined' && console.warn) console.warn('addImage failed', 'poi-blank', e);
+      }
+    }
     POI_CLASS_LIST.forEach((cls) => {
       const id = 'poi-' + cls;
       if (map.hasImage(id)) return;
@@ -735,6 +774,7 @@
     setStatus('active', 'Live');
     metaAcc.textContent = fmtAccuracy(accuracy);
     refreshTime();
+    maybeRefreshRadiusFilter([longitude, latitude]);
   }
   function onFix(pos) {
     lastFixTs = pos.timestamp || Date.now();
@@ -832,13 +872,162 @@
       }
     });
   }
-  function refreshPoiFilter() {
-    if (!map.getLayer('poi')) return;
-    const enabled = [];
+  // ---- POI profiles ----
+  // A profile is a per-class display rule. Two rule shapes:
+  //   { type: 'zoom',   value: 'z14'   }  → icon appears at zoom ≥ 14
+  //   { type: 'radius', value: '500m'  }  → icon appears only when the
+  //                                          feature is within 500m of
+  //                                          the user's last known
+  //                                          location
+  // A null rule disables the class. Classes not in `rules` fall back
+  // to `profile.default` (which itself can be null = disabled).
+  let profilesData = null;
+  let activeProfileId = null;
+  let lastFixForFilter = null;
+
+  function escapeHTML(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  function parseRule(rule) {
+    if (rule == null) return null;
+    if (typeof rule !== 'object') return null;
+    if (rule.type === 'zoom' && typeof rule.value === 'string') {
+      const m = /^z(\d+(?:\.\d+)?)$/i.exec(rule.value);
+      if (m) return { type: 'zoom', zoomLevel: parseFloat(m[1]) };
+    }
+    if (rule.type === 'radius' && typeof rule.value === 'string') {
+      const m = /^(\d+(?:\.\d+)?)\s*(km|m)$/i.exec(rule.value);
+      if (m) {
+        const factor = m[2].toLowerCase() === 'km' ? 1000 : 1;
+        return { type: 'radius', radiusMeters: parseFloat(m[1]) * factor };
+      }
+    }
+    return null;
+  }
+
+  function effectiveRule(profile, cls) {
+    if (!profile) return null;
+    const rules = profile.rules || {};
+    if (Object.prototype.hasOwnProperty.call(rules, cls)) return parseRule(rules[cls]);
+    return parseRule(profile.default);
+  }
+
+  function getActiveProfile() {
+    const list = profilesData && profilesData.profiles;
+    if (!Array.isArray(list) || list.length === 0) return null;
+    return list.find((p) => p.id === activeProfileId) || list[0];
+  }
+
+  function getEnabledLayerClasses() {
+    const set = new Set();
     POI_CATEGORIES_DEF.forEach(([key, , classes]) => {
-      if (isGroupVisible('poi-' + key)) enabled.push.apply(enabled, classes);
+      if (isGroupVisible('poi-' + key)) classes.forEach((c) => set.add(c));
     });
-    map.setFilter('poi', ['in', ['get', 'class'], ['literal', enabled]]);
+    return set;
+  }
+
+  function distanceMeters(a, b) {
+    const dLat = (b[1] - a[1]) * 111320;
+    const dLng = (b[0] - a[0]) * 111320 * Math.cos(((a[1] + b[1]) / 2) * Math.PI / 180);
+    return Math.hypot(dLat, dLng);
+  }
+
+  function buildPoiFilter(profile, layerEnabled, userCenter) {
+    const allowed = POI_CLASS_LIST.filter((cls) =>
+      layerEnabled.has(cls) && effectiveRule(profile, cls) !== null,
+    );
+
+    // Group radius classes by their meter value so we share the
+    // expensive `within` polygon across classes that all use, say,
+    // 500m.
+    const radiusBuckets = {};
+    const zoomOnly = [];
+    allowed.forEach((cls) => {
+      const r = effectiveRule(profile, cls);
+      if (r.type === 'radius') {
+        const k = String(r.radiusMeters);
+        (radiusBuckets[k] = radiusBuckets[k] || []).push(cls);
+      } else {
+        zoomOnly.push(cls);
+      }
+    });
+
+    const bucketEntries = Object.entries(radiusBuckets);
+    if (bucketEntries.length === 0) {
+      return ['in', ['get', 'class'], ['literal', allowed]];
+    }
+
+    // No fix yet → drop the radius classes; they'll come back when
+    // applyFix triggers maybeRefreshRadiusFilter.
+    const radiusClauses = userCenter ? bucketEntries.map(([m, classes]) => {
+      const poly = circlePolygon(userCenter[0], userCenter[1], parseFloat(m));
+      return ['all',
+        ['in', ['get', 'class'], ['literal', classes]],
+        ['within', poly],
+      ];
+    }) : [];
+
+    return ['any',
+      ['in', ['get', 'class'], ['literal', zoomOnly]],
+      ...radiusClauses,
+    ];
+  }
+
+  function buildIconImageForProfile(profile) {
+    // Per-class step expression: below threshold → 'poi-blank' (the
+    // 1x1 transparent), above → 'poi-{cls}'. Radius classes are
+    // already gated by the filter, so they go straight to their icon.
+    const cases = ['case'];
+    POI_CLASS_LIST.forEach((cls) => {
+      const r = effectiveRule(profile, cls);
+      if (!r) return;
+      cases.push(['==', ['get', 'class'], cls]);
+      if (r.type === 'zoom') {
+        cases.push(['step', ['zoom'], 'poi-blank', r.zoomLevel, 'poi-' + cls]);
+      } else {
+        cases.push('poi-' + cls);
+      }
+    });
+    cases.push('poi-blank');
+    return cases;
+  }
+
+  function applyPoiProfile() {
+    if (!map.getLayer('poi')) return;
+    const profile = getActiveProfile();
+    if (!profile) return;
+    const layerEnabled = getEnabledLayerClasses();
+    map.setFilter('poi', buildPoiFilter(profile, layerEnabled, lastFixForFilter));
+    map.setLayoutProperty('poi', 'icon-image', buildIconImageForProfile(profile));
+  }
+
+  function profileUsesRadius(profile) {
+    if (!profile) return false;
+    return POI_CLASS_LIST.some((cls) => {
+      const r = effectiveRule(profile, cls);
+      return r && r.type === 'radius';
+    });
+  }
+
+  function maybeRefreshRadiusFilter(coords) {
+    if (!profileUsesRadius(getActiveProfile())) {
+      lastFixForFilter = coords;
+      return;
+    }
+    const moved = !lastFixForFilter || distanceMeters(coords, lastFixForFilter) > RADIUS_REFRESH_THRESHOLD_M;
+    if (moved) {
+      lastFixForFilter = coords;
+      applyPoiProfile();
+    }
+  }
+
+  // refreshPoiFilter is called from setGroupVisible when a POI
+  // category checkbox flips. The profile-aware path handles the rest.
+  function refreshPoiFilter() {
+    applyPoiProfile();
   }
   function applyAllGroupVisibility() {
     // Visibility-toggle groups first, then a single setFilter for
@@ -881,6 +1070,76 @@
     if (layersPopover.contains(e.target) || layersBtn.contains(e.target)) return;
     setLayersOpen(false);
   });
+
+  // ---- Profile picker ----
+  function syncProfileUI() {
+    const active = getActiveProfile();
+    const id = active && active.id;
+    profileList.querySelectorAll('.profile-card').forEach((btn) => {
+      btn.setAttribute('aria-checked', btn.dataset.profileId === id ? 'true' : 'false');
+    });
+    if (active) {
+      profileBtnEmoji.textContent = active.emoji || '📍';
+      profileBtnLabel.textContent = active.label || 'Profile';
+    }
+  }
+
+  function setActiveProfile(id) {
+    const list = profilesData && profilesData.profiles;
+    if (!Array.isArray(list) || !list.some((p) => p.id === id)) return;
+    activeProfileId = id;
+    try { localStorage.setItem(PROFILE_KEY, id); } catch (_) {}
+    syncProfileUI();
+    applyPoiProfile();
+  }
+
+  function buildProfilePanel() {
+    const list = (profilesData && profilesData.profiles) || [];
+    profileList.innerHTML = list.map((p) => {
+      const desc = p.description ? `<span class="profile-card-desc">${escapeHTML(p.description)}</span>` : '';
+      return (
+        `<button type="button" class="profile-card" role="radio" aria-checked="false" data-profile-id="${escapeHTML(p.id)}">` +
+        `<span class="profile-card-emoji" aria-hidden="true">${escapeHTML(p.emoji || '📍')}</span>` +
+        `<span class="profile-card-info">` +
+        `<span class="profile-card-name">${escapeHTML(p.label || p.id)}</span>` +
+        desc +
+        `</span>` +
+        `<span class="profile-card-mark" aria-hidden="true">●</span>` +
+        `</button>`
+      );
+    }).join('');
+    profileList.querySelectorAll('.profile-card').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        setActiveProfile(btn.dataset.profileId);
+        profileSheet.hidden = true;
+      });
+    });
+    syncProfileUI();
+  }
+
+  profileBtn.addEventListener('click', () => { profileSheet.hidden = false; });
+  profileSheetClose.addEventListener('click', () => { profileSheet.hidden = true; });
+
+  function loadProfiles() {
+    fetch(PROFILES_URL, { cache: 'no-cache' })
+      .then((r) => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+      .catch((err) => {
+        if (typeof console !== 'undefined' && console.warn) console.warn('Profile fetch failed, using fallback:', err);
+        return FALLBACK_PROFILES;
+      })
+      .then((data) => {
+        profilesData = data && Array.isArray(data.profiles) && data.profiles.length ? data : FALLBACK_PROFILES;
+        const ids = profilesData.profiles.map((p) => p.id);
+        let saved = null;
+        try { saved = localStorage.getItem(PROFILE_KEY); } catch (_) {}
+        if (saved && ids.includes(saved)) activeProfileId = saved;
+        else if (ids.includes(profilesData.active)) activeProfileId = profilesData.active;
+        else activeProfileId = ids[0];
+        buildProfilePanel();
+        applyPoiProfile();
+      });
+  }
+  loadProfiles();
 
   // ---- Debug UI (only when ?debug=1 / localStorage flag set) ----
   if (isDebug) {
