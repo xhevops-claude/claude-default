@@ -1150,35 +1150,17 @@
   // time; radius rules are honoured by passing the `poi` filter
   // expression (which already encodes `within(...)`) to
   // querySourceFeatures.
-  let supercluster = null;
+  let superclusterAvailable = false;
   let clusterRefreshScheduled = false;
   const CLUSTER_DEBOUNCE_MS = 150;
+  const CLUSTER_OPTS = { radius: 60, maxZoom: 16, minPoints: 3 };
 
   function initSupercluster() {
-    if (supercluster) return;
     if (typeof window.Supercluster === 'undefined') {
       if (typeof console !== 'undefined' && console.warn) console.warn('Supercluster not loaded; clustering disabled.');
       return;
     }
-    supercluster = new window.Supercluster({
-      radius: 60,
-      maxZoom: 16,
-      minPoints: 3,
-      // Per-cluster class histogram so the rendered emoji can be
-      // the most common POI class in the group. Stored as a plain
-      // object keyed by class; reduced into a running tally as
-      // supercluster merges children.
-      map: (props) => {
-        const h = {};
-        if (props && props.class) h[props.class] = 1;
-        return { classHist: h };
-      },
-      reduce: (acc, props) => {
-        const src = (props && props.classHist) || {};
-        const dst = acc.classHist || (acc.classHist = {});
-        for (const cls in src) dst[cls] = (dst[cls] || 0) + src[cls];
-      },
-    });
+    superclusterAvailable = true;
   }
 
   function refreshClusters() {
@@ -1191,7 +1173,7 @@
   }
 
   function doRefreshClusters() {
-    if (!supercluster) return;
+    if (!superclusterAvailable) return;
     const src = map.getSource('poi-clusters');
     if (!src) return;
     if (!map.getLayer('poi')) return;
@@ -1208,15 +1190,17 @@
 
     const z = map.getZoom();
     const seen = new Set();
-    const points = [];
+    // Bucket points by class so each class clusters independently —
+    // a restaurant and a cafe in the same block stay as two distinct
+    // singletons (or two distinct count badges) instead of merging
+    // into a mixed cluster.
+    const byClass = new Map();
     for (const f of features) {
       const props = f.properties || {};
       const cls = props.class;
       const r = effectiveRule(profile, cls);
       if (!r) continue;
       if (r.type === 'zoom' && z < r.zoomLevel) continue;
-      // Debug-only category zoom floor (additive — never resurrects
-      // classes that the profile already disabled).
       const cat = CLASS_TO_CATEGORY[cls];
       if (cat && DEBUG_OVERRIDES[cat] != null && z < DEBUG_OVERRIDES[cat]) continue;
       const c = f.geometry && f.geometry.coordinates;
@@ -1224,7 +1208,9 @@
       const key = cls + '|' + c[0].toFixed(6) + '|' + c[1].toFixed(6);
       if (seen.has(key)) continue;
       seen.add(key);
-      points.push({
+      let bucket = byClass.get(cls);
+      if (!bucket) { bucket = []; byClass.set(cls, bucket); }
+      bucket.push({
         type: 'Feature',
         properties: {
           class: cls,
@@ -1235,24 +1221,18 @@
       });
     }
 
-    supercluster.load(points);
     const bounds = map.getBounds().toArray().flat();
-    const clusters = supercluster.getClusters(bounds, Math.floor(z));
-    // Pick the modal class per cluster from the histogram populated
-    // by supercluster's map/reduce hooks. The result drives the
-    // `icon-image` expression on `poi-cluster-icon`.
-    for (const c of clusters) {
-      const props = c.properties || {};
-      if (!props.cluster) continue;
-      const hist = props.classHist || {};
-      let topClass = null;
-      let topCount = 0;
-      for (const cls in hist) {
-        if (hist[cls] > topCount) { topCount = hist[cls]; topClass = cls; }
+    const out = [];
+    for (const [cls, points] of byClass) {
+      const sc = new window.Supercluster(CLUSTER_OPTS);
+      sc.load(points);
+      const clusters = sc.getClusters(bounds, Math.floor(z));
+      for (const c of clusters) {
+        if (c.properties && c.properties.cluster) c.properties.topClass = cls;
+        out.push(c);
       }
-      if (topClass) props.topClass = topClass;
     }
-    src.setData({ type: 'FeatureCollection', features: clusters });
+    src.setData({ type: 'FeatureCollection', features: out });
   }
 
   function profileUsesRadius(profile) {
