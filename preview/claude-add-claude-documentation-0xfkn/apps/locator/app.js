@@ -130,9 +130,6 @@
       labelStrong: '#e2e8f0',
       labelDim: '#94a3b8',
       poi: '#94a3b8',
-      cluster: '#fb923c',
-      clusterStroke: '#1a1d24',
-      clusterText: '#1a1d24',
     },
     light: {
       bg: '#f5f3ee',
@@ -153,9 +150,6 @@
       labelStrong: '#0c1118',
       labelDim: '#525866',
       poi: '#525866',
-      cluster: '#fb923c',
-      clusterStroke: '#ffffff',
-      clusterText: '#1a1d24',
     },
   };
   const TEXT_FONT = ['Noto Sans Regular'];
@@ -528,30 +522,37 @@
           } },
 
         // ---- POI clusters ----
-        // Three layers reading from the same GeoJSON source. `circle`
-        // and `count` only render when a feature has `point_count`
-        // (supercluster's marker for an aggregated cluster); `leaf`
-        // renders the individual emoji for singletons (point_count
-        // absent), preserving the per-class visual cue at high zoom.
-        { id: 'poi-cluster-circle', type: 'circle', source: 'poi-clusters',
-          filter: ['has', 'point_count'],
-          paint: {
-            'circle-color': C.cluster,
-            'circle-stroke-color': C.clusterStroke,
-            'circle-stroke-width': 1.5,
-            'circle-radius': ['step', ['get', 'point_count'], 14, 10, 20, 50, 28],
-            'circle-opacity': 0.9,
-          } },
-        { id: 'poi-cluster-count', type: 'symbol', source: 'poi-clusters',
+        // Two symbol layers reading the same GeoJSON source.
+        // `poi-cluster-icon` renders aggregated clusters as the modal
+        // POI class's emoji with the count badge to the right (e.g.
+        // 🍴 12). `poi-cluster-leaf` renders singletons (point_count
+        // absent) as the bare per-class emoji, preserving the look
+        // at high zoom.
+        { id: 'poi-cluster-icon', type: 'symbol', source: 'poi-clusters',
           filter: ['has', 'point_count'],
           layout: {
+            'icon-image': ['concat', 'poi-', ['get', 'topClass']],
+            'icon-size': ['interpolate', ['linear'], ['zoom'],
+              10, 0.55,
+              13, 0.75,
+              16, 0.95,
+            ],
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
             'text-field': ['get', 'point_count_abbreviated'],
             'text-font': TEXT_FONT,
-            'text-size': ['step', ['get', 'point_count'], 11, 10, 13, 50, 15],
+            'text-size': ['step', ['get', 'point_count'], 12, 10, 13, 50, 15],
+            'text-anchor': 'left',
+            'text-offset': [1.0, 0],
             'text-allow-overlap': true,
             'text-ignore-placement': true,
+            'text-optional': false,
           },
-          paint: { 'text-color': C.clusterText } },
+          paint: {
+            'text-color': C.label,
+            'text-halo-color': C.bg,
+            'text-halo-width': 2,
+          } },
         { id: 'poi-cluster-leaf', type: 'symbol', source: 'poi-clusters',
           filter: ['!', ['has', 'point_count']],
           layout: {
@@ -1148,6 +1149,20 @@
       radius: 60,
       maxZoom: 16,
       minPoints: 3,
+      // Per-cluster class histogram so the rendered emoji can be
+      // the most common POI class in the group. Stored as a plain
+      // object keyed by class; reduced into a running tally as
+      // supercluster merges children.
+      map: (props) => {
+        const h = {};
+        if (props && props.class) h[props.class] = 1;
+        return { classHist: h };
+      },
+      reduce: (acc, props) => {
+        const src = (props && props.classHist) || {};
+        const dst = acc.classHist || (acc.classHist = {});
+        for (const cls in src) dst[cls] = (dst[cls] || 0) + src[cls];
+      },
     });
   }
 
@@ -1203,10 +1218,22 @@
 
     supercluster.load(points);
     const bounds = map.getBounds().toArray().flat();
-    src.setData({
-      type: 'FeatureCollection',
-      features: supercluster.getClusters(bounds, Math.floor(z)),
-    });
+    const clusters = supercluster.getClusters(bounds, Math.floor(z));
+    // Pick the modal class per cluster from the histogram populated
+    // by supercluster's map/reduce hooks. The result drives the
+    // `icon-image` expression on `poi-cluster-icon`.
+    for (const c of clusters) {
+      const props = c.properties || {};
+      if (!props.cluster) continue;
+      const hist = props.classHist || {};
+      let topClass = null;
+      let topCount = 0;
+      for (const cls in hist) {
+        if (hist[cls] > topCount) { topCount = hist[cls]; topClass = cls; }
+      }
+      if (topClass) props.topClass = topClass;
+    }
+    src.setData({ type: 'FeatureCollection', features: clusters });
   }
 
   function profileUsesRadius(profile) {
