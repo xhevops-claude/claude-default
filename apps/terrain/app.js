@@ -601,9 +601,13 @@ function frameMesh(mesh) {
 
 // Frames the camera over the parcel polygons (top-down). Called
 // after a DXF loads so the user lands looking straight at their
-// plot.
+// plot. The matrixWorld walk is critical: parcels were just added
+// to the group whose `scale.x = -1` mirrors the CRS; without a
+// fresh updateMatrixWorld the bbox is computed in pre-mirror local
+// coords and the camera aims at the wrong half of the scene.
 function frameParcels(parcels) {
   if (!parcels) return;
+  if (currentMesh) currentMesh.updateMatrixWorld(true);
   const bbox = new THREE.Box3().setFromObject(parcels);
   if (bbox.isEmpty()) return;
   const center = bbox.getCenter(new THREE.Vector3());
