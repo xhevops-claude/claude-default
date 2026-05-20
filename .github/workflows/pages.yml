@@ -39,14 +39,16 @@ jobs:
             echo "label=preview" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Cache-bust local assets in preview HTML
-        # Preview deploys overwrite files at the same URLs, so Chrome
-        # happily serves stale `app.js`/`styles.css` from disk cache
-        # even after a Ctrl-R revalidates the HTML. Append `?v=<sha>`
-        # to relative .js/.css refs in every index.html so each push
-        # produces fresh resource URLs. Skipped for production where
-        # we keep stable URLs.
-        if: steps.target.outputs.label == 'preview'
+      - name: Cache-bust local assets in deployed HTML
+        # GitHub Pages serves `.js`/`.css` with `Cache-Control:
+        # max-age=600`, so without a version token Chrome happily
+        # serves stale `app.js`/`styles.css` from disk cache for ~10
+        # minutes after a deploy even when the user hard-refreshes.
+        # Append `?v=<sha>` to relative .js/.css refs in every
+        # index.html so each push produces fresh resource URLs.
+        # Applies to both production and preview deploys — the asset
+        # URLs aren't user-facing, so there's no "stability" to
+        # preserve.
         shell: bash
         run: |
           SHA="${GITHUB_SHA:0:7}"
