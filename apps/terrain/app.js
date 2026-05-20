@@ -311,78 +311,6 @@ function buildMesh(points) {
   const gridMinorLines = buildContourLines(gridMinor, 0x4a5b6e, 0.35);
   const gridMajorLines = buildContourLines(gridMajor, 0x8aa1b8, 0.7);
 
-  // Draped grid — same X/Y values, but each line is computed by
-  // marching triangles against a vertical plane (constant X for one
-  // family, constant Y for the other) so the line follows the
-  // terrain surface. Without this the floor grid above is hidden by
-  // the mesh from anything but a side-on view. Lifted slightly less
-  // than the elevation contours so contours render on top of grid
-  // crossings.
-  const drapeMinor = [];
-  const drapeMajor = [];
-  const DRAPE_LIFT = 0.0012;
-
-  function drapeXEdge(i0, i1, X, hits) {
-    const x0 = points[i0][0], x1 = points[i1][0];
-    if ((x0 < X && x1 < X) || (x0 > X && x1 > X)) return;
-    if (x0 === x1) return;
-    const tt = (X - x0) / (x1 - x0);
-    const yo = points[i0][1] + (points[i1][1] - points[i0][1]) * tt;
-    const zo = points[i0][2] + (points[i1][2] - points[i0][2]) * tt;
-    hits.push(
-      (X - cx) * scale,
-      (zo - minZ) * scale + DRAPE_LIFT,
-      (yo - cy) * scale,
-    );
-  }
-  function drapeYEdge(i0, i1, Y, hits) {
-    const y0 = points[i0][1], y1 = points[i1][1];
-    if ((y0 < Y && y1 < Y) || (y0 > Y && y1 > Y)) return;
-    if (y0 === y1) return;
-    const tt = (Y - y0) / (y1 - y0);
-    const xo = points[i0][0] + (points[i1][0] - points[i0][0]) * tt;
-    const zo = points[i0][2] + (points[i1][2] - points[i0][2]) * tt;
-    hits.push(
-      (xo - cx) * scale,
-      (zo - minZ) * scale + DRAPE_LIFT,
-      (Y - cy) * scale,
-    );
-  }
-  // Constant-X grid lines (run along the data's Y axis).
-  for (let X = xStart; X <= maxX + 1e-9; X += gridStep) {
-    const isMajor = Math.abs(X / gridStep / gridMajorEvery - Math.round(X / gridStep / gridMajorEvery)) < 1e-6;
-    const target = isMajor ? drapeMajor : drapeMinor;
-    for (let t = 0; t < triangles.length; t += 3) {
-      const ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
-      const xa = points[ia][0], xb = points[ib][0], xc = points[ic][0];
-      if ((xa < X && xb < X && xc < X) || (xa > X && xb > X && xc > X)) continue;
-      const hits = [];
-      drapeXEdge(ia, ib, X, hits);
-      drapeXEdge(ib, ic, X, hits);
-      drapeXEdge(ic, ia, X, hits);
-      if (hits.length >= 6) target.push(hits[0], hits[1], hits[2], hits[3], hits[4], hits[5]);
-    }
-  }
-  // Constant-Y grid lines (run along the data's X axis).
-  for (let Y = yStart; Y <= maxY + 1e-9; Y += gridStep) {
-    const isMajor = Math.abs(Y / gridStep / gridMajorEvery - Math.round(Y / gridStep / gridMajorEvery)) < 1e-6;
-    const target = isMajor ? drapeMajor : drapeMinor;
-    for (let t = 0; t < triangles.length; t += 3) {
-      const ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
-      const ya = points[ia][1], yb = points[ib][1], yc = points[ic][1];
-      if ((ya < Y && yb < Y && yc < Y) || (ya > Y && yb > Y && yc > Y)) continue;
-      const hits = [];
-      drapeYEdge(ia, ib, Y, hits);
-      drapeYEdge(ib, ic, Y, hits);
-      drapeYEdge(ic, ia, Y, hits);
-      if (hits.length >= 6) target.push(hits[0], hits[1], hits[2], hits[3], hits[4], hits[5]);
-    }
-  }
-  // Cool-blue tint so draped grid reads as a different layer from
-  // the warm-gray elevation contours.
-  const drapeMinorLines = buildContourLines(drapeMinor, 0x3d5063, 0.55);
-  const drapeMajorLines = buildContourLines(drapeMajor, 0x6e90b0, 0.9);
-
   // Spatial index over the triangulation so drape/lookup queries
   // (parcel overlays etc.) can find the containing triangle for an
   // (X, Y) without scanning all triangles. Uniform 64×64 grid keyed
@@ -402,13 +330,11 @@ function buildMesh(points) {
   group.add(mesh);
   if (gridMinorLines) group.add(gridMinorLines);
   if (gridMajorLines) group.add(gridMajorLines);
-  if (drapeMinorLines) group.add(drapeMinorLines);
-  if (drapeMajorLines) group.add(drapeMajorLines);
   if (minorLines) group.add(minorLines);
   if (majorLines) group.add(majorLines);
   group.userData = {
     mesh, minorLines, majorLines,
-    gridMinorLines, gridMajorLines, drapeMinorLines, drapeMajorLines,
+    gridMinorLines, gridMajorLines,
     drapeCtx,
   };
 
