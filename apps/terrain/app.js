@@ -219,14 +219,89 @@ function buildMesh(points) {
     surface += Math.sqrt(nx * nx + ny * ny + nz * nz) * 0.5;
   }
 
+  // Topographic contours every 1 m of native elevation. Marching
+  // triangles: for each contour level, walk every triangle and emit
+  // segments where the level intersects two of its edges. Lifted a
+  // hair above the surface in Y to avoid z-fighting with the mesh.
+  // Major contours (every 5 m) get their own object so they render
+  // darker — same convention as printed topo maps.
+  const MINOR_INTERVAL = 1;
+  const MAJOR_EVERY = 5;
+  const minorSegs = [];
+  const majorSegs = [];
+  const Z_LIFT = 0.0015;
+  const startLevel = Math.ceil(minZ / MINOR_INTERVAL) * MINOR_INTERVAL;
+  const endLevel = Math.floor(maxZ / MINOR_INTERVAL) * MINOR_INTERVAL;
+  for (let level = startLevel; level <= endLevel + 1e-9; level += MINOR_INTERVAL) {
+    const yLevel = (level - minZ) * scale;
+    const isMajor = Math.abs(level / MAJOR_EVERY - Math.round(level / MAJOR_EVERY)) < 1e-6;
+    const target = isMajor ? majorSegs : minorSegs;
+    for (let t = 0; t < triangles.length; t += 3) {
+      const ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
+      const ya = positions[ia * 3 + 1];
+      const yb = positions[ib * 3 + 1];
+      const yc = positions[ic * 3 + 1];
+      // Skip triangles entirely above or below the level.
+      if ((ya < yLevel && yb < yLevel && yc < yLevel) ||
+          (ya > yLevel && yb > yLevel && yc > yLevel)) continue;
+      const xs = [];
+      const zs = [];
+      crossEdge(positions, ia, ib, yLevel, xs, zs);
+      crossEdge(positions, ib, ic, yLevel, xs, zs);
+      crossEdge(positions, ic, ia, yLevel, xs, zs);
+      if (xs.length >= 2) {
+        target.push(xs[0], yLevel + Z_LIFT, zs[0],
+                    xs[1], yLevel + Z_LIFT, zs[1]);
+      }
+    }
+  }
+
+  function buildContourLines(segs, color, opacity) {
+    if (!segs.length) return null;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segs), 3));
+    const m = new THREE.LineBasicMaterial({ color, transparent: opacity < 1, opacity });
+    const line = new THREE.LineSegments(g, m);
+    line.renderOrder = 1;
+    return line;
+  }
+  const minorLines = buildContourLines(minorSegs, 0x0a0d12, 0.55);
+  const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
+
+  const group = new THREE.Group();
+  group.add(mesh);
+  if (minorLines) group.add(minorLines);
+  if (majorLines) group.add(majorLines);
+  group.userData = { mesh, minorLines, majorLines };
+
   return {
+    group,
     mesh,
     bounds: { minX, maxX, minY, maxY, minZ, maxZ },
     triangleCount: triangles.length / 3,
+    contourCount: minorSegs.length / 6 + majorSegs.length / 6,
     footprint,
     surface,
     density: footprint > 0 ? points.length / footprint : 0,
   };
+}
+
+// Interpolates the intersection of `yLevel` with the edge between
+// vertices i0 and i1, appending the (x, z) of the hit to `xs`/`zs`.
+// No-op if the edge is entirely on one side or exactly horizontal at
+// the level (the adjacent edges will already register the crossing).
+function crossEdge(positions, i0, i1, yLevel, xs, zs) {
+  const y0 = positions[i0 * 3 + 1];
+  const y1 = positions[i1 * 3 + 1];
+  if ((y0 < yLevel && y1 < yLevel) || (y0 > yLevel && y1 > yLevel)) return;
+  if (y0 === y1) return;
+  const t = (yLevel - y0) / (y1 - y0);
+  const x0 = positions[i0 * 3];
+  const z0 = positions[i0 * 3 + 2];
+  const x1 = positions[i1 * 3];
+  const z1 = positions[i1 * 3 + 2];
+  xs.push(x0 + (x1 - x0) * t);
+  zs.push(z0 + (z1 - z0) * t);
 }
 
 // Discrete-ish ramp: deep green → meadow green → tan → rock → snow.
@@ -296,12 +371,14 @@ async function loadFile(file) {
     const t1 = performance.now();
     if (currentMesh) {
       scene.remove(currentMesh);
-      currentMesh.geometry.dispose();
-      currentMesh.material.dispose();
+      currentMesh.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+      });
     }
-    currentMesh = built.mesh;
+    currentMesh = built.group;
     scene.add(currentMesh);
-    frameMesh(currentMesh);
+    frameMesh(built.mesh);
     hint.hidden = true;
     readout.hidden = false;
     resetBtn.hidden = false;
@@ -310,6 +387,7 @@ async function loadFile(file) {
     readoutCount.textContent =
       `${points.length.toLocaleString()} pts · ` +
       `${built.triangleCount.toLocaleString()} tris · ` +
+      `${built.contourCount.toLocaleString()} contour segs · ` +
       `${Math.round(t1 - t0)} ms`;
     readoutElev.textContent      = `${b.minZ.toFixed(2)} – ${b.maxZ.toFixed(2)} m`;
     readoutDz.textContent        = `${(b.maxZ - b.minZ).toFixed(2)} m`;
