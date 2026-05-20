@@ -586,41 +586,58 @@ function drapeParcelPolylines(polylines, ctx) {
 // Contour-label canvas dimensions (logical px). Drawn at 2× into
 // the backing canvas for crispness on HiDPI displays. Text only,
 // no background pill — relies on a dark halo for legibility against
-// any terrain colour.
-const LABEL_W = 160;
-const LABEL_H = 60;
+// any terrain colour. Both pieces share a single horizontal line
+// (relative height as the primary accent, absolute elevation as
+// secondary), at roughly half the typographic size of the previous
+// two-row layout.
+const LABEL_W = 110;
+const LABEL_H = 22;
 
-// Paints (or repaints) a label canvas with two text rows:
-// top = absolute elevation (m), bottom = signed height above the
-// chosen baseline (typically the parcel bottom). Exposed so the
-// parcel loader can refresh every label's relative row in place
-// once a new baseline is known.
+// Paints (or repaints) a label canvas with both pieces on one
+// horizontally-centred row: relative height above the chosen
+// baseline (primary — bold white) on the left, absolute elevation
+// (secondary — dimmer, smaller) on the right. Exposed so the parcel
+// loader can refresh every label's relative piece in place once a
+// new baseline is known.
 function drawContourLabel(canvas, abs, baseline) {
   if (!canvas.width) { canvas.width = LABEL_W * 2; canvas.height = LABEL_H * 2; }
   const ctx = canvas.getContext('2d');
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.scale(2, 2);
-  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
   ctx.lineJoin = 'round';
+
   const rel = abs - baseline;
-  // Top: absolute
-  ctx.font = 'bold 26px ui-monospace, "SF Mono", Menlo, monospace';
-  ctx.lineWidth = 5;
+  const relText = `${rel >= 0 ? '+' : ''}${rel.toFixed(1)} m`;
+  const absText = `${abs.toFixed(0)} m`;
+  const fontMain = 'bold 13px ui-monospace, "SF Mono", Menlo, monospace';
+  const fontSec  = '11px ui-monospace, "SF Mono", Menlo, monospace';
+
+  ctx.font = fontMain;
+  const relW = ctx.measureText(relText).width;
+  ctx.font = fontSec;
+  const absW = ctx.measureText(absText).width;
+  const gap = 5;
+  const y = LABEL_H * 0.5;
+  let x = (LABEL_W - (relW + gap + absW)) * 0.5;
+
+  // Primary: relative height (bold white)
+  ctx.font = fontMain;
+  ctx.lineWidth = 3;
   ctx.strokeStyle = 'rgba(8, 12, 18, 0.95)';
   ctx.fillStyle = '#ffffff';
-  const topY = LABEL_H * 0.33;
-  ctx.strokeText(`${abs.toFixed(0)} m`, LABEL_W / 2, topY);
-  ctx.fillText(`${abs.toFixed(0)} m`, LABEL_W / 2, topY);
-  // Bottom: relative
-  ctx.font = '20px ui-monospace, "SF Mono", Menlo, monospace';
-  ctx.lineWidth = 4;
-  ctx.fillStyle = '#c5d3e0';
-  const botY = LABEL_H * 0.72;
-  const relText = `${rel >= 0 ? '+' : ''}${rel.toFixed(1)} m`;
-  ctx.strokeText(relText, LABEL_W / 2, botY);
-  ctx.fillText(relText, LABEL_W / 2, botY);
+  ctx.strokeText(relText, x, y);
+  ctx.fillText(relText, x, y);
+  x += relW + gap;
+
+  // Secondary: absolute elevation (dim, smaller)
+  ctx.font = fontSec;
+  ctx.lineWidth = 2.5;
+  ctx.fillStyle = '#9fb0c0';
+  ctx.strokeText(absText, x, y);
+  ctx.fillText(absText, x, y);
 }
 
 // Two-line contour label: a Sprite wrapping a canvas texture. Uses
@@ -643,9 +660,10 @@ function makeContourLabel(abs, baseline) {
   });
   const sprite = new THREE.Sprite(mat);
   // With sizeAttenuation=false, sprite.scale is interpreted in
-  // viewport-normalised units (1.0 ≈ full viewport). 0.045 = ~5 %
-  // of viewport height — readable mono text without dominating.
-  const SY = 0.045;
+  // viewport-normalised units (1.0 ≈ full viewport). 0.022 ≈ half
+  // of the previous size — small enough to read four labels per
+  // contour without crowding.
+  const SY = 0.022;
   const SX = SY * (LABEL_W / LABEL_H);
   sprite.scale.set(-SX, SY, 1);
   sprite.userData = { abs, canvas };
