@@ -298,17 +298,24 @@ function buildMesh(points) {
   // segments and apply it on the terrain material. White background
   // multiplies away against the per-vertex colour; black glyphs
   // multiply to ~0 so the numbers stamp onto whatever colour the
-  // elevation ramp painted underneath. Material is created after
-  // the texture so it can carry `map` from the start.
-  const surfaceLabels = buildSurfaceLabelTexture(contourSegData, { minX, maxX, minY, maxY });
-  const material = new THREE.MeshStandardMaterial({
+  // elevation ramp painted underneath. If texture creation fails
+  // (e.g. OOM on a memory-constrained device, or GPU texture-size
+  // limit), the mesh still renders with just per-vertex colours.
+  let surfaceLabels = null;
+  try {
+    surfaceLabels = buildSurfaceLabelTexture(contourSegData, { minX, maxX, minY, maxY });
+  } catch (e) {
+    if (typeof console !== 'undefined' && console.warn) console.warn('Surface label texture failed:', e);
+  }
+  const materialSpec = {
     vertexColors: true,
-    map: surfaceLabels,
     side: THREE.DoubleSide,
     roughness: 0.85,
     metalness: 0.0,
     flatShading: false,
-  });
+  };
+  if (surfaceLabels) materialSpec.map = surfaceLabels;
+  const material = new THREE.MeshStandardMaterial(materialSpec);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.userData = { minZ, maxZ, scale };
 
@@ -426,7 +433,11 @@ function buildSurfaceLabelTexture(contourSegs, bounds) {
   const { minX, maxX, minY, maxY } = bounds;
   const spanX = Math.max(maxX - minX, 1e-6);
   const spanY = Math.max(maxY - minY, 1e-6);
-  const MAX_DIM = 4096;
+  // 2048 keeps us comfortably under iOS Safari's canvas + GPU
+  // texture-size ceilings while leaving enough pixels per metre to
+  // render small glyphs. A 165 m terrain → ~12 px/m → 10 % of 1 m
+  // ≈ 1.2 px; we clamp text size to a 4 px floor below.
+  const MAX_DIM = 2048;
   const pxPerM = MAX_DIM / Math.max(spanX, spanY);
   const cw = Math.max(2, Math.ceil(spanX * pxPerM));
   const ch = Math.max(2, Math.ceil(spanY * pxPerM));
@@ -435,6 +446,7 @@ function buildSurfaceLabelTexture(contourSegs, bounds) {
   canvas.width = cw;
   canvas.height = ch;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
 
   // Opaque white background — multiplied by the mesh's vertex
   // colour, the original terrain colour shows through unchanged.
@@ -443,8 +455,11 @@ function buildSurfaceLabelTexture(contourSegs, bounds) {
 
   // 10 % of the 1 m contour gap, clamped to a sensible minimum so
   // canvas.fillText actually renders something.
-  const targetPx = Math.max(2, 0.10 * pxPerM);
-  ctx.font = `200 ${targetPx}px -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif`;
+  // Floor at 4 px so glyphs don't degrade into aliased noise; cap
+  // at 20 % of a contour gap so labels never overflow into adjacent
+  // contour lanes on a steep slope.
+  const targetPx = Math.min(0.20 * pxPerM, Math.max(4, 0.10 * pxPerM));
+  ctx.font = `400 ${targetPx}px -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -484,9 +499,12 @@ function buildSurfaceLabelTexture(contourSegs, bounds) {
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  // No mipmaps — the canvas is non-power-of-two and mobile WebGL1
+  // refuses to mip NPOT textures; linear filtering on the original
+  // image is what we want anyway.
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
-  tex.anisotropy = 8;
   tex.needsUpdate = true;
   return tex;
 }
