@@ -237,6 +237,10 @@ function buildMesh(points) {
   const minorSegs = [];
   const majorSegs = [];
   const Z_LIFT = 0.0015;
+  // Per major level: running centroid of its segment vertices (in
+  // world XZ), plus the world Y the label sits at. One label per
+  // level is placed at the centroid after the build loop.
+  const majorAggs = new Map();
   const startLevel = Math.ceil(minZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   const endLevel = Math.floor(maxZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   for (let level = startLevel; level <= endLevel + 1e-9; level += MINOR_INTERVAL) {
@@ -259,6 +263,13 @@ function buildMesh(points) {
       if (xs.length >= 2) {
         target.push(xs[0], yLevel + Z_LIFT, zs[0],
                     xs[1], yLevel + Z_LIFT, zs[1]);
+        if (isMajor) {
+          let agg = majorAggs.get(level);
+          if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4 }; majorAggs.set(level, agg); }
+          agg.sumX += xs[0] + xs[1];
+          agg.sumZ += zs[0] + zs[1];
+          agg.count += 2;
+        }
       }
     }
   }
@@ -274,6 +285,25 @@ function buildMesh(points) {
   }
   const minorLines = buildContourLines(minorSegs, 0x0a0d12, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
+
+  // One sprite label per major contour level: two stacked lines —
+  // absolute elevation as shipped in the file, and the height above
+  // the dataset's minimum (parcel bottom). Positioned at the
+  // centroid of that level's segments. sprite.scale.x is negated
+  // because the parent group has scale.x = -1 (CRS mirror) — the
+  // double negative leaves text right-reading.
+  const contourLabels = [];
+  for (const [level, agg] of majorAggs) {
+    if (agg.count === 0) continue;
+    const wx = agg.sumX / agg.count;
+    const wz = agg.sumZ / agg.count;
+    const abs = level;
+    const rel = level - minZ;
+    const sprite = makeContourLabel(`${abs.toFixed(0)} m`, `+${rel.toFixed(1)} m`);
+    sprite.position.set(wx, agg.yLevel + 0.005, wz);
+    sprite.renderOrder = 3;
+    contourLabels.push(sprite);
+  }
 
   // Coordinate grid — X/Y lines on the floor plane (Y = small
   // negative so the mesh sits on top). Spacing is a "nice" round
@@ -332,9 +362,11 @@ function buildMesh(points) {
   if (gridMajorLines) group.add(gridMajorLines);
   if (minorLines) group.add(minorLines);
   if (majorLines) group.add(majorLines);
+  for (const s of contourLabels) group.add(s);
   group.userData = {
     mesh, minorLines, majorLines,
     gridMinorLines, gridMajorLines,
+    contourLabels,
     drapeCtx,
   };
 
@@ -536,6 +568,54 @@ function drapeParcelPolylines(polylines, ctx) {
   return { segs, inBounds, outBounds };
 }
 
+// Two-line contour label rendered to a canvas, wrapped as a Sprite
+// so it always faces the camera. Top line = absolute elevation as
+// shipped in the file; bottom line = height above the dataset's
+// minimum (parcel bottom). Negative X scale counters the parent
+// group's mirror transform, leaving text right-reading.
+function makeContourLabel(absText, relText) {
+  const W = 256;
+  const H = 96;
+  const canvas = document.createElement('canvas');
+  canvas.width = W * 2;
+  canvas.height = H * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  ctx.fillStyle = 'rgba(12, 17, 24, 0.88)';
+  roundRect(ctx, 0, 0, W, H, 14);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, 0.5, 0.5, W - 1, H - 1, 14);
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 36px ui-monospace, "SF Mono", Menlo, monospace';
+  ctx.fillText(absText, W / 2, H * 0.34);
+  ctx.fillStyle = '#9fb4cc';
+  ctx.font = '28px ui-monospace, "SF Mono", Menlo, monospace';
+  ctx.fillText(relText, W / 2, H * 0.72);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true });
+  const sprite = new THREE.Sprite(mat);
+  const SX = 0.22;
+  sprite.scale.set(-SX, SX * (H / W), 1);
+  return sprite;
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
+
 // Discrete-ish ramp: deep green → meadow green → tan → rock → snow.
 function elevationColor(t) {
   const stops = [
@@ -608,7 +688,10 @@ async function loadFile(file) {
       scene.remove(currentMesh);
       currentMesh.traverse((obj) => {
         if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) obj.material.dispose();
+        if (obj.material) {
+          if (obj.material.map) obj.material.map.dispose();
+          obj.material.dispose();
+        }
       });
     }
     currentMesh = built.group;
