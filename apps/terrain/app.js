@@ -36,7 +36,9 @@ function hideLoader() {
   const wait = Math.max(0, MIN_LOADER_MS - (performance.now() - loadStart));
   setTimeout(() => {
     loading.classList.add('hidden');
-    hint.hidden = false;
+    // Only fall back to the "upload a file" hint if the auto-load
+    // didn't beat us to it.
+    if (!currentMesh) hint.hidden = false;
     setTimeout(() => loading.remove(), 600);
   }, wait);
 }
@@ -326,21 +328,27 @@ fileInput.addEventListener('change', () => {
   fileInput.value = '';
 });
 
-// Bundled sample DEM. Drop more files into apps/terrain/sample-files/
-// (e.g. via GitHub's web editor) — for now the button just loads the
-// Trebishte plot. Swap in your own by replacing that file or wiring
-// a picker later.
-sampleBtn.addEventListener('click', async () => {
+// Bundled samples live in apps/terrain/sample-files/. For now the
+// Sample button is single-action (Trebishte); when there's more than
+// one file in that folder, swap this for a picker.
+async function loadBundledSample(path, displayName) {
   try {
-    const res = await fetch('sample-files/trebishte.txt', { cache: 'no-cache' });
+    const res = await fetch(path, { cache: 'no-cache' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const blob = await res.blob();
-    const file = new File([blob], 'trebishte.txt', { type: 'text/plain' });
-    loadFile(file);
+    await loadFile(new File([blob], displayName, { type: 'text/plain' }));
   } catch (e) {
     showError('Could not load sample: ' + (e && e.message || e));
   }
+}
+sampleBtn.addEventListener('click', () => {
+  loadBundledSample('sample-files/trebishte.txt', 'trebishte.txt');
 });
+
+// Open the bundled Trebishte plot on first launch so the user lands
+// on a populated viewport instead of an empty grid. Sample / Upload
+// remain available to swap to a different file.
+loadBundledSample('sample-files/trebishte.txt', 'trebishte.txt');
 
 resetBtn.addEventListener('click', () => {
   if (!homeCamera) return;
