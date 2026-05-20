@@ -59,13 +59,13 @@ const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
 // 0.001 nudge gives the user a map view that OrbitControls can
 // orbit cleanly from when they want to tilt.
 camera.position.set(0, 3, 0.001);
-// View orientation: rotate screen-up 135° counter-clockwise from
-// north-up. For a top-down camera (view = -Y), the projection of
-// `camera.up` onto the XZ plane defines screen-up; setting it to
+// View orientation: rotate screen-up 135° clockwise from north-up.
+// For a top-down camera (view = -Y), the projection of `camera.up`
+// onto the XZ plane defines screen-up; setting it to
 // (sin θ, 0, -cos θ) gives a θ-CCW rotation, with θ=0 being
-// north-up.
+// north-up. Negative θ for clockwise.
 {
-  const rad = 135 * Math.PI / 180;
+  const rad = -135 * Math.PI / 180;
   camera.up.set(Math.sin(rad), 0, -Math.cos(rad));
 }
 
