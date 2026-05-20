@@ -100,6 +100,11 @@ controls.maxDistance = 8;
 // a heightmap, looking up from below is fine too.
 controls.minPolarAngle = 0.01;
 controls.maxPolarAngle = Math.PI - 0.01;
+// Map-style touch gestures: one finger pans, two fingers
+// pinch-to-zoom + twist-to-rotate. (Default OrbitControls maps one
+// finger to rotate and two-finger drag to pan; we swap those.)
+controls.touches.ONE = THREE.TOUCH.PAN;
+controls.touches.TWO = THREE.TOUCH.DOLLY_ROTATE;
 
 function resize() {
   const w = canvasWrap.clientWidth;
