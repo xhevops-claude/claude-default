@@ -20,6 +20,7 @@ const readoutSurface  = document.getElementById('readout-surface');
 const readoutDensity  = document.getElementById('readout-density');
 const fileInput  = document.getElementById('file-input');
 const uploadBtn  = document.getElementById('upload-btn');
+const sampleBtn  = document.getElementById('sample-btn');
 const resetBtn   = document.getElementById('reset-btn');
 const quitBtn    = document.getElementById('quit-btn');
 const errorEl    = document.getElementById('error');
@@ -323,6 +324,21 @@ fileInput.addEventListener('change', () => {
   const f = fileInput.files && fileInput.files[0];
   if (f) loadFile(f);
   fileInput.value = '';
+});
+
+// Bundled sample DEM. Replace the file at apps/terrain/sample.txt
+// (e.g. via GitHub's web editor) to swap in your own — no code
+// changes needed.
+sampleBtn.addEventListener('click', async () => {
+  try {
+    const res = await fetch('sample.txt', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const file = new File([blob], 'sample.txt', { type: 'text/plain' });
+    loadFile(file);
+  } catch (e) {
+    showError('Could not load sample.txt: ' + (e && e.message || e));
+  }
 });
 
 resetBtn.addEventListener('click', () => {
