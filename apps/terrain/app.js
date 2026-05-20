@@ -13,6 +13,7 @@ const canvasWrap = document.getElementById('canvas-wrap');
 const hint       = document.getElementById('hint');
 const readout    = document.getElementById('readout');
 const readoutName     = document.getElementById('readout-name');
+const readoutToggle   = document.getElementById('readout-toggle');
 const readoutCount    = document.getElementById('readout-count');
 const readoutElev     = document.getElementById('readout-elev');
 const readoutDz       = document.getElementById('readout-dz');
@@ -53,7 +54,11 @@ scene.background = new THREE.Color(0x0c1118);
 scene.fog = new THREE.Fog(0x0c1118, 6, 14);
 
 const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
-camera.position.set(1.6, 1.4, 1.6);
+// Start top-down with a hair of Z offset — exact straight-down with
+// default `up = (0, 1, 0)` is an OrbitControls singularity. The
+// 0.001 nudge gives the user a north-up map view that OrbitControls
+// can orbit cleanly from when they want to tilt.
+camera.position.set(0, 3, 0.001);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -184,28 +189,22 @@ function buildMesh(points) {
     colors[i * 3 + 2] = c.b;
   }
 
-  // Per-vertex UVs map each point's data-XY into the [0, 1]² atlas
-  // used by the surface-projected number texture below. U is NOT
-  // mirrored — the canvas content is drawn already mirrored so the
-  // text reads correctly after the parent group's `scale.x = -1`
-  // CRS-mirror applies at render time. V is flipped because canvas-Y
-  // is top-down whereas data-Y reads bottom-up.
-  const uvs = new Float32Array(points.length * 2);
-  for (let i = 0; i < points.length; i++) {
-    uvs[i * 2]     = (points[i][0] - minX) / spanX;
-    uvs[i * 2 + 1] = (points[i][1] - minY) / spanY;
-  }
-
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute('uv',       new THREE.BufferAttribute(uvs, 2));
   geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(triangles), 1));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
 
-  // Material is created later (after the contour loop) so it can
-  // carry the per-level number texture as `map`.
+  const material = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    side: THREE.DoubleSide,
+    roughness: 0.85,
+    metalness: 0.0,
+    flatShading: false,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData = { minZ, maxZ, scale };
 
   // Areas computed in the file's native units (so if those units are
   // metres, the numbers are m² straight off). The 2D footprint is
@@ -243,14 +242,6 @@ function buildMesh(points) {
   const minorSegs = [];
   const majorSegs = [];
   const Z_LIFT = 0.0015;
-  // Per contour level: every segment in data CRS, stored as
-  // [midX, midY, dirX, dirY, midX, midY, dirX, dirY, ...]. The mid
-  // is the segment's centre (placement); the dir is the data-CRS
-  // delta x1-x0, y1-y0 (rotation). buildLabelTexture below stamps
-  // one label per segment, dedupes by canvas-pixel bucket so labels
-  // never overlap regardless of level, and rotates each label
-  // along the segment tangent.
-  const labelMidpoints = new Map();
   const startLevel = Math.ceil(minZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   const endLevel = Math.floor(maxZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   for (let level = startLevel; level <= endLevel + 1e-9; level += MINOR_INTERVAL) {
@@ -273,16 +264,6 @@ function buildMesh(points) {
       if (xs.length >= 2) {
         target.push(xs[0], yLevel + Z_LIFT, zs[0],
                     xs[1], yLevel + Z_LIFT, zs[1]);
-        // Reverse the world→data projection so the midpoint AND the
-        // segment direction live in source-CRS metres, which is
-        // what the label canvas wants.
-        const midDataX = (xs[0] + xs[1]) * 0.5 / scale + cx;
-        const midDataY = (zs[0] + zs[1]) * 0.5 / scale + cy;
-        const dirDataX = (xs[1] - xs[0]) / scale;
-        const dirDataY = (zs[1] - zs[0]) / scale;
-        let segs = labelMidpoints.get(level);
-        if (!segs) { segs = []; labelMidpoints.set(level, segs); }
-        segs.push(midDataX, midDataY, dirDataX, dirDataY);
       }
     }
   }
@@ -298,27 +279,6 @@ function buildMesh(points) {
   }
   const minorLines = buildContourLines(minorSegs, 0x0a0d12, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
-
-  // One number per contour level, stamped onto a canvas that's then
-  // UV-mapped onto the mesh — text physically lies on the surface
-  // and rotates with the model. Drawn small enough on the canvas
-  // (`labelCanvasPx ≈ 18 px`) that at default camera distance it's
-  // an unreadable speck; pinching in scales the texture sampling
-  // and the numbers resolve. White canvas background multiplies
-  // through to the per-vertex terrain colour; black text multiplies
-  // to ~0 so the numbers appear black on whatever colour the
-  // elevation ramp painted.
-  const surfaceLabels = buildLabelTexture(labelMidpoints, { minX, maxX, minY, maxY });
-  const material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    map: surfaceLabels || undefined,
-    side: THREE.DoubleSide,
-    roughness: 0.85,
-    metalness: 0.0,
-    flatShading: false,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.userData = { minZ, maxZ, scale };
 
   // Coordinate grid — X/Y lines on the floor plane (Y = small
   // negative so the mesh sits on top). Spacing is a "nice" round
@@ -583,109 +543,6 @@ function drapeParcelPolylines(polylines, ctx) {
   return { segs, inBounds, outBounds, parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ };
 }
 
-// Stamps black integers onto a canvas covering the terrain's XY
-// bbox at every contour-line midpoint (deduped by canvas-pixel
-// bucket so labels don't overlap each other regardless of which
-// contour level they belong to), rotated along the segment's
-// tangent so the digits read along the contour direction. Then
-// wraps the canvas as a CanvasTexture for UV-mapping onto the
-// mesh. Minimalist: no background pill, no halo. White everywhere
-// else so it multiplies cleanly through the mesh's vertex colours.
-//
-// The canvas X axis is pre-mirrored against `maxX` so the parent
-// group's `scale.x = -1` CRS-flip cancels out at render time, and
-// canvas Y is flipped because canvas pixels go top-down whereas
-// data-Y reads bottom-up.
-//
-// `labelCanvasPx` is intentionally small (~18 logical px). At
-// default camera distance the text resolves to ~5–7 screen px —
-// effectively a speck. Pinching in scales the texture sampling and
-// the numbers become legible without a separate LOD pass.
-function buildLabelTexture(midpointsByLevel, bounds) {
-  if (!midpointsByLevel || midpointsByLevel.size === 0) return null;
-  const { minX, maxX, minY, maxY } = bounds;
-  const spanX = Math.max(maxX - minX, 1e-6);
-  const spanY = Math.max(maxY - minY, 1e-6);
-  // 2048 leaves us comfortably under iOS Safari's canvas and GPU
-  // texture-size ceilings.
-  const MAX_DIM = 2048;
-  const pxPerM = MAX_DIM / Math.max(spanX, spanY);
-  const cw = Math.max(2, Math.ceil(spanX * pxPerM));
-  const ch = Math.max(2, Math.ceil(spanY * pxPerM));
-  const labelCanvasPx = 18;
-
-  let canvas;
-  try {
-    canvas = document.createElement('canvas');
-    canvas.width = cw;
-    canvas.height = ch;
-  } catch (e) {
-    if (typeof console !== 'undefined' && console.warn) console.warn('Label canvas allocation failed:', e);
-    return null;
-  }
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, cw, ch);
-  ctx.fillStyle = '#000000';
-  ctx.font = `400 ${labelCanvasPx}px -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  // Canvas-pixel bucket size for dedup — text bounding-box-ish so a
-  // single bucket fits one label without overflowing into a
-  // neighbour. Measured against a 4-digit sample to cover the
-  // worst-case label width.
-  const probe = ctx.measureText('1000');
-  const BUCKET_W = Math.max(20, probe.width + 6);
-  const BUCKET_H = Math.max(20, labelCanvasPx + 6);
-  const stamped = new Set();
-  const HALF_PI = Math.PI * 0.5;
-
-  for (const [level, segs] of midpointsByLevel) {
-    if (!segs || segs.length < 4) continue;
-    const txt = `${Math.round(level)}`;
-    for (let i = 0; i < segs.length; i += 4) {
-      const mx = segs[i];
-      const my = segs[i + 1];
-      const dirX = segs[i + 2];
-      const dirY = segs[i + 3];
-
-      const px = (maxX - mx) * pxPerM;
-      const py = ch - (my - minY) * pxPerM;
-      const bucketKey = `${Math.floor(px / BUCKET_W)}|${Math.floor(py / BUCKET_H)}`;
-      if (stamped.has(bucketKey)) continue;
-      stamped.add(bucketKey);
-
-      // Canvas-direction = -data-direction in both X (UV mirror)
-      // and Y (canvas top-down). Net rotation lands the text along
-      // the segment's tangent at render time.
-      const dxC = -dirX * pxPerM;
-      const dyC = -dirY * pxPerM;
-      let angle = Math.atan2(dyC, dxC);
-      if (angle >  HALF_PI) angle -= Math.PI;
-      if (angle < -HALF_PI) angle += Math.PI;
-
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate(angle);
-      ctx.fillText(txt, 0, 0);
-      ctx.restore();
-    }
-  }
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  // Non-power-of-two; mobile WebGL refuses mipmaps for NPOT, so
-  // skip them entirely and use plain linear sampling.
-  tex.generateMipmaps = false;
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.needsUpdate = true;
-  return tex;
-}
-
 // Discrete-ish ramp: deep green → meadow green → tan → rock → snow.
 function elevationColor(t) {
   const stops = [
@@ -710,20 +567,45 @@ function elevationColor(t) {
   return { r: 1, g: 1, b: 1 };
 }
 
-function frameMesh(mesh) {
-  const s = mesh.geometry.boundingSphere;
-  if (!s) return;
+// Positions the camera straight above `center`, far enough back to
+// fit a box of `size` in view with a small padding margin. The
+// 0.001 Z nudge keeps OrbitControls out of its top-down singularity
+// so the user can immediately drag to orbit.
+function frameView(center, size) {
   const fov = camera.fov * Math.PI / 180;
-  const dist = s.radius / Math.sin(fov / 2) * 1.1;
-  const eye = new THREE.Vector3(
-    s.center.x + dist * 0.7,
-    s.center.y + dist * 0.55,
-    s.center.z + dist * 0.7,
-  );
+  const maxDim = Math.max(size.x, size.z, 1e-6);
+  const dist = (maxDim * 0.5) / Math.tan(fov * 0.5) * 1.25;
+  const eye = new THREE.Vector3(center.x, center.y + dist + size.y * 0.5, center.z + 0.001);
   camera.position.copy(eye);
-  controls.target.copy(s.center);
+  controls.target.copy(center);
   controls.update();
-  homeCamera = { position: eye.clone(), target: s.center.clone() };
+  homeCamera = { position: eye.clone(), target: center.clone() };
+}
+
+// Frames the camera over the full terrain mesh (top-down).
+function frameMesh(mesh) {
+  const bbox = new THREE.Box3().setFromObject(mesh);
+  const center = bbox.getCenter(new THREE.Vector3());
+  const size = bbox.getSize(new THREE.Vector3());
+  frameView(center, size);
+}
+
+// Frames the camera over the parcel polygons (top-down). Called
+// after a DXF loads so the user lands looking straight at their
+// plot.
+function frameParcels(parcels) {
+  if (!parcels) return;
+  const bbox = new THREE.Box3().setFromObject(parcels);
+  if (bbox.isEmpty()) return;
+  const center = bbox.getCenter(new THREE.Vector3());
+  const size = bbox.getSize(new THREE.Vector3());
+  // Expand Y by the mesh height so the parcel sits comfortably in
+  // the camera's depth range even when the relief is significant.
+  if (currentMesh && currentMesh.userData && currentMesh.userData.mesh) {
+    const meshBox = new THREE.Box3().setFromObject(currentMesh.userData.mesh);
+    size.y = Math.max(size.y, meshBox.max.y - meshBox.min.y);
+  }
+  frameView(center, size);
 }
 
 // Switches to hectares (ha) once the value clears 10 000 m² so the
@@ -861,6 +743,9 @@ async function loadParcels(file) {
     currentParcels = new THREE.LineSegments(g, m);
     currentParcels.renderOrder = 2;
     currentMesh.add(currentParcels);
+    // Pop the camera over the parcel so the user lands looking at
+    // their plot rather than at the whole survey.
+    frameParcels(currentParcels);
     showStatus(
       `Loaded ${polylines.length} parcel path${polylines.length === 1 ? '' : 's'}` +
       (outBounds > 0 ? ` (${outBounds} sample${outBounds === 1 ? '' : 's'} off-terrain)` : '')
@@ -886,6 +771,13 @@ resetBtn.addEventListener('click', () => {
   camera.position.copy(homeCamera.position);
   controls.target.copy(homeCamera.target);
   controls.update();
+});
+
+// Stats panel collapse — toggles `.collapsed` on the readout root.
+// CSS hides `.readout-body` and rotates the chevron when collapsed.
+readoutToggle.addEventListener('click', () => {
+  const collapsed = readout.classList.toggle('collapsed');
+  readoutToggle.setAttribute('aria-expanded', String(!collapsed));
 });
 
 // Drag-and-drop a file anywhere on the viewport.
