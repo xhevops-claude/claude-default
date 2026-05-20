@@ -725,9 +725,21 @@ async function loadBundledSample(path, displayName) {
     showError('Could not load sample: ' + (e && e.message || e));
   }
 }
-sampleBtn.addEventListener('click', () => {
-  loadBundledSample('sample-files/trebishte.txt', 'trebishte.txt');
-});
+async function loadBundledParcels(path, displayName) {
+  try {
+    const res = await fetch(path, { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    await loadParcels(new File([blob], displayName, { type: 'application/dxf' }));
+  } catch (e) {
+    showError('Could not load parcel sample: ' + (e && e.message || e));
+  }
+}
+async function loadFullSample() {
+  await loadBundledSample('sample-files/trebishte.txt', 'trebishte.txt');
+  await loadBundledParcels('sample-files/trebishte.dxf', 'trebishte.dxf');
+}
+sampleBtn.addEventListener('click', loadFullSample);
 
 // ---- DXF parcel overlay ----
 // Parses LINE / LWPOLYLINE / POLYLINE entities from a user-supplied
@@ -778,10 +790,10 @@ parcelInput.addEventListener('change', () => {
   parcelInput.value = '';
 });
 
-// Open the bundled Trebishte plot on first launch so the user lands
-// on a populated viewport instead of an empty grid. Sample / Upload
-// remain available to swap to a different file.
-loadBundledSample('sample-files/trebishte.txt', 'trebishte.txt');
+// Open the bundled Trebishte plot + parcels on first launch so the
+// user lands on a populated viewport instead of an empty grid.
+// Sample / Upload / Parcels remain available to swap files.
+loadFullSample();
 
 resetBtn.addEventListener('click', () => {
   if (!homeCamera) return;
