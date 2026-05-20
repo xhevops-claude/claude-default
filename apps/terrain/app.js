@@ -243,12 +243,13 @@ function buildMesh(points) {
   const minorSegs = [];
   const majorSegs = [];
   const Z_LIFT = 0.0015;
-  // Per contour level: every segment midpoint in data CRS. After
-  // the build loop, buildLabelTexture picks the midpoint closest to
-  // the centroid of those points — that lands the label on an
-  // actual point of the contour line instead of the geometric
-  // centre of the loop (which for a closed contour sits inside the
-  // loop, off the line).
+  // Per contour level: every segment in data CRS, stored as
+  // [midX, midY, dirX, dirY, midX, midY, dirX, dirY, ...]. The mid
+  // is the segment's centre (placement); the dir is the data-CRS
+  // delta x1-x0, y1-y0 (rotation). buildLabelTexture below stamps
+  // one label per segment, dedupes by canvas-pixel bucket so labels
+  // never overlap regardless of level, and rotates each label
+  // along the segment tangent.
   const labelMidpoints = new Map();
   const startLevel = Math.ceil(minZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   const endLevel = Math.floor(maxZ / MINOR_INTERVAL) * MINOR_INTERVAL;
@@ -272,13 +273,16 @@ function buildMesh(points) {
       if (xs.length >= 2) {
         target.push(xs[0], yLevel + Z_LIFT, zs[0],
                     xs[1], yLevel + Z_LIFT, zs[1]);
-        // Reverse the world→data projection so midpoints live in
-        // source-CRS metres, which is what the label canvas wants.
+        // Reverse the world→data projection so the midpoint AND the
+        // segment direction live in source-CRS metres, which is
+        // what the label canvas wants.
         const midDataX = (xs[0] + xs[1]) * 0.5 / scale + cx;
         const midDataY = (zs[0] + zs[1]) * 0.5 / scale + cy;
-        let mids = labelMidpoints.get(level);
-        if (!mids) { mids = []; labelMidpoints.set(level, mids); }
-        mids.push(midDataX, midDataY);
+        const dirDataX = (xs[1] - xs[0]) / scale;
+        const dirDataY = (zs[1] - zs[0]) / scale;
+        let segs = labelMidpoints.get(level);
+        if (!segs) { segs = []; labelMidpoints.set(level, segs); }
+        segs.push(midDataX, midDataY, dirDataX, dirDataY);
       }
     }
   }
@@ -580,17 +584,13 @@ function drapeParcelPolylines(polylines, ctx) {
 }
 
 // Stamps black integers onto a canvas covering the terrain's XY
-// bbox at every contour-line midpoint (deduped by spatial cell),
-// then wraps the canvas as a CanvasTexture for UV-mapping onto the
-// mesh. Minimalist: no background pill, no halo, no rotation. White
-// everywhere else so it multiplies cleanly through the mesh's
-// vertex colours.
-//
-// Density: at most one label per (level × LABEL_CELL_M square cell)
-// — guarantees every contour line is labelled multiple times along
-// its length without crowding the canvas. Each label sits at an
-// actual segment midpoint, so it lies ON the contour line rather
-// than at the centroid of the loop.
+// bbox at every contour-line midpoint (deduped by canvas-pixel
+// bucket so labels don't overlap each other regardless of which
+// contour level they belong to), rotated along the segment's
+// tangent so the digits read along the contour direction. Then
+// wraps the canvas as a CanvasTexture for UV-mapping onto the
+// mesh. Minimalist: no background pill, no halo. White everywhere
+// else so it multiplies cleanly through the mesh's vertex colours.
 //
 // The canvas X axis is pre-mirrored against `maxX` so the parent
 // group's `scale.x = -1` CRS-flip cancels out at render time, and
@@ -613,7 +613,6 @@ function buildLabelTexture(midpointsByLevel, bounds) {
   const cw = Math.max(2, Math.ceil(spanX * pxPerM));
   const ch = Math.max(2, Math.ceil(spanY * pxPerM));
   const labelCanvasPx = 18;
-  const LABEL_CELL_M = 30;
 
   let canvas;
   try {
@@ -634,19 +633,45 @@ function buildLabelTexture(midpointsByLevel, bounds) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  for (const [level, mids] of midpointsByLevel) {
-    if (!mids || mids.length < 2) continue;
-    const stamped = new Set();
+  // Canvas-pixel bucket size for dedup — text bounding-box-ish so a
+  // single bucket fits one label without overflowing into a
+  // neighbour. Measured against a 4-digit sample to cover the
+  // worst-case label width.
+  const probe = ctx.measureText('1000');
+  const BUCKET_W = Math.max(20, probe.width + 6);
+  const BUCKET_H = Math.max(20, labelCanvasPx + 6);
+  const stamped = new Set();
+  const HALF_PI = Math.PI * 0.5;
+
+  for (const [level, segs] of midpointsByLevel) {
+    if (!segs || segs.length < 4) continue;
     const txt = `${Math.round(level)}`;
-    for (let i = 0; i < mids.length; i += 2) {
-      const mx = mids[i];
-      const my = mids[i + 1];
-      const cellKey = `${Math.floor(mx / LABEL_CELL_M)}|${Math.floor(my / LABEL_CELL_M)}`;
-      if (stamped.has(cellKey)) continue;
-      stamped.add(cellKey);
+    for (let i = 0; i < segs.length; i += 4) {
+      const mx = segs[i];
+      const my = segs[i + 1];
+      const dirX = segs[i + 2];
+      const dirY = segs[i + 3];
+
       const px = (maxX - mx) * pxPerM;
       const py = ch - (my - minY) * pxPerM;
-      ctx.fillText(txt, px, py);
+      const bucketKey = `${Math.floor(px / BUCKET_W)}|${Math.floor(py / BUCKET_H)}`;
+      if (stamped.has(bucketKey)) continue;
+      stamped.add(bucketKey);
+
+      // Canvas-direction = -data-direction in both X (UV mirror)
+      // and Y (canvas top-down). Net rotation lands the text along
+      // the segment's tangent at render time.
+      const dxC = -dirX * pxPerM;
+      const dyC = -dirY * pxPerM;
+      let angle = Math.atan2(dyC, dxC);
+      if (angle >  HALF_PI) angle -= Math.PI;
+      if (angle < -HALF_PI) angle += Math.PI;
+
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(angle);
+      ctx.fillText(txt, 0, 0);
+      ctx.restore();
     }
   }
 
