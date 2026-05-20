@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import Delaunator from 'delaunator';
+import DxfParser from 'dxf-parser';
 
 const canvasWrap = document.getElementById('canvas-wrap');
 const hint       = document.getElementById('hint');
@@ -18,9 +19,12 @@ const readoutDz       = document.getElementById('readout-dz');
 const readoutFootprint = document.getElementById('readout-footprint');
 const readoutSurface  = document.getElementById('readout-surface');
 const readoutDensity  = document.getElementById('readout-density');
+const readoutGrid     = document.getElementById('readout-grid');
 const fileInput  = document.getElementById('file-input');
 const uploadBtn  = document.getElementById('upload-btn');
 const sampleBtn  = document.getElementById('sample-btn');
+const parcelBtn  = document.getElementById('parcel-btn');
+const parcelInput = document.getElementById('parcel-input');
 const resetBtn   = document.getElementById('reset-btn');
 const quitBtn    = document.getElementById('quit-btn');
 const errorEl    = document.getElementById('error');
@@ -67,9 +71,11 @@ scene.add(fill);
 
 // Subtle ground grid so the model has a sense of scale before it
 // rotates.
-const grid = new THREE.GridHelper(4, 16, 0x223040, 0x18222e);
-grid.position.y = -0.005;
-scene.add(grid);
+// Generic fallback grid — visible until a dataset loads, at which
+// point the coord-aligned grid built inside buildMesh takes over.
+const fallbackGrid = new THREE.GridHelper(4, 16, 0x223040, 0x18222e);
+fallbackGrid.position.y = -0.005;
+scene.add(fallbackGrid);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -92,6 +98,7 @@ window.addEventListener('resize', resize);
 resize();
 
 let currentMesh = null;
+let currentParcels = null;
 let homeCamera = null;
 
 function animate() {
@@ -268,11 +275,142 @@ function buildMesh(points) {
   const minorLines = buildContourLines(minorSegs, 0x0a0d12, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
 
+  // Coordinate grid — X/Y lines on the floor plane (Y = small
+  // negative so the mesh sits on top). Spacing is a "nice" round
+  // number (1, 2, 5 × 10^N) chosen so the longer axis gets roughly
+  // 8–15 divisions. Lines are anchored to absolute coordinates
+  // (e.g. X = 7466320, 7466330…), so the grid literally "looks
+  // like the coordinates themselves" — each crossing identifies a
+  // real point in the source CRS. Major every 5 minor steps, with
+  // its own object so it can render darker. Extends a small margin
+  // past the data bounds so the grid stays visible from above.
+  const spanXm = maxX - minX;
+  const spanYm = maxY - minY;
+  const gridStep = pickNiceStep(Math.max(spanXm, spanYm) / 10);
+  const gridMargin = Math.max(spanXm, spanYm) * 0.04 * scale;
+  const gridY = -0.002;
+  const gridMinor = [];
+  const gridMajor = [];
+  const gridMajorEvery = 5;
+  const xStart = Math.ceil(minX / gridStep) * gridStep;
+  for (let X = xStart; X <= maxX + 1e-9; X += gridStep) {
+    const px = (X - cx) * scale;
+    const z0 = (minY - cy) * scale - gridMargin;
+    const z1 = (maxY - cy) * scale + gridMargin;
+    const isMajor = Math.abs(X / gridStep / gridMajorEvery - Math.round(X / gridStep / gridMajorEvery)) < 1e-6;
+    (isMajor ? gridMajor : gridMinor).push(px, gridY, z0, px, gridY, z1);
+  }
+  const yStart = Math.ceil(minY / gridStep) * gridStep;
+  for (let Y = yStart; Y <= maxY + 1e-9; Y += gridStep) {
+    const pz = (Y - cy) * scale;
+    const x0 = (minX - cx) * scale - gridMargin;
+    const x1 = (maxX - cx) * scale + gridMargin;
+    const isMajor = Math.abs(Y / gridStep / gridMajorEvery - Math.round(Y / gridStep / gridMajorEvery)) < 1e-6;
+    (isMajor ? gridMajor : gridMinor).push(x0, gridY, pz, x1, gridY, pz);
+  }
+  const gridMinorLines = buildContourLines(gridMinor, 0x4a5b6e, 0.35);
+  const gridMajorLines = buildContourLines(gridMajor, 0x8aa1b8, 0.7);
+
+  // Draped grid — same X/Y values, but each line is computed by
+  // marching triangles against a vertical plane (constant X for one
+  // family, constant Y for the other) so the line follows the
+  // terrain surface. Without this the floor grid above is hidden by
+  // the mesh from anything but a side-on view. Lifted slightly less
+  // than the elevation contours so contours render on top of grid
+  // crossings.
+  const drapeMinor = [];
+  const drapeMajor = [];
+  const DRAPE_LIFT = 0.0012;
+
+  function drapeXEdge(i0, i1, X, hits) {
+    const x0 = points[i0][0], x1 = points[i1][0];
+    if ((x0 < X && x1 < X) || (x0 > X && x1 > X)) return;
+    if (x0 === x1) return;
+    const tt = (X - x0) / (x1 - x0);
+    const yo = points[i0][1] + (points[i1][1] - points[i0][1]) * tt;
+    const zo = points[i0][2] + (points[i1][2] - points[i0][2]) * tt;
+    hits.push(
+      (X - cx) * scale,
+      (zo - minZ) * scale + DRAPE_LIFT,
+      (yo - cy) * scale,
+    );
+  }
+  function drapeYEdge(i0, i1, Y, hits) {
+    const y0 = points[i0][1], y1 = points[i1][1];
+    if ((y0 < Y && y1 < Y) || (y0 > Y && y1 > Y)) return;
+    if (y0 === y1) return;
+    const tt = (Y - y0) / (y1 - y0);
+    const xo = points[i0][0] + (points[i1][0] - points[i0][0]) * tt;
+    const zo = points[i0][2] + (points[i1][2] - points[i0][2]) * tt;
+    hits.push(
+      (xo - cx) * scale,
+      (zo - minZ) * scale + DRAPE_LIFT,
+      (Y - cy) * scale,
+    );
+  }
+  // Constant-X grid lines (run along the data's Y axis).
+  for (let X = xStart; X <= maxX + 1e-9; X += gridStep) {
+    const isMajor = Math.abs(X / gridStep / gridMajorEvery - Math.round(X / gridStep / gridMajorEvery)) < 1e-6;
+    const target = isMajor ? drapeMajor : drapeMinor;
+    for (let t = 0; t < triangles.length; t += 3) {
+      const ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
+      const xa = points[ia][0], xb = points[ib][0], xc = points[ic][0];
+      if ((xa < X && xb < X && xc < X) || (xa > X && xb > X && xc > X)) continue;
+      const hits = [];
+      drapeXEdge(ia, ib, X, hits);
+      drapeXEdge(ib, ic, X, hits);
+      drapeXEdge(ic, ia, X, hits);
+      if (hits.length >= 6) target.push(hits[0], hits[1], hits[2], hits[3], hits[4], hits[5]);
+    }
+  }
+  // Constant-Y grid lines (run along the data's X axis).
+  for (let Y = yStart; Y <= maxY + 1e-9; Y += gridStep) {
+    const isMajor = Math.abs(Y / gridStep / gridMajorEvery - Math.round(Y / gridStep / gridMajorEvery)) < 1e-6;
+    const target = isMajor ? drapeMajor : drapeMinor;
+    for (let t = 0; t < triangles.length; t += 3) {
+      const ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
+      const ya = points[ia][1], yb = points[ib][1], yc = points[ic][1];
+      if ((ya < Y && yb < Y && yc < Y) || (ya > Y && yb > Y && yc > Y)) continue;
+      const hits = [];
+      drapeYEdge(ia, ib, Y, hits);
+      drapeYEdge(ib, ic, Y, hits);
+      drapeYEdge(ic, ia, Y, hits);
+      if (hits.length >= 6) target.push(hits[0], hits[1], hits[2], hits[3], hits[4], hits[5]);
+    }
+  }
+  // Cool-blue tint so draped grid reads as a different layer from
+  // the warm-gray elevation contours.
+  const drapeMinorLines = buildContourLines(drapeMinor, 0x3d5063, 0.55);
+  const drapeMajorLines = buildContourLines(drapeMajor, 0x6e90b0, 0.9);
+
+  // Spatial index over the triangulation so drape/lookup queries
+  // (parcel overlays etc.) can find the containing triangle for an
+  // (X, Y) without scanning all triangles. Uniform 64×64 grid keyed
+  // by the source-CRS bbox; each cell stores triangle indices whose
+  // axis-aligned bbox overlaps that cell.
+  const tindex = buildTriangleIndex(points, triangles, { minX, maxX, minY, maxY });
+  const drapeCtx = { points, triangles, index: tindex, cx, cy, scale, minZ };
+
   const group = new THREE.Group();
+  // Mirror across the YZ plane so the rendered orientation matches
+  // what xhevops sees in the source CAD (East to the LEFT on
+  // screen). Data, the triangulation index, and the drape function
+  // all stay in the native survey CRS — only the visual transform
+  // flips. Three.js handles the resulting winding-order parity for
+  // lighting automatically.
+  group.scale.x = -1;
   group.add(mesh);
+  if (gridMinorLines) group.add(gridMinorLines);
+  if (gridMajorLines) group.add(gridMajorLines);
+  if (drapeMinorLines) group.add(drapeMinorLines);
+  if (drapeMajorLines) group.add(drapeMajorLines);
   if (minorLines) group.add(minorLines);
   if (majorLines) group.add(majorLines);
-  group.userData = { mesh, minorLines, majorLines };
+  group.userData = {
+    mesh, minorLines, majorLines,
+    gridMinorLines, gridMajorLines, drapeMinorLines, drapeMajorLines,
+    drapeCtx,
+  };
 
   return {
     group,
@@ -280,10 +418,24 @@ function buildMesh(points) {
     bounds: { minX, maxX, minY, maxY, minZ, maxZ },
     triangleCount: triangles.length / 3,
     contourCount: minorSegs.length / 6 + majorSegs.length / 6,
+    gridStep,
     footprint,
     surface,
     density: footprint > 0 ? points.length / footprint : 0,
   };
+}
+
+// Pick a "nice" round-number step (1, 2, 5 × 10^N) close to the
+// requested target. Keeps grid spacing legible across datasets that
+// span anywhere from a single field to a whole valley.
+function pickNiceStep(target) {
+  if (target <= 0) return 1;
+  const power = Math.pow(10, Math.floor(Math.log10(target)));
+  const norm = target / power;
+  if (norm < 1.5) return power;
+  if (norm < 3.5) return 2 * power;
+  if (norm < 7.5) return 5 * power;
+  return 10 * power;
 }
 
 // Interpolates the intersection of `yLevel` with the edge between
@@ -302,6 +454,160 @@ function crossEdge(positions, i0, i1, yLevel, xs, zs) {
   const z1 = positions[i1 * 3 + 2];
   xs.push(x0 + (x1 - x0) * t);
   zs.push(z0 + (z1 - z0) * t);
+}
+
+// ---- Triangle spatial index ----
+// Uniform-grid index over the Delaunay triangulation so an (X, Y)
+// query (e.g. "what's the terrain elevation at this parcel
+// vertex?") doesn't have to scan all triangles. 64 cells per axis;
+// every triangle gets registered in every grid cell its bbox
+// overlaps. Lookup picks the cell, walks its candidates, and
+// returns the first triangle whose barycentric coordinates contain
+// the query.
+function buildTriangleIndex(points, triangles, bounds) {
+  const N = 64;
+  const { minX, maxX, minY, maxY } = bounds;
+  const spanX = Math.max(maxX - minX, 1e-9);
+  const spanY = Math.max(maxY - minY, 1e-9);
+  const invDx = N / spanX;
+  const invDy = N / spanY;
+  const buckets = new Array(N * N);
+  for (let i = 0; i < buckets.length; i++) buckets[i] = [];
+  for (let t = 0; t < triangles.length; t += 3) {
+    const ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
+    const ax = points[ia][0], ay = points[ia][1];
+    const bx = points[ib][0], by = points[ib][1];
+    const ccx = points[ic][0], ccy = points[ic][1];
+    const tMinX = Math.min(ax, bx, ccx);
+    const tMaxX = Math.max(ax, bx, ccx);
+    const tMinY = Math.min(ay, by, ccy);
+    const tMaxY = Math.max(ay, by, ccy);
+    const cx0 = Math.max(0, Math.min(N - 1, Math.floor((tMinX - minX) * invDx)));
+    const cx1 = Math.max(0, Math.min(N - 1, Math.floor((tMaxX - minX) * invDx)));
+    const cy0 = Math.max(0, Math.min(N - 1, Math.floor((tMinY - minY) * invDy)));
+    const cy1 = Math.max(0, Math.min(N - 1, Math.floor((tMaxY - minY) * invDy)));
+    for (let cy = cy0; cy <= cy1; cy++) {
+      for (let cx = cx0; cx <= cx1; cx++) {
+        buckets[cy * N + cx].push(t);
+      }
+    }
+  }
+  return { buckets, N, invDx, invDy, minX, minY, maxX, maxY };
+}
+
+// Returns the interpolated elevation at (X, Y), or null if the
+// point lies outside the triangulation's convex hull.
+function elevationAt(points, triangles, index, X, Y) {
+  if (X < index.minX || X > index.maxX || Y < index.minY || Y > index.maxY) return null;
+  const cx = Math.max(0, Math.min(index.N - 1, Math.floor((X - index.minX) * index.invDx)));
+  const cy = Math.max(0, Math.min(index.N - 1, Math.floor((Y - index.minY) * index.invDy)));
+  const candidates = index.buckets[cy * index.N + cx];
+  const EPS = 1e-9;
+  for (let i = 0; i < candidates.length; i++) {
+    const t = candidates[i];
+    const ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
+    const ax = points[ia][0], ay = points[ia][1], az = points[ia][2];
+    const bx = points[ib][0], by = points[ib][1], bz = points[ib][2];
+    const ccx = points[ic][0], ccy = points[ic][1], ccz = points[ic][2];
+    const denom = (by - ccy) * (ax - ccx) + (ccx - bx) * (ay - ccy);
+    if (Math.abs(denom) < EPS) continue;
+    const w1 = ((by - ccy) * (X - ccx) + (ccx - bx) * (Y - ccy)) / denom;
+    const w2 = ((ccy - ay) * (X - ccx) + (ax - ccx) * (Y - ccy)) / denom;
+    const w3 = 1 - w1 - w2;
+    if (w1 >= -EPS && w2 >= -EPS && w3 >= -EPS) {
+      return w1 * az + w2 * bz + w3 * ccz;
+    }
+  }
+  return null;
+}
+
+// Layers to skip when treating a DXF as parcel data. The `C-`
+// prefix is the AIA CAD-layer convention for "constructed/computed"
+// layers (topo contours, TIN boundary, annotation tables); we
+// already have our own contours from the TXT mesh so re-rendering
+// the DXF's would just paint over them. `ramka` is the Macedonian
+// word for the drawing frame; `ceco.net*` is the surveyor's
+// watermark layer in the sample. `0` is AutoCAD's default layer —
+// often used for decorative elements (scale bars, north arrows)
+// that sit at small XY near the origin, far from the parcel.
+function isParcelLayer(layer) {
+  if (!layer) return false;
+  const L = String(layer).toUpperCase();
+  if (L === '0') return false;
+  if (L.startsWith('C-')) return false;
+  if (L === 'RAMKA') return false;
+  if (L.startsWith('CECO.NET')) return false;
+  return true;
+}
+
+// Extracts parcel-like polyline coordinate sequences from a parsed
+// DXF tree. Supports LINE, LWPOLYLINE, and POLYLINE; honours the
+// open/closed flag so closed parcels read as a loop. Filters by
+// layer (see isParcelLayer above) so contour lines etc. don't come
+// along for the ride.
+function extractDxfPolylines(dxf) {
+  const out = [];
+  const entities = (dxf && dxf.entities) || [];
+  for (const e of entities) {
+    if (!e || !e.type) continue;
+    if (!isParcelLayer(e.layer)) continue;
+    if (e.type === 'LINE') {
+      if (e.vertices && e.vertices.length >= 2) {
+        out.push([[e.vertices[0].x, e.vertices[0].y], [e.vertices[1].x, e.vertices[1].y]]);
+      } else if (e.start && e.end) {
+        out.push([[e.start.x, e.start.y], [e.end.x, e.end.y]]);
+      }
+    } else if (e.type === 'LWPOLYLINE' || e.type === 'POLYLINE') {
+      const verts = e.vertices || [];
+      if (verts.length < 2) continue;
+      const seq = verts.map((v) => [v.x, v.y]);
+      if (e.shape || e.closed) seq.push(seq[0].slice());
+      out.push(seq);
+    }
+  }
+  return out;
+}
+
+// Densely samples each input polyline so the draped result hugs the
+// terrain through every triangle it crosses (otherwise long
+// straight DXF segments would shortcut across hills). One sample
+// per ~half the terrain's grid cell wins on accuracy without
+// exploding the segment count.
+function drapeParcelPolylines(polylines, ctx) {
+  const { points, triangles, index, cx, cy, scale, minZ } = ctx;
+  const LIFT = 0.0025;
+  const sampleSpacing =
+    Math.max(index.maxX - index.minX, index.maxY - index.minY) / (index.N * 2);
+  const segs = [];
+  let inBounds = 0;
+  let outBounds = 0;
+  for (const poly of polylines) {
+    let prevWorld = null;
+    for (let i = 0; i < poly.length - 1; i++) {
+      const [x0, y0] = poly[i];
+      const [x1, y1] = poly[i + 1];
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const len = Math.hypot(dx, dy);
+      const n = Math.max(1, Math.ceil(len / sampleSpacing));
+      for (let s = (i === 0 ? 0 : 1); s <= n; s++) {
+        const t = s / n;
+        const X = x0 + dx * t;
+        const Y = y0 + dy * t;
+        const z = elevationAt(points, triangles, index, X, Y);
+        if (z == null) { outBounds++; prevWorld = null; continue; }
+        inBounds++;
+        const world = [
+          (X - cx) * scale,
+          (z - minZ) * scale + LIFT,
+          (Y - cy) * scale,
+        ];
+        if (prevWorld) segs.push(prevWorld[0], prevWorld[1], prevWorld[2], world[0], world[1], world[2]);
+        prevWorld = world;
+      }
+    }
+  }
+  return { segs, inBounds, outBounds };
 }
 
 // Discrete-ish ramp: deep green → meadow green → tan → rock → snow.
@@ -351,11 +657,14 @@ function fmtArea(m2) {
   return `${Math.round(m2).toLocaleString()} m²`;
 }
 
-function showError(msg) {
+function showError(msg)  { toast(msg, true); }
+function showStatus(msg) { toast(msg, false); }
+function toast(msg, isError) {
   errorEl.textContent = msg;
+  errorEl.classList.toggle('error-warn', isError);
   errorEl.hidden = false;
-  clearTimeout(showError._t);
-  showError._t = setTimeout(() => { errorEl.hidden = true; }, 4000);
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { errorEl.hidden = true; }, 4000);
 }
 
 async function loadFile(file) {
@@ -378,10 +687,13 @@ async function loadFile(file) {
     }
     currentMesh = built.group;
     scene.add(currentMesh);
+    fallbackGrid.visible = false;
     frameMesh(built.mesh);
     hint.hidden = true;
     readout.hidden = false;
     resetBtn.hidden = false;
+    parcelBtn.hidden = false;
+    currentParcels = null;
     readoutName.textContent = file.name;
     const b = built.bounds;
     readoutCount.textContent =
@@ -394,6 +706,7 @@ async function loadFile(file) {
     readoutFootprint.textContent = `${fmtArea(built.footprint)} (${(b.maxX - b.minX).toFixed(1)} × ${(b.maxY - b.minY).toFixed(1)} m)`;
     readoutSurface.textContent   = fmtArea(built.surface);
     readoutDensity.textContent   = `${built.density.toFixed(2)} pt/m²`;
+    readoutGrid.textContent      = `${built.gridStep} m`;
   } catch (e) {
     showError('Could not read file: ' + (e && e.message || e));
   }
@@ -419,14 +732,75 @@ async function loadBundledSample(path, displayName) {
     showError('Could not load sample: ' + (e && e.message || e));
   }
 }
-sampleBtn.addEventListener('click', () => {
-  loadBundledSample('sample-files/trebishte.txt', 'trebishte.txt');
+async function loadBundledParcels(path, displayName) {
+  try {
+    const res = await fetch(path, { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    await loadParcels(new File([blob], displayName, { type: 'application/dxf' }));
+  } catch (e) {
+    showError('Could not load parcel sample: ' + (e && e.message || e));
+  }
+}
+async function loadFullSample() {
+  await loadBundledSample('sample-files/trebishte.txt', 'trebishte.txt');
+  await loadBundledParcels('sample-files/trebishte.dxf', 'trebishte.dxf');
+}
+sampleBtn.addEventListener('click', loadFullSample);
+
+// ---- DXF parcel overlay ----
+// Parses LINE / LWPOLYLINE / POLYLINE entities from a user-supplied
+// DXF, drapes each segment onto the current terrain surface, and
+// renders the result as a red line layer in the same group.
+async function loadParcels(file) {
+  if (!currentMesh || !currentMesh.userData || !currentMesh.userData.drapeCtx) {
+    showError('Load a terrain first, then add parcels.');
+    return;
+  }
+  try {
+    const text = await file.text();
+    const parser = new DxfParser();
+    const dxf = parser.parseSync(text);
+    const polylines = extractDxfPolylines(dxf);
+    if (!polylines.length) {
+      showError('No LINE/POLYLINE entities found in DXF.');
+      return;
+    }
+    const { segs, inBounds, outBounds } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
+    if (currentParcels) {
+      currentMesh.remove(currentParcels);
+      currentParcels.geometry.dispose();
+      currentParcels.material.dispose();
+    }
+    if (!segs.length) {
+      showError('Parcel data falls entirely outside the terrain.');
+      return;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segs), 3));
+    const m = new THREE.LineBasicMaterial({ color: 0xff4d3d, transparent: true, opacity: 0.95 });
+    currentParcels = new THREE.LineSegments(g, m);
+    currentParcels.renderOrder = 2;
+    currentMesh.add(currentParcels);
+    showStatus(
+      `Loaded ${polylines.length} parcel path${polylines.length === 1 ? '' : 's'}` +
+      (outBounds > 0 ? ` (${outBounds} sample${outBounds === 1 ? '' : 's'} off-terrain)` : '')
+    );
+  } catch (e) {
+    showError('DXF parse failed: ' + (e && e.message || e));
+  }
+}
+parcelBtn.addEventListener('click', () => parcelInput.click());
+parcelInput.addEventListener('change', () => {
+  const f = parcelInput.files && parcelInput.files[0];
+  if (f) loadParcels(f);
+  parcelInput.value = '';
 });
 
-// Open the bundled Trebishte plot on first launch so the user lands
-// on a populated viewport instead of an empty grid. Sample / Upload
-// remain available to swap to a different file.
-loadBundledSample('sample-files/trebishte.txt', 'trebishte.txt');
+// Open the bundled Trebishte plot + parcels on first launch so the
+// user lands on a populated viewport instead of an empty grid.
+// Sample / Upload / Parcels remain available to swap files.
+loadFullSample();
 
 resetBtn.addEventListener('click', () => {
   if (!homeCamera) return;
