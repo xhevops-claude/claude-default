@@ -434,13 +434,15 @@ function buildSurfaceLabelTexture(contourSegs, bounds) {
   const spanX = Math.max(maxX - minX, 1e-6);
   const spanY = Math.max(maxY - minY, 1e-6);
   // 2048 keeps us comfortably under iOS Safari's canvas + GPU
-  // texture-size ceilings while leaving enough pixels per metre to
-  // render small glyphs. A 165 m terrain → ~12 px/m → 10 % of 1 m
-  // ≈ 1.2 px; we clamp text size to a 4 px floor below.
+  // texture-size ceilings; ~12 px/m on a 165 m terrain.
   const MAX_DIM = 2048;
   const pxPerM = MAX_DIM / Math.max(spanX, spanY);
   const cw = Math.max(2, Math.ceil(spanX * pxPerM));
   const ch = Math.max(2, Math.ceil(spanY * pxPerM));
+  // One label per LABEL_CELL_M × LABEL_CELL_M cell per contour
+  // level — drops density from "every segment" (~9 600 stamps) to
+  // ~150 stamps so each can be drawn large enough to read.
+  const LABEL_CELL_M = 30;
 
   const canvas = document.createElement('canvas');
   canvas.width = cw;
@@ -455,22 +457,30 @@ function buildSurfaceLabelTexture(contourSegs, bounds) {
 
   // 10 % of the 1 m contour gap, clamped to a sensible minimum so
   // canvas.fillText actually renders something.
-  // Floor at 4 px so glyphs don't degrade into aliased noise; cap
-  // at 20 % of a contour gap so labels never overflow into adjacent
-  // contour lanes on a steep slope.
-  const targetPx = Math.min(0.20 * pxPerM, Math.max(4, 0.10 * pxPerM));
-  ctx.font = `400 ${targetPx}px -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif`;
+  // Label height ≈ 1.5 m physical (mirrors printed-topo convention
+  // where labels are taller than one contour gap). At 2048 px /
+  // 165 m, this lands around 20–25 px which is solidly readable.
+  const targetPx = Math.max(20, 1.5 * pxPerM);
+  ctx.font = `600 ${targetPx}px -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   const HALF_PI = Math.PI * 0.5;
+  const stamped = new Set();
   for (let i = 0; i < contourSegs.length; i += 5) {
     const x0 = contourSegs[i];
     const y0 = contourSegs[i + 1];
     const x1 = contourSegs[i + 2];
     const y1 = contourSegs[i + 3];
     const level = contourSegs[i + 4];
+
+    // Dedupe: at most one label per data-CRS cell per level.
+    const midDataX = (x0 + x1) * 0.5;
+    const midDataY = (y0 + y1) * 0.5;
+    const cellKey = `${Math.round(level)}|${Math.floor(midDataX / LABEL_CELL_M)}|${Math.floor(midDataY / LABEL_CELL_M)}`;
+    if (stamped.has(cellKey)) continue;
+    stamped.add(cellKey);
 
     // Map both endpoints to canvas pixels. Canvas X is the data-X
     // axis pre-mirrored against minX = canvasX 0, then the texture
