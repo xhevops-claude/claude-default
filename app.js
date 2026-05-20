@@ -36,6 +36,14 @@
       url: 'apps/locator/',
     },
     {
+      slug: 'terrain',
+      name: 'Terrain',
+      meta: 'App',
+      tagline: 'Turn a coordinate file into a 3D mesh.',
+      icon: '⛰️',
+      url: 'apps/terrain/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',

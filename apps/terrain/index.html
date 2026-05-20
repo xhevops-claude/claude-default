@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Terrain</title>
+  <script>
+    if (window.self !== window.top) document.documentElement.classList.add('embedded');
+  </script>
+  <style>
+    /* Critical inline CSS — paints the loader on the very first
+       frame, before styles.css resolves. */
+    html, body { margin: 0; padding: 0; height: 100%;
+      background: #0c1118; color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; }
+    #app-loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: inherit;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 22px;
+      transition: opacity 0.4s ease;
+    }
+    #app-loading.hidden { opacity: 0; pointer-events: none; }
+    #app-loading .gl-icon { font-size: 88px; line-height: 1; }
+    #app-loading .gl-bar {
+      position: relative; width: 180px; height: 3px;
+      background: rgba(255, 255, 255, 0.18); overflow: hidden;
+    }
+    #app-loading .gl-bar::after {
+      content: ""; position: absolute; top: 0; left: -40%;
+      width: 40%; height: 100%; background: #5a7c3a;
+      animation: gl-bar 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    }
+    @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
+  </style>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "delaunator": "https://unpkg.com/delaunator@5.0.1/index.js",
+      "robust-predicates": "https://unpkg.com/robust-predicates@3.0.2/index.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app-loading">
+    <span class="gl-icon" aria-hidden="true">⛰️</span>
+    <div class="gl-bar" aria-label="Loading"></div>
+  </div>
+
+  <main class="terrain">
+    <div id="canvas-wrap" class="canvas-wrap" aria-label="3D terrain viewer"></div>
+
+    <div id="hint" class="hint" hidden>
+      <span class="hint-icon" aria-hidden="true">📂</span>
+      <span class="hint-text">Upload a coordinate file to build a 3D mesh.</span>
+      <span class="hint-sub">Each line: <code>x  y  elevation</code> (tabs or spaces; an optional id column is ignored).</span>
+    </div>
+
+    <div id="readout" class="readout" hidden>
+      <span id="readout-name" class="readout-name"></span>
+      <span class="readout-sep" aria-hidden="true">·</span>
+      <span id="readout-stats" class="readout-stats"></span>
+    </div>
+
+    <div class="hud-bottom">
+      <input id="file-input" type="file" accept=".txt,.csv,.xyz,.tsv,text/plain" hidden />
+      <button id="upload-btn" type="button" class="hud-btn primary">Upload file</button>
+      <button id="reset-btn"  type="button" class="hud-btn" hidden>Reset view</button>
+      <button id="quit-btn"   type="button" class="hud-btn ghost">Quit</button>
+    </div>
+
+    <div id="error" class="error" hidden role="alert"></div>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
