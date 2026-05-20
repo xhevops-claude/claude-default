@@ -514,15 +514,36 @@ function elevationAt(points, triangles, index, X, Y) {
   return null;
 }
 
-// Extracts polyline coordinate sequences (each an array of
-// [x, y]) from a parsed DXF tree. Supports LINE, LWPOLYLINE,
-// POLYLINE, and the open/closed flag on (LW)POLYLINE so closed
-// parcels read as a loop. Other entity types are silently skipped.
+// Layers to skip when treating a DXF as parcel data. The `C-`
+// prefix is the AIA CAD-layer convention for "constructed/computed"
+// layers (topo contours, TIN boundary, annotation tables); we
+// already have our own contours from the TXT mesh so re-rendering
+// the DXF's would just paint over them. `ramka` is the Macedonian
+// word for the drawing frame; `ceco.net*` is the surveyor's
+// watermark layer in the sample. `0` is AutoCAD's default layer —
+// often used for decorative elements (scale bars, north arrows)
+// that sit at small XY near the origin, far from the parcel.
+function isParcelLayer(layer) {
+  if (!layer) return false;
+  const L = String(layer).toUpperCase();
+  if (L === '0') return false;
+  if (L.startsWith('C-')) return false;
+  if (L === 'RAMKA') return false;
+  if (L.startsWith('CECO.NET')) return false;
+  return true;
+}
+
+// Extracts parcel-like polyline coordinate sequences from a parsed
+// DXF tree. Supports LINE, LWPOLYLINE, and POLYLINE; honours the
+// open/closed flag so closed parcels read as a loop. Filters by
+// layer (see isParcelLayer above) so contour lines etc. don't come
+// along for the ride.
 function extractDxfPolylines(dxf) {
   const out = [];
   const entities = (dxf && dxf.entities) || [];
   for (const e of entities) {
     if (!e || !e.type) continue;
+    if (!isParcelLayer(e.layer)) continue;
     if (e.type === 'LINE') {
       if (e.vertices && e.vertices.length >= 2) {
         out.push([[e.vertices[0].x, e.vertices[0].y], [e.vertices[1].x, e.vertices[1].y]]);
@@ -629,11 +650,14 @@ function fmtArea(m2) {
   return `${Math.round(m2).toLocaleString()} m²`;
 }
 
-function showError(msg) {
+function showError(msg)  { toast(msg, true); }
+function showStatus(msg) { toast(msg, false); }
+function toast(msg, isError) {
   errorEl.textContent = msg;
+  errorEl.classList.toggle('error-warn', isError);
   errorEl.hidden = false;
-  clearTimeout(showError._t);
-  showError._t = setTimeout(() => { errorEl.hidden = true; }, 4000);
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { errorEl.hidden = true; }, 4000);
 }
 
 async function loadFile(file) {
@@ -739,9 +763,10 @@ async function loadParcels(file) {
     currentParcels = new THREE.LineSegments(g, m);
     currentParcels.renderOrder = 2;
     currentMesh.add(currentParcels);
-    if (outBounds > 0) {
-      showError(`Loaded ${polylines.length} parcel paths. ${outBounds} sample(s) fell outside the terrain.`);
-    }
+    showStatus(
+      `Loaded ${polylines.length} parcel path${polylines.length === 1 ? '' : 's'}` +
+      (outBounds > 0 ? ` (${outBounds} sample${outBounds === 1 ? '' : 's'} off-terrain)` : '')
+    );
   } catch (e) {
     showError('DXF parse failed: ' + (e && e.message || e));
   }
