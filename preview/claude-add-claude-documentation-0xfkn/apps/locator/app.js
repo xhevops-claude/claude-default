@@ -370,11 +370,19 @@
   LAYER_CATEGORIES.forEach((cat) => {
     Object.entries(cat.groups).forEach(([k, v]) => { LAYER_GROUPS[k] = v; });
   });
-  // In-memory debug overrides keyed by non-POI category. Value is an
-  // additional minzoom floor (0–22) layered on top of the style's
-  // own minzoom and the active profile's `layers` rule. Always
-  // additive — can only HIDE more, never resurrect content the
-  // profile already gates. Cleared on reload.
+  // Reverse map: POI class → containing category key (e.g.
+  // 'restaurant' → 'poi-food'). Built once; used by the cluster
+  // pipeline to apply per-category debug zoom overrides.
+  const CLASS_TO_CATEGORY = {};
+  Object.entries(LAYER_GROUPS).forEach(([key, def]) => {
+    if (def.type === 'poi-filter' && Array.isArray(def.classes)) {
+      def.classes.forEach((cls) => { CLASS_TO_CATEGORY[cls] = key; });
+    }
+  });
+  // In-memory debug overrides keyed by category. Each value is an
+  // additional minzoom floor (number 0–22). Always additive — a
+  // higher slider value can only HIDE more, never resurrect content
+  // the active profile already gates. Cleared on reload.
   const DEBUG_OVERRIDES = {};
 
   function buildStyle(themeName) {
@@ -382,7 +390,16 @@
     return {
       version: 8,
       glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
-      sources: { omt: { type: 'vector', url: 'pmtiles://' + PMTILES_URL } },
+      sources: {
+        omt: { type: 'vector', url: 'pmtiles://' + PMTILES_URL },
+        // POI clusters live in their own GeoJSON source. The `poi`
+        // vector tile layer above stays as the read-only data source
+        // (queried via querySourceFeatures); supercluster reduces
+        // those features to either a count cluster or a passthrough
+        // singleton, and writes the result here. setData() refreshes
+        // the contents on every map idle.
+        'poi-clusters': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+      },
       layers: [
         { id: 'bg', type: 'background', paint: { 'background-color': C.bg } },
 
@@ -518,6 +535,63 @@
             'text-halo-width': 1.5,
           } },
 
+        // ---- POI clusters ----
+        // Two symbol layers reading the same GeoJSON source.
+        // `poi-cluster-icon` renders aggregated clusters as the modal
+        // POI class's emoji with the count badge to the right (e.g.
+        // 🍴 12). `poi-cluster-leaf` renders singletons (point_count
+        // absent) as the bare per-class emoji, preserving the look
+        // at high zoom.
+        { id: 'poi-cluster-icon', type: 'symbol', source: 'poi-clusters',
+          filter: ['has', 'point_count'],
+          layout: {
+            'icon-image': ['concat', 'poi-', ['get', 'topClass']],
+            'icon-size': ['interpolate', ['linear'], ['zoom'],
+              10, 0.55,
+              13, 0.75,
+              16, 0.95,
+            ],
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+            'text-field': ['get', 'point_count_abbreviated'],
+            'text-font': TEXT_FONT,
+            'text-size': ['step', ['get', 'point_count'], 12, 10, 13, 50, 15],
+            'text-anchor': 'left',
+            'text-offset': [1.0, 0],
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+            'text-optional': false,
+          },
+          paint: {
+            'text-color': C.label,
+            'text-halo-color': C.bg,
+            'text-halo-width': 2,
+          } },
+        { id: 'poi-cluster-leaf', type: 'symbol', source: 'poi-clusters',
+          filter: ['!', ['has', 'point_count']],
+          layout: {
+            'icon-image': ['concat', 'poi-', ['get', 'class']],
+            'icon-size': ['interpolate', ['linear'], ['zoom'],
+              12, 0.4,
+              14, 0.65,
+              16, 0.85,
+              19, 1.0,
+            ],
+            'icon-allow-overlap': true,
+            'icon-padding': 2,
+            'text-field': ['step', ['zoom'], '', 16, ['coalesce', ['get', 'name:en'], ['get', 'name'], '']],
+            'text-font': TEXT_FONT,
+            'text-size': 11,
+            'text-anchor': 'top',
+            'text-offset': [0, 1.4],
+            'text-optional': true,
+          },
+          paint: {
+            'text-color': C.poi,
+            'text-halo-color': C.bg,
+            'text-halo-width': 1.5,
+          } },
+
         // ---- Place hierarchy (last so labels win the depth fight) ----
         // Country: visible from world zoom; uppercase, big.
         { id: 'place-country', type: 'symbol', source: 'omt', 'source-layer': 'place',
@@ -635,7 +709,10 @@
     if (typeof console !== 'undefined' && console.error) console.error('Map error:', e);
   });
   map.on('data', (e) => {
-    if (e.sourceId === 'omt' && e.dataType === 'source' && e.tile) tilesLoaded++;
+    if (e.sourceId === 'omt' && e.dataType === 'source' && e.tile) {
+      tilesLoaded++;
+      refreshClusters();
+    }
   });
 
   // Quick HEAD probe of the PMTiles URL — if the server / network
@@ -705,9 +782,17 @@
 
   let mapReady = false;
   let pendingFix = null;
+  function hidePoiDataLayer() {
+    // Original POI symbol layer is the data source for clustering;
+    // never paint it directly. Setting visibility=none does NOT
+    // affect querySourceFeatures.
+    if (map.getLayer('poi')) map.setLayoutProperty('poi', 'visibility', 'none');
+  }
   map.on('load', () => {
     registerPoiIcons();
     addUserLayers();
+    initSupercluster();
+    hidePoiDataLayer();
     captureOriginalMinzooms();
     applyAllGroupVisibility();
     mapReady = true;
@@ -720,9 +805,13 @@
     if (!mapReady) return;
     registerPoiIcons();
     addUserLayers();
+    hidePoiDataLayer();
     captureOriginalMinzooms();
     applyAllGroupVisibility();
   });
+  // Recluster on movement; tile-arrival hook lives next to the
+  // tilesLoaded counter above to keep `data` listeners in one place.
+  map.on('moveend', refreshClusters);
 
   // ---- Helpers ----
   // The Locate-me button is hidden only when we have a live fix.
@@ -1048,6 +1137,105 @@
     const layerEnabled = getEnabledLayerClasses();
     map.setFilter('poi', buildPoiFilter(profile, layerEnabled, lastFixForFilter));
     map.setLayoutProperty('poi', 'icon-image', buildIconImageForProfile(profile));
+    refreshClusters();
+  }
+
+  // ---- POI clustering ----
+  // The vector-tile `poi` layer is rendered invisible — it exists
+  // purely as a data source for querySourceFeatures. Supercluster
+  // reduces the matching features into either a count cluster or a
+  // singleton (passthrough), which then renders via `poi-cluster-*`
+  // layers. Refresh runs debounced on every map move/zoom and after
+  // tile loads. Profile zoom rules are enforced in JS at refresh
+  // time; radius rules are honoured by passing the `poi` filter
+  // expression (which already encodes `within(...)`) to
+  // querySourceFeatures.
+  let superclusterAvailable = false;
+  let clusterRefreshScheduled = false;
+  const CLUSTER_DEBOUNCE_MS = 150;
+  // Per-class buckets are sparse (a typical block has 1–2 of any
+  // given POI class), so `minPoints: 2` makes pairs of the same
+  // class collapse into a single badge instead of two icons.
+  const CLUSTER_OPTS = { radius: 60, maxZoom: 16, minPoints: 2 };
+
+  function initSupercluster() {
+    if (typeof window.Supercluster === 'undefined') {
+      if (typeof console !== 'undefined' && console.warn) console.warn('Supercluster not loaded; clustering disabled.');
+      return;
+    }
+    superclusterAvailable = true;
+  }
+
+  function refreshClusters() {
+    if (clusterRefreshScheduled) return;
+    clusterRefreshScheduled = true;
+    setTimeout(() => {
+      clusterRefreshScheduled = false;
+      doRefreshClusters();
+    }, CLUSTER_DEBOUNCE_MS);
+  }
+
+  function doRefreshClusters() {
+    if (!superclusterAvailable) return;
+    const src = map.getSource('poi-clusters');
+    if (!src) return;
+    if (!map.getLayer('poi')) return;
+    const profile = getActiveProfile();
+    if (!profile) return;
+    const filter = map.getFilter('poi');
+    let features;
+    try {
+      features = map.querySourceFeatures('omt', { sourceLayer: 'poi', filter });
+    } catch (e) {
+      if (typeof console !== 'undefined' && console.warn) console.warn('querySourceFeatures failed:', e);
+      return;
+    }
+
+    const z = map.getZoom();
+    const seen = new Set();
+    // Bucket points by class so each class clusters independently —
+    // a restaurant and a cafe in the same block stay as two distinct
+    // singletons (or two distinct count badges) instead of merging
+    // into a mixed cluster.
+    const byClass = new Map();
+    for (const f of features) {
+      const props = f.properties || {};
+      const cls = props.class;
+      const r = effectiveRule(profile, cls);
+      if (!r) continue;
+      if (r.type === 'zoom' && z < r.zoomLevel) continue;
+      const cat = CLASS_TO_CATEGORY[cls];
+      if (cat && DEBUG_OVERRIDES[cat] != null && z < DEBUG_OVERRIDES[cat]) continue;
+      const c = f.geometry && f.geometry.coordinates;
+      if (!Array.isArray(c) || c.length < 2) continue;
+      const key = cls + '|' + c[0].toFixed(6) + '|' + c[1].toFixed(6);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      let bucket = byClass.get(cls);
+      if (!bucket) { bucket = []; byClass.set(cls, bucket); }
+      bucket.push({
+        type: 'Feature',
+        properties: {
+          class: cls,
+          name: props.name,
+          'name:en': props['name:en'],
+        },
+        geometry: { type: 'Point', coordinates: [c[0], c[1]] },
+      });
+    }
+
+    const bounds = map.getBounds().toArray().flat();
+    const out = [];
+    for (const [cls, points] of byClass) {
+      const sc = new window.Supercluster(CLUSTER_OPTS);
+      sc.load(points);
+      const clusters = sc.getClusters(bounds, Math.floor(z));
+      for (const c of clusters) {
+        if (c.properties && c.properties.cluster) c.properties.topClass = cls;
+        out.push(c);
+      }
+    }
+    src.setData({ type: 'FeatureCollection', features: out });
   }
 
   function profileUsesRadius(profile) {
@@ -1223,19 +1411,17 @@
       setTimeout(() => { btn.textContent = orig; }, 1500);
     }
 
-    // Per-category min-zoom override sliders. In-memory only — never
-    // persists. POI categories aren't shown: they're rendered
-    // through a single shared layer driven by a filter expression,
-    // not by setLayerZoomRange. The user toggles in the Layers panel
-    // already cover that case.
+    // Per-category min-zoom override sliders. In-memory only —
+    // never persists. Useful for eyeballing "what does the map look
+    // like if buildings only appeared at z16?" without editing the
+    // profile JSON. Additive: a slider can only HIDE more, never
+    // resurrect a class the active profile already disabled.
     const debugZoomList = document.getElementById('debug-zoom-list');
     const debugZoomReset = document.getElementById('debug-zoom-reset');
     function fmtZoom(n) { return 'z' + n; }
     function buildDebugZoomSliders() {
       const html = LAYER_CATEGORIES.map((cat) => {
-        const entries = Object.entries(cat.groups).filter(([, def]) => def.type !== 'poi-filter');
-        if (!entries.length) return '';
-        const rows = entries.map(([key, def]) => {
+        const rows = Object.entries(cat.groups).map(([key, def]) => {
           const cur = DEBUG_OVERRIDES[key] != null ? DEBUG_OVERRIDES[key] : 0;
           return `<li class="debug-zoom-row" data-group="${key}">
             <span class="debug-zoom-label">${def.label}</span>
@@ -1255,7 +1441,11 @@
           if (n > 0) DEBUG_OVERRIDES[group] = n;
           else delete DEBUG_OVERRIDES[group];
           val.textContent = fmtZoom(n);
+          // Non-POI groups respond via the layer-rules path; POI
+          // groups are gated inside the cluster pipeline. Run both
+          // — each is cheap and idempotent.
           applyAllLayerRules();
+          refreshClusters();
         });
       });
     }
@@ -1263,6 +1453,7 @@
       for (const k in DEBUG_OVERRIDES) delete DEBUG_OVERRIDES[k];
       buildDebugZoomSliders();
       applyAllLayerRules();
+      refreshClusters();
     });
     buildDebugZoomSliders();
 
