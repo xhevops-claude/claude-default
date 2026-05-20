@@ -11,8 +11,13 @@ import Delaunator from 'delaunator';
 const canvasWrap = document.getElementById('canvas-wrap');
 const hint       = document.getElementById('hint');
 const readout    = document.getElementById('readout');
-const readoutName  = document.getElementById('readout-name');
-const readoutStats = document.getElementById('readout-stats');
+const readoutName     = document.getElementById('readout-name');
+const readoutCount    = document.getElementById('readout-count');
+const readoutElev     = document.getElementById('readout-elev');
+const readoutDz       = document.getElementById('readout-dz');
+const readoutFootprint = document.getElementById('readout-footprint');
+const readoutSurface  = document.getElementById('readout-surface');
+const readoutDensity  = document.getElementById('readout-density');
 const fileInput  = document.getElementById('file-input');
 const uploadBtn  = document.getElementById('upload-btn');
 const resetBtn   = document.getElementById('reset-btn');
@@ -185,7 +190,40 @@ function buildMesh(points) {
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.userData = { minZ, maxZ, scale };
-  return { mesh, bounds: { minX, maxX, minY, maxY, minZ, maxZ }, triangleCount: triangles.length / 3 };
+
+  // Areas computed in the file's native units (so if those units are
+  // metres, the numbers are m² straight off). The 2D footprint is
+  // the sum of triangle areas projected to the XY plane — for a
+  // gridded scan this equals the triangulated convex hull's area,
+  // which is what the user actually sees from above. The 3D surface
+  // area uses the real triangle areas (so steeper terrain reports a
+  // larger surface than its footprint, as expected).
+  let footprint = 0;
+  let surface = 0;
+  for (let t = 0; t < triangles.length; t += 3) {
+    const i = triangles[t], j = triangles[t + 1], k = triangles[t + 2];
+    const ax = points[i][0], ay = points[i][1], az = points[i][2];
+    const bx = points[j][0], by = points[j][1], bz = points[j][2];
+    const cxp = points[k][0], cyp = points[k][1], cz = points[k][2];
+    // 2D area = ½ |(b - a) × (c - a)|_z
+    footprint += Math.abs((bx - ax) * (cyp - ay) - (by - ay) * (cxp - ax)) * 0.5;
+    // 3D area = ½ |(b - a) × (c - a)|
+    const ux = bx - ax,  uy = by - ay,  uz = bz - az;
+    const vx = cxp - ax, vy = cyp - ay, vz = cz - az;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    surface += Math.sqrt(nx * nx + ny * ny + nz * nz) * 0.5;
+  }
+
+  return {
+    mesh,
+    bounds: { minX, maxX, minY, maxY, minZ, maxZ },
+    triangleCount: triangles.length / 3,
+    footprint,
+    surface,
+    density: footprint > 0 ? points.length / footprint : 0,
+  };
 }
 
 // Discrete-ish ramp: deep green → meadow green → tan → rock → snow.
@@ -228,6 +266,13 @@ function frameMesh(mesh) {
   homeCamera = { position: eye.clone(), target: s.center.clone() };
 }
 
+// Switches to hectares (ha) once the value clears 10 000 m² so the
+// number stays human-readable for larger scans.
+function fmtArea(m2) {
+  if (m2 >= 10000) return `${(m2 / 10000).toFixed(2)} ha`;
+  return `${Math.round(m2).toLocaleString()} m²`;
+}
+
 function showError(msg) {
   errorEl.textContent = msg;
   errorEl.hidden = false;
@@ -259,11 +304,15 @@ async function loadFile(file) {
     resetBtn.hidden = false;
     readoutName.textContent = file.name;
     const b = built.bounds;
-    readoutStats.textContent =
+    readoutCount.textContent =
       `${points.length.toLocaleString()} pts · ` +
       `${built.triangleCount.toLocaleString()} tris · ` +
-      `Δz ${(b.maxZ - b.minZ).toFixed(2)} · ` +
       `${Math.round(t1 - t0)} ms`;
+    readoutElev.textContent      = `${b.minZ.toFixed(2)} – ${b.maxZ.toFixed(2)} m`;
+    readoutDz.textContent        = `${(b.maxZ - b.minZ).toFixed(2)} m`;
+    readoutFootprint.textContent = `${fmtArea(built.footprint)} (${(b.maxX - b.minX).toFixed(1)} × ${(b.maxY - b.minY).toFixed(1)} m)`;
+    readoutSurface.textContent   = fmtArea(built.surface);
+    readoutDensity.textContent   = `${built.density.toFixed(2)} pt/m²`;
   } catch (e) {
     showError('Could not read file: ' + (e && e.message || e));
   }
