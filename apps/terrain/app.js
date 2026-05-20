@@ -18,6 +18,7 @@ const readoutDz       = document.getElementById('readout-dz');
 const readoutFootprint = document.getElementById('readout-footprint');
 const readoutSurface  = document.getElementById('readout-surface');
 const readoutDensity  = document.getElementById('readout-density');
+const readoutGrid     = document.getElementById('readout-grid');
 const fileInput  = document.getElementById('file-input');
 const uploadBtn  = document.getElementById('upload-btn');
 const sampleBtn  = document.getElementById('sample-btn');
@@ -67,9 +68,11 @@ scene.add(fill);
 
 // Subtle ground grid so the model has a sense of scale before it
 // rotates.
-const grid = new THREE.GridHelper(4, 16, 0x223040, 0x18222e);
-grid.position.y = -0.005;
-scene.add(grid);
+// Generic fallback grid — visible until a dataset loads, at which
+// point the coord-aligned grid built inside buildMesh takes over.
+const fallbackGrid = new THREE.GridHelper(4, 16, 0x223040, 0x18222e);
+fallbackGrid.position.y = -0.005;
+scene.add(fallbackGrid);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -268,11 +271,49 @@ function buildMesh(points) {
   const minorLines = buildContourLines(minorSegs, 0x0a0d12, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
 
+  // Coordinate grid — X/Y lines on the floor plane (Y = small
+  // negative so the mesh sits on top). Spacing is a "nice" round
+  // number (1, 2, 5 × 10^N) chosen so the longer axis gets roughly
+  // 8–15 divisions. Lines are anchored to absolute coordinates
+  // (e.g. X = 7466320, 7466330…), so the grid literally "looks
+  // like the coordinates themselves" — each crossing identifies a
+  // real point in the source CRS. Major every 5 minor steps, with
+  // its own object so it can render darker. Extends a small margin
+  // past the data bounds so the grid stays visible from above.
+  const spanXm = maxX - minX;
+  const spanYm = maxY - minY;
+  const gridStep = pickNiceStep(Math.max(spanXm, spanYm) / 10);
+  const gridMargin = Math.max(spanXm, spanYm) * 0.04 * scale;
+  const gridY = -0.002;
+  const gridMinor = [];
+  const gridMajor = [];
+  const gridMajorEvery = 5;
+  const xStart = Math.ceil(minX / gridStep) * gridStep;
+  for (let X = xStart; X <= maxX + 1e-9; X += gridStep) {
+    const px = (X - cx) * scale;
+    const z0 = (minY - cy) * scale - gridMargin;
+    const z1 = (maxY - cy) * scale + gridMargin;
+    const isMajor = Math.abs(X / gridStep / gridMajorEvery - Math.round(X / gridStep / gridMajorEvery)) < 1e-6;
+    (isMajor ? gridMajor : gridMinor).push(px, gridY, z0, px, gridY, z1);
+  }
+  const yStart = Math.ceil(minY / gridStep) * gridStep;
+  for (let Y = yStart; Y <= maxY + 1e-9; Y += gridStep) {
+    const pz = (Y - cy) * scale;
+    const x0 = (minX - cx) * scale - gridMargin;
+    const x1 = (maxX - cx) * scale + gridMargin;
+    const isMajor = Math.abs(Y / gridStep / gridMajorEvery - Math.round(Y / gridStep / gridMajorEvery)) < 1e-6;
+    (isMajor ? gridMajor : gridMinor).push(x0, gridY, pz, x1, gridY, pz);
+  }
+  const gridMinorLines = buildContourLines(gridMinor, 0x4a5b6e, 0.35);
+  const gridMajorLines = buildContourLines(gridMajor, 0x8aa1b8, 0.7);
+
   const group = new THREE.Group();
   group.add(mesh);
+  if (gridMinorLines) group.add(gridMinorLines);
+  if (gridMajorLines) group.add(gridMajorLines);
   if (minorLines) group.add(minorLines);
   if (majorLines) group.add(majorLines);
-  group.userData = { mesh, minorLines, majorLines };
+  group.userData = { mesh, minorLines, majorLines, gridMinorLines, gridMajorLines };
 
   return {
     group,
@@ -280,10 +321,24 @@ function buildMesh(points) {
     bounds: { minX, maxX, minY, maxY, minZ, maxZ },
     triangleCount: triangles.length / 3,
     contourCount: minorSegs.length / 6 + majorSegs.length / 6,
+    gridStep,
     footprint,
     surface,
     density: footprint > 0 ? points.length / footprint : 0,
   };
+}
+
+// Pick a "nice" round-number step (1, 2, 5 × 10^N) close to the
+// requested target. Keeps grid spacing legible across datasets that
+// span anywhere from a single field to a whole valley.
+function pickNiceStep(target) {
+  if (target <= 0) return 1;
+  const power = Math.pow(10, Math.floor(Math.log10(target)));
+  const norm = target / power;
+  if (norm < 1.5) return power;
+  if (norm < 3.5) return 2 * power;
+  if (norm < 7.5) return 5 * power;
+  return 10 * power;
 }
 
 // Interpolates the intersection of `yLevel` with the edge between
@@ -378,6 +433,7 @@ async function loadFile(file) {
     }
     currentMesh = built.group;
     scene.add(currentMesh);
+    fallbackGrid.visible = false;
     frameMesh(built.mesh);
     hint.hidden = true;
     readout.hidden = false;
@@ -394,6 +450,7 @@ async function loadFile(file) {
     readoutFootprint.textContent = `${fmtArea(built.footprint)} (${(b.maxX - b.minX).toFixed(1)} × ${(b.maxY - b.minY).toFixed(1)} m)`;
     readoutSurface.textContent   = fmtArea(built.surface);
     readoutDensity.textContent   = `${built.density.toFixed(2)} pt/m²`;
+    readoutGrid.textContent      = `${built.gridStep} m`;
   } catch (e) {
     showError('Could not read file: ' + (e && e.message || e));
   }
