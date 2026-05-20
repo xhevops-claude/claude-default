@@ -237,9 +237,12 @@ function buildMesh(points) {
   const minorSegs = [];
   const majorSegs = [];
   const Z_LIFT = 0.0015;
-  // Per contour level (every metre): running centroid of its segment
-  // vertices (in world XZ) plus the world Y the label sits at. One
-  // small two-line label is dropped at the centroid after the loop.
+  // Per contour level (every metre): running centroid + the list of
+  // segment midpoints. After the loop we bin midpoints into the
+  // four quadrants around the centroid and drop one label per
+  // non-empty quadrant — gives ~4 labels per contour so at least
+  // one stays on the camera-facing side no matter how the model
+  // rotates.
   const levelAggs = new Map();
   const startLevel = Math.ceil(minZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   const endLevel = Math.floor(maxZ / MINOR_INTERVAL) * MINOR_INTERVAL;
@@ -264,10 +267,13 @@ function buildMesh(points) {
         target.push(xs[0], yLevel + Z_LIFT, zs[0],
                     xs[1], yLevel + Z_LIFT, zs[1]);
         let agg = levelAggs.get(level);
-        if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4 }; levelAggs.set(level, agg); }
+        if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4, mids: [] }; levelAggs.set(level, agg); }
+        const mx = (xs[0] + xs[1]) * 0.5;
+        const mz = (zs[0] + zs[1]) * 0.5;
         agg.sumX += xs[0] + xs[1];
         agg.sumZ += zs[0] + zs[1];
         agg.count += 2;
+        agg.mids.push(mx, mz);
       }
     }
   }
@@ -284,24 +290,32 @@ function buildMesh(points) {
   const minorLines = buildContourLines(minorSegs, 0x0a0d12, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
 
-  // One sprite label per contour level (every metre). Two stacked
-  // text rows — absolute elevation from the source file (top) and
-  // relative height above the parcel bottom (bottom). Sprite Y size
-  // is capped at 20 % of one contour gap (`MINOR_INTERVAL * scale`)
-  // so labels never visually overlap adjacent contours. The
-  // baseline used for the relative row starts as the dataset min
-  // and is recomputed against the parcel's lowest point once DXF
-  // parcels load (see updateContourBaseline).
+  // Up to four sprite labels per contour level, one per quadrant of
+  // the level's centroid. Bare two-line text (no background) at a
+  // constant screen size — see makeContourLabel(). The baseline for
+  // the relative row starts as the dataset min and is recomputed
+  // against the parcel's lowest point once DXF parcels load.
   const contourLabels = [];
-  const labelWorldY = MINOR_INTERVAL * scale * 0.20;
   for (const [level, agg] of levelAggs) {
     if (agg.count === 0) continue;
-    const wx = agg.sumX / agg.count;
-    const wz = agg.sumZ / agg.count;
-    const sprite = makeContourLabel(level, minZ, labelWorldY);
-    sprite.position.set(wx, agg.yLevel, wz);
-    sprite.renderOrder = 3;
-    contourLabels.push(sprite);
+    const cx2 = agg.sumX / agg.count;
+    const cz2 = agg.sumZ / agg.count;
+    const bins = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let i = 0; i < agg.mids.length; i += 2) {
+      const dx = agg.mids[i]     - cx2;
+      const dz = agg.mids[i + 1] - cz2;
+      const q = (dx >= 0 ? 0 : 1) + (dz >= 0 ? 0 : 2);
+      bins[q][0] += agg.mids[i];
+      bins[q][1] += agg.mids[i + 1];
+      bins[q][2] += 1;
+    }
+    for (const [sx, sz, n] of bins) {
+      if (n === 0) continue;
+      const sprite = makeContourLabel(level, minZ);
+      sprite.position.set(sx / n, agg.yLevel, sz / n);
+      sprite.renderOrder = 3;
+      contourLabels.push(sprite);
+    }
   }
 
   // Coordinate grid — X/Y lines on the floor plane (Y = small
@@ -569,12 +583,14 @@ function drapeParcelPolylines(polylines, ctx) {
   return { segs, inBounds, outBounds, parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ };
 }
 
-// Contour-label canvas dimensions (logical px). Drawn at 2× into the
-// backing canvas for crispness on HiDPI displays.
-const LABEL_W = 220;
-const LABEL_H = 80;
+// Contour-label canvas dimensions (logical px). Drawn at 2× into
+// the backing canvas for crispness on HiDPI displays. Text only,
+// no background pill — relies on a dark halo for legibility against
+// any terrain colour.
+const LABEL_W = 160;
+const LABEL_H = 60;
 
-// Paints (or repaints) a label canvas with the two-line content:
+// Paints (or repaints) a label canvas with two text rows:
 // top = absolute elevation (m), bottom = signed height above the
 // chosen baseline (typically the parcel bottom). Exposed so the
 // parcel loader can refresh every label's relative row in place
@@ -585,38 +601,51 @@ function drawContourLabel(canvas, abs, baseline) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.scale(2, 2);
-  ctx.fillStyle = 'rgba(12, 17, 24, 0.88)';
-  roundRect(ctx, 0, 0, LABEL_W, LABEL_H, 12);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-  ctx.lineWidth = 1;
-  roundRect(ctx, 0.5, 0.5, LABEL_W - 1, LABEL_H - 1, 12);
-  ctx.stroke();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 32px ui-monospace, "SF Mono", Menlo, monospace';
-  ctx.fillText(`${abs.toFixed(0)} m`, LABEL_W / 2, LABEL_H * 0.32);
-  ctx.fillStyle = '#9fb4cc';
-  ctx.font = '26px ui-monospace, "SF Mono", Menlo, monospace';
+  ctx.lineJoin = 'round';
   const rel = abs - baseline;
-  ctx.fillText(`${rel >= 0 ? '+' : ''}${rel.toFixed(1)} m`, LABEL_W / 2, LABEL_H * 0.72);
+  // Top: absolute
+  ctx.font = 'bold 26px ui-monospace, "SF Mono", Menlo, monospace';
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = 'rgba(8, 12, 18, 0.95)';
+  ctx.fillStyle = '#ffffff';
+  const topY = LABEL_H * 0.33;
+  ctx.strokeText(`${abs.toFixed(0)} m`, LABEL_W / 2, topY);
+  ctx.fillText(`${abs.toFixed(0)} m`, LABEL_W / 2, topY);
+  // Bottom: relative
+  ctx.font = '20px ui-monospace, "SF Mono", Menlo, monospace';
+  ctx.lineWidth = 4;
+  ctx.fillStyle = '#c5d3e0';
+  const botY = LABEL_H * 0.72;
+  const relText = `${rel >= 0 ? '+' : ''}${rel.toFixed(1)} m`;
+  ctx.strokeText(relText, LABEL_W / 2, botY);
+  ctx.fillText(relText, LABEL_W / 2, botY);
 }
 
-// Two-line contour label: a Sprite wrapping a canvas texture, sized
-// in world units so it stays a constant fraction of the contour gap
-// at any zoom. Sprite.scale.x is negated to cancel the parent
-// group's `scale.x = -1` mirror — the double negative leaves text
-// right-reading.
-function makeContourLabel(abs, baseline, worldYSize) {
+// Two-line contour label: a Sprite wrapping a canvas texture. Uses
+// `sizeAttenuation: false` so the label is a constant pixel size on
+// screen regardless of camera distance — readable when zoomed out
+// without becoming a wall of text when zoomed in. Sprite.scale.x is
+// negated so the parent group's `scale.x = -1` CRS mirror leaves
+// the text right-reading.
+function makeContourLabel(abs, baseline) {
   const canvas = document.createElement('canvas');
   drawContourLabel(canvas, abs, baseline);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.needsUpdate = true;
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true });
+  const mat = new THREE.SpriteMaterial({
+    map: tex,
+    transparent: true,
+    depthTest: true,
+    sizeAttenuation: false,
+  });
   const sprite = new THREE.Sprite(mat);
-  const SY = worldYSize;
+  // With sizeAttenuation=false, sprite.scale is interpreted in
+  // viewport-normalised units (1.0 ≈ full viewport). 0.045 = ~5 %
+  // of viewport height — readable mono text without dominating.
+  const SY = 0.045;
   const SX = SY * (LABEL_W / LABEL_H);
   sprite.scale.set(-SX, SY, 1);
   sprite.userData = { abs, canvas };
@@ -636,16 +665,6 @@ function updateContourBaseline(group, baseline) {
     if (sprite.material.map) sprite.material.map.needsUpdate = true;
   }
 }
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y,     x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x,     y + h, r);
-  ctx.arcTo(x,     y + h, x,     y,     r);
-  ctx.arcTo(x,     y,     x + w, y,     r);
-  ctx.closePath();
-}
-
 // Discrete-ish ramp: deep green → meadow green → tan → rock → snow.
 function elevationColor(t) {
   const stops = [
