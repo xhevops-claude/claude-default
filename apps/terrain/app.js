@@ -184,22 +184,26 @@ function buildMesh(points) {
     colors[i * 3 + 2] = c.b;
   }
 
+  // Per-vertex UVs map each point's data-XY into the [0, 1]² atlas
+  // used by the surface-projected label texture. U is NOT mirrored
+  // here — instead the texture is drawn already mirrored so each
+  // text glyph reads correctly after the parent group's
+  // `scale.x = -1` CRS-mirror is applied at render time. V is
+  // flipped because canvas-Y is top-down whereas data-Y reads
+  // bottom-up.
+  const uvs = new Float32Array(points.length * 2);
+  for (let i = 0; i < points.length; i++) {
+    uvs[i * 2]     = (points[i][0] - minX) / spanX;
+    uvs[i * 2 + 1] = (points[i][1] - minY) / spanY;
+  }
+
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('uv',       new THREE.BufferAttribute(uvs, 2));
   geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(triangles), 1));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
-
-  const material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    side: THREE.DoubleSide,
-    roughness: 0.85,
-    metalness: 0.0,
-    flatShading: false,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.userData = { minZ, maxZ, scale };
 
   // Areas computed in the file's native units (so if those units are
   // metres, the numbers are m² straight off). The 2D footprint is
@@ -232,18 +236,21 @@ function buildMesh(points) {
   // hair above the surface in Y to avoid z-fighting with the mesh.
   // Major contours (every 5 m) get their own object so they render
   // darker — same convention as printed topo maps.
+  // Topographic contours every 1 m of native elevation. Marching
+  // triangles: for each contour level, walk every triangle and emit
+  // a segment where the level intersects two of its edges, in the
+  // mesh's data CRS. The same segments are converted to world
+  // coords for the LineSegments overlay, AND fed straight into the
+  // surface-label texture so each label can be placed and rotated
+  // along its segment in canvas space without a separate pass.
   const MINOR_INTERVAL = 1;
   const MAJOR_EVERY = 5;
   const minorSegs = [];
   const majorSegs = [];
+  // Flat array of contour segments in data CRS — 5 floats each:
+  // [x0, y0, x1, y1, level]. Consumed by buildSurfaceLabelTexture.
+  const contourSegData = [];
   const Z_LIFT = 0.0015;
-  // Per contour level (every metre): running centroid + the list of
-  // segment midpoints. After the loop we bin midpoints into the
-  // four quadrants around the centroid and drop one label per
-  // non-empty quadrant — gives ~4 labels per contour so at least
-  // one stays on the camera-facing side no matter how the model
-  // rotates.
-  const levelAggs = new Map();
   const startLevel = Math.ceil(minZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   const endLevel = Math.floor(maxZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   for (let level = startLevel; level <= endLevel + 1e-9; level += MINOR_INTERVAL) {
@@ -252,28 +259,25 @@ function buildMesh(points) {
     const target = isMajor ? majorSegs : minorSegs;
     for (let t = 0; t < triangles.length; t += 3) {
       const ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
-      const ya = positions[ia * 3 + 1];
-      const yb = positions[ib * 3 + 1];
-      const yc = positions[ic * 3 + 1];
+      const za = points[ia][2], zb = points[ib][2], zc = points[ic][2];
       // Skip triangles entirely above or below the level.
-      if ((ya < yLevel && yb < yLevel && yc < yLevel) ||
-          (ya > yLevel && yb > yLevel && yc > yLevel)) continue;
-      const xs = [];
-      const zs = [];
-      crossEdge(positions, ia, ib, yLevel, xs, zs);
-      crossEdge(positions, ib, ic, yLevel, xs, zs);
-      crossEdge(positions, ic, ia, yLevel, xs, zs);
-      if (xs.length >= 2) {
-        target.push(xs[0], yLevel + Z_LIFT, zs[0],
-                    xs[1], yLevel + Z_LIFT, zs[1]);
-        let agg = levelAggs.get(level);
-        if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4, mids: [] }; levelAggs.set(level, agg); }
-        const mx = (xs[0] + xs[1]) * 0.5;
-        const mz = (zs[0] + zs[1]) * 0.5;
-        agg.sumX += xs[0] + xs[1];
-        agg.sumZ += zs[0] + zs[1];
-        agg.count += 2;
-        agg.mids.push(mx, mz);
+      if ((za < level && zb < level && zc < level) ||
+          (za > level && zb > level && zc > level)) continue;
+      const hits = [];
+      pushDataCross(points, ia, ib, level, hits);
+      pushDataCross(points, ib, ic, level, hits);
+      pushDataCross(points, ic, ia, level, hits);
+      if (hits.length >= 4) {
+        const ax = hits[0], ay = hits[1];
+        const bx = hits[2], by = hits[3];
+        // World coords for the LineSegments overlay.
+        const wx0 = (ax - cx) * scale;
+        const wz0 = (ay - cy) * scale;
+        const wx1 = (bx - cx) * scale;
+        const wz1 = (by - cy) * scale;
+        target.push(wx0, yLevel + Z_LIFT, wz0, wx1, yLevel + Z_LIFT, wz1);
+        // Data coords for the surface-label texture.
+        contourSegData.push(ax, ay, bx, by, level);
       }
     }
   }
@@ -289,6 +293,24 @@ function buildMesh(points) {
   }
   const minorLines = buildContourLines(minorSegs, 0x0a0d12, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
+
+  // Build the surface-projected label texture from the contour
+  // segments and apply it on the terrain material. White background
+  // multiplies away against the per-vertex colour; black glyphs
+  // multiply to ~0 so the numbers stamp onto whatever colour the
+  // elevation ramp painted underneath. Material is created after
+  // the texture so it can carry `map` from the start.
+  const surfaceLabels = buildSurfaceLabelTexture(contourSegData, { minX, maxX, minY, maxY });
+  const material = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    map: surfaceLabels,
+    side: THREE.DoubleSide,
+    roughness: 0.85,
+    metalness: 0.0,
+    flatShading: false,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData = { minZ, maxZ, scale };
 
   // Up to four sprite labels per contour level, one per quadrant of
   // the level's centroid. Bare two-line text (no background) at a
@@ -413,18 +435,107 @@ function pickNiceStep(target) {
 // vertices i0 and i1, appending the (x, z) of the hit to `xs`/`zs`.
 // No-op if the edge is entirely on one side or exactly horizontal at
 // the level (the adjacent edges will already register the crossing).
-function crossEdge(positions, i0, i1, yLevel, xs, zs) {
-  const y0 = positions[i0 * 3 + 1];
-  const y1 = positions[i1 * 3 + 1];
-  if ((y0 < yLevel && y1 < yLevel) || (y0 > yLevel && y1 > yLevel)) return;
-  if (y0 === y1) return;
-  const t = (yLevel - y0) / (y1 - y0);
-  const x0 = positions[i0 * 3];
-  const z0 = positions[i0 * 3 + 2];
-  const x1 = positions[i1 * 3];
-  const z1 = positions[i1 * 3 + 2];
-  xs.push(x0 + (x1 - x0) * t);
-  zs.push(z0 + (z1 - z0) * t);
+// Builds a canvas-backed texture that stamps the integer elevation
+// at the midpoint of every contour segment, rotated to follow the
+// segment's tangent direction. UV-mapped onto the terrain mesh so
+// the labels physically lie on the surface and rotate with it —
+// printed-topo-map convention.
+//
+// The canvas content is pre-mirrored across X so it cancels out
+// the parent group's `scale.x = -1` CRS-mirror at render time and
+// the text reads correctly. Y is canvas-flipped so positive data-Y
+// reads "up" in the rendered view.
+//
+// At MAX_DIM=4096 and a 165 m terrain (~25 px/m), the user's
+// 10 %-of-1 m spec (≈ 2.5 px tall) is sub-pixel; we clamp to a
+// 2 px floor so canvas.fillText renders something. Bumping
+// MAX_DIM higher buys sharper text but quickly hits GPU
+// texture-size limits and tens of MB of memory.
+function buildSurfaceLabelTexture(contourSegs, bounds) {
+  const { minX, maxX, minY, maxY } = bounds;
+  const spanX = Math.max(maxX - minX, 1e-6);
+  const spanY = Math.max(maxY - minY, 1e-6);
+  const MAX_DIM = 4096;
+  const pxPerM = MAX_DIM / Math.max(spanX, spanY);
+  const cw = Math.max(2, Math.ceil(spanX * pxPerM));
+  const ch = Math.max(2, Math.ceil(spanY * pxPerM));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext('2d');
+
+  // Opaque white background — multiplied by the mesh's vertex
+  // colour, the original terrain colour shows through unchanged.
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // 10 % of the 1 m contour gap, clamped to a sensible minimum so
+  // canvas.fillText actually renders something.
+  const targetPx = Math.max(2, 0.10 * pxPerM);
+  ctx.font = `200 ${targetPx}px -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif`;
+  ctx.fillStyle = '#000000';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const HALF_PI = Math.PI * 0.5;
+  for (let i = 0; i < contourSegs.length; i += 5) {
+    const x0 = contourSegs[i];
+    const y0 = contourSegs[i + 1];
+    const x1 = contourSegs[i + 2];
+    const y1 = contourSegs[i + 3];
+    const level = contourSegs[i + 4];
+
+    // Map both endpoints to canvas pixels. Canvas X is the data-X
+    // axis pre-mirrored against minX = canvasX 0, then the texture
+    // sampling + group X-flip net to identity. Canvas Y flips Y so
+    // data-N (large Y) reads as canvas-top (small canvasY).
+    const cx0 = (maxX - x0) * pxPerM;
+    const cy0 = ch - (y0 - minY) * pxPerM;
+    const cx1 = (maxX - x1) * pxPerM;
+    const cy1 = ch - (y1 - minY) * pxPerM;
+
+    const dx = cx1 - cx0;
+    const dy = cy1 - cy0;
+    if (dx * dx + dy * dy < 1e-6) continue;
+    let angle = Math.atan2(dy, dx);
+    // Keep text right-side-up — segments going right-to-left flip
+    // 180° so all numbers read left-to-right on the surface.
+    if (angle >  HALF_PI) angle -= Math.PI;
+    if (angle < -HALF_PI) angle += Math.PI;
+
+    ctx.save();
+    ctx.translate((cx0 + cx1) * 0.5, (cy0 + cy1) * 0.5);
+    ctx.rotate(angle);
+    ctx.fillText(`${Math.round(level)}`, 0, 0);
+    ctx.restore();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.anisotropy = 8;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// Interpolates where the contour `level` (in native Z metres)
+// crosses the edge between point indices i0 and i1, pushing the
+// resulting (X, Y) in data coords onto `out`. Skip-conditions match
+// marching triangles: both endpoints on the same side of the level,
+// or a flat edge that sits exactly on it (handled by the adjacent
+// edges).
+function pushDataCross(points, i0, i1, level, out) {
+  const z0 = points[i0][2];
+  const z1 = points[i1][2];
+  if ((z0 < level && z1 < level) || (z0 > level && z1 > level)) return;
+  if (z0 === z1) return;
+  const t = (level - z0) / (z1 - z0);
+  out.push(
+    points[i0][0] + (points[i1][0] - points[i0][0]) * t,
+    points[i0][1] + (points[i1][1] - points[i0][1]) * t,
+  );
 }
 
 // ---- Triangle spatial index ----
