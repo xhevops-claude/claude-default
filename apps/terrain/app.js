@@ -392,6 +392,13 @@ function buildMesh(points) {
   const drapeCtx = { points, triangles, index: tindex, cx, cy, scale, minZ };
 
   const group = new THREE.Group();
+  // Mirror across the YZ plane so the rendered orientation matches
+  // what xhevops sees in the source CAD (East to the LEFT on
+  // screen). Data, the triangulation index, and the drape function
+  // all stay in the native survey CRS — only the visual transform
+  // flips. Three.js handles the resulting winding-order parity for
+  // lighting automatically.
+  group.scale.x = -1;
   group.add(mesh);
   if (gridMinorLines) group.add(gridMinorLines);
   if (gridMajorLines) group.add(gridMajorLines);
