@@ -243,11 +243,13 @@ function buildMesh(points) {
   const minorSegs = [];
   const majorSegs = [];
   const Z_LIFT = 0.0015;
-  // Per contour level: running centroid in data CRS (not world). One
-  // black number gets stamped at this centroid by
-  // buildLabelTexture() below, projected through the mesh's UVs so
-  // it lies on the surface.
-  const labelCentroids = new Map();
+  // Per contour level: every segment midpoint in data CRS. After
+  // the build loop, buildLabelTexture picks the midpoint closest to
+  // the centroid of those points — that lands the label on an
+  // actual point of the contour line instead of the geometric
+  // centre of the loop (which for a closed contour sits inside the
+  // loop, off the line).
+  const labelMidpoints = new Map();
   const startLevel = Math.ceil(minZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   const endLevel = Math.floor(maxZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   for (let level = startLevel; level <= endLevel + 1e-9; level += MINOR_INTERVAL) {
@@ -270,16 +272,13 @@ function buildMesh(points) {
       if (xs.length >= 2) {
         target.push(xs[0], yLevel + Z_LIFT, zs[0],
                     xs[1], yLevel + Z_LIFT, zs[1]);
-        // Reverse the world→data projection so the centroid lives
-        // in source-CRS metres, which is what the label canvas
-        // wants.
+        // Reverse the world→data projection so midpoints live in
+        // source-CRS metres, which is what the label canvas wants.
         const midDataX = (xs[0] + xs[1]) * 0.5 / scale + cx;
         const midDataY = (zs[0] + zs[1]) * 0.5 / scale + cy;
-        let agg = labelCentroids.get(level);
-        if (!agg) { agg = { sumX: 0, sumY: 0, count: 0 }; labelCentroids.set(level, agg); }
-        agg.sumX += midDataX;
-        agg.sumY += midDataY;
-        agg.count++;
+        let mids = labelMidpoints.get(level);
+        if (!mids) { mids = []; labelMidpoints.set(level, mids); }
+        mids.push(midDataX, midDataY);
       }
     }
   }
@@ -305,7 +304,7 @@ function buildMesh(points) {
   // through to the per-vertex terrain colour; black text multiplies
   // to ~0 so the numbers appear black on whatever colour the
   // elevation ramp painted.
-  const surfaceLabels = buildLabelTexture(labelCentroids, { minX, maxX, minY, maxY });
+  const surfaceLabels = buildLabelTexture(labelMidpoints, { minX, maxX, minY, maxY });
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,
     map: surfaceLabels || undefined,
@@ -580,11 +579,17 @@ function drapeParcelPolylines(polylines, ctx) {
   return { segs, inBounds, outBounds, parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ };
 }
 
-// Stamps one black integer at each contour level's centroid onto a
-// canvas covering the terrain's XY bbox, then wraps it as a
-// CanvasTexture for UV-mapping onto the mesh. Minimalist: no
-// background pill, no halo, no rotation. White everywhere else so
-// it multiplies cleanly through the mesh's vertex colours.
+// Stamps one black integer per contour level onto a canvas
+// covering the terrain's XY bbox, then wraps it as a CanvasTexture
+// for UV-mapping onto the mesh. Minimalist: no background pill, no
+// halo, no rotation. White everywhere else so it multiplies
+// cleanly through the mesh's vertex colours.
+//
+// Placement: per level, the label sits at the midpoint of the
+// contour segment whose own midpoint is closest to the centroid of
+// all that level's midpoints. That keeps the label ON the line
+// (the geometric centroid of a closed loop falls INSIDE the loop,
+// off the contour itself, which is the wrong place).
 //
 // The canvas X axis is pre-mirrored against `maxX` so the parent
 // group's `scale.x = -1` CRS-flip cancels out at render time, and
@@ -595,8 +600,8 @@ function drapeParcelPolylines(polylines, ctx) {
 // default camera distance the text resolves to ~5–7 screen px —
 // effectively a speck. Pinching in scales the texture sampling and
 // the numbers become legible without a separate LOD pass.
-function buildLabelTexture(centroidsByLevel, bounds) {
-  if (!centroidsByLevel || centroidsByLevel.size === 0) return null;
+function buildLabelTexture(midpointsByLevel, bounds) {
+  if (!midpointsByLevel || midpointsByLevel.size === 0) return null;
   const { minX, maxX, minY, maxY } = bounds;
   const spanX = Math.max(maxX - minX, 1e-6);
   const spanY = Math.max(maxY - minY, 1e-6);
@@ -627,12 +632,28 @@ function buildLabelTexture(centroidsByLevel, bounds) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  for (const [level, agg] of centroidsByLevel) {
-    if (!agg || agg.count === 0) continue;
-    const mx = agg.sumX / agg.count;
-    const my = agg.sumY / agg.count;
-    const px = (maxX - mx) * pxPerM;
-    const py = ch - (my - minY) * pxPerM;
+  for (const [level, mids] of midpointsByLevel) {
+    if (!mids || mids.length < 2) continue;
+    // Centroid of all this level's segment midpoints (in data CRS).
+    let sumX = 0, sumY = 0;
+    const n = mids.length / 2;
+    for (let i = 0; i < mids.length; i += 2) { sumX += mids[i]; sumY += mids[i + 1]; }
+    const cxL = sumX / n;
+    const cyL = sumY / n;
+    // Find the actual midpoint closest to the centroid — guaranteed
+    // to lie on the contour line.
+    let bestI = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < mids.length; i += 2) {
+      const dx = mids[i] - cxL;
+      const dy = mids[i + 1] - cyL;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; bestI = i; }
+    }
+    const lx = mids[bestI];
+    const ly = mids[bestI + 1];
+    const px = (maxX - lx) * pxPerM;
+    const py = ch - (ly - minY) * pxPerM;
     ctx.fillText(`${Math.round(level)}`, px, py);
   }
 
