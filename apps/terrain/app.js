@@ -326,18 +326,19 @@ fileInput.addEventListener('change', () => {
   fileInput.value = '';
 });
 
-// Bundled sample DEM. Replace the file at apps/terrain/sample.txt
-// (e.g. via GitHub's web editor) to swap in your own — no code
-// changes needed.
+// Bundled sample DEM. Drop more files into apps/terrain/sample-files/
+// (e.g. via GitHub's web editor) — for now the button just loads the
+// Trebishte plot. Swap in your own by replacing that file or wiring
+// a picker later.
 sampleBtn.addEventListener('click', async () => {
   try {
-    const res = await fetch('sample.txt', { cache: 'no-cache' });
+    const res = await fetch('sample-files/trebishte.txt', { cache: 'no-cache' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const blob = await res.blob();
-    const file = new File([blob], 'sample.txt', { type: 'text/plain' });
+    const file = new File([blob], 'trebishte.txt', { type: 'text/plain' });
     loadFile(file);
   } catch (e) {
-    showError('Could not load sample.txt: ' + (e && e.message || e));
+    showError('Could not load sample: ' + (e && e.message || e));
   }
 });
 
