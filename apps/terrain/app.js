@@ -237,10 +237,10 @@ function buildMesh(points) {
   const minorSegs = [];
   const majorSegs = [];
   const Z_LIFT = 0.0015;
-  // Per major level: running centroid of its segment vertices (in
-  // world XZ), plus the world Y the label sits at. One label per
-  // level is placed at the centroid after the build loop.
-  const majorAggs = new Map();
+  // Per contour level (every metre): running centroid of its segment
+  // vertices (in world XZ) plus the world Y the label sits at. One
+  // small two-line label is dropped at the centroid after the loop.
+  const levelAggs = new Map();
   const startLevel = Math.ceil(minZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   const endLevel = Math.floor(maxZ / MINOR_INTERVAL) * MINOR_INTERVAL;
   for (let level = startLevel; level <= endLevel + 1e-9; level += MINOR_INTERVAL) {
@@ -263,13 +263,11 @@ function buildMesh(points) {
       if (xs.length >= 2) {
         target.push(xs[0], yLevel + Z_LIFT, zs[0],
                     xs[1], yLevel + Z_LIFT, zs[1]);
-        if (isMajor) {
-          let agg = majorAggs.get(level);
-          if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4 }; majorAggs.set(level, agg); }
-          agg.sumX += xs[0] + xs[1];
-          agg.sumZ += zs[0] + zs[1];
-          agg.count += 2;
-        }
+        let agg = levelAggs.get(level);
+        if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4 }; levelAggs.set(level, agg); }
+        agg.sumX += xs[0] + xs[1];
+        agg.sumZ += zs[0] + zs[1];
+        agg.count += 2;
       }
     }
   }
@@ -286,21 +284,22 @@ function buildMesh(points) {
   const minorLines = buildContourLines(minorSegs, 0x0a0d12, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
 
-  // One sprite label per major contour level: two stacked lines —
-  // absolute elevation as shipped in the file, and the height above
-  // the dataset's minimum (parcel bottom). Positioned at the
-  // centroid of that level's segments. sprite.scale.x is negated
-  // because the parent group has scale.x = -1 (CRS mirror) — the
-  // double negative leaves text right-reading.
+  // One sprite label per contour level (every metre). Two stacked
+  // text rows — absolute elevation from the source file (top) and
+  // relative height above the parcel bottom (bottom). Sprite Y size
+  // is capped at 20 % of one contour gap (`MINOR_INTERVAL * scale`)
+  // so labels never visually overlap adjacent contours. The
+  // baseline used for the relative row starts as the dataset min
+  // and is recomputed against the parcel's lowest point once DXF
+  // parcels load (see updateContourBaseline).
   const contourLabels = [];
-  for (const [level, agg] of majorAggs) {
+  const labelWorldY = MINOR_INTERVAL * scale * 0.20;
+  for (const [level, agg] of levelAggs) {
     if (agg.count === 0) continue;
     const wx = agg.sumX / agg.count;
     const wz = agg.sumZ / agg.count;
-    const abs = level;
-    const rel = level - minZ;
-    const sprite = makeContourLabel(`${abs.toFixed(0)} m`, `+${rel.toFixed(1)} m`);
-    sprite.position.set(wx, agg.yLevel + 0.005, wz);
+    const sprite = makeContourLabel(level, minZ, labelWorldY);
+    sprite.position.set(wx, agg.yLevel, wz);
     sprite.renderOrder = 3;
     contourLabels.push(sprite);
   }
@@ -539,6 +538,7 @@ function drapeParcelPolylines(polylines, ctx) {
   const segs = [];
   let inBounds = 0;
   let outBounds = 0;
+  let parcelMinZ = Infinity;
   for (const poly of polylines) {
     let prevWorld = null;
     for (let i = 0; i < poly.length - 1; i++) {
@@ -555,6 +555,7 @@ function drapeParcelPolylines(polylines, ctx) {
         const z = elevationAt(points, triangles, index, X, Y);
         if (z == null) { outBounds++; prevWorld = null; continue; }
         inBounds++;
+        if (z < parcelMinZ) parcelMinZ = z;
         const world = [
           (X - cx) * scale,
           (z - minZ) * scale + LIFT,
@@ -565,46 +566,75 @@ function drapeParcelPolylines(polylines, ctx) {
       }
     }
   }
-  return { segs, inBounds, outBounds };
+  return { segs, inBounds, outBounds, parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ };
 }
 
-// Two-line contour label rendered to a canvas, wrapped as a Sprite
-// so it always faces the camera. Top line = absolute elevation as
-// shipped in the file; bottom line = height above the dataset's
-// minimum (parcel bottom). Negative X scale counters the parent
-// group's mirror transform, leaving text right-reading.
-function makeContourLabel(absText, relText) {
-  const W = 256;
-  const H = 96;
-  const canvas = document.createElement('canvas');
-  canvas.width = W * 2;
-  canvas.height = H * 2;
+// Contour-label canvas dimensions (logical px). Drawn at 2× into the
+// backing canvas for crispness on HiDPI displays.
+const LABEL_W = 220;
+const LABEL_H = 80;
+
+// Paints (or repaints) a label canvas with the two-line content:
+// top = absolute elevation (m), bottom = signed height above the
+// chosen baseline (typically the parcel bottom). Exposed so the
+// parcel loader can refresh every label's relative row in place
+// once a new baseline is known.
+function drawContourLabel(canvas, abs, baseline) {
+  if (!canvas.width) { canvas.width = LABEL_W * 2; canvas.height = LABEL_H * 2; }
   const ctx = canvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.scale(2, 2);
   ctx.fillStyle = 'rgba(12, 17, 24, 0.88)';
-  roundRect(ctx, 0, 0, W, H, 14);
+  roundRect(ctx, 0, 0, LABEL_W, LABEL_H, 12);
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
   ctx.lineWidth = 1;
-  roundRect(ctx, 0.5, 0.5, W - 1, H - 1, 14);
+  roundRect(ctx, 0.5, 0.5, LABEL_W - 1, LABEL_H - 1, 12);
   ctx.stroke();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px ui-monospace, "SF Mono", Menlo, monospace';
-  ctx.fillText(absText, W / 2, H * 0.34);
+  ctx.font = 'bold 32px ui-monospace, "SF Mono", Menlo, monospace';
+  ctx.fillText(`${abs.toFixed(0)} m`, LABEL_W / 2, LABEL_H * 0.32);
   ctx.fillStyle = '#9fb4cc';
-  ctx.font = '28px ui-monospace, "SF Mono", Menlo, monospace';
-  ctx.fillText(relText, W / 2, H * 0.72);
+  ctx.font = '26px ui-monospace, "SF Mono", Menlo, monospace';
+  const rel = abs - baseline;
+  ctx.fillText(`${rel >= 0 ? '+' : ''}${rel.toFixed(1)} m`, LABEL_W / 2, LABEL_H * 0.72);
+}
 
+// Two-line contour label: a Sprite wrapping a canvas texture, sized
+// in world units so it stays a constant fraction of the contour gap
+// at any zoom. Sprite.scale.x is negated to cancel the parent
+// group's `scale.x = -1` mirror — the double negative leaves text
+// right-reading.
+function makeContourLabel(abs, baseline, worldYSize) {
+  const canvas = document.createElement('canvas');
+  drawContourLabel(canvas, abs, baseline);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.needsUpdate = true;
   const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true });
   const sprite = new THREE.Sprite(mat);
-  const SX = 0.22;
-  sprite.scale.set(-SX, SX * (H / W), 1);
+  const SY = worldYSize;
+  const SX = SY * (LABEL_W / LABEL_H);
+  sprite.scale.set(-SX, SY, 1);
+  sprite.userData = { abs, canvas };
   return sprite;
+}
+
+// Repaints every contour label's relative row against a new
+// baseline elevation (typically the parcel's lowest point, once a
+// DXF has loaded). Canvas references live on each sprite's
+// userData; the texture is the same object so a `needsUpdate` flag
+// is enough to push the new pixels to the GPU.
+function updateContourBaseline(group, baseline) {
+  if (!group || !group.userData || !group.userData.contourLabels) return;
+  for (const sprite of group.userData.contourLabels) {
+    const { abs, canvas } = sprite.userData;
+    drawContourLabel(canvas, abs, baseline);
+    if (sprite.material.map) sprite.material.map.needsUpdate = true;
+  }
 }
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -775,7 +805,7 @@ async function loadParcels(file) {
       showError('No LINE/POLYLINE entities found in DXF.');
       return;
     }
-    const { segs, inBounds, outBounds } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
+    const { segs, inBounds, outBounds, parcelMinZ } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
     if (currentParcels) {
       currentMesh.remove(currentParcels);
       currentParcels.geometry.dispose();
@@ -791,6 +821,9 @@ async function loadParcels(file) {
     currentParcels = new THREE.LineSegments(g, m);
     currentParcels.renderOrder = 2;
     currentMesh.add(currentParcels);
+    // Repaint contour labels against the parcel's lowest point so
+    // the "+N m" row reflects height above the parcel bottom.
+    if (parcelMinZ != null) updateContourBaseline(currentMesh, parcelMinZ);
     showStatus(
       `Loaded ${polylines.length} parcel path${polylines.length === 1 ? '' : 's'}` +
       (outBounds > 0 ? ` (${outBounds} sample${outBounds === 1 ? '' : 's'} off-terrain)` : '')
