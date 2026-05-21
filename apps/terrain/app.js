@@ -792,17 +792,8 @@ function drapeParcelPolylines(polylines, ctx) {
   let parcelMinZ = Infinity;
   let parcelMaxZ = -Infinity;
   let parcelMaxSrcX = 0, parcelMaxSrcY = 0;
-  // World-space crossings of the parcel boundary with each
-  // integer-metre elevation. Two consecutive draped samples that
-  // straddle a metre value give us a clean linear interpolation in
-  // source CRS, which we then convert to world coords. The sample
-  // centroid (also in world coords) feeds the Outward-offset
-  // slider's bearing direction.
-  const crossings = [];
-  let sumWorldX = 0, sumWorldZ = 0, nWorld = 0;
   for (const poly of polylines) {
     let prevWorld = null;
-    let prevSrcX = 0, prevSrcY = 0, prevSrcZ = 0, havePrev = false;
     for (let i = 0; i < poly.length - 1; i++) {
       const [x0, y0] = poly[i];
       const [x1, y1] = poly[i + 1];
@@ -815,34 +806,14 @@ function drapeParcelPolylines(polylines, ctx) {
         const X = x0 + dx * t;
         const Y = y0 + dy * t;
         const z = elevationAt(points, triangles, index, X, Y);
-        if (z == null) { outBounds++; prevWorld = null; havePrev = false; continue; }
+        if (z == null) { outBounds++; prevWorld = null; continue; }
         inBounds++;
         if (z < parcelMinZ) parcelMinZ = z;
         if (z > parcelMaxZ) { parcelMaxZ = z; parcelMaxSrcX = X; parcelMaxSrcY = Y; }
-        const wx = (X - cx) * scale;
-        const wz = (Y - cy) * scale;
-        sumWorldX += wx; sumWorldZ += wz; nWorld++;
-        if (havePrev && prevSrcZ !== z) {
-          const lo = Math.min(prevSrcZ, z);
-          const hi = Math.max(prevSrcZ, z);
-          const startLevel = Math.ceil(lo + 1e-9);
-          const endLevel = Math.floor(hi - 1e-9);
-          for (let L = startLevel; L <= endLevel; L++) {
-            const tCross = (L - prevSrcZ) / (z - prevSrcZ);
-            const Xc = prevSrcX + tCross * (X - prevSrcX);
-            const Yc = prevSrcY + tCross * (Y - prevSrcY);
-            crossings.push({
-              worldX: (Xc - cx) * scale,
-              worldZ: (Yc - cy) * scale,
-              level: L,
-            });
-          }
-        }
-        prevSrcX = X; prevSrcY = Y; prevSrcZ = z; havePrev = true;
         const world = [
-          wx,
+          (X - cx) * scale,
           (z - minZ) * scale + LIFT,
-          wz,
+          (Y - cy) * scale,
         ];
         if (prevWorld) segs.push(prevWorld[0], prevWorld[1], prevWorld[2], world[0], world[1], world[2]);
         prevWorld = world;
@@ -854,8 +825,6 @@ function drapeParcelPolylines(polylines, ctx) {
     parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ,
     parcelMaxZ: parcelMaxZ === -Infinity ? null : parcelMaxZ,
     parcelMaxSrcX, parcelMaxSrcY,
-    crossings,
-    centroidWorld: nWorld > 0 ? { x: sumWorldX / nWorld, z: sumWorldZ / nWorld } : null,
   };
 }
 
@@ -937,7 +906,7 @@ function makeContourLabel(abs, baseline) {
 // stores its un-offset anchor + bearing direction in userData; the
 // Layers panel debug sliders push along that bearing without a
 // rebuild.
-function buildContourLabels(peakX, peakZ, levelAggs, baseline) {
+function buildContourLabels(peakX, peakZ, levelAggs, baseline, levelMin, levelMax) {
   const BEARING_COUNT = 12;
   const bearingDirs = [];
   for (let k = 0; k < BEARING_COUNT; k++) {
@@ -947,6 +916,8 @@ function buildContourLabels(peakX, peakZ, levelAggs, baseline) {
   const sprites = [];
   for (const [level, agg] of levelAggs) {
     if (!agg.segs.length) continue;
+    if (levelMin != null && level < levelMin) continue;
+    if (levelMax != null && level > levelMax) continue;
     let placed = 0;
     for (let k = 0; k < BEARING_COUNT; k++) {
       const dx = bearingDirs[k][0];
@@ -982,31 +953,6 @@ function buildContourLabels(peakX, peakZ, levelAggs, baseline) {
       sprite.renderOrder = 3;
       sprites.push(sprite);
     }
-  }
-  return sprites;
-}
-
-// Builds label sprites at every parcel-edge × contour crossing
-// supplied by drapeParcelPolylines. `centroidWorld` is the sample
-// centroid in world XZ; each label's bearing points from it to the
-// crossing, so the Outward-offset slider still has a sensible
-// meaning (push labels away from the parcel's centre).
-function buildContourLabelsFromCrossings(crossings, levelAggs, baseline, centroidWorld) {
-  const sprites = [];
-  const cWx = centroidWorld ? centroidWorld.x : 0;
-  const cWz = centroidWorld ? centroidWorld.z : 0;
-  for (const c of crossings) {
-    const agg = levelAggs.get(c.level);
-    if (!agg) continue;
-    const dx = c.worldX - cWx;
-    const dz = c.worldZ - cWz;
-    const r = Math.hypot(dx, dz);
-    const bX = r > 1e-6 ? dx / r : 0;
-    const bZ = r > 1e-6 ? dz / r : 0;
-    const sprite = makeContourLabel(c.level, baseline);
-    sprite.userData.anchor = { x: c.worldX, y: agg.yLevel, z: c.worldZ, bearingX: bX, bearingZ: bZ };
-    sprite.renderOrder = 3;
-    sprites.push(sprite);
   }
   return sprites;
 }
@@ -1205,7 +1151,7 @@ async function loadParcels(file) {
       showError('No LINE/POLYLINE entities found in DXF.');
       return;
     }
-    const { segs, inBounds, outBounds, parcelMinZ, crossings, centroidWorld } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
+    const { segs, inBounds, outBounds, parcelMinZ, parcelMaxZ, parcelMaxSrcX, parcelMaxSrcY } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
     if (currentParcels) {
       currentMesh.remove(currentParcels);
       currentParcels.geometry.dispose();
@@ -1221,14 +1167,23 @@ async function loadParcels(file) {
     currentParcels = new THREE.LineSegments(g, m);
     currentParcels.renderOrder = 2;
     currentMesh.add(currentParcels);
-    // Replace the surface-peak label fan with labels placed at
-    // every point where a parcel edge crosses a metre contour
-    // line. Baseline (used for the "+N m" relative row) anchors to
-    // the parcel's lowest sampled elevation when available.
+    // Re-fan labels from the parcel's highest sampled point,
+    // restricted to metre levels that lie within the parcel's own
+    // elevation range — so labels only appear on the contour lines
+    // the parcel actually covers. Baseline (used for the "+N m"
+    // relative row) anchors to the parcel's lowest sampled
+    // elevation when available.
     const ctx = currentMesh.userData.drapeCtx;
     const baseline = parcelMinZ != null ? parcelMinZ : ctx.minZ;
-    if (crossings && crossings.length) {
-      const sprites = buildContourLabelsFromCrossings(crossings, currentMesh.userData.levelAggs, baseline, centroidWorld);
+    if (parcelMaxZ != null) {
+      const peakX = (parcelMaxSrcX - ctx.cx) * ctx.scale;
+      const peakZ = (parcelMaxSrcY - ctx.cy) * ctx.scale;
+      const sprites = buildContourLabels(
+        peakX, peakZ,
+        currentMesh.userData.levelAggs, baseline,
+        parcelMinZ != null ? parcelMinZ : undefined,
+        parcelMaxZ,
+      );
       setContourLabels(currentMesh, sprites);
     } else if (parcelMinZ != null) {
       updateContourBaseline(currentMesh, parcelMinZ);
