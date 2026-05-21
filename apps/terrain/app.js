@@ -6,6 +6,8 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { OBJExporter }  from 'three/addons/exporters/OBJExporter.js';
 import Delaunator from 'delaunator';
 import DxfParser from 'dxf-parser';
 
@@ -33,6 +35,8 @@ const layersPanel = document.getElementById('layers');
 const layersList  = document.getElementById('layers-list');
 const layersMaster = document.getElementById('layers-master');
 const layersReset  = document.getElementById('layers-reset');
+const exportBtn   = document.getElementById('export-btn');
+const exportMenu  = document.getElementById('export-menu');
 
 // ---- Loader fade ----
 // Hold the loader for at least 3 s (the project pattern) before
@@ -213,6 +217,7 @@ resize();
 
 let currentMesh = null;
 let currentParcels = null;
+let currentFileName = null;
 let homeCamera = null;
 
 function animate() {
@@ -955,7 +960,9 @@ async function loadFile(file) {
     layersPanel.hidden = false;
     resetBtn.hidden = false;
     parcelBtn.hidden = false;
+    exportBtn.hidden = false;
     currentParcels = null;
+    currentFileName = file.name;
     readoutName.textContent = file.name;
     const b = built.bounds;
     readoutCount.textContent =
@@ -1066,6 +1073,68 @@ parcelInput.addEventListener('change', () => {
   const f = parcelInput.files && parcelInput.files[0];
   if (f) loadParcels(f);
   parcelInput.value = '';
+});
+
+// ---- Export ----
+// We export currentMesh.userData.mesh (the surface only) rather
+// than the whole group, so contour lines, grid, dots, labels and
+// parcels stay out of the file. Passing the Mesh directly also
+// drops the group's `scale.x = -1` CRS mirror — the exported file
+// is in the source-data orientation, which is what downstream
+// tools (Blender, CAD) expect.
+function exportFilename(ext) {
+  const base = (currentFileName && currentFileName.replace(/\.[^.]+$/, '')) || 'terrain';
+  return `${base}.${ext}`;
+}
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+function exportGLB() {
+  if (!currentMesh || !currentMesh.userData || !currentMesh.userData.mesh) return;
+  new GLTFExporter().parse(
+    currentMesh.userData.mesh,
+    (buffer) => {
+      const name = exportFilename('glb');
+      downloadBlob(new Blob([buffer], { type: 'model/gltf-binary' }), name);
+      showStatus(`Exported ${name}`);
+    },
+    (err) => showError('GLB export failed: ' + (err && err.message || err)),
+    { binary: true }
+  );
+}
+function exportOBJ() {
+  if (!currentMesh || !currentMesh.userData || !currentMesh.userData.mesh) return;
+  const text = new OBJExporter().parse(currentMesh.userData.mesh);
+  const name = exportFilename('obj');
+  downloadBlob(new Blob([text], { type: 'text/plain' }), name);
+  showStatus(`Exported ${name}`);
+}
+function setExportMenuOpen(open) {
+  exportMenu.hidden = !open;
+  exportBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+exportBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  setExportMenuOpen(exportMenu.hidden);
+});
+document.addEventListener('click', (e) => {
+  if (!exportMenu.hidden && !exportMenu.contains(e.target) && e.target !== exportBtn) {
+    setExportMenuOpen(false);
+  }
+});
+exportMenu.addEventListener('click', (e) => {
+  const t = e.target;
+  if (!t || !t.dataset || !t.dataset.fmt) return;
+  setExportMenuOpen(false);
+  if (t.dataset.fmt === 'glb') exportGLB();
+  else if (t.dataset.fmt === 'obj') exportOBJ();
 });
 
 // Open the bundled Trebishte plot + parcels on first launch so the

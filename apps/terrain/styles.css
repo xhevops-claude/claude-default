@@ -291,6 +291,21 @@ body { overflow: hidden; }
 .hud-btn.ghost { background: transparent; color: var(--fg-dim); }
 .hud-btn[hidden] { display: none; }
 
+.export-wrap {
+  position: relative;
+  display: flex;
+}
+.export-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+.export-menu[hidden] { display: none; }
+
 /* When embedded inside the shell iframe the parent owns close. */
 .embedded #quit-btn { display: inline-flex; }
 
