@@ -206,9 +206,33 @@ function buildMesh(points) {
     roughness: 0.85,
     metalness: 0.0,
     flatShading: false,
+    // Push the mesh a hair away from the camera in the depth buffer
+    // so the per-vertex Points layer (added below) draws on top
+    // without z-fighting the surface it sits on.
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.userData = { minZ, maxZ, scale };
+
+  // Render every source data point as a small dot at its vertex.
+  // Shares position and color BufferAttributes with the mesh
+  // geometry, so any update to the elevation tint (applyParcelMask)
+  // propagates to both draws automatically. No index attribute on
+  // purpose — that makes Three.js use drawArrays(POINTS), exactly
+  // one dot per data point. With an index it would draw one dot per
+  // triangle-vertex reference (~6× per point).
+  const pointsGeom = new THREE.BufferGeometry();
+  pointsGeom.setAttribute('position', geometry.getAttribute('position'));
+  pointsGeom.setAttribute('color', geometry.getAttribute('color'));
+  const pointsMat = new THREE.PointsMaterial({
+    vertexColors: true,
+    size: 3,
+    sizeAttenuation: false,
+  });
+  const meshPoints = new THREE.Points(pointsGeom, pointsMat);
+  meshPoints.renderOrder = 1;
 
   // Areas computed in the file's native units (so if those units are
   // metres, the numbers are m² straight off). The 2D footprint is
@@ -414,13 +438,14 @@ function buildMesh(points) {
   // lighting automatically.
   group.scale.x = -1;
   group.add(mesh);
+  group.add(meshPoints);
   if (gridMinorLines) group.add(gridMinorLines);
   if (gridMajorLines) group.add(gridMajorLines);
   if (minorLines) group.add(minorLines);
   if (majorLines) group.add(majorLines);
   for (const s of contourLabels) group.add(s);
   group.userData = {
-    mesh, minorLines, majorLines,
+    mesh, meshPoints, minorLines, majorLines,
     gridMinorLines, gridMajorLines,
     contourLabels,
     drapeCtx,
