@@ -83,12 +83,13 @@ controls.dampingFactor = 0.08;
 controls.minDistance = 0.4;
 controls.maxDistance = 8;
 
-// The 10 cm minor contours are dense — from the default ~2.6 unit
-// camera distance they paint the whole map blue. Hide them until
-// the camera is closer than this threshold (in OrbitControls
-// distance units, same scale as min/maxDistance above). Tune as
-// needed; the metre majors stay visible at every zoom.
-const MINOR_CONTOUR_MAX_DISTANCE = 1.2;
+// Both the 10 cm minor contours and the per-vertex mesh dots are
+// dense — from the default ~2.6 unit camera distance they smother
+// the view (blue wash / dot fog respectively). Hide them until the
+// camera is closer than this threshold (in OrbitControls distance
+// units, same scale as min/maxDistance above). Metre contour
+// majors stay visible at every zoom.
+const CLOSE_DETAIL_MAX_DISTANCE = 0.8;
 // Allow full pitch — looking down from directly above is useful for
 // a heightmap, looking up from below is fine too.
 controls.minPolarAngle = 0.01;
@@ -111,8 +112,12 @@ let homeCamera = null;
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
-  const minorLines = currentMesh && currentMesh.userData && currentMesh.userData.minorLines;
-  if (minorLines) minorLines.visible = controls.getDistance() < MINOR_CONTOUR_MAX_DISTANCE;
+  const ud = currentMesh && currentMesh.userData;
+  if (ud) {
+    const closeUp = controls.getDistance() < CLOSE_DETAIL_MAX_DISTANCE;
+    if (ud.minorLines) ud.minorLines.visible = closeUp;
+    if (ud.meshPoints) ud.meshPoints.visible = closeUp;
+  }
   renderer.render(scene, camera);
 }
 animate();
