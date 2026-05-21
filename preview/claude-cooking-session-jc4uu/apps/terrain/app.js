@@ -131,7 +131,7 @@ scene.add(grid3D);
 // the vertical (survey-Z = three.js-Y); offsets are in world units
 // with X = survey-X (lateral), Y = survey-Y (depth, three.js-Z),
 // Z = elevation (three.js-Y).
-const GRID3D_ROTZ_DEFAULT = 0;
+const GRID3D_ROTZ_DEFAULT = 141;
 const GRID3D_OFFX_DEFAULT = 0;
 const GRID3D_OFFY_DEFAULT = 0;
 const GRID3D_OFFZ_DEFAULT = 0;
