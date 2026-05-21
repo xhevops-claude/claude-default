@@ -203,7 +203,7 @@ updateMasterCheckbox();
 // makeContourLabel. applyLabelDebugSettings recomputes each
 // sprite's position (radial outward from world origin in XZ) and
 // its viewport-fraction scale from the stored anchor.
-const LABEL_OFFSET_DEFAULT = 0.08;
+const LABEL_OFFSET_DEFAULT = 0;
 const LABEL_SIZE_DEFAULT   = 0.045;
 let labelOffset = LABEL_OFFSET_DEFAULT;
 let labelSize   = LABEL_SIZE_DEFAULT;
@@ -215,9 +215,9 @@ function applyLabelDebugSettings(sprites) {
   for (const sprite of list) {
     const a = sprite.userData && sprite.userData.anchor;
     if (a) {
-      const r = Math.hypot(a.x, a.z);
-      const factor = r > 1e-6 ? (r + labelOffset) / r : 1;
-      sprite.position.set(a.x * factor, a.y, a.z * factor);
+      const dx = a.bearingX || 0;
+      const dz = a.bearingZ || 0;
+      sprite.position.set(a.x + dx * labelOffset, a.y, a.z + dz * labelOffset);
     }
     sprite.scale.set(-SX, SY, 1);
   }
@@ -315,10 +315,12 @@ function buildMesh(points) {
   let minX =  Infinity, maxX = -Infinity;
   let minY =  Infinity, maxY = -Infinity;
   let minZ =  Infinity, maxZ = -Infinity;
+  let peakSrcX = 0, peakSrcY = 0;
   for (const [x, y, z] of points) {
     if (x < minX) minX = x; if (x > maxX) maxX = x;
     if (y < minY) minY = y; if (y > maxY) maxY = y;
-    if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+    if (z < minZ) minZ = z;
+    if (z > maxZ) { maxZ = z; peakSrcX = x; peakSrcY = y; }
   }
   const cx = (minX + maxX) * 0.5;
   const cy = (minY + maxY) * 0.5;
@@ -433,12 +435,13 @@ function buildMesh(points) {
   const minorSegs = [];
   const majorSegs = [];
   const Z_LIFT = 0.0015;
-  // Per major contour level (every metre): running centroid + the
-  // list of segment midpoints. After the loop we bin midpoints into
-  // the four quadrants around the centroid and drop one label per
-  // non-empty quadrant — gives ~4 labels per contour so at least
-  // one stays on the camera-facing side no matter how the model
-  // rotates. Minor (10 cm) levels get no aggregate and no label.
+  // Per major contour level (every metre): the full list of
+  // segment endpoints (XZ pairs) in world space, plus the level's
+  // lifted world-Y. After the loop we fan 12 bearings from the
+  // model's topmost point and intersect each against this level's
+  // segments to place one label per bearing-hit, plus a fallback
+  // label if no bearing hits. Minor (10 cm) levels get no
+  // aggregate and no label.
   const levelAggs = new Map();
   const startStep = Math.ceil(minZ / MINOR_INTERVAL);
   const endStep = Math.floor(maxZ / MINOR_INTERVAL);
@@ -465,13 +468,8 @@ function buildMesh(points) {
                     xs[1], yLevel + Z_LIFT, zs[1]);
         if (isMajor) {
           let agg = levelAggs.get(level);
-          if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4, mids: [] }; levelAggs.set(level, agg); }
-          const mx = (xs[0] + xs[1]) * 0.5;
-          const mz = (zs[0] + zs[1]) * 0.5;
-          agg.sumX += xs[0] + xs[1];
-          agg.sumZ += zs[0] + zs[1];
-          agg.count += 2;
-          agg.mids.push(mx, mz);
+          if (!agg) { agg = { yLevel: yLevel + Z_LIFT * 4, segs: [] }; levelAggs.set(level, agg); }
+          agg.segs.push(xs[0], zs[0], xs[1], zs[1]);
         }
       }
     }
@@ -489,33 +487,59 @@ function buildMesh(points) {
   const minorLines = buildContourLines(minorSegs, 0x1d6dd4, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
 
-  // Up to four sprite labels per contour level, one per quadrant of
-  // the level's centroid. Bare two-line text (no background) at a
-  // constant screen size — see makeContourLabel(). The baseline for
-  // the relative row starts as the dataset min and is recomputed
-  // against the parcel's lowest point once DXF parcels load.
+  // Bearing-fan label placement. The "peak" (vertex with the
+  // largest source-CRS elevation) becomes the origin for 12
+  // bearings every 30°. For each major contour we walk the
+  // bearings and place one label at the nearest ray-segment hit;
+  // if no bearing hits at all (e.g. a small off-axis ring) we drop
+  // one fallback label at a segment midpoint so the level is never
+  // unlabeled. Each sprite stores its un-offset anchor + bearing
+  // in userData so the Layers panel debug sliders can recompute
+  // position (push along bearing) and scale without a rebuild.
+  const peakX = (peakSrcX - cx) * scale;
+  const peakZ = (peakSrcY - cy) * scale;
+  const BEARING_COUNT = 12;
+  const bearingDirs = [];
+  for (let k = 0; k < BEARING_COUNT; k++) {
+    const a = k * (Math.PI * 2 / BEARING_COUNT);
+    bearingDirs.push([Math.cos(a), Math.sin(a)]);
+  }
   const contourLabels = [];
   for (const [level, agg] of levelAggs) {
-    if (agg.count === 0) continue;
-    const cx2 = agg.sumX / agg.count;
-    const cz2 = agg.sumZ / agg.count;
-    const bins = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
-    for (let i = 0; i < agg.mids.length; i += 2) {
-      const dx = agg.mids[i]     - cx2;
-      const dz = agg.mids[i + 1] - cz2;
-      const q = (dx >= 0 ? 0 : 1) + (dz >= 0 ? 0 : 2);
-      bins[q][0] += agg.mids[i];
-      bins[q][1] += agg.mids[i + 1];
-      bins[q][2] += 1;
+    if (!agg.segs.length) continue;
+    let placed = 0;
+    for (let k = 0; k < BEARING_COUNT; k++) {
+      const dx = bearingDirs[k][0];
+      const dz = bearingDirs[k][1];
+      let bestT = Infinity, bestX = 0, bestZ = 0;
+      for (let i = 0; i < agg.segs.length; i += 4) {
+        const ax = agg.segs[i],     az = agg.segs[i + 1];
+        const bx = agg.segs[i + 2], bz = agg.segs[i + 3];
+        const ex = bx - ax, ez = bz - az;
+        const det = dz * ex - dx * ez;
+        if (Math.abs(det) < 1e-9) continue;
+        const t = ((az - peakZ) * ex - (ax - peakX) * ez) / det;
+        if (t < 0 || t >= bestT) continue;
+        const s = (dx * (az - peakZ) - dz * (ax - peakX)) / det;
+        if (s < 0 || s > 1) continue;
+        bestT = t;
+        bestX = peakX + dx * t;
+        bestZ = peakZ + dz * t;
+      }
+      if (bestT < Infinity) {
+        const sprite = makeContourLabel(level, minZ);
+        sprite.userData.anchor = { x: bestX, y: agg.yLevel, z: bestZ, bearingX: dx, bearingZ: dz };
+        sprite.renderOrder = 3;
+        contourLabels.push(sprite);
+        placed++;
+      }
     }
-    // Store each sprite's un-offset anchor in userData so the
-    // Layers panel debug sliders can recompute its position
-    // (radial outward in XZ) and scale on the fly.
-    // applyLabelDebugSettings runs once at the end of this build.
-    for (const [sx, sz, n] of bins) {
-      if (n === 0) continue;
+    if (placed === 0) {
+      // Fallback: midpoint of the first segment, no bearing.
+      const ax = agg.segs[0], az = agg.segs[1];
+      const bx = agg.segs[2], bz = agg.segs[3];
       const sprite = makeContourLabel(level, minZ);
-      sprite.userData.anchor = { x: sx / n, y: agg.yLevel, z: sz / n };
+      sprite.userData.anchor = { x: (ax + bx) * 0.5, y: agg.yLevel, z: (az + bz) * 0.5, bearingX: 0, bearingZ: 0 };
       sprite.renderOrder = 3;
       contourLabels.push(sprite);
     }
