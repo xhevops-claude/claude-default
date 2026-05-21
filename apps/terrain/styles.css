@@ -163,6 +163,18 @@ body { overflow: hidden; }
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   max-width: min(82vw, 260px);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 100px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 600px) {
+  .layers {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 160px);
+    max-width: min(70vw, 220px);
+    padding: 10px 12px;
+    gap: 6px;
+    font-size: 11px;
+  }
 }
 .layers[hidden] { display: none; }
 .layers-head {

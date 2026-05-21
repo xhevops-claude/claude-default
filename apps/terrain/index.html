@@ -34,7 +34,7 @@
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=67946ef" />
+  <link rel="stylesheet" href="styles.css?v=73e82fd" />
   <script type="importmap">
   {
     "imports": {
@@ -127,6 +127,22 @@
           <input type="range" id="dbg-grid3d-offz" min="-2" max="2" step="0.01" />
           <span class="debug-value" id="dbg-grid3d-offz-val">0.00</span>
         </div>
+        <div class="debug-title">Surface grid</div>
+        <div class="debug-row">
+          <span class="debug-label">Rotation Z</span>
+          <input type="range" id="dbg-gridsurf-rotz" min="-180" max="180" step="1" />
+          <span class="debug-value" id="dbg-gridsurf-rotz-val">0&deg;</span>
+        </div>
+        <div class="debug-row">
+          <span class="debug-label">Offset X</span>
+          <input type="range" id="dbg-gridsurf-offx" min="-50" max="50" step="0.1" />
+          <span class="debug-value" id="dbg-gridsurf-offx-val">0.0 m</span>
+        </div>
+        <div class="debug-row">
+          <span class="debug-label">Offset Y</span>
+          <input type="range" id="dbg-gridsurf-offy" min="-50" max="50" step="0.1" />
+          <span class="debug-value" id="dbg-gridsurf-offy-val">0.0 m</span>
+        </div>
       </div>
     </details>
 
@@ -150,6 +166,6 @@
     <div id="error" class="error" hidden role="alert"></div>
   </main>
 
-  <script type="module" src="app.js?v=67946ef"></script>
+  <script type="module" src="app.js?v=73e82fd"></script>
 </body>
 </html>
