@@ -82,6 +82,13 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.minDistance = 0.4;
 controls.maxDistance = 8;
+
+// The 10 cm minor contours are dense — from the default ~2.6 unit
+// camera distance they paint the whole map blue. Hide them until
+// the camera is closer than this threshold (in OrbitControls
+// distance units, same scale as min/maxDistance above). Tune as
+// needed; the metre majors stay visible at every zoom.
+const MINOR_CONTOUR_MAX_DISTANCE = 1.2;
 // Allow full pitch — looking down from directly above is useful for
 // a heightmap, looking up from below is fine too.
 controls.minPolarAngle = 0.01;
@@ -104,6 +111,8 @@ let homeCamera = null;
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  const minorLines = currentMesh && currentMesh.userData && currentMesh.userData.minorLines;
+  if (minorLines) minorLines.visible = controls.getDistance() < MINOR_CONTOUR_MAX_DISTANCE;
   renderer.render(scene, camera);
 }
 animate();
