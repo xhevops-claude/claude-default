@@ -329,7 +329,7 @@ const LAYERS = [
   { id: 'labels',  label: 'Contour labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
   { id: 'grid',    label: 'Coord grid',       defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
   { id: 'grid3d',  label: '3D grid',          defaultDist: 8,   defaultEnabled: false, get: () => grid3D },
-  { id: 'gridsurf', label: 'Surface grid',    defaultDist: 8,   defaultEnabled: false, get: () => gridSurf },
+  { id: 'gridsurf', label: 'Surface grid',    defaultDist: 8,   get: () => gridSurf },
   { id: 'parcels', label: 'Parcels',          defaultDist: 8,   get: () => currentParcels },
 ];
 const layerState = {};
