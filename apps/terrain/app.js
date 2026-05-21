@@ -1076,12 +1076,28 @@ parcelInput.addEventListener('change', () => {
 });
 
 // ---- Export ----
-// We export currentMesh.userData.mesh (the surface only) rather
-// than the whole group, so contour lines, grid, dots, labels and
-// parcels stay out of the file. Passing the Mesh directly also
-// drops the group's `scale.x = -1` CRS mirror — the exported file
-// is in the source-data orientation, which is what downstream
-// tools (Blender, CAD) expect.
+// We export the surface mesh only (no contour lines, grid, dots,
+// labels or parcels). The on-screen view applies a parent-group
+// scale.x = -1 to match CAD orientation; the exported file should
+// match the on-screen view, so we bake that mirror into a cloned
+// geometry instead of carrying a negative-scale parent (which some
+// importers handle inconsistently). Reversing the triangle winding
+// keeps faces CCW so computed normals still point outward.
+function buildExportMesh() {
+  if (!currentMesh || !currentMesh.userData || !currentMesh.userData.mesh) return null;
+  const src = currentMesh.userData.mesh;
+  const g = src.geometry.clone();
+  g.scale(-1, 1, 1);
+  const idx = g.index.array;
+  for (let t = 0; t < idx.length; t += 3) {
+    const tmp = idx[t + 1];
+    idx[t + 1] = idx[t + 2];
+    idx[t + 2] = tmp;
+  }
+  g.index.needsUpdate = true;
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, src.material);
+}
 function exportFilename(ext) {
   const base = (currentFileName && currentFileName.replace(/\.[^.]+$/, '')) || 'terrain';
   return `${base}.${ext}`;
@@ -1097,24 +1113,31 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 function exportGLB() {
-  if (!currentMesh || !currentMesh.userData || !currentMesh.userData.mesh) return;
+  const m = buildExportMesh();
+  if (!m) return;
   new GLTFExporter().parse(
-    currentMesh.userData.mesh,
+    m,
     (buffer) => {
       const name = exportFilename('glb');
       downloadBlob(new Blob([buffer], { type: 'model/gltf-binary' }), name);
       showStatus(`Exported ${name}`);
+      m.geometry.dispose();
     },
-    (err) => showError('GLB export failed: ' + (err && err.message || err)),
+    (err) => {
+      m.geometry.dispose();
+      showError('GLB export failed: ' + (err && err.message || err));
+    },
     { binary: true }
   );
 }
 function exportOBJ() {
-  if (!currentMesh || !currentMesh.userData || !currentMesh.userData.mesh) return;
-  const text = new OBJExporter().parse(currentMesh.userData.mesh);
+  const m = buildExportMesh();
+  if (!m) return;
+  const text = new OBJExporter().parse(m);
   const name = exportFilename('obj');
   downloadBlob(new Blob([text], { type: 'text/plain' }), name);
   showStatus(`Exported ${name}`);
+  m.geometry.dispose();
 }
 function setExportMenuOpen(open) {
   exportMenu.hidden = !open;
