@@ -110,9 +110,9 @@ controls.maxPolarAngle = Math.PI - 0.01;
 // available so any layer can be gated for debugging.
 const LAYERS = [
   { id: 'surface', label: 'Surface',          defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
-  { id: 'points',  label: 'Mesh points',      defaultDist: 0.8, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
+  { id: 'points',  label: 'Mesh points',      defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
   { id: 'majors',  label: 'Contours (1 m)',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
-  { id: 'minors',  label: 'Contours (10 cm)', defaultDist: 0.8, get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
+  { id: 'minors',  label: 'Contours (10 cm)', defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
   { id: 'labels',  label: 'Contour labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
   { id: 'grid',    label: 'Coord grid',       defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
   { id: 'parcels', label: 'Parcels',          defaultDist: 8,   get: () => currentParcels },
@@ -204,7 +204,7 @@ updateMasterCheckbox();
 // sprite's position (radial outward from world origin in XZ) and
 // its viewport-fraction scale from the stored anchor.
 const LABEL_OFFSET_DEFAULT = 0;
-const LABEL_SIZE_DEFAULT   = 0.045;
+const LABEL_SIZE_DEFAULT   = 0.033;
 let labelOffset = LABEL_OFFSET_DEFAULT;
 let labelSize   = LABEL_SIZE_DEFAULT;
 function applyLabelDebugSettings(sprites) {
