@@ -49,6 +49,12 @@ const dbgGrid3DOffY     = document.getElementById('dbg-grid3d-offy');
 const dbgGrid3DOffYVal  = document.getElementById('dbg-grid3d-offy-val');
 const dbgGrid3DOffZ     = document.getElementById('dbg-grid3d-offz');
 const dbgGrid3DOffZVal  = document.getElementById('dbg-grid3d-offz-val');
+const dbgGridSurfRotZ   = document.getElementById('dbg-gridsurf-rotz');
+const dbgGridSurfRotZVal= document.getElementById('dbg-gridsurf-rotz-val');
+const dbgGridSurfOffX   = document.getElementById('dbg-gridsurf-offx');
+const dbgGridSurfOffXVal= document.getElementById('dbg-gridsurf-offx-val');
+const dbgGridSurfOffY   = document.getElementById('dbg-gridsurf-offy');
+const dbgGridSurfOffYVal= document.getElementById('dbg-gridsurf-offy-val');
 
 // ---- Loader fade ----
 // Hold the loader for at least 3 s (the project pattern) before
@@ -188,6 +194,114 @@ dbgGrid3DOffZ.addEventListener('input', () => {
   applyGrid3DSettings();
 });
 
+// Surface grid — a flat 1 m × 1 m XY grid in survey coords that's
+// densely sampled and draped over the terrain so each line follows
+// the elevation underneath. Lives as a child of currentMesh so it
+// inherits the visual X-mirror; rotation and offset are applied in
+// the local survey frame (around the data XY centre).
+let gridSurf = null;
+const GRID_SURF_CELL_METERS    = 1;
+const GRID_SURF_MAX_CELLS      = 80;
+const GRID_SURF_LIFT           = 0.0025;
+const GRID_SURF_ROTZ_DEFAULT   = 0;
+const GRID_SURF_OFFX_DEFAULT   = 0;
+const GRID_SURF_OFFY_DEFAULT   = 0;
+let gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
+let gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
+let gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
+function buildSurfaceGrid(drapeCtx) {
+  const { points, triangles, index, cx, cy, scale, minZ } = drapeCtx;
+  const spanX = index.maxX - index.minX;
+  const spanY = index.maxY - index.minY;
+  const span = Math.max(spanX, spanY, 1e-6);
+  const cells = Math.max(2, Math.min(
+    GRID_SURF_MAX_CELLS,
+    Math.ceil(span / GRID_SURF_CELL_METERS),
+  ));
+  const cellSize = GRID_SURF_CELL_METERS;
+  const half = (cells * cellSize) / 2;
+  const sampleSpacing = span / (index.N * 2);
+  const lineSamples = Math.max(2, Math.ceil((cells * cellSize) / sampleSpacing));
+
+  const rot = THREE.MathUtils.degToRad(gridSurfRotZ);
+  const cosR = Math.cos(rot);
+  const sinR = Math.sin(rot);
+  const segs = [];
+
+  function pushDrapedLine(getLocalXY) {
+    let prevX = 0, prevY = 0, prevZ = 0;
+    let havePrev = false;
+    for (let s = 0; s <= lineSamples; s++) {
+      const t = s / lineSamples;
+      const [lx, ly] = getLocalXY(t);
+      const rx = lx * cosR - ly * sinR;
+      const ry = lx * sinR + ly * cosR;
+      const X = cx + gridSurfOffX + rx;
+      const Y = cy + gridSurfOffY + ry;
+      const z = elevationAt(points, triangles, index, X, Y);
+      if (z == null) { havePrev = false; continue; }
+      const wx = (X - cx) * scale;
+      const wy = (z - minZ) * scale + GRID_SURF_LIFT;
+      const wz = (Y - cy) * scale;
+      if (havePrev) segs.push(prevX, prevY, prevZ, wx, wy, wz);
+      prevX = wx; prevY = wy; prevZ = wz; havePrev = true;
+    }
+  }
+  const totalLen = cells * cellSize;
+  for (let i = 0; i <= cells; i++) {
+    const ly = -half + i * cellSize;
+    pushDrapedLine((t) => [-half + t * totalLen, ly]);
+  }
+  for (let i = 0; i <= cells; i++) {
+    const lx = -half + i * cellSize;
+    pushDrapedLine((t) => [lx, -half + t * totalLen]);
+  }
+  if (segs.length === 0) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(segs, 3));
+  const m = new THREE.LineBasicMaterial({
+    color: 0x33ff66, transparent: true, opacity: 0.6,
+  });
+  const obj = new THREE.LineSegments(g, m);
+  obj.renderOrder = 2;
+  return obj;
+}
+function rebuildSurfaceGrid() {
+  if (!currentMesh || !currentMesh.userData || !currentMesh.userData.drapeCtx) return;
+  if (gridSurf) {
+    currentMesh.remove(gridSurf);
+    gridSurf.geometry.dispose();
+    gridSurf.material.dispose();
+    gridSurf = null;
+  }
+  gridSurf = buildSurfaceGrid(currentMesh.userData.drapeCtx);
+  if (gridSurf) currentMesh.add(gridSurf);
+}
+function syncGridSurfUI() {
+  dbgGridSurfRotZ.value = String(gridSurfRotZ);
+  dbgGridSurfRotZVal.textContent = `${Math.round(gridSurfRotZ)}°`;
+  dbgGridSurfOffX.value = String(gridSurfOffX);
+  dbgGridSurfOffXVal.textContent = `${gridSurfOffX.toFixed(1)} m`;
+  dbgGridSurfOffY.value = String(gridSurfOffY);
+  dbgGridSurfOffYVal.textContent = `${gridSurfOffY.toFixed(1)} m`;
+}
+syncGridSurfUI();
+dbgGridSurfRotZ.addEventListener('input', () => {
+  gridSurfRotZ = parseFloat(dbgGridSurfRotZ.value);
+  dbgGridSurfRotZVal.textContent = `${Math.round(gridSurfRotZ)}°`;
+  rebuildSurfaceGrid();
+});
+dbgGridSurfOffX.addEventListener('input', () => {
+  gridSurfOffX = parseFloat(dbgGridSurfOffX.value);
+  dbgGridSurfOffXVal.textContent = `${gridSurfOffX.toFixed(1)} m`;
+  rebuildSurfaceGrid();
+});
+dbgGridSurfOffY.addEventListener('input', () => {
+  gridSurfOffY = parseFloat(dbgGridSurfOffY.value);
+  dbgGridSurfOffYVal.textContent = `${gridSurfOffY.toFixed(1)} m`;
+  rebuildSurfaceGrid();
+});
+
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
@@ -215,6 +329,7 @@ const LAYERS = [
   { id: 'labels',  label: 'Contour labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
   { id: 'grid',    label: 'Coord grid',       defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
   { id: 'grid3d',  label: '3D grid',          defaultDist: 8,   defaultEnabled: false, get: () => grid3D },
+  { id: 'gridsurf', label: 'Surface grid',    defaultDist: 8,   defaultEnabled: false, get: () => gridSurf },
   { id: 'parcels', label: 'Parcels',          defaultDist: 8,   get: () => currentParcels },
 ];
 const layerState = {};
@@ -302,6 +417,11 @@ layersReset.addEventListener('click', () => {
   grid3DOffZ = GRID3D_OFFZ_DEFAULT;
   syncGrid3DUI();
   applyGrid3DSettings();
+  gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
+  gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
+  gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
+  syncGridSurfUI();
+  rebuildSurfaceGrid();
   updateMasterCheckbox();
 });
 updateMasterCheckbox();
@@ -1154,6 +1274,8 @@ async function loadFile(file) {
       const span = Math.max(bb.maxX - bb.minX, bb.maxY - bb.minY, 1e-6);
       rebuild3DGridForData(2 / span, span);
     }
+    gridSurf = null;
+    rebuildSurfaceGrid();
     frameMesh(built.mesh);
     hint.hidden = true;
     readout.hidden = false;
