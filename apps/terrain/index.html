@@ -103,6 +103,13 @@
       <button id="sample-btn" type="button" class="hud-btn">Sample</button>
       <button id="parcel-btn" type="button" class="hud-btn" hidden style="display:none">Parcels (DXF)</button>
       <button id="reset-btn"  type="button" class="hud-btn" hidden>Reset view</button>
+      <div class="export-wrap">
+        <button id="export-btn" type="button" class="hud-btn" hidden aria-haspopup="menu" aria-expanded="false">Export &#9662;</button>
+        <div id="export-menu" class="export-menu" hidden role="menu">
+          <button type="button" class="hud-btn" data-fmt="glb">GLB</button>
+          <button type="button" class="hud-btn" data-fmt="obj">OBJ</button>
+        </div>
+      </div>
       <button id="quit-btn"   type="button" class="hud-btn ghost">Quit</button>
     </div>
 
