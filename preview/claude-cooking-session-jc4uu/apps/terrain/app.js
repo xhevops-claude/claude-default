@@ -322,8 +322,8 @@ controls.maxPolarAngle = Math.PI - 0.01;
 // (8) means "always visible when toggled on" — the slider is still
 // available so any layer can be gated for debugging.
 const LAYERS = [
-  { id: 'surface', label: 'Surface',          defaultDist: 8,   defaultEnabled: false, get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
-  { id: 'points',  label: 'Mesh points',      defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
+  { id: 'surface', label: 'Surface',          defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
+  { id: 'points',  label: 'Mesh points',      defaultDist: 8,   defaultEnabled: false, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
   { id: 'majors',  label: 'Contours (1 m)',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
   { id: 'minors',  label: 'Contours (10 cm)', defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
   { id: 'labels',  label: 'Contour labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
