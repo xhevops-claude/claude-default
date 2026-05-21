@@ -29,6 +29,8 @@ const resetBtn   = document.getElementById('reset-btn');
 const quitBtn    = document.getElementById('quit-btn');
 const errorEl    = document.getElementById('error');
 const loading    = document.getElementById('app-loading');
+const layersPanel = document.getElementById('layers');
+const layersList  = document.getElementById('layers-list');
 
 // ---- Loader fade ----
 // Hold the loader for at least 3 s (the project pattern) before
@@ -83,16 +85,75 @@ controls.dampingFactor = 0.08;
 controls.minDistance = 0.4;
 controls.maxDistance = 8;
 
-// The 10 cm minor contours are dense — from the default ~2.6 unit
-// camera distance they paint the whole map blue. Hide them until
-// the camera is closer than this threshold (in OrbitControls
-// distance units, same scale as min/maxDistance above). Tune as
-// needed; the metre majors stay visible at every zoom.
-const MINOR_CONTOUR_MAX_DISTANCE = 1.2;
 // Allow full pitch — looking down from directly above is useful for
 // a heightmap, looking up from below is fine too.
 controls.minPolarAngle = 0.01;
 controls.maxPolarAngle = Math.PI - 0.01;
+
+// ---- Layers panel ----
+// Per-layer toggle + zoom-distance gate. Each entry resolves to the
+// THREE object(s) it represents on demand (currentMesh / parcels
+// can be null before anything has loaded). The animate loop calls
+// applyLayerVisibility every frame, so changing a slider or
+// checkbox is reflected immediately. defaultDist == controls.max
+// (8) means "always visible when toggled on" — the slider is still
+// available so any layer can be gated for debugging.
+const LAYERS = [
+  { id: 'surface', label: 'Surface',          defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
+  { id: 'points',  label: 'Mesh points',      defaultDist: 0.8, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
+  { id: 'majors',  label: 'Contours (1 m)',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
+  { id: 'minors',  label: 'Contours (10 cm)', defaultDist: 0.8, get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
+  { id: 'labels',  label: 'Contour labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
+  { id: 'grid',    label: 'Coord grid',       defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
+  { id: 'parcels', label: 'Parcels',          defaultDist: 8,   get: () => currentParcels },
+];
+const layerState = {};
+for (const L of LAYERS) layerState[L.id] = { enabled: true, maxDist: L.defaultDist };
+
+for (const L of LAYERS) {
+  const row = document.createElement('li');
+  row.className = 'layer-row';
+  row.innerHTML =
+    `<label class="layer-toggle">` +
+      `<input type="checkbox" data-layer="${L.id}" data-kind="enabled" checked />` +
+      `<span>${L.label}</span>` +
+    `</label>` +
+    `<div class="layer-slider">` +
+      `<input type="range" data-layer="${L.id}" data-kind="dist" min="0.4" max="8" step="0.05" value="${L.defaultDist}" />` +
+      `<span class="layer-value" data-value-for="${L.id}">${L.defaultDist.toFixed(2)}</span>` +
+    `</div>`;
+  layersList.appendChild(row);
+}
+layersList.addEventListener('input', (e) => {
+  const el = e.target;
+  if (!el || !el.dataset) return;
+  const id = el.dataset.layer;
+  const kind = el.dataset.kind;
+  if (!id || !layerState[id]) return;
+  if (kind === 'enabled') {
+    layerState[id].enabled = el.checked;
+  } else if (kind === 'dist') {
+    const v = parseFloat(el.value);
+    layerState[id].maxDist = v;
+    const valEl = layersList.querySelector(`[data-value-for="${id}"]`);
+    if (valEl) valEl.textContent = v.toFixed(2);
+  }
+});
+
+function applyLayerVisibility() {
+  const dist = controls.getDistance();
+  for (const L of LAYERS) {
+    const s = layerState[L.id];
+    const visible = s.enabled && dist < s.maxDist;
+    const objs = L.get();
+    if (!objs) continue;
+    if (Array.isArray(objs)) {
+      for (const o of objs) if (o) o.visible = visible;
+    } else {
+      objs.visible = visible;
+    }
+  }
+}
 
 function resize() {
   const w = canvasWrap.clientWidth;
@@ -111,8 +172,7 @@ let homeCamera = null;
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
-  const minorLines = currentMesh && currentMesh.userData && currentMesh.userData.minorLines;
-  if (minorLines) minorLines.visible = controls.getDistance() < MINOR_CONTOUR_MAX_DISTANCE;
+  applyLayerVisibility();
   renderer.render(scene, camera);
 }
 animate();
@@ -206,9 +266,33 @@ function buildMesh(points) {
     roughness: 0.85,
     metalness: 0.0,
     flatShading: false,
+    // Push the mesh a hair away from the camera in the depth buffer
+    // so the per-vertex Points layer (added below) draws on top
+    // without z-fighting the surface it sits on.
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.userData = { minZ, maxZ, scale };
+
+  // Render every source data point as a small dot at its vertex.
+  // Shares position and color BufferAttributes with the mesh
+  // geometry, so any update to the elevation tint (applyParcelMask)
+  // propagates to both draws automatically. No index attribute on
+  // purpose — that makes Three.js use drawArrays(POINTS), exactly
+  // one dot per data point. With an index it would draw one dot per
+  // triangle-vertex reference (~6× per point).
+  const pointsGeom = new THREE.BufferGeometry();
+  pointsGeom.setAttribute('position', geometry.getAttribute('position'));
+  pointsGeom.setAttribute('color', geometry.getAttribute('color'));
+  const pointsMat = new THREE.PointsMaterial({
+    vertexColors: true,
+    size: 3,
+    sizeAttenuation: false,
+  });
+  const meshPoints = new THREE.Points(pointsGeom, pointsMat);
+  meshPoints.renderOrder = 1;
 
   // Areas computed in the file's native units (so if those units are
   // metres, the numbers are m² straight off). The 2D footprint is
@@ -414,13 +498,14 @@ function buildMesh(points) {
   // lighting automatically.
   group.scale.x = -1;
   group.add(mesh);
+  group.add(meshPoints);
   if (gridMinorLines) group.add(gridMinorLines);
   if (gridMajorLines) group.add(gridMajorLines);
   if (minorLines) group.add(minorLines);
   if (majorLines) group.add(majorLines);
   for (const s of contourLabels) group.add(s);
   group.userData = {
-    mesh, minorLines, majorLines,
+    mesh, meshPoints, minorLines, majorLines,
     gridMinorLines, gridMajorLines,
     contourLabels,
     drapeCtx,
@@ -821,6 +906,7 @@ async function loadFile(file) {
     hint.hidden = true;
     readout.hidden = false;
     readout.open = false;
+    layersPanel.hidden = false;
     resetBtn.hidden = false;
     parcelBtn.hidden = false;
     currentParcels = null;
