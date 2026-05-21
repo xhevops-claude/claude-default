@@ -458,10 +458,19 @@ function buildMesh(points) {
       bins[q][1] += agg.mids[i + 1];
       bins[q][2] += 1;
     }
+    // Push each label radially outward in the XZ plane from the
+    // model's center (world origin) so the text floats just off the
+    // ring instead of sitting on top of it. Y (height) is left
+    // alone — labels still anchor to their contour level.
+    const LABEL_OUTWARD_OFFSET = 0.08;
     for (const [sx, sz, n] of bins) {
       if (n === 0) continue;
+      const lx = sx / n;
+      const lz = sz / n;
+      const r = Math.hypot(lx, lz);
+      const factor = r > 1e-6 ? (r + LABEL_OUTWARD_OFFSET) / r : 1;
       const sprite = makeContourLabel(level, minZ);
-      sprite.position.set(sx / n, agg.yLevel, sz / n);
+      sprite.position.set(lx * factor, agg.yLevel, lz * factor);
       sprite.renderOrder = 3;
       contourLabels.push(sprite);
     }
