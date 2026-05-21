@@ -487,63 +487,13 @@ function buildMesh(points) {
   const minorLines = buildContourLines(minorSegs, 0x1d6dd4, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
 
-  // Bearing-fan label placement. The "peak" (vertex with the
-  // largest source-CRS elevation) becomes the origin for 12
-  // bearings every 30°. For each major contour we walk the
-  // bearings and place one label at the nearest ray-segment hit;
-  // if no bearing hits at all (e.g. a small off-axis ring) we drop
-  // one fallback label at a segment midpoint so the level is never
-  // unlabeled. Each sprite stores its un-offset anchor + bearing
-  // in userData so the Layers panel debug sliders can recompute
-  // position (push along bearing) and scale without a rebuild.
+  // Bearing-fan label placement — see buildContourLabels(). The
+  // peak defaults to the surface's topmost vertex; loadParcels
+  // rebuilds with the parcel's highest sampled point so the fan
+  // re-centres on the user's region of interest.
   const peakX = (peakSrcX - cx) * scale;
   const peakZ = (peakSrcY - cy) * scale;
-  const BEARING_COUNT = 12;
-  const bearingDirs = [];
-  for (let k = 0; k < BEARING_COUNT; k++) {
-    const a = k * (Math.PI * 2 / BEARING_COUNT);
-    bearingDirs.push([Math.cos(a), Math.sin(a)]);
-  }
-  const contourLabels = [];
-  for (const [level, agg] of levelAggs) {
-    if (!agg.segs.length) continue;
-    let placed = 0;
-    for (let k = 0; k < BEARING_COUNT; k++) {
-      const dx = bearingDirs[k][0];
-      const dz = bearingDirs[k][1];
-      let bestT = Infinity, bestX = 0, bestZ = 0;
-      for (let i = 0; i < agg.segs.length; i += 4) {
-        const ax = agg.segs[i],     az = agg.segs[i + 1];
-        const bx = agg.segs[i + 2], bz = agg.segs[i + 3];
-        const ex = bx - ax, ez = bz - az;
-        const det = dz * ex - dx * ez;
-        if (Math.abs(det) < 1e-9) continue;
-        const t = ((az - peakZ) * ex - (ax - peakX) * ez) / det;
-        if (t < 0 || t >= bestT) continue;
-        const s = (dx * (az - peakZ) - dz * (ax - peakX)) / det;
-        if (s < 0 || s > 1) continue;
-        bestT = t;
-        bestX = peakX + dx * t;
-        bestZ = peakZ + dz * t;
-      }
-      if (bestT < Infinity) {
-        const sprite = makeContourLabel(level, minZ);
-        sprite.userData.anchor = { x: bestX, y: agg.yLevel, z: bestZ, bearingX: dx, bearingZ: dz };
-        sprite.renderOrder = 3;
-        contourLabels.push(sprite);
-        placed++;
-      }
-    }
-    if (placed === 0) {
-      // Fallback: midpoint of the first segment, no bearing.
-      const ax = agg.segs[0], az = agg.segs[1];
-      const bx = agg.segs[2], bz = agg.segs[3];
-      const sprite = makeContourLabel(level, minZ);
-      sprite.userData.anchor = { x: (ax + bx) * 0.5, y: agg.yLevel, z: (az + bz) * 0.5, bearingX: 0, bearingZ: 0 };
-      sprite.renderOrder = 3;
-      contourLabels.push(sprite);
-    }
-  }
+  const contourLabels = buildContourLabels(peakX, peakZ, levelAggs, minZ);
 
   // Coordinate grid — X/Y lines on the floor plane (Y = small
   // negative so the mesh sits on top). Spacing is a "nice" round
@@ -638,6 +588,7 @@ function buildMesh(points) {
     mesh, meshPoints, minorLines, majorLines,
     gridMinorLines, gridMajorLines,
     contourLabels,
+    levelAggs,
     drapeCtx,
     applyParcelMask,
   };
@@ -839,6 +790,8 @@ function drapeParcelPolylines(polylines, ctx) {
   let inBounds = 0;
   let outBounds = 0;
   let parcelMinZ = Infinity;
+  let parcelMaxZ = -Infinity;
+  let parcelMaxSrcX = 0, parcelMaxSrcY = 0;
   for (const poly of polylines) {
     let prevWorld = null;
     for (let i = 0; i < poly.length - 1; i++) {
@@ -856,6 +809,7 @@ function drapeParcelPolylines(polylines, ctx) {
         if (z == null) { outBounds++; prevWorld = null; continue; }
         inBounds++;
         if (z < parcelMinZ) parcelMinZ = z;
+        if (z > parcelMaxZ) { parcelMaxZ = z; parcelMaxSrcX = X; parcelMaxSrcY = Y; }
         const world = [
           (X - cx) * scale,
           (z - minZ) * scale + LIFT,
@@ -866,7 +820,12 @@ function drapeParcelPolylines(polylines, ctx) {
       }
     }
   }
-  return { segs, inBounds, outBounds, parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ };
+  return {
+    segs, inBounds, outBounds,
+    parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ,
+    parcelMaxZ: parcelMaxZ === -Infinity ? null : parcelMaxZ,
+    parcelMaxSrcX, parcelMaxSrcY,
+  };
 }
 
 // Contour-label canvas dimensions (logical px). Drawn at 2× into
@@ -936,6 +895,84 @@ function makeContourLabel(abs, baseline) {
   sprite.scale.set(-SX, SY, 1);
   sprite.userData = { abs, canvas };
   return sprite;
+}
+
+// Builds the per-level label sprites for the given peak (origin
+// of the 12-bearing fan, in world XZ) against `levelAggs` (Map of
+// level -> { yLevel, segs }). For each level: walk 12 bearings
+// from the peak and place a label at the nearest ray-segment hit
+// on that contour. If no bearing hits, drop one fallback label at
+// a segment midpoint so the level is never unlabeled. Each sprite
+// stores its un-offset anchor + bearing direction in userData; the
+// Layers panel debug sliders push along that bearing without a
+// rebuild.
+function buildContourLabels(peakX, peakZ, levelAggs, baseline) {
+  const BEARING_COUNT = 12;
+  const bearingDirs = [];
+  for (let k = 0; k < BEARING_COUNT; k++) {
+    const a = k * (Math.PI * 2 / BEARING_COUNT);
+    bearingDirs.push([Math.cos(a), Math.sin(a)]);
+  }
+  const sprites = [];
+  for (const [level, agg] of levelAggs) {
+    if (!agg.segs.length) continue;
+    let placed = 0;
+    for (let k = 0; k < BEARING_COUNT; k++) {
+      const dx = bearingDirs[k][0];
+      const dz = bearingDirs[k][1];
+      let bestT = Infinity, bestX = 0, bestZ = 0;
+      for (let i = 0; i < agg.segs.length; i += 4) {
+        const ax = agg.segs[i],     az = agg.segs[i + 1];
+        const bx = agg.segs[i + 2], bz = agg.segs[i + 3];
+        const ex = bx - ax, ez = bz - az;
+        const det = dz * ex - dx * ez;
+        if (Math.abs(det) < 1e-9) continue;
+        const t = ((az - peakZ) * ex - (ax - peakX) * ez) / det;
+        if (t < 0 || t >= bestT) continue;
+        const s = (dx * (az - peakZ) - dz * (ax - peakX)) / det;
+        if (s < 0 || s > 1) continue;
+        bestT = t;
+        bestX = peakX + dx * t;
+        bestZ = peakZ + dz * t;
+      }
+      if (bestT < Infinity) {
+        const sprite = makeContourLabel(level, baseline);
+        sprite.userData.anchor = { x: bestX, y: agg.yLevel, z: bestZ, bearingX: dx, bearingZ: dz };
+        sprite.renderOrder = 3;
+        sprites.push(sprite);
+        placed++;
+      }
+    }
+    if (placed === 0) {
+      const ax = agg.segs[0], az = agg.segs[1];
+      const bx = agg.segs[2], bz = agg.segs[3];
+      const sprite = makeContourLabel(level, baseline);
+      sprite.userData.anchor = { x: (ax + bx) * 0.5, y: agg.yLevel, z: (az + bz) * 0.5, bearingX: 0, bearingZ: 0 };
+      sprite.renderOrder = 3;
+      sprites.push(sprite);
+    }
+  }
+  return sprites;
+}
+
+// Swaps the sprites on an existing terrain group: disposes old
+// label textures, builds new ones around the given peak, adds
+// them to the group, and updates userData.contourLabels. Used by
+// loadParcels to re-centre the fan on the parcel's highest point.
+function rebuildContourLabels(group, peakX, peakZ, baseline) {
+  if (!group || !group.userData || !group.userData.levelAggs) return;
+  const ud = group.userData;
+  for (const s of ud.contourLabels || []) {
+    group.remove(s);
+    if (s.material) {
+      if (s.material.map) s.material.map.dispose();
+      s.material.dispose();
+    }
+  }
+  const next = buildContourLabels(peakX, peakZ, ud.levelAggs, baseline);
+  for (const s of next) group.add(s);
+  ud.contourLabels = next;
+  applyLabelDebugSettings(next);
 }
 
 // Repaints every contour label's relative row against a new
@@ -1114,7 +1151,7 @@ async function loadParcels(file) {
       showError('No LINE/POLYLINE entities found in DXF.');
       return;
     }
-    const { segs, inBounds, outBounds, parcelMinZ } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
+    const { segs, inBounds, outBounds, parcelMinZ, parcelMaxZ, parcelMaxSrcX, parcelMaxSrcY } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
     if (currentParcels) {
       currentMesh.remove(currentParcels);
       currentParcels.geometry.dispose();
@@ -1130,9 +1167,19 @@ async function loadParcels(file) {
     currentParcels = new THREE.LineSegments(g, m);
     currentParcels.renderOrder = 2;
     currentMesh.add(currentParcels);
-    // Repaint contour labels against the parcel's lowest point so
-    // the "+N m" row reflects height above the parcel bottom.
-    if (parcelMinZ != null) updateContourBaseline(currentMesh, parcelMinZ);
+    // Re-centre the contour-label bearing fan on the parcel's
+    // highest sampled point and rebase the "+N m" row against the
+    // parcel's lowest point. Falls back to the dataset baseline if
+    // the drape didn't yield a min.
+    if (parcelMaxZ != null) {
+      const ctx = currentMesh.userData.drapeCtx;
+      const peakX = (parcelMaxSrcX - ctx.cx) * ctx.scale;
+      const peakZ = (parcelMaxSrcY - ctx.cy) * ctx.scale;
+      const baseline = parcelMinZ != null ? parcelMinZ : ctx.minZ;
+      rebuildContourLabels(currentMesh, peakX, peakZ, baseline);
+    } else if (parcelMinZ != null) {
+      updateContourBaseline(currentMesh, parcelMinZ);
+    }
     // Darken the mesh outside the closed parcel polygons so the
     // parcel pops visually. Open polylines (LINE entities) don't
     // define a region, so they're skipped here.
