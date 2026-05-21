@@ -19,10 +19,10 @@
     {
       slug: 'memory',
       name: 'Memory',
-      meta: 'Coming soon',
+      meta: 'Wildlife',
       tagline: 'Flip cards. Match the pairs.',
-      icon: '🎴',
-      comingSoon: true,
+      icon: '🐾',
+      url: 'games/memory/',
     },
   ];
 
