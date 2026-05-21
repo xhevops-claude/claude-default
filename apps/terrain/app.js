@@ -1100,7 +1100,7 @@ async function loadBundledParcels(path, displayName) {
   }
 }
 async function loadFullSample() {
-  await loadBundledSample('sample-files/trebishte.txt', 'trebishte.txt');
+  await loadBundledSample('sample-files/trebishte-high-res.txt', 'trebishte-high-res.txt');
   await loadBundledParcels('sample-files/trebishte.dxf', 'trebishte.dxf');
 }
 sampleBtn.addEventListener('click', loadFullSample);
