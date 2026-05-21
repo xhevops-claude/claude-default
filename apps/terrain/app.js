@@ -82,6 +82,13 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.minDistance = 0.4;
 controls.maxDistance = 8;
+
+// The 10 cm minor contours are dense — from the default ~2.6 unit
+// camera distance they paint the whole map blue. Hide them until
+// the camera is closer than this threshold (in OrbitControls
+// distance units, same scale as min/maxDistance above). Tune as
+// needed; the metre majors stay visible at every zoom.
+const MINOR_CONTOUR_MAX_DISTANCE = 1.2;
 // Allow full pitch — looking down from directly above is useful for
 // a heightmap, looking up from below is fine too.
 controls.minPolarAngle = 0.01;
@@ -104,6 +111,8 @@ let homeCamera = null;
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  const minorLines = currentMesh && currentMesh.userData && currentMesh.userData.minorLines;
+  if (minorLines) minorLines.visible = controls.getDistance() < MINOR_CONTOUR_MAX_DISTANCE;
   renderer.render(scene, camera);
 }
 animate();
@@ -226,29 +235,32 @@ function buildMesh(points) {
     surface += Math.sqrt(nx * nx + ny * ny + nz * nz) * 0.5;
   }
 
-  // Topographic contours every 1 m of native elevation. Marching
+  // Topographic contours every 10 cm of native elevation. Marching
   // triangles: for each contour level, walk every triangle and emit
   // segments where the level intersects two of its edges. Lifted a
   // hair above the surface in Y to avoid z-fighting with the mesh.
-  // Major contours (every 5 m) get their own object so they render
-  // darker — same convention as printed topo maps.
-  const MINOR_INTERVAL = 1;
-  const MAJOR_EVERY = 5;
+  // Major contours (every full metre) render black; the 10 cm
+  // minors in between render blue — same convention as printed topo
+  // maps, and only the metre lines carry labels. Iterating in
+  // integer steps avoids 0.1 m float drift across many levels.
+  const MINOR_INTERVAL = 0.1;
+  const MAJOR_EVERY = 10;
   const minorSegs = [];
   const majorSegs = [];
   const Z_LIFT = 0.0015;
-  // Per contour level (every metre): running centroid + the list of
-  // segment midpoints. After the loop we bin midpoints into the
-  // four quadrants around the centroid and drop one label per
+  // Per major contour level (every metre): running centroid + the
+  // list of segment midpoints. After the loop we bin midpoints into
+  // the four quadrants around the centroid and drop one label per
   // non-empty quadrant — gives ~4 labels per contour so at least
   // one stays on the camera-facing side no matter how the model
-  // rotates.
+  // rotates. Minor (10 cm) levels get no aggregate and no label.
   const levelAggs = new Map();
-  const startLevel = Math.ceil(minZ / MINOR_INTERVAL) * MINOR_INTERVAL;
-  const endLevel = Math.floor(maxZ / MINOR_INTERVAL) * MINOR_INTERVAL;
-  for (let level = startLevel; level <= endLevel + 1e-9; level += MINOR_INTERVAL) {
+  const startStep = Math.ceil(minZ / MINOR_INTERVAL);
+  const endStep = Math.floor(maxZ / MINOR_INTERVAL);
+  for (let step = startStep; step <= endStep; step++) {
+    const level = step * MINOR_INTERVAL;
     const yLevel = (level - minZ) * scale;
-    const isMajor = Math.abs(level / MAJOR_EVERY - Math.round(level / MAJOR_EVERY)) < 1e-6;
+    const isMajor = step % MAJOR_EVERY === 0;
     const target = isMajor ? majorSegs : minorSegs;
     for (let t = 0; t < triangles.length; t += 3) {
       const ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
@@ -266,14 +278,16 @@ function buildMesh(points) {
       if (xs.length >= 2) {
         target.push(xs[0], yLevel + Z_LIFT, zs[0],
                     xs[1], yLevel + Z_LIFT, zs[1]);
-        let agg = levelAggs.get(level);
-        if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4, mids: [] }; levelAggs.set(level, agg); }
-        const mx = (xs[0] + xs[1]) * 0.5;
-        const mz = (zs[0] + zs[1]) * 0.5;
-        agg.sumX += xs[0] + xs[1];
-        agg.sumZ += zs[0] + zs[1];
-        agg.count += 2;
-        agg.mids.push(mx, mz);
+        if (isMajor) {
+          let agg = levelAggs.get(level);
+          if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4, mids: [] }; levelAggs.set(level, agg); }
+          const mx = (xs[0] + xs[1]) * 0.5;
+          const mz = (zs[0] + zs[1]) * 0.5;
+          agg.sumX += xs[0] + xs[1];
+          agg.sumZ += zs[0] + zs[1];
+          agg.count += 2;
+          agg.mids.push(mx, mz);
+        }
       }
     }
   }
@@ -287,7 +301,7 @@ function buildMesh(points) {
     line.renderOrder = 1;
     return line;
   }
-  const minorLines = buildContourLines(minorSegs, 0x0a0d12, 0.55);
+  const minorLines = buildContourLines(minorSegs, 0x1d6dd4, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
 
   // Up to four sprite labels per contour level, one per quadrant of
