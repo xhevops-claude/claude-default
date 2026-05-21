@@ -62,21 +62,24 @@
       <span class="hint-sub">Each line: <code>x  y  elevation</code> (tabs or spaces; an optional id column is ignored).</span>
     </div>
 
-    <div id="readout" class="readout" hidden>
-      <div class="readout-head">
-        <span id="readout-name" class="readout-name"></span>
-        <span id="readout-count" class="readout-count"></span>
-      </div>
+    <details id="readout" class="readout" hidden>
+      <summary class="readout-head">
+        <div class="readout-head-text">
+          <span id="readout-name" class="readout-name"></span>
+          <span id="readout-count" class="readout-count"></span>
+        </div>
+        <span class="readout-caret" aria-hidden="true">&#9662;</span>
+      </summary>
       <dl class="readout-grid">
-        <div><dt>Elevation</dt><dd id="readout-elev">—</dd></div>
-        <div><dt>Total relief (Δz)</dt><dd id="readout-dz">—</dd></div>
-        <div><dt>Footprint</dt><dd id="readout-footprint">—</dd></div>
-        <div><dt>Surface area</dt><dd id="readout-surface">—</dd></div>
-        <div><dt>Density</dt><dd id="readout-density">—</dd></div>
-        <div><dt>Grid step</dt><dd id="readout-grid">—</dd></div>
+        <div><dt>Elevation</dt><dd id="readout-elev">&mdash;</dd></div>
+        <div><dt>Total relief (&Delta;z)</dt><dd id="readout-dz">&mdash;</dd></div>
+        <div><dt>Footprint</dt><dd id="readout-footprint">&mdash;</dd></div>
+        <div><dt>Surface area</dt><dd id="readout-surface">&mdash;</dd></div>
+        <div><dt>Density</dt><dd id="readout-density">&mdash;</dd></div>
+        <div><dt>Grid step</dt><dd id="readout-grid">&mdash;</dd></div>
       </dl>
       <p class="readout-note">Areas assume the file's X/Y are metres.</p>
-    </div>
+    </details>
 
     <div class="hud-bottom">
       <input id="file-input"   type="file" accept=".txt,.csv,.xyz,.tsv,text/plain" hidden />
