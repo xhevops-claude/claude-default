@@ -214,18 +214,19 @@ const LAYERS = [
   { id: 'minors',  label: 'Contours (10 cm)', defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
   { id: 'labels',  label: 'Contour labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
   { id: 'grid',    label: 'Coord grid',       defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
-  { id: 'grid3d',  label: '3D grid',          defaultDist: 8,   get: () => grid3D },
+  { id: 'grid3d',  label: '3D grid',          defaultDist: 8,   defaultEnabled: false, get: () => grid3D },
   { id: 'parcels', label: 'Parcels',          defaultDist: 8,   get: () => currentParcels },
 ];
 const layerState = {};
-for (const L of LAYERS) layerState[L.id] = { enabled: true, maxDist: L.defaultDist };
+for (const L of LAYERS) layerState[L.id] = { enabled: L.defaultEnabled !== false, maxDist: L.defaultDist };
 
 for (const L of LAYERS) {
   const row = document.createElement('li');
   row.className = 'layer-row';
+  const checkedAttr = L.defaultEnabled === false ? '' : ' checked';
   row.innerHTML =
     `<label class="layer-toggle">` +
-      `<input type="checkbox" data-layer="${L.id}" data-kind="enabled" checked />` +
+      `<input type="checkbox" data-layer="${L.id}" data-kind="enabled"${checkedAttr} />` +
       `<span>${L.label}</span>` +
     `</label>` +
     `<div class="layer-slider">` +
@@ -281,12 +282,13 @@ layersMaster.addEventListener('change', () => {
 });
 layersReset.addEventListener('click', () => {
   for (const L of LAYERS) {
-    layerState[L.id].enabled = true;
+    const on = L.defaultEnabled !== false;
+    layerState[L.id].enabled = on;
     layerState[L.id].maxDist = L.defaultDist;
     const cb = layersList.querySelector(`[data-layer="${L.id}"][data-kind="enabled"]`);
     const sl = layersList.querySelector(`[data-layer="${L.id}"][data-kind="dist"]`);
     const vl = layersList.querySelector(`[data-value-for="${L.id}"]`);
-    if (cb) cb.checked = true;
+    if (cb) cb.checked = on;
     if (sl) sl.value = String(L.defaultDist);
     if (vl) vl.textContent = L.defaultDist.toFixed(2);
   }
