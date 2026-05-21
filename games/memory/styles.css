@@ -249,23 +249,25 @@ html, body {
   min-height: 0;
 }
 
-/* Board: width-driven. Each tile carries its own aspect-ratio so we
-   don't depend on the board's height being computed correctly inside
-   a flex parent — that combo is fragile on iOS Safari and was leaving
-   tiles collapsed to invisible specks. */
+/* Board: explicit square dimensions. We deliberately avoid `aspect-ratio`
+   here — iOS Safari does not always propagate an aspect-ratio-derived
+   height up to grid row tracks, which silently collapses the rows and
+   leaves the cards as invisible specks. Setting width and height to
+   the same `min(...)` value sidesteps that completely. */
 .board {
   display: grid;
   grid-template-columns: repeat(var(--cols, 3), 1fr);
+  grid-template-rows: repeat(var(--rows, 3), 1fr);
   gap: clamp(6px, 1.6vmin, 14px);
-  width: min(96vw, calc(100dvh - 250px), 560px);
-  perspective: 1200px;
+  width:  min(96vw, calc(100dvh - 250px), 560px);
+  height: min(96vw, calc(100dvh - 250px), 560px);
 }
 
 /* ---- Tile ---- */
 .tile {
   position: relative;
-  aspect-ratio: 1 / 1;
   width: 100%;
+  height: 100%;
   background: transparent;
   border: 0;
   padding: 0;
@@ -285,16 +287,11 @@ html, body {
   position: relative;
   width: 100%;
   height: 100%;
-  transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.34, 1.4, 0.6, 1);
-  will-change: transform;
 }
 
-.tile.flipped .tile-inner,
-.tile.matched .tile-inner {
-  transform: rotateY(180deg);
-}
-
+/* 2D reveal: the back fades and scales down while the front fades and
+   scales up — gives the "tap-to-reveal" feel without depending on 3D
+   transforms (which were rendering the card backs invisible on iOS). */
 .tile-face {
   position: absolute;
   inset: 0;
@@ -302,10 +299,18 @@ html, body {
   align-items: center;
   justify-content: center;
   border-radius: clamp(8px, 1.8vmin, 14px);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
   overflow: hidden;
+  transition: opacity 0.32s ease, transform 0.32s ease;
 }
+
+.tile-back  { opacity: 1; transform: scale(1); }
+.tile-front { opacity: 0; transform: scale(0.88); pointer-events: none; }
+
+.tile.flipped .tile-back,
+.tile.matched .tile-back  { opacity: 0; transform: scale(1.08); }
+
+.tile.flipped .tile-front,
+.tile.matched .tile-front { opacity: 1; transform: scale(1); }
 
 /* Back face (face-down). Lighter slate so the card lifts off the dark
    page bg, with a strong gold border + paw emblem so it reads as a
@@ -343,7 +348,6 @@ html, body {
 .tile-front {
   background: linear-gradient(180deg, var(--card-front-1), var(--card-front-2));
   color: var(--card-front-ink);
-  transform: rotateY(180deg);
   border: 1px solid rgba(212, 175, 55, 0.35);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
@@ -373,12 +377,12 @@ html, body {
 
 /* Hover lift (desktop only). */
 @media (hover: hover) {
-  .tile:not(.matched):not(.flipped):not(.locked):hover .tile-inner {
-    transform: translateY(-3px) rotateX(2deg);
+  .tile:not(.matched):not(.flipped):not(.locked):hover .tile-back {
+    transform: translateY(-3px) scale(1.02);
   }
 }
 
-/* Matched state — gold halo. */
+/* Matched state — gold halo + bounce on the emoji. */
 .tile.matched .tile-front {
   border-color: var(--gold);
   box-shadow:
@@ -386,13 +390,6 @@ html, body {
     inset 0 0 0 1px var(--gold),
     0 0 0 1px var(--gold-glow),
     0 8px 24px var(--gold-glow);
-  animation: matched-pulse 0.6s ease-out;
-}
-
-@keyframes matched-pulse {
-  0%   { transform: rotateY(180deg) scale(1); }
-  40%  { transform: rotateY(180deg) scale(1.08); }
-  100% { transform: rotateY(180deg) scale(1); }
 }
 
 .tile.matched .tile-emoji {
@@ -401,11 +398,11 @@ html, body {
 
 @keyframes matched-bounce {
   0%   { transform: scale(1); }
-  40%  { transform: scale(1.15); }
+  40%  { transform: scale(1.18); }
   100% { transform: scale(1); }
 }
 
-/* Mismatch shake. */
+/* Mismatch — red glow + shake. */
 .tile.miss .tile-front {
   border-color: rgba(220, 76, 76, 0.7);
   box-shadow:
@@ -416,11 +413,11 @@ html, body {
 }
 
 @keyframes miss-shake {
-  0%, 100% { transform: rotateY(180deg) translateX(0); }
-  20%      { transform: rotateY(180deg) translateX(-4px); }
-  40%      { transform: rotateY(180deg) translateX(4px); }
-  60%      { transform: rotateY(180deg) translateX(-3px); }
-  80%      { transform: rotateY(180deg) translateX(2px); }
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-4px); }
+  40%      { transform: translateX(4px); }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(2px); }
 }
 
 /* Wild (decorative center) tile — always visible, no flip. */
@@ -431,6 +428,9 @@ html, body {
 .tile.wild .tile-inner { transform: none; }
 .tile.wild .tile-back { display: none; }
 .tile.wild .tile-front {
+  /* Wild is always face-up. Force the revealed state regardless of the
+     default tile-front opacity/scale used by the reveal animation. */
+  opacity: 1;
   transform: none;
   background:
     radial-gradient(120% 100% at 50% 0%,
