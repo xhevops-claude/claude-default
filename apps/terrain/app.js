@@ -88,7 +88,7 @@ scene.add(fallbackGrid);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
-controls.minDistance = 0.4;
+controls.minDistance = 0.05;
 controls.maxDistance = 8;
 
 // Allow full pitch — looking down from directly above is useful for
@@ -125,7 +125,7 @@ for (const L of LAYERS) {
       `<span>${L.label}</span>` +
     `</label>` +
     `<div class="layer-slider">` +
-      `<input type="range" data-layer="${L.id}" data-kind="dist" min="0.4" max="8" step="0.05" value="${L.defaultDist}" />` +
+      `<input type="range" data-layer="${L.id}" data-kind="dist" min="0.05" max="8" step="0.05" value="${L.defaultDist}" />` +
       `<span class="layer-value" data-value-for="${L.id}">${L.defaultDist.toFixed(2)}</span>` +
     `</div>`;
   layersList.appendChild(row);
