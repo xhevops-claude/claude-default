@@ -31,6 +31,8 @@ const errorEl    = document.getElementById('error');
 const loading    = document.getElementById('app-loading');
 const layersPanel = document.getElementById('layers');
 const layersList  = document.getElementById('layers-list');
+const layersMaster = document.getElementById('layers-master');
+const layersReset  = document.getElementById('layers-reset');
 
 // ---- Loader fade ----
 // Hold the loader for at least 3 s (the project pattern) before
@@ -132,6 +134,7 @@ layersList.addEventListener('input', (e) => {
   if (!id || !layerState[id]) return;
   if (kind === 'enabled') {
     layerState[id].enabled = el.checked;
+    updateMasterCheckbox();
   } else if (kind === 'dist') {
     const v = parseFloat(el.value);
     layerState[id].maxDist = v;
@@ -139,6 +142,49 @@ layersList.addEventListener('input', (e) => {
     if (valEl) valEl.textContent = v.toFixed(2);
   }
 });
+
+// Tri-state master: indeterminate when some layers are on and some
+// off, unchecked when none on, checked when all on. Clicking it
+// flips to "all on" if any layer was off, else "all off".
+function updateMasterCheckbox() {
+  const total = LAYERS.length;
+  let on = 0;
+  for (const L of LAYERS) if (layerState[L.id].enabled) on++;
+  if (on === 0) {
+    layersMaster.checked = false;
+    layersMaster.indeterminate = false;
+  } else if (on === total) {
+    layersMaster.checked = true;
+    layersMaster.indeterminate = false;
+  } else {
+    layersMaster.checked = false;
+    layersMaster.indeterminate = true;
+  }
+}
+layersMaster.addEventListener('change', () => {
+  const allOn = LAYERS.every(L => layerState[L.id].enabled);
+  const target = !allOn;
+  for (const L of LAYERS) {
+    layerState[L.id].enabled = target;
+    const cb = layersList.querySelector(`[data-layer="${L.id}"][data-kind="enabled"]`);
+    if (cb) cb.checked = target;
+  }
+  updateMasterCheckbox();
+});
+layersReset.addEventListener('click', () => {
+  for (const L of LAYERS) {
+    layerState[L.id].enabled = true;
+    layerState[L.id].maxDist = L.defaultDist;
+    const cb = layersList.querySelector(`[data-layer="${L.id}"][data-kind="enabled"]`);
+    const sl = layersList.querySelector(`[data-layer="${L.id}"][data-kind="dist"]`);
+    const vl = layersList.querySelector(`[data-value-for="${L.id}"]`);
+    if (cb) cb.checked = true;
+    if (sl) sl.value = String(L.defaultDist);
+    if (vl) vl.textContent = L.defaultDist.toFixed(2);
+  }
+  updateMasterCheckbox();
+});
+updateMasterCheckbox();
 
 function applyLayerVisibility() {
   const dist = controls.getDistance();
