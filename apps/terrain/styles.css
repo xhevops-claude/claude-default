@@ -82,11 +82,33 @@ body { overflow: hidden; }
 .readout[hidden] { display: none; }
 .readout-head {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.readout-head::-webkit-details-marker { display: none; }
+.readout[open] .readout-head {
   padding-bottom: 6px;
   border-bottom: 1px solid var(--hud-border);
 }
+.readout-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.readout-caret {
+  color: var(--fg-dim);
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.readout[open] .readout-caret { transform: rotate(180deg); }
 .readout-name {
   font-weight: 600;
   font-size: 13px;

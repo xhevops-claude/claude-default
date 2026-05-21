@@ -763,6 +763,7 @@ async function loadFile(file) {
     frameMesh(built.mesh);
     hint.hidden = true;
     readout.hidden = false;
+    readout.open = false;
     resetBtn.hidden = false;
     parcelBtn.hidden = false;
     currentParcels = null;
