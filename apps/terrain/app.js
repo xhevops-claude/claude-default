@@ -376,6 +376,35 @@ function buildMesh(points) {
   const tindex = buildTriangleIndex(points, triangles, { minX, maxX, minY, maxY });
   const drapeCtx = { points, triangles, index: tindex, cx, cy, scale, minZ };
 
+  // Recomputes the mesh's per-vertex elevation colour, multiplied by
+  // OUTSIDE_TINT for vertices that fall outside every closed parcel
+  // polygon. Call with an empty/null array to fully restore the
+  // original gradient. Per-vertex tinting means the boundary reads
+  // as a soft gradient where triangles straddle it — fine for our
+  // purposes; no shader / submesh split needed.
+  const OUTSIDE_TINT = 0.35;
+  const colorAttr = geometry.getAttribute('color');
+  function applyParcelMask(closedPolys) {
+    const arr = colorAttr.array;
+    const hasMask = closedPolys && closedPolys.length > 0;
+    for (let i = 0; i < points.length; i++) {
+      const t = (points[i][2] - minZ) / zSpan;
+      const c = elevationColor(t);
+      let r = c.r, g = c.g, b = c.b;
+      if (hasMask) {
+        let inside = false;
+        for (const poly of closedPolys) {
+          if (pointInPolygon(points[i][0], points[i][1], poly)) { inside = true; break; }
+        }
+        if (!inside) { r *= OUTSIDE_TINT; g *= OUTSIDE_TINT; b *= OUTSIDE_TINT; }
+      }
+      arr[i * 3]     = r;
+      arr[i * 3 + 1] = g;
+      arr[i * 3 + 2] = b;
+    }
+    colorAttr.needsUpdate = true;
+  }
+
   const group = new THREE.Group();
   // Mirror across the YZ plane so the rendered orientation matches
   // what xhevops sees in the source CAD (East to the LEFT on
@@ -395,6 +424,7 @@ function buildMesh(points) {
     gridMinorLines, gridMajorLines,
     contourLabels,
     drapeCtx,
+    applyParcelMask,
   };
 
   return {
@@ -439,6 +469,33 @@ function crossEdge(positions, i0, i1, yLevel, xs, zs) {
   const z1 = positions[i1 * 3 + 2];
   xs.push(x0 + (x1 - x0) * t);
   zs.push(z0 + (z1 - z0) * t);
+}
+
+// Standard ray-casting point-in-polygon. `poly` is an array of
+// [x, y] pairs; closed loops are assumed (last vertex == first).
+// Robustness near the edge doesn't matter here — we only use this
+// to tint terrain vertices, so a stray pixel either way is fine.
+function pointInPolygon(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1];
+    const xj = poly[j][0], yj = poly[j][1];
+    if (((yi > y) !== (yj > y)) &&
+        (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+// True if a polyline's first and last vertex coincide — i.e. the
+// DXF entity was a closed shape. extractDxfPolylines pushes the
+// closing vertex explicitly when `e.closed || e.shape` is set, so
+// this check is reliable.
+function isClosedPolyline(poly) {
+  if (poly.length < 4) return false;
+  const a = poly[0], b = poly[poly.length - 1];
+  return a[0] === b[0] && a[1] === b[1];
 }
 
 // ---- Triangle spatial index ----
@@ -858,6 +915,12 @@ async function loadParcels(file) {
     // Repaint contour labels against the parcel's lowest point so
     // the "+N m" row reflects height above the parcel bottom.
     if (parcelMinZ != null) updateContourBaseline(currentMesh, parcelMinZ);
+    // Darken the mesh outside the closed parcel polygons so the
+    // parcel pops visually. Open polylines (LINE entities) don't
+    // define a region, so they're skipped here.
+    if (currentMesh.userData.applyParcelMask) {
+      currentMesh.userData.applyParcelMask(polylines.filter(isClosedPolyline));
+    }
     showStatus(
       `Loaded ${polylines.length} parcel path${polylines.length === 1 ? '' : 's'}` +
       (outBounds > 0 ? ` (${outBounds} sample${outBounds === 1 ? '' : 's'} off-terrain)` : '')
