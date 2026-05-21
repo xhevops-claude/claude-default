@@ -41,6 +41,14 @@ const dbgLabelOffset    = document.getElementById('dbg-label-offset');
 const dbgLabelOffsetVal = document.getElementById('dbg-label-offset-val');
 const dbgLabelSize      = document.getElementById('dbg-label-size');
 const dbgLabelSizeVal   = document.getElementById('dbg-label-size-val');
+const dbgGrid3DRotZ     = document.getElementById('dbg-grid3d-rotz');
+const dbgGrid3DRotZVal  = document.getElementById('dbg-grid3d-rotz-val');
+const dbgGrid3DOffX     = document.getElementById('dbg-grid3d-offx');
+const dbgGrid3DOffXVal  = document.getElementById('dbg-grid3d-offx-val');
+const dbgGrid3DOffY     = document.getElementById('dbg-grid3d-offy');
+const dbgGrid3DOffYVal  = document.getElementById('dbg-grid3d-offy-val');
+const dbgGrid3DOffZ     = document.getElementById('dbg-grid3d-offz');
+const dbgGrid3DOffZVal  = document.getElementById('dbg-grid3d-offz-val');
 
 // ---- Loader fade ----
 // Hold the loader for at least 3 s (the project pattern) before
@@ -89,6 +97,97 @@ const fallbackGrid = new THREE.GridHelper(4, 16, 0x223040, 0x18222e);
 fallbackGrid.position.y = -0.005;
 scene.add(fallbackGrid);
 
+// Green 3D box-lattice reference layer. Builds a cube of line
+// segments along all three axes so it reads as a stack of boxes.
+// Lives in world space, independent of the data — XY are
+// horizontal, Z is up (survey convention). The Layers panel's
+// debug section drives its yaw + XYZ offset live. Cells are 1 m
+// in survey coordinates, so a freshly-loaded mesh rebuilds the
+// lattice with `worldUnitsPerMeter` (the mesh's uniform scale)
+// driving the cell size and the dataset's longer-axis span
+// driving the cell count.
+const GRID3D_CELL_METERS       = 1;
+const GRID3D_MAX_CELLS         = 80;
+const GRID3D_FALLBACK_CELLS    = 10;
+const GRID3D_FALLBACK_CELL_W   = 0.2;
+function build3DBoxGridGeometry(cellWorldSize, cells) {
+  const half = (cells * cellWorldSize) / 2;
+  const verts = [];
+  for (let i = 0; i <= cells; i++) {
+    for (let j = 0; j <= cells; j++) {
+      const a = -half + i * cellWorldSize;
+      const b = -half + j * cellWorldSize;
+      verts.push(-half, a, b,   half, a, b);
+      verts.push(a, -half, b,   a, half, b);
+      verts.push(a, b, -half,   a, b, half);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  return geo;
+}
+const grid3D = new THREE.LineSegments(
+  build3DBoxGridGeometry(GRID3D_FALLBACK_CELL_W, GRID3D_FALLBACK_CELLS),
+  new THREE.LineBasicMaterial({ color: 0x33ff66, transparent: true, opacity: 0.45 }),
+);
+scene.add(grid3D);
+function rebuild3DGridForData(worldUnitsPerMeter, spanMeters) {
+  const cells = Math.max(2, Math.min(GRID3D_MAX_CELLS, Math.ceil(spanMeters / GRID3D_CELL_METERS)));
+  const cellWorldSize = worldUnitsPerMeter * GRID3D_CELL_METERS;
+  const old = grid3D.geometry;
+  grid3D.geometry = build3DBoxGridGeometry(cellWorldSize, cells);
+  if (old) old.dispose();
+}
+
+// Live-tunable defaults for the 3D grid transform. Rot is around
+// the vertical (survey-Z = three.js-Y); offsets are in world units
+// with X = survey-X (lateral), Y = survey-Y (depth, three.js-Z),
+// Z = elevation (three.js-Y).
+const GRID3D_ROTZ_DEFAULT = 141;
+const GRID3D_OFFX_DEFAULT = 0;
+const GRID3D_OFFY_DEFAULT = 0;
+const GRID3D_OFFZ_DEFAULT = 0;
+let grid3DRotZ = GRID3D_ROTZ_DEFAULT;
+let grid3DOffX = GRID3D_OFFX_DEFAULT;
+let grid3DOffY = GRID3D_OFFY_DEFAULT;
+let grid3DOffZ = GRID3D_OFFZ_DEFAULT;
+function applyGrid3DSettings() {
+  grid3D.rotation.set(0, THREE.MathUtils.degToRad(grid3DRotZ), 0);
+  grid3D.position.set(grid3DOffX, grid3DOffZ, grid3DOffY);
+}
+function syncGrid3DUI() {
+  dbgGrid3DRotZ.value = String(grid3DRotZ);
+  dbgGrid3DRotZVal.textContent = `${Math.round(grid3DRotZ)}°`;
+  dbgGrid3DOffX.value = String(grid3DOffX);
+  dbgGrid3DOffXVal.textContent = grid3DOffX.toFixed(2);
+  dbgGrid3DOffY.value = String(grid3DOffY);
+  dbgGrid3DOffYVal.textContent = grid3DOffY.toFixed(2);
+  dbgGrid3DOffZ.value = String(grid3DOffZ);
+  dbgGrid3DOffZVal.textContent = grid3DOffZ.toFixed(2);
+}
+syncGrid3DUI();
+applyGrid3DSettings();
+dbgGrid3DRotZ.addEventListener('input', () => {
+  grid3DRotZ = parseFloat(dbgGrid3DRotZ.value);
+  dbgGrid3DRotZVal.textContent = `${Math.round(grid3DRotZ)}°`;
+  applyGrid3DSettings();
+});
+dbgGrid3DOffX.addEventListener('input', () => {
+  grid3DOffX = parseFloat(dbgGrid3DOffX.value);
+  dbgGrid3DOffXVal.textContent = grid3DOffX.toFixed(2);
+  applyGrid3DSettings();
+});
+dbgGrid3DOffY.addEventListener('input', () => {
+  grid3DOffY = parseFloat(dbgGrid3DOffY.value);
+  dbgGrid3DOffYVal.textContent = grid3DOffY.toFixed(2);
+  applyGrid3DSettings();
+});
+dbgGrid3DOffZ.addEventListener('input', () => {
+  grid3DOffZ = parseFloat(dbgGrid3DOffZ.value);
+  dbgGrid3DOffZVal.textContent = grid3DOffZ.toFixed(2);
+  applyGrid3DSettings();
+});
+
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
@@ -115,17 +214,19 @@ const LAYERS = [
   { id: 'minors',  label: 'Contours (10 cm)', defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
   { id: 'labels',  label: 'Contour labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
   { id: 'grid',    label: 'Coord grid',       defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
+  { id: 'grid3d',  label: '3D grid',          defaultDist: 8,   defaultEnabled: false, get: () => grid3D },
   { id: 'parcels', label: 'Parcels',          defaultDist: 8,   get: () => currentParcels },
 ];
 const layerState = {};
-for (const L of LAYERS) layerState[L.id] = { enabled: true, maxDist: L.defaultDist };
+for (const L of LAYERS) layerState[L.id] = { enabled: L.defaultEnabled !== false, maxDist: L.defaultDist };
 
 for (const L of LAYERS) {
   const row = document.createElement('li');
   row.className = 'layer-row';
+  const checkedAttr = L.defaultEnabled === false ? '' : ' checked';
   row.innerHTML =
     `<label class="layer-toggle">` +
-      `<input type="checkbox" data-layer="${L.id}" data-kind="enabled" checked />` +
+      `<input type="checkbox" data-layer="${L.id}" data-kind="enabled"${checkedAttr} />` +
       `<span>${L.label}</span>` +
     `</label>` +
     `<div class="layer-slider">` +
@@ -181,12 +282,13 @@ layersMaster.addEventListener('change', () => {
 });
 layersReset.addEventListener('click', () => {
   for (const L of LAYERS) {
-    layerState[L.id].enabled = true;
+    const on = L.defaultEnabled !== false;
+    layerState[L.id].enabled = on;
     layerState[L.id].maxDist = L.defaultDist;
     const cb = layersList.querySelector(`[data-layer="${L.id}"][data-kind="enabled"]`);
     const sl = layersList.querySelector(`[data-layer="${L.id}"][data-kind="dist"]`);
     const vl = layersList.querySelector(`[data-value-for="${L.id}"]`);
-    if (cb) cb.checked = true;
+    if (cb) cb.checked = on;
     if (sl) sl.value = String(L.defaultDist);
     if (vl) vl.textContent = L.defaultDist.toFixed(2);
   }
@@ -194,6 +296,12 @@ layersReset.addEventListener('click', () => {
   labelSize = LABEL_SIZE_DEFAULT;
   syncLabelDebugUI();
   applyLabelDebugSettings();
+  grid3DRotZ = GRID3D_ROTZ_DEFAULT;
+  grid3DOffX = GRID3D_OFFX_DEFAULT;
+  grid3DOffY = GRID3D_OFFY_DEFAULT;
+  grid3DOffZ = GRID3D_OFFZ_DEFAULT;
+  syncGrid3DUI();
+  applyGrid3DSettings();
   updateMasterCheckbox();
 });
 updateMasterCheckbox();
@@ -1041,6 +1149,11 @@ async function loadFile(file) {
     currentMesh = built.group;
     scene.add(currentMesh);
     fallbackGrid.visible = false;
+    {
+      const bb = built.bounds;
+      const span = Math.max(bb.maxX - bb.minX, bb.maxY - bb.minY, 1e-6);
+      rebuild3DGridForData(2 / span, span);
+    }
     frameMesh(built.mesh);
     hint.hidden = true;
     readout.hidden = false;

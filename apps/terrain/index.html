@@ -34,7 +34,7 @@
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=3f7891a" />
+  <link rel="stylesheet" href="styles.css?v=67946ef" />
   <script type="importmap">
   {
     "imports": {
@@ -106,6 +106,27 @@
           <input type="range" id="dbg-label-size" min="0.02" max="0.1" step="0.002" />
           <span class="debug-value" id="dbg-label-size-val">0.000</span>
         </div>
+        <div class="debug-title">3D grid</div>
+        <div class="debug-row">
+          <span class="debug-label">Rotation Z</span>
+          <input type="range" id="dbg-grid3d-rotz" min="-180" max="180" step="1" />
+          <span class="debug-value" id="dbg-grid3d-rotz-val">0&deg;</span>
+        </div>
+        <div class="debug-row">
+          <span class="debug-label">Offset X</span>
+          <input type="range" id="dbg-grid3d-offx" min="-2" max="2" step="0.01" />
+          <span class="debug-value" id="dbg-grid3d-offx-val">0.00</span>
+        </div>
+        <div class="debug-row">
+          <span class="debug-label">Offset Y</span>
+          <input type="range" id="dbg-grid3d-offy" min="-2" max="2" step="0.01" />
+          <span class="debug-value" id="dbg-grid3d-offy-val">0.00</span>
+        </div>
+        <div class="debug-row">
+          <span class="debug-label">Offset Z</span>
+          <input type="range" id="dbg-grid3d-offz" min="-2" max="2" step="0.01" />
+          <span class="debug-value" id="dbg-grid3d-offz-val">0.00</span>
+        </div>
       </div>
     </details>
 
@@ -129,6 +150,6 @@
     <div id="error" class="error" hidden role="alert"></div>
   </main>
 
-  <script type="module" src="app.js?v=3f7891a"></script>
+  <script type="module" src="app.js?v=67946ef"></script>
 </body>
 </html>
