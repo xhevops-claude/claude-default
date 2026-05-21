@@ -186,6 +186,29 @@ body { overflow: hidden; }
   font-weight: 600;
   font-size: 13px;
 }
+.layers-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--hud-border);
+}
+.layers-master-label { font-weight: 600; }
+.layers-reset {
+  background: transparent;
+  color: var(--fg-dim);
+  border: 1px solid var(--hud-border);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.layers-reset:hover {
+  background: var(--hud-hover);
+  color: var(--fg);
+}
 .layers-list {
   list-style: none;
   margin: 0;
