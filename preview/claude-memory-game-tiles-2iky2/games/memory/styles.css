@@ -284,6 +284,12 @@ html, body {
 }
 
 .tile-inner {
+  /* .tile-inner is a <span>; spans are display: inline by default and
+     silently ignore width/height. Without this, the inner collapses to
+     0×0, the absolute-positioned tile-faces inset:0 to nothing, and the
+     only thing that paints is the back's ::before paw-print at its own
+     font-size — exactly the "tiny gold dots" symptom. */
+  display: block;
   position: relative;
   width: 100%;
   height: 100%;
