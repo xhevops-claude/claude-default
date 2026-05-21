@@ -255,6 +255,37 @@ body { overflow: hidden; }
   text-align: right;
 }
 
+.layers-debug {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hud-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.debug-title {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.debug-row {
+  display: grid;
+  grid-template-columns: minmax(86px, auto) 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.debug-label { color: var(--fg-dim); font-size: 11px; }
+.debug-row input[type="range"] { width: 100%; margin: 0; accent-color: #5a7c3a; }
+.debug-value {
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  min-width: 36px;
+  text-align: right;
+}
+
 .hud-bottom {
   position: absolute;
   left: 0; right: 0;

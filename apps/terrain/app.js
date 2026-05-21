@@ -37,6 +37,10 @@ const layersMaster = document.getElementById('layers-master');
 const layersReset  = document.getElementById('layers-reset');
 const exportBtn   = document.getElementById('export-btn');
 const exportMenu  = document.getElementById('export-menu');
+const dbgLabelOffset    = document.getElementById('dbg-label-offset');
+const dbgLabelOffsetVal = document.getElementById('dbg-label-offset-val');
+const dbgLabelSize      = document.getElementById('dbg-label-size');
+const dbgLabelSizeVal   = document.getElementById('dbg-label-size-val');
 
 // ---- Loader fade ----
 // Hold the loader for at least 3 s (the project pattern) before
@@ -186,9 +190,55 @@ layersReset.addEventListener('click', () => {
     if (sl) sl.value = String(L.defaultDist);
     if (vl) vl.textContent = L.defaultDist.toFixed(2);
   }
+  labelOffset = LABEL_OFFSET_DEFAULT;
+  labelSize = LABEL_SIZE_DEFAULT;
+  syncLabelDebugUI();
+  applyLabelDebugSettings();
   updateMasterCheckbox();
 });
 updateMasterCheckbox();
+
+// Contour-label debug knobs exposed in the Layers panel. Defaults
+// match the values that used to be baked into buildMesh /
+// makeContourLabel. applyLabelDebugSettings recomputes each
+// sprite's position (radial outward from world origin in XZ) and
+// its viewport-fraction scale from the stored anchor.
+const LABEL_OFFSET_DEFAULT = 0.08;
+const LABEL_SIZE_DEFAULT   = 0.045;
+let labelOffset = LABEL_OFFSET_DEFAULT;
+let labelSize   = LABEL_SIZE_DEFAULT;
+function applyLabelDebugSettings(sprites) {
+  const list = sprites || (currentMesh && currentMesh.userData && currentMesh.userData.contourLabels);
+  if (!list) return;
+  const SY = labelSize;
+  const SX = SY * (LABEL_W / LABEL_H);
+  for (const sprite of list) {
+    const a = sprite.userData && sprite.userData.anchor;
+    if (a) {
+      const r = Math.hypot(a.x, a.z);
+      const factor = r > 1e-6 ? (r + labelOffset) / r : 1;
+      sprite.position.set(a.x * factor, a.y, a.z * factor);
+    }
+    sprite.scale.set(-SX, SY, 1);
+  }
+}
+function syncLabelDebugUI() {
+  dbgLabelOffset.value = String(labelOffset);
+  dbgLabelOffsetVal.textContent = labelOffset.toFixed(3);
+  dbgLabelSize.value = String(labelSize);
+  dbgLabelSizeVal.textContent = labelSize.toFixed(3);
+}
+syncLabelDebugUI();
+dbgLabelOffset.addEventListener('input', () => {
+  labelOffset = parseFloat(dbgLabelOffset.value);
+  dbgLabelOffsetVal.textContent = labelOffset.toFixed(3);
+  applyLabelDebugSettings();
+});
+dbgLabelSize.addEventListener('input', () => {
+  labelSize = parseFloat(dbgLabelSize.value);
+  dbgLabelSizeVal.textContent = labelSize.toFixed(3);
+  applyLabelDebugSettings();
+});
 
 function applyLayerVisibility() {
   const dist = controls.getDistance();
@@ -458,19 +508,14 @@ function buildMesh(points) {
       bins[q][1] += agg.mids[i + 1];
       bins[q][2] += 1;
     }
-    // Push each label radially outward in the XZ plane from the
-    // model's center (world origin) so the text floats just off the
-    // ring instead of sitting on top of it. Y (height) is left
-    // alone — labels still anchor to their contour level.
-    const LABEL_OUTWARD_OFFSET = 0.08;
+    // Store each sprite's un-offset anchor in userData so the
+    // Layers panel debug sliders can recompute its position
+    // (radial outward in XZ) and scale on the fly.
+    // applyLabelDebugSettings runs once at the end of this build.
     for (const [sx, sz, n] of bins) {
       if (n === 0) continue;
-      const lx = sx / n;
-      const lz = sz / n;
-      const r = Math.hypot(lx, lz);
-      const factor = r > 1e-6 ? (r + LABEL_OUTWARD_OFFSET) / r : 1;
       const sprite = makeContourLabel(level, minZ);
-      sprite.position.set(lx * factor, agg.yLevel, lz * factor);
+      sprite.userData.anchor = { x: sx / n, y: agg.yLevel, z: sz / n };
       sprite.renderOrder = 3;
       contourLabels.push(sprite);
     }
@@ -564,6 +609,7 @@ function buildMesh(points) {
   if (minorLines) group.add(minorLines);
   if (majorLines) group.add(majorLines);
   for (const s of contourLabels) group.add(s);
+  applyLabelDebugSettings(contourLabels);
   group.userData = {
     mesh, meshPoints, minorLines, majorLines,
     gridMinorLines, gridMajorLines,
