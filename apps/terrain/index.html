@@ -94,6 +94,19 @@
         <button type="button" class="layers-reset" id="layers-reset">Reset</button>
       </div>
       <ul id="layers-list" class="layers-list"></ul>
+      <div class="layers-debug">
+        <div class="debug-title">Contour labels</div>
+        <div class="debug-row">
+          <span class="debug-label">Outward offset</span>
+          <input type="range" id="dbg-label-offset" min="0" max="0.3" step="0.005" />
+          <span class="debug-value" id="dbg-label-offset-val">0.000</span>
+        </div>
+        <div class="debug-row">
+          <span class="debug-label">Size</span>
+          <input type="range" id="dbg-label-size" min="0.02" max="0.1" step="0.002" />
+          <span class="debug-value" id="dbg-label-size-val">0.000</span>
+        </div>
+      </div>
     </details>
 
     <div class="hud-bottom">

@@ -37,6 +37,10 @@ const layersMaster = document.getElementById('layers-master');
 const layersReset  = document.getElementById('layers-reset');
 const exportBtn   = document.getElementById('export-btn');
 const exportMenu  = document.getElementById('export-menu');
+const dbgLabelOffset    = document.getElementById('dbg-label-offset');
+const dbgLabelOffsetVal = document.getElementById('dbg-label-offset-val');
+const dbgLabelSize      = document.getElementById('dbg-label-size');
+const dbgLabelSizeVal   = document.getElementById('dbg-label-size-val');
 
 // ---- Loader fade ----
 // Hold the loader for at least 3 s (the project pattern) before
@@ -106,9 +110,9 @@ controls.maxPolarAngle = Math.PI - 0.01;
 // available so any layer can be gated for debugging.
 const LAYERS = [
   { id: 'surface', label: 'Surface',          defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
-  { id: 'points',  label: 'Mesh points',      defaultDist: 0.8, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
+  { id: 'points',  label: 'Mesh points',      defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
   { id: 'majors',  label: 'Contours (1 m)',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
-  { id: 'minors',  label: 'Contours (10 cm)', defaultDist: 0.8, get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
+  { id: 'minors',  label: 'Contours (10 cm)', defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
   { id: 'labels',  label: 'Contour labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
   { id: 'grid',    label: 'Coord grid',       defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
   { id: 'parcels', label: 'Parcels',          defaultDist: 8,   get: () => currentParcels },
@@ -186,9 +190,55 @@ layersReset.addEventListener('click', () => {
     if (sl) sl.value = String(L.defaultDist);
     if (vl) vl.textContent = L.defaultDist.toFixed(2);
   }
+  labelOffset = LABEL_OFFSET_DEFAULT;
+  labelSize = LABEL_SIZE_DEFAULT;
+  syncLabelDebugUI();
+  applyLabelDebugSettings();
   updateMasterCheckbox();
 });
 updateMasterCheckbox();
+
+// Contour-label debug knobs exposed in the Layers panel. Defaults
+// match the values that used to be baked into buildMesh /
+// makeContourLabel. applyLabelDebugSettings recomputes each
+// sprite's position (radial outward from world origin in XZ) and
+// its viewport-fraction scale from the stored anchor.
+const LABEL_OFFSET_DEFAULT = 0;
+const LABEL_SIZE_DEFAULT   = 0.033;
+let labelOffset = LABEL_OFFSET_DEFAULT;
+let labelSize   = LABEL_SIZE_DEFAULT;
+function applyLabelDebugSettings(sprites) {
+  const list = sprites || (currentMesh && currentMesh.userData && currentMesh.userData.contourLabels);
+  if (!list) return;
+  const SY = labelSize;
+  const SX = SY * (LABEL_W / LABEL_H);
+  for (const sprite of list) {
+    const a = sprite.userData && sprite.userData.anchor;
+    if (a) {
+      const dx = a.bearingX || 0;
+      const dz = a.bearingZ || 0;
+      sprite.position.set(a.x + dx * labelOffset, a.y, a.z + dz * labelOffset);
+    }
+    sprite.scale.set(-SX, SY, 1);
+  }
+}
+function syncLabelDebugUI() {
+  dbgLabelOffset.value = String(labelOffset);
+  dbgLabelOffsetVal.textContent = labelOffset.toFixed(3);
+  dbgLabelSize.value = String(labelSize);
+  dbgLabelSizeVal.textContent = labelSize.toFixed(3);
+}
+syncLabelDebugUI();
+dbgLabelOffset.addEventListener('input', () => {
+  labelOffset = parseFloat(dbgLabelOffset.value);
+  dbgLabelOffsetVal.textContent = labelOffset.toFixed(3);
+  applyLabelDebugSettings();
+});
+dbgLabelSize.addEventListener('input', () => {
+  labelSize = parseFloat(dbgLabelSize.value);
+  dbgLabelSizeVal.textContent = labelSize.toFixed(3);
+  applyLabelDebugSettings();
+});
 
 function applyLayerVisibility() {
   const dist = controls.getDistance();
@@ -383,12 +433,13 @@ function buildMesh(points) {
   const minorSegs = [];
   const majorSegs = [];
   const Z_LIFT = 0.0015;
-  // Per major contour level (every metre): running centroid + the
-  // list of segment midpoints. After the loop we bin midpoints into
-  // the four quadrants around the centroid and drop one label per
-  // non-empty quadrant — gives ~4 labels per contour so at least
-  // one stays on the camera-facing side no matter how the model
-  // rotates. Minor (10 cm) levels get no aggregate and no label.
+  // Per major contour level (every metre): the full list of
+  // segment endpoints (XZ pairs) in world space, plus the level's
+  // lifted world-Y. After the loop we fan 12 bearings from the
+  // model's topmost point and intersect each against this level's
+  // segments to place one label per bearing-hit, plus a fallback
+  // label if no bearing hits. Minor (10 cm) levels get no
+  // aggregate and no label.
   const levelAggs = new Map();
   const startStep = Math.ceil(minZ / MINOR_INTERVAL);
   const endStep = Math.floor(maxZ / MINOR_INTERVAL);
@@ -415,13 +466,8 @@ function buildMesh(points) {
                     xs[1], yLevel + Z_LIFT, zs[1]);
         if (isMajor) {
           let agg = levelAggs.get(level);
-          if (!agg) { agg = { sumX: 0, sumZ: 0, count: 0, yLevel: yLevel + Z_LIFT * 4, mids: [] }; levelAggs.set(level, agg); }
-          const mx = (xs[0] + xs[1]) * 0.5;
-          const mz = (zs[0] + zs[1]) * 0.5;
-          agg.sumX += xs[0] + xs[1];
-          agg.sumZ += zs[0] + zs[1];
-          agg.count += 2;
-          agg.mids.push(mx, mz);
+          if (!agg) { agg = { yLevel: yLevel + Z_LIFT * 4, segs: [] }; levelAggs.set(level, agg); }
+          agg.segs.push(xs[0], zs[0], xs[1], zs[1]);
         }
       }
     }
@@ -439,33 +485,10 @@ function buildMesh(points) {
   const minorLines = buildContourLines(minorSegs, 0x1d6dd4, 0.55);
   const majorLines = buildContourLines(majorSegs, 0x0a0d12, 0.95);
 
-  // Up to four sprite labels per contour level, one per quadrant of
-  // the level's centroid. Bare two-line text (no background) at a
-  // constant screen size — see makeContourLabel(). The baseline for
-  // the relative row starts as the dataset min and is recomputed
-  // against the parcel's lowest point once DXF parcels load.
+  // Default state: no contour labels. loadParcels rebuilds the
+  // list to place one label at every point where a parcel edge
+  // crosses a metre contour line.
   const contourLabels = [];
-  for (const [level, agg] of levelAggs) {
-    if (agg.count === 0) continue;
-    const cx2 = agg.sumX / agg.count;
-    const cz2 = agg.sumZ / agg.count;
-    const bins = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
-    for (let i = 0; i < agg.mids.length; i += 2) {
-      const dx = agg.mids[i]     - cx2;
-      const dz = agg.mids[i + 1] - cz2;
-      const q = (dx >= 0 ? 0 : 1) + (dz >= 0 ? 0 : 2);
-      bins[q][0] += agg.mids[i];
-      bins[q][1] += agg.mids[i + 1];
-      bins[q][2] += 1;
-    }
-    for (const [sx, sz, n] of bins) {
-      if (n === 0) continue;
-      const sprite = makeContourLabel(level, minZ);
-      sprite.position.set(sx / n, agg.yLevel, sz / n);
-      sprite.renderOrder = 3;
-      contourLabels.push(sprite);
-    }
-  }
 
   // Coordinate grid — X/Y lines on the floor plane (Y = small
   // negative so the mesh sits on top). Spacing is a "nice" round
@@ -555,10 +578,12 @@ function buildMesh(points) {
   if (minorLines) group.add(minorLines);
   if (majorLines) group.add(majorLines);
   for (const s of contourLabels) group.add(s);
+  applyLabelDebugSettings(contourLabels);
   group.userData = {
     mesh, meshPoints, minorLines, majorLines,
     gridMinorLines, gridMajorLines,
     contourLabels,
+    levelAggs,
     drapeCtx,
     applyParcelMask,
   };
@@ -760,8 +785,14 @@ function drapeParcelPolylines(polylines, ctx) {
   let inBounds = 0;
   let outBounds = 0;
   let parcelMinZ = Infinity;
+  // Crossings (in source CRS): every point where two consecutive
+  // draped samples in the same polyline straddle an integer metre
+  // elevation. Each crossing becomes one contour label.
+  const crossings = [];
   for (const poly of polylines) {
     let prevWorld = null;
+    let prevSrcX = 0, prevSrcY = 0, prevSrcZ = 0;
+    let havePrev = false;
     for (let i = 0; i < poly.length - 1; i++) {
       const [x0, y0] = poly[i];
       const [x1, y1] = poly[i + 1];
@@ -774,9 +805,22 @@ function drapeParcelPolylines(polylines, ctx) {
         const X = x0 + dx * t;
         const Y = y0 + dy * t;
         const z = elevationAt(points, triangles, index, X, Y);
-        if (z == null) { outBounds++; prevWorld = null; continue; }
+        if (z == null) { outBounds++; prevWorld = null; havePrev = false; continue; }
         inBounds++;
         if (z < parcelMinZ) parcelMinZ = z;
+        if (havePrev && prevSrcZ !== z) {
+          const lo = Math.min(prevSrcZ, z);
+          const hi = Math.max(prevSrcZ, z);
+          const startLevel = Math.ceil(lo + 1e-9);
+          const endLevel = Math.floor(hi - 1e-9);
+          for (let L = startLevel; L <= endLevel; L++) {
+            const tCross = (L - prevSrcZ) / (z - prevSrcZ);
+            const Xc = prevSrcX + tCross * (X - prevSrcX);
+            const Yc = prevSrcY + tCross * (Y - prevSrcY);
+            crossings.push({ srcX: Xc, srcY: Yc, level: L });
+          }
+        }
+        prevSrcX = X; prevSrcY = Y; prevSrcZ = z; havePrev = true;
         const world = [
           (X - cx) * scale,
           (z - minZ) * scale + LIFT,
@@ -787,7 +831,11 @@ function drapeParcelPolylines(polylines, ctx) {
       }
     }
   }
-  return { segs, inBounds, outBounds, parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ };
+  return {
+    segs, inBounds, outBounds,
+    parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ,
+    crossings,
+  };
 }
 
 // Contour-label canvas dimensions (logical px). Drawn at 2× into
@@ -857,6 +905,46 @@ function makeContourLabel(abs, baseline) {
   sprite.scale.set(-SX, SY, 1);
   sprite.userData = { abs, canvas };
   return sprite;
+}
+
+// Builds label sprites at every point where a parcel edge crosses
+// an integer-metre contour line. `crossings` come from
+// drapeParcelPolylines and are stored in source CRS; we convert
+// them to world coords here using the drape ctx. The yLevel
+// formula matches the marching loop in buildMesh so labels float
+// on the same plane as their contour line.
+function buildContourLabelsFromCrossings(crossings, drapeCtx, baseline) {
+  const sprites = [];
+  const Z_LIFT_LABEL = 0.006;
+  const { cx, cy, scale, minZ } = drapeCtx;
+  for (const c of crossings) {
+    const wx = (c.srcX - cx) * scale;
+    const wz = (c.srcY - cy) * scale;
+    const wy = (c.level - minZ) * scale + Z_LIFT_LABEL;
+    const sprite = makeContourLabel(c.level, baseline);
+    sprite.userData.anchor = { x: wx, y: wy, z: wz, bearingX: 0, bearingZ: 0 };
+    sprite.renderOrder = 3;
+    sprites.push(sprite);
+  }
+  return sprites;
+}
+
+// Swaps the sprites on an existing terrain group: disposes old
+// label textures, adds the new ones to the group, and updates
+// userData.contourLabels.
+function setContourLabels(group, sprites) {
+  if (!group || !group.userData) return;
+  const ud = group.userData;
+  for (const s of ud.contourLabels || []) {
+    group.remove(s);
+    if (s.material) {
+      if (s.material.map) s.material.map.dispose();
+      s.material.dispose();
+    }
+  }
+  for (const s of sprites) group.add(s);
+  ud.contourLabels = sprites;
+  applyLabelDebugSettings(sprites);
 }
 
 // Repaints every contour label's relative row against a new
@@ -1035,7 +1123,7 @@ async function loadParcels(file) {
       showError('No LINE/POLYLINE entities found in DXF.');
       return;
     }
-    const { segs, inBounds, outBounds, parcelMinZ } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
+    const { segs, inBounds, outBounds, parcelMinZ, crossings } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
     if (currentParcels) {
       currentMesh.remove(currentParcels);
       currentParcels.geometry.dispose();
@@ -1051,9 +1139,14 @@ async function loadParcels(file) {
     currentParcels = new THREE.LineSegments(g, m);
     currentParcels.renderOrder = 2;
     currentMesh.add(currentParcels);
-    // Repaint contour labels against the parcel's lowest point so
-    // the "+N m" row reflects height above the parcel bottom.
-    if (parcelMinZ != null) updateContourBaseline(currentMesh, parcelMinZ);
+    // Drop one label at every point where a parcel edge crossed
+    // a metre contour during draping. Baseline (used for the
+    // "+N m" relative row) anchors to the parcel's lowest sampled
+    // elevation when available.
+    const ctx = currentMesh.userData.drapeCtx;
+    const baseline = parcelMinZ != null ? parcelMinZ : ctx.minZ;
+    const sprites = buildContourLabelsFromCrossings(crossings || [], ctx, baseline);
+    setContourLabels(currentMesh, sprites);
     // Darken the mesh outside the closed parcel polygons so the
     // parcel pops visually. Open polylines (LINE entities) don't
     // define a region, so they're skipped here.
