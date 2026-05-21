@@ -101,17 +101,22 @@ scene.add(fallbackGrid);
 // segments along all three axes so it reads as a stack of boxes.
 // Lives in world space, independent of the data — XY are
 // horizontal, Z is up (survey convention). The Layers panel's
-// debug section drives its yaw + XYZ offset live.
-const GRID3D_HALF       = 1.5;
-const GRID3D_DIVISIONS  = 6;
-function build3DBoxGrid() {
-  const half = GRID3D_HALF;
-  const step = (half * 2) / GRID3D_DIVISIONS;
+// debug section drives its yaw + XYZ offset live. Cells are 1 m
+// in survey coordinates, so a freshly-loaded mesh rebuilds the
+// lattice with `worldUnitsPerMeter` (the mesh's uniform scale)
+// driving the cell size and the dataset's longer-axis span
+// driving the cell count.
+const GRID3D_CELL_METERS       = 1;
+const GRID3D_MAX_CELLS         = 80;
+const GRID3D_FALLBACK_CELLS    = 10;
+const GRID3D_FALLBACK_CELL_W   = 0.2;
+function build3DBoxGridGeometry(cellWorldSize, cells) {
+  const half = (cells * cellWorldSize) / 2;
   const verts = [];
-  for (let i = 0; i <= GRID3D_DIVISIONS; i++) {
-    for (let j = 0; j <= GRID3D_DIVISIONS; j++) {
-      const a = -half + i * step;
-      const b = -half + j * step;
+  for (let i = 0; i <= cells; i++) {
+    for (let j = 0; j <= cells; j++) {
+      const a = -half + i * cellWorldSize;
+      const b = -half + j * cellWorldSize;
       verts.push(-half, a, b,   half, a, b);
       verts.push(a, -half, b,   a, half, b);
       verts.push(a, b, -half,   a, b, half);
@@ -119,13 +124,20 @@ function build3DBoxGrid() {
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  const mat = new THREE.LineBasicMaterial({
-    color: 0x33ff66, transparent: true, opacity: 0.45,
-  });
-  return new THREE.LineSegments(geo, mat);
+  return geo;
 }
-const grid3D = build3DBoxGrid();
+const grid3D = new THREE.LineSegments(
+  build3DBoxGridGeometry(GRID3D_FALLBACK_CELL_W, GRID3D_FALLBACK_CELLS),
+  new THREE.LineBasicMaterial({ color: 0x33ff66, transparent: true, opacity: 0.45 }),
+);
 scene.add(grid3D);
+function rebuild3DGridForData(worldUnitsPerMeter, spanMeters) {
+  const cells = Math.max(2, Math.min(GRID3D_MAX_CELLS, Math.ceil(spanMeters / GRID3D_CELL_METERS)));
+  const cellWorldSize = worldUnitsPerMeter * GRID3D_CELL_METERS;
+  const old = grid3D.geometry;
+  grid3D.geometry = build3DBoxGridGeometry(cellWorldSize, cells);
+  if (old) old.dispose();
+}
 
 // Live-tunable defaults for the 3D grid transform. Rot is around
 // the vertical (survey-Z = three.js-Y); offsets are in world units
@@ -1135,6 +1147,11 @@ async function loadFile(file) {
     currentMesh = built.group;
     scene.add(currentMesh);
     fallbackGrid.visible = false;
+    {
+      const bb = built.bounds;
+      const span = Math.max(bb.maxX - bb.minX, bb.maxY - bb.minY, 1e-6);
+      rebuild3DGridForData(2 / span, span);
+    }
     frameMesh(built.mesh);
     hint.hidden = true;
     readout.hidden = false;
