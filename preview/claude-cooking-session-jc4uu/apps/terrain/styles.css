@@ -163,6 +163,9 @@ body { overflow: hidden; }
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   max-width: min(82vw, 260px);
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 100px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .layers[hidden] { display: none; }
 .layers-head {
