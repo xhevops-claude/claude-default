@@ -392,10 +392,18 @@ function syncGridSurfUI() {
   dbgGridSurfRotVal.textContent = `${Math.round(gridSurfRotZ)}°`;
 }
 syncGridSurfUI();
-dbgGridSurfRotRow.addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-rot]');
-  if (!btn) return;
-  const action = btn.dataset.rot;
+const DPAD_DELTAS = {
+  N: [0,  GRID_SURF_OFF_STEP],
+  S: [0, -GRID_SURF_OFF_STEP],
+  E: [ GRID_SURF_OFF_STEP, 0],
+  W: [-GRID_SURF_OFF_STEP, 0],
+};
+function clampOff(v) {
+  return Math.max(-GRID_SURF_OFF_LIMIT, Math.min(GRID_SURF_OFF_LIMIT, v));
+}
+// Returns false to opt out of auto-repeat (the reset/center button is
+// idempotent and shouldn't fire on hold).
+function applyRotAction(action) {
   if (action === 'C') {
     gridSurfRotZ = HARDCODED_SETTINGS.gridSurfRotZ;
   } else {
@@ -406,26 +414,15 @@ dbgGridSurfRotRow.addEventListener('click', (e) => {
   syncGridSurfUI();
   rebuildSurfaceGrid();
   updateSaveIconState();
-});
-const DPAD_DELTAS = {
-  N: [0,  GRID_SURF_OFF_STEP],
-  S: [0, -GRID_SURF_OFF_STEP],
-  E: [ GRID_SURF_OFF_STEP, 0],
-  W: [-GRID_SURF_OFF_STEP, 0],
-};
-function clampOff(v) {
-  return Math.max(-GRID_SURF_OFF_LIMIT, Math.min(GRID_SURF_OFF_LIMIT, v));
+  return action !== 'C';
 }
-dbgGridSurfDpad.addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-dpad]');
-  if (!btn) return;
-  const dir = btn.dataset.dpad;
+function applyDpadAction(dir) {
   if (dir === 'C') {
     gridSurfOffX = HARDCODED_SETTINGS.gridSurfOffX;
     gridSurfOffY = HARDCODED_SETTINGS.gridSurfOffY;
   } else {
     const d = DPAD_DELTAS[dir];
-    if (!d) return;
+    if (!d) return false;
     // Avoid drift from binary float accumulation: round to mm.
     gridSurfOffX = Math.round(clampOff(gridSurfOffX + d[0]) * 1000) / 1000;
     gridSurfOffY = Math.round(clampOff(gridSurfOffY + d[1]) * 1000) / 1000;
@@ -433,7 +430,53 @@ dbgGridSurfDpad.addEventListener('click', (e) => {
   syncGridSurfUI();
   rebuildSurfaceGrid();
   updateSaveIconState();
-});
+  return dir !== 'C';
+}
+// Hold-to-repeat helper: fires once on press (pointer or keyboard
+// click), then every 60 ms after a 400 ms hold delay. The fire
+// callback can return false to skip the repeat schedule.
+function attachHoldRepeat(container, dataAttr, fire) {
+  const HOLD_MS = 400;
+  const REPEAT_MS = 60;
+  let holdTimer = null;
+  let repeatTimer = null;
+  let activeBtn = null;
+  let suppressClick = false;
+  function stop() {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    if (repeatTimer) { clearInterval(repeatTimer); repeatTimer = null; }
+    activeBtn = null;
+  }
+  container.addEventListener('pointerdown', (e) => {
+    const btn = e.target.closest(`[data-${dataAttr}]`);
+    if (!btn) return;
+    suppressClick = true;
+    activeBtn = btn;
+    const repeatable = fire(btn.dataset[dataAttr]) !== false;
+    if (!repeatable) return;
+    holdTimer = setTimeout(() => {
+      repeatTimer = setInterval(() => {
+        if (activeBtn) fire(activeBtn.dataset[dataAttr]);
+      }, REPEAT_MS);
+    }, HOLD_MS);
+    if (e.pointerId !== undefined && btn.setPointerCapture) {
+      try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+  });
+  container.addEventListener('pointerup', stop);
+  container.addEventListener('pointercancel', stop);
+  container.addEventListener('pointerleave', stop);
+  // Keyboard activation (Space/Enter) only fires click, not pointer
+  // events — handle it here as a single non-repeating action.
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest(`[data-${dataAttr}]`);
+    if (!btn) return;
+    if (suppressClick) { suppressClick = false; return; }
+    fire(btn.dataset[dataAttr]);
+  });
+}
+attachHoldRepeat(dbgGridSurfRotRow, 'rot', applyRotAction);
+attachHoldRepeat(dbgGridSurfDpad, 'dpad', applyDpadAction);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
