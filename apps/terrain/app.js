@@ -30,16 +30,10 @@ const layersMaster = document.getElementById('layers-master');
 const layersReset  = document.getElementById('layers-reset');
 const exportBtn   = document.getElementById('export-btn');
 const exportMenu  = document.getElementById('export-menu');
-const dbgLabelOffset    = document.getElementById('dbg-label-offset');
-const dbgLabelOffsetVal = document.getElementById('dbg-label-offset-val');
-const dbgLabelSize      = document.getElementById('dbg-label-size');
-const dbgLabelSizeVal   = document.getElementById('dbg-label-size-val');
 const dbgGridSurfRotZ   = document.getElementById('dbg-gridsurf-rotz');
 const dbgGridSurfRotZVal= document.getElementById('dbg-gridsurf-rotz-val');
-const dbgGridSurfOffX   = document.getElementById('dbg-gridsurf-offx');
-const dbgGridSurfOffXVal= document.getElementById('dbg-gridsurf-offx-val');
-const dbgGridSurfOffY   = document.getElementById('dbg-gridsurf-offy');
-const dbgGridSurfOffYVal= document.getElementById('dbg-gridsurf-offy-val');
+const dbgGridSurfOffVal = document.getElementById('dbg-gridsurf-off-val');
+const dbgGridSurfDpad   = document.querySelector('.dpad');
 
 // ---- i18n ----
 // Per-app locale persisted in localStorage. Default = browser language
@@ -67,13 +61,9 @@ const I18N = {
     'layer.grid': 'Coord grid',
     'layer.gridsurf': 'Surface grid',
     'layer.parcels': 'Parcels',
-    'debug.contourLabels': 'Contour labels',
-    'debug.outwardOffset': 'Outward offset',
-    'debug.size': 'Size',
     'debug.surfaceGrid': 'Surface grid',
     'debug.rotationZ': 'Rotation Z',
-    'debug.offsetX': 'Offset X',
-    'debug.offsetY': 'Offset Y',
+    'debug.offset': 'Offset',
     'btn.upload': 'Upload file',
     'btn.parcels': 'Parcels (DXF)',
     'btn.resetView': 'Reset view',
@@ -112,13 +102,9 @@ const I18N = {
     'layer.grid': 'Koordinatenraster',
     'layer.gridsurf': 'Oberflächenraster',
     'layer.parcels': 'Parzellen',
-    'debug.contourLabels': 'Höhenlinienbeschriftung',
-    'debug.outwardOffset': 'Versatz nach außen',
-    'debug.size': 'Größe',
     'debug.surfaceGrid': 'Oberflächenraster',
     'debug.rotationZ': 'Drehung Z',
-    'debug.offsetX': 'Versatz X',
-    'debug.offsetY': 'Versatz Y',
+    'debug.offset': 'Versatz',
     'btn.upload': 'Datei hochladen',
     'btn.parcels': 'Parzellen (DXF)',
     'btn.resetView': 'Ansicht zurücksetzen',
@@ -313,13 +299,14 @@ function rebuildSurfaceGrid() {
   gridSurf = buildSurfaceGrid(currentMesh.userData.drapeCtx);
   if (gridSurf) currentMesh.add(gridSurf);
 }
+// Survey-frame: +X = east, +Y = north. The D-pad nudges the surface
+// grid by 10 cm per click within ±50 m.
+const GRID_SURF_OFF_STEP = 0.1;
+const GRID_SURF_OFF_LIMIT = 50;
 function syncGridSurfUI() {
   dbgGridSurfRotZ.value = String(gridSurfRotZ);
   dbgGridSurfRotZVal.textContent = `${Math.round(gridSurfRotZ)}°`;
-  dbgGridSurfOffX.value = String(gridSurfOffX);
-  dbgGridSurfOffXVal.textContent = `${gridSurfOffX.toFixed(1)} m`;
-  dbgGridSurfOffY.value = String(gridSurfOffY);
-  dbgGridSurfOffYVal.textContent = `${gridSurfOffY.toFixed(1)} m`;
+  dbgGridSurfOffVal.textContent = `${gridSurfOffX.toFixed(1)}, ${gridSurfOffY.toFixed(1)} m`;
 }
 syncGridSurfUI();
 dbgGridSurfRotZ.addEventListener('input', () => {
@@ -327,14 +314,30 @@ dbgGridSurfRotZ.addEventListener('input', () => {
   dbgGridSurfRotZVal.textContent = `${Math.round(gridSurfRotZ)}°`;
   rebuildSurfaceGrid();
 });
-dbgGridSurfOffX.addEventListener('input', () => {
-  gridSurfOffX = parseFloat(dbgGridSurfOffX.value);
-  dbgGridSurfOffXVal.textContent = `${gridSurfOffX.toFixed(1)} m`;
-  rebuildSurfaceGrid();
-});
-dbgGridSurfOffY.addEventListener('input', () => {
-  gridSurfOffY = parseFloat(dbgGridSurfOffY.value);
-  dbgGridSurfOffYVal.textContent = `${gridSurfOffY.toFixed(1)} m`;
+const DPAD_DELTAS = {
+  N: [0,  GRID_SURF_OFF_STEP],
+  S: [0, -GRID_SURF_OFF_STEP],
+  E: [ GRID_SURF_OFF_STEP, 0],
+  W: [-GRID_SURF_OFF_STEP, 0],
+};
+function clampOff(v) {
+  return Math.max(-GRID_SURF_OFF_LIMIT, Math.min(GRID_SURF_OFF_LIMIT, v));
+}
+dbgGridSurfDpad.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-dpad]');
+  if (!btn) return;
+  const dir = btn.dataset.dpad;
+  if (dir === 'C') {
+    gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
+    gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
+  } else {
+    const d = DPAD_DELTAS[dir];
+    if (!d) return;
+    // Avoid drift from binary float accumulation: round to mm.
+    gridSurfOffX = Math.round(clampOff(gridSurfOffX + d[0]) * 1000) / 1000;
+    gridSurfOffY = Math.round(clampOff(gridSurfOffY + d[1]) * 1000) / 1000;
+  }
+  dbgGridSurfOffVal.textContent = `${gridSurfOffX.toFixed(1)}, ${gridSurfOffY.toFixed(1)} m`;
   rebuildSurfaceGrid();
 });
 
@@ -429,10 +432,6 @@ layersReset.addEventListener('click', () => {
     const cb = layersList.querySelector(`[data-layer="${L.id}"][data-kind="enabled"]`);
     if (cb) cb.checked = on;
   }
-  labelOffset = LABEL_OFFSET_DEFAULT;
-  labelSize = LABEL_SIZE_DEFAULT;
-  syncLabelDebugUI();
-  applyLabelDebugSettings();
   gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
   gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
   gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
@@ -442,47 +441,21 @@ layersReset.addEventListener('click', () => {
 });
 updateMasterCheckbox();
 
-// Contour-label debug knobs exposed in the Layers panel. Defaults
-// match the values that used to be baked into buildMesh /
-// makeContourLabel. applyLabelDebugSettings recomputes each
-// sprite's position (radial outward from world origin in XZ) and
-// its viewport-fraction scale from the stored anchor.
-const LABEL_OFFSET_DEFAULT = 0;
-const LABEL_SIZE_DEFAULT   = 0.033;
-let labelOffset = LABEL_OFFSET_DEFAULT;
-let labelSize   = LABEL_SIZE_DEFAULT;
+// Anchor sprites to their stored world position and apply the
+// viewport-fraction scale. Called whenever contour labels are
+// (re)built.
+const LABEL_SIZE = 0.033;
 function applyLabelDebugSettings(sprites) {
   const list = sprites || (currentMesh && currentMesh.userData && currentMesh.userData.contourLabels);
   if (!list) return;
-  const SY = labelSize;
+  const SY = LABEL_SIZE;
   const SX = SY * (LABEL_W / LABEL_H);
   for (const sprite of list) {
     const a = sprite.userData && sprite.userData.anchor;
-    if (a) {
-      const dx = a.bearingX || 0;
-      const dz = a.bearingZ || 0;
-      sprite.position.set(a.x + dx * labelOffset, a.y, a.z + dz * labelOffset);
-    }
+    if (a) sprite.position.set(a.x, a.y, a.z);
     sprite.scale.set(-SX, SY, 1);
   }
 }
-function syncLabelDebugUI() {
-  dbgLabelOffset.value = String(labelOffset);
-  dbgLabelOffsetVal.textContent = labelOffset.toFixed(3);
-  dbgLabelSize.value = String(labelSize);
-  dbgLabelSizeVal.textContent = labelSize.toFixed(3);
-}
-syncLabelDebugUI();
-dbgLabelOffset.addEventListener('input', () => {
-  labelOffset = parseFloat(dbgLabelOffset.value);
-  dbgLabelOffsetVal.textContent = labelOffset.toFixed(3);
-  applyLabelDebugSettings();
-});
-dbgLabelSize.addEventListener('input', () => {
-  labelSize = parseFloat(dbgLabelSize.value);
-  dbgLabelSizeVal.textContent = labelSize.toFixed(3);
-  applyLabelDebugSettings();
-});
 
 function applyLayerVisibility() {
   for (const L of LAYERS) {
@@ -1156,7 +1129,7 @@ function buildContourLabelsFromCrossings(crossings, drapeCtx, baseline) {
     const wz = (c.srcY - cy) * scale;
     const wy = (c.level - minZ) * scale + Z_LIFT_LABEL;
     const sprite = makeContourLabel(c.level, baseline);
-    sprite.userData.anchor = { x: wx, y: wy, z: wz, bearingX: 0, bearingZ: 0 };
+    sprite.userData.anchor = { x: wx, y: wy, z: wz };
     sprite.renderOrder = 3;
     sprites.push(sprite);
   }
