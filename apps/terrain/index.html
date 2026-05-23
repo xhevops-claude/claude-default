@@ -92,17 +92,22 @@
       <div class="layers-debug">
         <div class="debug-title" data-i18n="debug.surfaceGrid">Surface grid</div>
         <div class="dpad-block">
-          <span class="debug-label" data-i18n="debug.offset">Offset</span>
+          <span class="debug-label" data-i18n="debug.rotationOffset">Rotation offset</span>
+          <div class="rot-row">
+            <button type="button" class="rot-btn" data-rot="CCW" aria-label="Rotate counter-clockwise">&#8634;</button>
+            <button type="button" class="rot-btn rot-c" data-rot="C" aria-label="Reset rotation">&#9675;</button>
+            <button type="button" class="rot-btn" data-rot="CW" aria-label="Rotate clockwise">&#8635;</button>
+          </div>
+          <span class="debug-value" id="dbg-gridsurf-rot-val">0&deg;</span>
+        </div>
+        <div class="dpad-block">
+          <span class="debug-label" data-i18n="debug.positionOffset">Position offset</span>
           <div class="dpad">
             <button type="button" class="dpad-btn dpad-n" data-dpad="N" aria-label="North">&#9650;</button>
             <button type="button" class="dpad-btn dpad-w" data-dpad="W" aria-label="West">&#9664;</button>
             <button type="button" class="dpad-btn dpad-c" data-dpad="C" aria-label="Reset to origin">&#9675;</button>
             <button type="button" class="dpad-btn dpad-e" data-dpad="E" aria-label="East">&#9654;</button>
             <button type="button" class="dpad-btn dpad-s" data-dpad="S" aria-label="South">&#9660;</button>
-          </div>
-          <div class="rot-btns">
-            <button type="button" class="rot-btn" data-rot="CCW" aria-label="Rotate counter-clockwise">&#8634;</button>
-            <button type="button" class="rot-btn" data-rot="CW"  aria-label="Rotate clockwise">&#8635;</button>
           </div>
           <span class="debug-value" id="dbg-gridsurf-off-val">0.0, 0.0 m</span>
         </div>
