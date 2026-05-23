@@ -34,7 +34,7 @@
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=43578a6" />
+  <link rel="stylesheet" href="styles.css?v=d470784" />
   <script type="importmap">
   {
     "imports": {
@@ -86,7 +86,10 @@
           <input type="checkbox" id="layers-master" />
           <span data-i18n="layers.all">All</span>
         </label>
-        <button type="button" class="layers-reset" id="layers-reset" data-i18n="layers.reset">Reset</button>
+        <div class="layers-actions">
+          <button type="button" class="layers-save" id="layers-save" disabled data-i18n-title="btn.save" title="Save settings" aria-label="Save settings">&#128190;</button>
+          <button type="button" class="layers-reset" id="layers-reset" data-i18n="layers.reset">Reset</button>
+        </div>
       </div>
       <ul id="layers-list" class="layers-list"></ul>
       <div class="layers-debug">
@@ -138,6 +141,6 @@
     <div id="error" class="error" hidden role="alert"></div>
   </main>
 
-  <script type="module" src="app.js?v=43578a6"></script>
+  <script type="module" src="app.js?v=d470784"></script>
 </body>
 </html>

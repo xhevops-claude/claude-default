@@ -28,6 +28,7 @@ const layersPanel = document.getElementById('layers');
 const layersList  = document.getElementById('layers-list');
 const layersMaster = document.getElementById('layers-master');
 const layersReset  = document.getElementById('layers-reset');
+const layersSave   = document.getElementById('layers-save');
 const exportBtn   = document.getElementById('export-btn');
 const exportMenu  = document.getElementById('export-menu');
 const dbgGridSurfOffVal = document.getElementById('dbg-gridsurf-off-val');
@@ -69,6 +70,7 @@ const I18N = {
     'btn.resetView': 'Reset view',
     'btn.export': 'Export &#9662;',
     'btn.quit': 'Quit',
+    'btn.save': 'Save settings',
     'msg.need3rows': 'Need at least 3 numeric rows. Check the file format.',
     'msg.readFail': 'Could not read file: ',
     'msg.sampleFail': 'Could not load sample: ',
@@ -110,6 +112,7 @@ const I18N = {
     'btn.resetView': 'Ansicht zurücksetzen',
     'btn.export': 'Exportieren &#9662;',
     'btn.quit': 'Beenden',
+    'btn.save': 'Einstellungen speichern',
     'msg.need3rows': 'Mindestens 3 numerische Zeilen erforderlich. Dateiformat prüfen.',
     'msg.readFail': 'Datei konnte nicht gelesen werden: ',
     'msg.sampleFail': 'Beispiel konnte nicht geladen werden: ',
@@ -150,6 +153,11 @@ function applyLocale() {
   for (const el of document.querySelectorAll('[data-i18n-html]')) {
     el.innerHTML = t(el.dataset.i18nHtml);
   }
+  for (const el of document.querySelectorAll('[data-i18n-title]')) {
+    const v = t(el.dataset.i18nTitle);
+    el.title = v;
+    el.setAttribute('aria-label', v);
+  }
   document.dispatchEvent(new CustomEvent('localechange'));
 }
 function setLocale(next) {
@@ -184,6 +192,73 @@ function hideLoader() {
     if (!currentMesh) hint.hidden = false;
     setTimeout(() => loading.remove(), 600);
   }, wait);
+}
+
+// ---- Settings persistence ----
+// On first launch we write the hardcoded defaults into local storage,
+// so the "is dirty" comparison always has something to compare
+// against. Subsequent launches load the stored values; Reset returns
+// to the hardcoded defaults (which may differ from what's stored),
+// and the Save button captures the current state back into storage.
+//
+// Layer keys mirror the IDs in LAYERS (defined further down). If you
+// add or remove a layer, update HARDCODED_SETTINGS.layers to match.
+const SETTINGS_KEY = 'terrain-settings';
+const HARDCODED_SETTINGS = Object.freeze({
+  layers: Object.freeze({
+    surface: true,
+    points: false,
+    majors: true,
+    minors: true,
+    labels: true,
+    grid: true,
+    gridsurf: true,
+    parcels: true,
+  }),
+  gridSurfRotZ: 0,
+  gridSurfOffX: 0,
+  gridSurfOffY: 0.4,
+});
+function readStoredSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || typeof p !== 'object') return null;
+    return {
+      gridSurfRotZ: typeof p.gridSurfRotZ === 'number' ? p.gridSurfRotZ : HARDCODED_SETTINGS.gridSurfRotZ,
+      gridSurfOffX: typeof p.gridSurfOffX === 'number' ? p.gridSurfOffX : HARDCODED_SETTINGS.gridSurfOffX,
+      gridSurfOffY: typeof p.gridSurfOffY === 'number' ? p.gridSurfOffY : HARDCODED_SETTINGS.gridSurfOffY,
+      layers: { ...HARDCODED_SETTINGS.layers, ...(p.layers && typeof p.layers === 'object' ? p.layers : {}) },
+    };
+  } catch (_) { return null; }
+}
+function writeStoredSettings(s) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (_) {}
+}
+let storedSettings = readStoredSettings();
+if (!storedSettings) {
+  storedSettings = JSON.parse(JSON.stringify(HARDCODED_SETTINGS));
+  writeStoredSettings(storedSettings);
+}
+function currentSettings() {
+  return {
+    gridSurfRotZ,
+    gridSurfOffX,
+    gridSurfOffY,
+    layers: Object.fromEntries(LAYERS.map(L => [L.id, layerState[L.id].enabled])),
+  };
+}
+function settingsAreDirty() {
+  return JSON.stringify(currentSettings()) !== JSON.stringify({
+    gridSurfRotZ: storedSettings.gridSurfRotZ,
+    gridSurfOffX: storedSettings.gridSurfOffX,
+    gridSurfOffY: storedSettings.gridSurfOffY,
+    layers: storedSettings.layers,
+  });
+}
+function updateSaveIconState() {
+  layersSave.disabled = !settingsAreDirty();
 }
 
 // ---- Scene ----
@@ -229,14 +304,11 @@ const GRID_SURF_LIFT           = 0.0025;
 // parcel orientation; the UI shows the user offset on top of it,
 // capped at ±45° so the visual axes stay readable as N/S/E/W.
 const GRID_SURF_ROTZ_BASE      = 49;
-const GRID_SURF_ROTZ_DEFAULT   = 0;
 const GRID_SURF_ROTZ_LIMIT     = 45;
 const GRID_SURF_ROTZ_STEP      = 1;
-const GRID_SURF_OFFX_DEFAULT   = 0;
-const GRID_SURF_OFFY_DEFAULT   = 0.4;
-let gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
-let gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
-let gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
+let gridSurfRotZ = storedSettings.gridSurfRotZ;
+let gridSurfOffX = storedSettings.gridSurfOffX;
+let gridSurfOffY = storedSettings.gridSurfOffY;
 function buildSurfaceGrid(drapeCtx) {
   const { points, triangles, index, cx, cy, scale, minZ } = drapeCtx;
   const spanX = index.maxX - index.minX;
@@ -323,7 +395,7 @@ dbgGridSurfRotRow.addEventListener('click', (e) => {
   if (!btn) return;
   const action = btn.dataset.rot;
   if (action === 'C') {
-    gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
+    gridSurfRotZ = HARDCODED_SETTINGS.gridSurfRotZ;
   } else {
     const sign = action === 'CW' ? 1 : -1;
     const next = gridSurfRotZ + sign * GRID_SURF_ROTZ_STEP;
@@ -331,6 +403,7 @@ dbgGridSurfRotRow.addEventListener('click', (e) => {
   }
   syncGridSurfUI();
   rebuildSurfaceGrid();
+  updateSaveIconState();
 });
 const DPAD_DELTAS = {
   N: [0,  GRID_SURF_OFF_STEP],
@@ -346,8 +419,8 @@ dbgGridSurfDpad.addEventListener('click', (e) => {
   if (!btn) return;
   const dir = btn.dataset.dpad;
   if (dir === 'C') {
-    gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
-    gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
+    gridSurfOffX = HARDCODED_SETTINGS.gridSurfOffX;
+    gridSurfOffY = HARDCODED_SETTINGS.gridSurfOffY;
   } else {
     const d = DPAD_DELTAS[dir];
     if (!d) return;
@@ -357,6 +430,7 @@ dbgGridSurfDpad.addEventListener('click', (e) => {
   }
   syncGridSurfUI();
   rebuildSurfaceGrid();
+  updateSaveIconState();
 });
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -387,12 +461,16 @@ const LAYERS = [
   { id: 'parcels', labelKey: 'layer.parcels',  get: () => currentParcels },
 ];
 const layerState = {};
-for (const L of LAYERS) layerState[L.id] = { enabled: L.defaultEnabled !== false };
+for (const L of LAYERS) {
+  const stored = storedSettings.layers[L.id];
+  const fallback = L.defaultEnabled !== false;
+  layerState[L.id] = { enabled: typeof stored === 'boolean' ? stored : fallback };
+}
 
 for (const L of LAYERS) {
   const row = document.createElement('li');
   row.className = 'layer-row';
-  const checkedAttr = L.defaultEnabled === false ? '' : ' checked';
+  const checkedAttr = layerState[L.id].enabled ? ' checked' : '';
   row.innerHTML =
     `<label class="layer-toggle">` +
       `<input type="checkbox" data-layer="${L.id}" data-kind="enabled"${checkedAttr} />` +
@@ -413,6 +491,7 @@ layersList.addEventListener('input', (e) => {
   if (!id || !layerState[id] || el.dataset.kind !== 'enabled') return;
   layerState[id].enabled = el.checked;
   updateMasterCheckbox();
+  updateSaveIconState();
 });
 
 // Tri-state master: indeterminate when some layers are on and some
@@ -442,22 +521,32 @@ layersMaster.addEventListener('change', () => {
     if (cb) cb.checked = target;
   }
   updateMasterCheckbox();
+  updateSaveIconState();
 });
 layersReset.addEventListener('click', () => {
   for (const L of LAYERS) {
-    const on = L.defaultEnabled !== false;
+    const stored = HARDCODED_SETTINGS.layers[L.id];
+    const on = typeof stored === 'boolean' ? stored : (L.defaultEnabled !== false);
     layerState[L.id].enabled = on;
     const cb = layersList.querySelector(`[data-layer="${L.id}"][data-kind="enabled"]`);
     if (cb) cb.checked = on;
   }
-  gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
-  gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
-  gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
+  gridSurfRotZ = HARDCODED_SETTINGS.gridSurfRotZ;
+  gridSurfOffX = HARDCODED_SETTINGS.gridSurfOffX;
+  gridSurfOffY = HARDCODED_SETTINGS.gridSurfOffY;
   syncGridSurfUI();
   rebuildSurfaceGrid();
   updateMasterCheckbox();
+  updateSaveIconState();
+});
+layersSave.addEventListener('click', () => {
+  if (!settingsAreDirty()) return;
+  storedSettings = currentSettings();
+  writeStoredSettings(storedSettings);
+  updateSaveIconState();
 });
 updateMasterCheckbox();
+updateSaveIconState();
 
 // Anchor sprites to their stored world position and apply the
 // viewport-fraction scale. Called whenever contour labels are
