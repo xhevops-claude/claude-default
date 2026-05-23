@@ -174,23 +174,30 @@ body { overflow: hidden; }
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   list-style: none;
   user-select: none;
   -webkit-user-select: none;
 }
 .layers-head::-webkit-details-marker { display: none; }
+.layers-head .readout-caret { margin-left: auto; }
 .layers[open] .layers-head {
   padding-bottom: 6px;
   border-bottom: 1px solid var(--hud-border);
 }
 .layers[open] .readout-caret { transform: rotate(180deg); }
+.layers-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.layers[open] .layers-icon { display: none; }
 .layers-title {
   font-weight: 600;
   font-size: 13px;
+  display: none;
 }
+.layers[open] .layers-title { display: inline; }
 .layers-controls {
   display: flex;
   align-items: center;
