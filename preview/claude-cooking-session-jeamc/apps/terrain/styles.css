@@ -278,6 +278,40 @@ body { overflow: hidden; }
   min-width: 36px;
   text-align: right;
 }
+.dpad-block {
+  display: grid;
+  grid-template-columns: minmax(86px, auto) 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.dpad {
+  justify-self: center;
+  display: grid;
+  grid-template-columns: repeat(3, 26px);
+  grid-template-rows: repeat(3, 26px);
+  gap: 2px;
+}
+.dpad-n { grid-column: 2; grid-row: 1; }
+.dpad-w { grid-column: 1; grid-row: 2; }
+.dpad-c { grid-column: 2; grid-row: 2; font-size: 9px; color: var(--fg-dim); }
+.dpad-e { grid-column: 3; grid-row: 2; }
+.dpad-s { grid-column: 2; grid-row: 3; }
+.dpad-btn {
+  appearance: none;
+  background: var(--hud-hover);
+  border: 1px solid var(--hud-border);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dpad-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.dpad-btn:active { transform: translateY(1px); }
 
 .hud-bottom {
   position: absolute;
