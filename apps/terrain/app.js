@@ -17,9 +17,9 @@ const readout    = document.getElementById('readout');
 const readoutName     = document.getElementById('readout-name');
 const readoutCount    = document.getElementById('readout-count');
 const readoutElev     = document.getElementById('readout-elev');
-const readoutDz       = document.getElementById('readout-dz');
+const readoutParcelH  = document.getElementById('readout-parcel-height');
 const readoutFootprint = document.getElementById('readout-footprint');
-const readoutSurface  = document.getElementById('readout-surface');
+const readoutParcelA  = document.getElementById('readout-parcel-area');
 const readoutDensity  = document.getElementById('readout-density');
 const readoutGrid     = document.getElementById('readout-grid');
 const fileInput  = document.getElementById('file-input');
@@ -55,6 +55,168 @@ const dbgGridSurfOffX   = document.getElementById('dbg-gridsurf-offx');
 const dbgGridSurfOffXVal= document.getElementById('dbg-gridsurf-offx-val');
 const dbgGridSurfOffY   = document.getElementById('dbg-gridsurf-offy');
 const dbgGridSurfOffYVal= document.getElementById('dbg-gridsurf-offy-val');
+
+// ---- i18n ----
+// Per-app locale persisted in localStorage. Default = browser language
+// when it starts with "de", else English. Strings live here so the
+// translation table can be edited without touching markup. After
+// every locale change we re-apply the readout assignments because
+// formatted values (m², ha, status messages) bake the locale in.
+const I18N = {
+  en: {
+    title: 'Terrain',
+    'hint.text': 'Upload a coordinate file to build a 3D mesh.',
+    'hint.sub': 'Each line: <code>x  y  elevation</code> (tabs or spaces; an optional id column is ignored).',
+    'readout.elev': 'Elevation',
+    'readout.parcelHeight': 'Parcel height',
+    'readout.footprint': 'Footprint',
+    'readout.parcelArea': 'Parcel area',
+    'readout.density': 'Density',
+    'readout.grid': 'Grid step',
+    'readout.note': "Areas assume the file's X/Y are metres.",
+    'layers.title': 'Layers',
+    'layers.all': 'All',
+    'layers.reset': 'Reset',
+    'layer.surface': 'Surface',
+    'layer.points': 'Mesh points',
+    'layer.majors': 'Contours (1 m)',
+    'layer.minors': 'Contours (10 cm)',
+    'layer.labels': 'Contour labels',
+    'layer.grid': 'Coord grid',
+    'layer.grid3d': '3D grid',
+    'layer.gridsurf': 'Surface grid',
+    'layer.parcels': 'Parcels',
+    'debug.contourLabels': 'Contour labels',
+    'debug.outwardOffset': 'Outward offset',
+    'debug.size': 'Size',
+    'debug.grid3d': '3D grid',
+    'debug.surfaceGrid': 'Surface grid',
+    'debug.rotationZ': 'Rotation Z',
+    'debug.offsetX': 'Offset X',
+    'debug.offsetY': 'Offset Y',
+    'debug.offsetZ': 'Offset Z',
+    'btn.upload': 'Upload file',
+    'btn.sample': 'Sample',
+    'btn.parcels': 'Parcels (DXF)',
+    'btn.resetView': 'Reset view',
+    'btn.export': 'Export &#9662;',
+    'btn.quit': 'Quit',
+    'msg.need3rows': 'Need at least 3 numeric rows. Check the file format.',
+    'msg.readFail': 'Could not read file: ',
+    'msg.sampleFail': 'Could not load sample: ',
+    'msg.parcelSampleFail': 'Could not load parcel sample: ',
+    'msg.loadTerrainFirst': 'Load a terrain first, then add parcels.',
+    'msg.noPolylines': 'No LINE/POLYLINE entities found in DXF.',
+    'msg.parcelsOutside': 'Parcel data falls entirely outside the terrain.',
+    'msg.parcelLoaded': (n, off) =>
+      `Loaded ${n} parcel path${n === 1 ? '' : 's'}` +
+      (off > 0 ? ` (${off} sample${off === 1 ? '' : 's'} off-terrain)` : ''),
+    'msg.dxfFail': 'DXF parse failed: ',
+    'msg.exported': (name) => `Exported ${name}`,
+    'msg.glbFail': 'GLB export failed: ',
+    'count.fmt': (pts, tris, segs, ms) =>
+      `${pts.toLocaleString()} pts · ${tris.toLocaleString()} tris · ${segs.toLocaleString()} contour segs · ${Math.round(ms)} ms`,
+    'units.ptPerM2': 'pt/m²',
+  },
+  de: {
+    title: 'Gelände',
+    'hint.text': 'Koordinatendatei hochladen, um ein 3D-Modell zu erstellen.',
+    'hint.sub': 'Jede Zeile: <code>x  y  Höhe</code> (Tabulator oder Leerzeichen; eine optionale ID-Spalte wird ignoriert).',
+    'readout.elev': 'Höhe',
+    'readout.parcelHeight': 'Parzellenhöhe',
+    'readout.footprint': 'Grundfläche',
+    'readout.parcelArea': 'Parzellenfläche',
+    'readout.density': 'Dichte',
+    'readout.grid': 'Rasterweite',
+    'readout.note': 'Flächen setzen voraus, dass X/Y in Metern angegeben sind.',
+    'layers.title': 'Ebenen',
+    'layers.all': 'Alle',
+    'layers.reset': 'Zurücksetzen',
+    'layer.surface': 'Oberfläche',
+    'layer.points': 'Netzpunkte',
+    'layer.majors': 'Höhenlinien (1 m)',
+    'layer.minors': 'Höhenlinien (10 cm)',
+    'layer.labels': 'Höhenlinienbeschriftung',
+    'layer.grid': 'Koordinatenraster',
+    'layer.grid3d': '3D-Raster',
+    'layer.gridsurf': 'Oberflächenraster',
+    'layer.parcels': 'Parzellen',
+    'debug.contourLabels': 'Höhenlinienbeschriftung',
+    'debug.outwardOffset': 'Versatz nach außen',
+    'debug.size': 'Größe',
+    'debug.grid3d': '3D-Raster',
+    'debug.surfaceGrid': 'Oberflächenraster',
+    'debug.rotationZ': 'Drehung Z',
+    'debug.offsetX': 'Versatz X',
+    'debug.offsetY': 'Versatz Y',
+    'debug.offsetZ': 'Versatz Z',
+    'btn.upload': 'Datei hochladen',
+    'btn.sample': 'Beispiel',
+    'btn.parcels': 'Parzellen (DXF)',
+    'btn.resetView': 'Ansicht zurücksetzen',
+    'btn.export': 'Exportieren &#9662;',
+    'btn.quit': 'Beenden',
+    'msg.need3rows': 'Mindestens 3 numerische Zeilen erforderlich. Dateiformat prüfen.',
+    'msg.readFail': 'Datei konnte nicht gelesen werden: ',
+    'msg.sampleFail': 'Beispiel konnte nicht geladen werden: ',
+    'msg.parcelSampleFail': 'Parzellen-Beispiel konnte nicht geladen werden: ',
+    'msg.loadTerrainFirst': 'Zuerst ein Gelände laden, dann Parzellen hinzufügen.',
+    'msg.noPolylines': 'Keine LINE/POLYLINE-Elemente in DXF gefunden.',
+    'msg.parcelsOutside': 'Parzellendaten liegen vollständig außerhalb des Geländes.',
+    'msg.parcelLoaded': (n, off) =>
+      `${n} Parzellenpfad${n === 1 ? '' : 'e'} geladen` +
+      (off > 0 ? ` (${off} Punkt${off === 1 ? '' : 'e'} außerhalb des Geländes)` : ''),
+    'msg.dxfFail': 'DXF-Verarbeitung fehlgeschlagen: ',
+    'msg.exported': (name) => `${name} exportiert`,
+    'msg.glbFail': 'GLB-Export fehlgeschlagen: ',
+    'count.fmt': (pts, tris, segs, ms) =>
+      `${pts.toLocaleString('de-DE')} Pkt. · ${tris.toLocaleString('de-DE')} Dr. · ${segs.toLocaleString('de-DE')} Höhensegm. · ${Math.round(ms)} ms`,
+    'units.ptPerM2': 'Pkt/m²',
+  },
+};
+const LOCALE_KEY = 'terrain-locale';
+function detectLocale() {
+  try {
+    const stored = localStorage.getItem(LOCALE_KEY);
+    if (stored && I18N[stored]) return stored;
+  } catch (_) {}
+  const nav = (navigator.language || '').toLowerCase();
+  return nav.startsWith('de') ? 'de' : 'en';
+}
+let locale = detectLocale();
+function t(key, ...args) {
+  const dict = I18N[locale] || I18N.en;
+  const v = dict[key] != null ? dict[key] : I18N.en[key];
+  if (typeof v === 'function') return v(...args);
+  return v != null ? v : key;
+}
+function applyLocale() {
+  document.documentElement.lang = locale;
+  document.title = t('title');
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    el.textContent = t(el.dataset.i18n);
+  }
+  for (const el of document.querySelectorAll('[data-i18n-html]')) {
+    el.innerHTML = t(el.dataset.i18nHtml);
+  }
+  document.dispatchEvent(new CustomEvent('localechange'));
+}
+function setLocale(next) {
+  if (!I18N[next] || next === locale) return;
+  locale = next;
+  try { localStorage.setItem(LOCALE_KEY, next); } catch (_) {}
+  applyLocale();
+  const buttons = document.querySelectorAll('#lang-toggle [data-lang]');
+  for (const b of buttons) b.setAttribute('aria-pressed', b.dataset.lang === locale ? 'true' : 'false');
+}
+applyLocale();
+{
+  const buttons = document.querySelectorAll('#lang-toggle [data-lang]');
+  for (const b of buttons) {
+    b.setAttribute('aria-pressed', b.dataset.lang === locale ? 'true' : 'false');
+    b.addEventListener('click', () => setLocale(b.dataset.lang));
+  }
+}
 
 // ---- Loader fade ----
 // Hold the loader for at least 3 s (the project pattern) before
@@ -322,15 +484,15 @@ controls.maxPolarAngle = Math.PI - 0.01;
 // (8) means "always visible when toggled on" — the slider is still
 // available so any layer can be gated for debugging.
 const LAYERS = [
-  { id: 'surface', label: 'Surface',          defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
-  { id: 'points',  label: 'Mesh points',      defaultDist: 8,   defaultEnabled: false, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
-  { id: 'majors',  label: 'Contours (1 m)',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
-  { id: 'minors',  label: 'Contours (10 cm)', defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
-  { id: 'labels',  label: 'Contour labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
-  { id: 'grid',    label: 'Coord grid',       defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
-  { id: 'grid3d',  label: '3D grid',          defaultDist: 8,   defaultEnabled: false, get: () => grid3D },
-  { id: 'gridsurf', label: 'Surface grid',    defaultDist: 8,   get: () => gridSurf },
-  { id: 'parcels', label: 'Parcels',          defaultDist: 8,   get: () => currentParcels },
+  { id: 'surface', labelKey: 'layer.surface',  defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
+  { id: 'points',  labelKey: 'layer.points',   defaultDist: 8,   defaultEnabled: false, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
+  { id: 'majors',  labelKey: 'layer.majors',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
+  { id: 'minors',  labelKey: 'layer.minors',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
+  { id: 'labels',  labelKey: 'layer.labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
+  { id: 'grid',    labelKey: 'layer.grid',     defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
+  { id: 'grid3d',  labelKey: 'layer.grid3d',   defaultDist: 8,   defaultEnabled: false, get: () => grid3D },
+  { id: 'gridsurf', labelKey: 'layer.gridsurf', defaultDist: 8,  get: () => gridSurf },
+  { id: 'parcels', labelKey: 'layer.parcels',  defaultDist: 8,   get: () => currentParcels },
 ];
 const layerState = {};
 for (const L of LAYERS) layerState[L.id] = { enabled: L.defaultEnabled !== false, maxDist: L.defaultDist };
@@ -342,7 +504,7 @@ for (const L of LAYERS) {
   row.innerHTML =
     `<label class="layer-toggle">` +
       `<input type="checkbox" data-layer="${L.id}" data-kind="enabled"${checkedAttr} />` +
-      `<span>${L.label}</span>` +
+      `<span data-layer-label="${L.id}">${t(L.labelKey)}</span>` +
     `</label>` +
     `<div class="layer-slider">` +
       `<input type="range" data-layer="${L.id}" data-kind="dist" min="0.05" max="8" step="0.05" value="${L.defaultDist}" />` +
@@ -350,6 +512,12 @@ for (const L of LAYERS) {
     `</div>`;
   layersList.appendChild(row);
 }
+document.addEventListener('localechange', () => {
+  for (const L of LAYERS) {
+    const lbl = layersList.querySelector(`[data-layer-label="${L.id}"]`);
+    if (lbl) lbl.textContent = t(L.labelKey);
+  }
+});
 layersList.addEventListener('input', (e) => {
   const el = e.target;
   if (!el || !el.dataset) return;
@@ -1013,6 +1181,7 @@ function drapeParcelPolylines(polylines, ctx) {
   let inBounds = 0;
   let outBounds = 0;
   let parcelMinZ = Infinity;
+  let parcelMaxZ = -Infinity;
   // Crossings (in source CRS): every point where two consecutive
   // draped samples in the same polyline straddle an integer metre
   // elevation. Each crossing becomes one contour label.
@@ -1036,6 +1205,7 @@ function drapeParcelPolylines(polylines, ctx) {
         if (z == null) { outBounds++; prevWorld = null; havePrev = false; continue; }
         inBounds++;
         if (z < parcelMinZ) parcelMinZ = z;
+        if (z > parcelMaxZ) parcelMaxZ = z;
         if (havePrev && prevSrcZ !== z) {
           const lo = Math.min(prevSrcZ, z);
           const hi = Math.max(prevSrcZ, z);
@@ -1062,8 +1232,28 @@ function drapeParcelPolylines(polylines, ctx) {
   return {
     segs, inBounds, outBounds,
     parcelMinZ: parcelMinZ === Infinity ? null : parcelMinZ,
+    parcelMaxZ: parcelMaxZ === -Infinity ? null : parcelMaxZ,
     crossings,
   };
+}
+
+// Signed shoelace area for a polygon in source CRS (X/Y are metres
+// per the project convention). Sums |signed area| across all
+// supplied closed polygons — counts disjoint parcels additively
+// and tolerates clockwise vs. counter-clockwise winding.
+function computeClosedPolylineArea(polylines) {
+  let total = 0;
+  for (const poly of polylines) {
+    if (poly.length < 4) continue;
+    let s = 0;
+    for (let i = 0; i < poly.length - 1; i++) {
+      const [x0, y0] = poly[i];
+      const [x1, y1] = poly[i + 1];
+      s += x0 * y1 - x1 * y0;
+    }
+    total += Math.abs(s) * 0.5;
+  }
+  return total;
 }
 
 // Contour-label canvas dimensions (logical px). Drawn at 2× into
@@ -1231,8 +1421,13 @@ function frameMesh(mesh) {
 // Switches to hectares (ha) once the value clears 10 000 m² so the
 // number stays human-readable for larger scans.
 function fmtArea(m2) {
-  if (m2 >= 10000) return `${(m2 / 10000).toFixed(2)} ha`;
-  return `${Math.round(m2).toLocaleString()} m²`;
+  const numLoc = locale === 'de' ? 'de-DE' : undefined;
+  if (m2 >= 10000) return `${(m2 / 10000).toLocaleString(numLoc, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ha`;
+  return `${Math.round(m2).toLocaleString(numLoc)} m²`;
+}
+function fmtNum(v, digits) {
+  const numLoc = locale === 'de' ? 'de-DE' : undefined;
+  return v.toLocaleString(numLoc, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 function showError(msg)  { toast(msg, true); }
@@ -1245,12 +1440,36 @@ function toast(msg, isError) {
   toast._t = setTimeout(() => { errorEl.hidden = true; }, 4000);
 }
 
+// Snapshot of the values currently shown in the readout — kept so a
+// locale switch can re-format the numbers and units without
+// recomputing the mesh.
+let readoutState = null;
+
+function renderReadout() {
+  if (!readoutState) return;
+  const s = readoutState;
+  readoutName.textContent = s.fileName;
+  readoutCount.textContent = t('count.fmt', s.pts, s.tris, s.segs, s.ms);
+  readoutElev.textContent = `${fmtNum(s.minZ, 2)} – ${fmtNum(s.maxZ, 2)} m`;
+  readoutFootprint.textContent = `${fmtArea(s.footprint)} (${fmtNum(s.fpW, 1)} × ${fmtNum(s.fpH, 1)} m)`;
+  readoutDensity.textContent = `${fmtNum(s.density, 2)} ${t('units.ptPerM2')}`;
+  readoutGrid.textContent = `${s.gridStep} m`;
+  if (s.parcel) {
+    readoutParcelH.textContent = `${fmtNum(s.parcel.h, 2)} m`;
+    readoutParcelA.textContent = fmtArea(s.parcel.area);
+  } else {
+    readoutParcelH.textContent = '—';
+    readoutParcelA.textContent = '—';
+  }
+}
+document.addEventListener('localechange', renderReadout);
+
 async function loadFile(file) {
   try {
     const text = await file.text();
     const points = parsePoints(text);
     if (points.length < 3) {
-      showError('Need at least 3 numeric rows. Check the file format.');
+      showError(t('msg.need3rows'));
       return;
     }
     const t0 = performance.now();
@@ -1286,21 +1505,23 @@ async function loadFile(file) {
     exportBtn.hidden = false;
     currentParcels = null;
     currentFileName = file.name;
-    readoutName.textContent = file.name;
     const b = built.bounds;
-    readoutCount.textContent =
-      `${points.length.toLocaleString()} pts · ` +
-      `${built.triangleCount.toLocaleString()} tris · ` +
-      `${built.contourCount.toLocaleString()} contour segs · ` +
-      `${Math.round(t1 - t0)} ms`;
-    readoutElev.textContent      = `${b.minZ.toFixed(2)} – ${b.maxZ.toFixed(2)} m`;
-    readoutDz.textContent        = `${(b.maxZ - b.minZ).toFixed(2)} m`;
-    readoutFootprint.textContent = `${fmtArea(built.footprint)} (${(b.maxX - b.minX).toFixed(1)} × ${(b.maxY - b.minY).toFixed(1)} m)`;
-    readoutSurface.textContent   = fmtArea(built.surface);
-    readoutDensity.textContent   = `${built.density.toFixed(2)} pt/m²`;
-    readoutGrid.textContent      = `${built.gridStep} m`;
+    readoutState = {
+      fileName: file.name,
+      pts: points.length,
+      tris: built.triangleCount,
+      segs: built.contourCount,
+      ms: t1 - t0,
+      minZ: b.minZ, maxZ: b.maxZ,
+      footprint: built.footprint,
+      fpW: b.maxX - b.minX, fpH: b.maxY - b.minY,
+      density: built.density,
+      gridStep: built.gridStep,
+      parcel: null,
+    };
+    renderReadout();
   } catch (e) {
-    showError('Could not read file: ' + (e && e.message || e));
+    showError(t('msg.readFail') + (e && e.message || e));
   }
 }
 
@@ -1321,7 +1542,7 @@ async function loadBundledSample(path, displayName) {
     const blob = await res.blob();
     await loadFile(new File([blob], displayName, { type: 'text/plain' }));
   } catch (e) {
-    showError('Could not load sample: ' + (e && e.message || e));
+    showError(t('msg.sampleFail') + (e && e.message || e));
   }
 }
 async function loadBundledParcels(path, displayName) {
@@ -1331,7 +1552,7 @@ async function loadBundledParcels(path, displayName) {
     const blob = await res.blob();
     await loadParcels(new File([blob], displayName, { type: 'application/dxf' }));
   } catch (e) {
-    showError('Could not load parcel sample: ' + (e && e.message || e));
+    showError(t('msg.parcelSampleFail') + (e && e.message || e));
   }
 }
 async function loadFullSample() {
@@ -1346,7 +1567,7 @@ sampleBtn.addEventListener('click', loadFullSample);
 // renders the result as a red line layer in the same group.
 async function loadParcels(file) {
   if (!currentMesh || !currentMesh.userData || !currentMesh.userData.drapeCtx) {
-    showError('Load a terrain first, then add parcels.');
+    showError(t('msg.loadTerrainFirst'));
     return;
   }
   try {
@@ -1355,17 +1576,17 @@ async function loadParcels(file) {
     const dxf = parser.parseSync(text);
     const polylines = extractDxfPolylines(dxf);
     if (!polylines.length) {
-      showError('No LINE/POLYLINE entities found in DXF.');
+      showError(t('msg.noPolylines'));
       return;
     }
-    const { segs, inBounds, outBounds, parcelMinZ, crossings } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
+    const { segs, inBounds, outBounds, parcelMinZ, parcelMaxZ, crossings } = drapeParcelPolylines(polylines, currentMesh.userData.drapeCtx);
     if (currentParcels) {
       currentMesh.remove(currentParcels);
       currentParcels.geometry.dispose();
       currentParcels.material.dispose();
     }
     if (!segs.length) {
-      showError('Parcel data falls entirely outside the terrain.');
+      showError(t('msg.parcelsOutside'));
       return;
     }
     const g = new THREE.BufferGeometry();
@@ -1385,15 +1606,21 @@ async function loadParcels(file) {
     // Darken the mesh outside the closed parcel polygons so the
     // parcel pops visually. Open polylines (LINE entities) don't
     // define a region, so they're skipped here.
+    const closedPolys = polylines.filter(isClosedPolyline);
     if (currentMesh.userData.applyParcelMask) {
-      currentMesh.userData.applyParcelMask(polylines.filter(isClosedPolyline));
+      currentMesh.userData.applyParcelMask(closedPolys);
     }
-    showStatus(
-      `Loaded ${polylines.length} parcel path${polylines.length === 1 ? '' : 's'}` +
-      (outBounds > 0 ? ` (${outBounds} sample${outBounds === 1 ? '' : 's'} off-terrain)` : '')
-    );
+    if (readoutState) {
+      const haveH = parcelMinZ != null && parcelMaxZ != null;
+      const area = computeClosedPolylineArea(closedPolys);
+      readoutState.parcel = (haveH || area > 0)
+        ? { h: haveH ? parcelMaxZ - parcelMinZ : 0, area }
+        : null;
+      renderReadout();
+    }
+    showStatus(t('msg.parcelLoaded', polylines.length, outBounds));
   } catch (e) {
-    showError('DXF parse failed: ' + (e && e.message || e));
+    showError(t('msg.dxfFail') + (e && e.message || e));
   }
 }
 parcelBtn.addEventListener('click', () => parcelInput.click());
@@ -1448,12 +1675,12 @@ function exportGLB() {
     (buffer) => {
       const name = exportFilename('glb');
       downloadBlob(new Blob([buffer], { type: 'model/gltf-binary' }), name);
-      showStatus(`Exported ${name}`);
+      showStatus(t('msg.exported', name));
       m.geometry.dispose();
     },
     (err) => {
       m.geometry.dispose();
-      showError('GLB export failed: ' + (err && err.message || err));
+      showError(t('msg.glbFail') + (err && err.message || err));
     },
     { binary: true }
   );
@@ -1464,7 +1691,7 @@ function exportOBJ() {
   const text = new OBJExporter().parse(m);
   const name = exportFilename('obj');
   downloadBlob(new Blob([text], { type: 'text/plain' }), name);
-  showStatus(`Exported ${name}`);
+  showStatus(t('msg.exported', name));
   m.geometry.dispose();
 }
 function setExportMenuOpen(open) {
