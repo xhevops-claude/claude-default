@@ -14,17 +14,10 @@ import DxfParser from 'dxf-parser';
 const canvasWrap = document.getElementById('canvas-wrap');
 const hint       = document.getElementById('hint');
 const readout    = document.getElementById('readout');
-const readoutName     = document.getElementById('readout-name');
-const readoutCount    = document.getElementById('readout-count');
-const readoutElev     = document.getElementById('readout-elev');
 const readoutParcelH  = document.getElementById('readout-parcel-height');
-const readoutFootprint = document.getElementById('readout-footprint');
 const readoutParcelA  = document.getElementById('readout-parcel-area');
-const readoutDensity  = document.getElementById('readout-density');
-const readoutGrid     = document.getElementById('readout-grid');
 const fileInput  = document.getElementById('file-input');
 const uploadBtn  = document.getElementById('upload-btn');
-const sampleBtn  = document.getElementById('sample-btn');
 const parcelBtn  = document.getElementById('parcel-btn');
 const parcelInput = document.getElementById('parcel-input');
 const resetBtn   = document.getElementById('reset-btn');
@@ -37,24 +30,10 @@ const layersMaster = document.getElementById('layers-master');
 const layersReset  = document.getElementById('layers-reset');
 const exportBtn   = document.getElementById('export-btn');
 const exportMenu  = document.getElementById('export-menu');
-const dbgLabelOffset    = document.getElementById('dbg-label-offset');
-const dbgLabelOffsetVal = document.getElementById('dbg-label-offset-val');
-const dbgLabelSize      = document.getElementById('dbg-label-size');
-const dbgLabelSizeVal   = document.getElementById('dbg-label-size-val');
-const dbgGrid3DRotZ     = document.getElementById('dbg-grid3d-rotz');
-const dbgGrid3DRotZVal  = document.getElementById('dbg-grid3d-rotz-val');
-const dbgGrid3DOffX     = document.getElementById('dbg-grid3d-offx');
-const dbgGrid3DOffXVal  = document.getElementById('dbg-grid3d-offx-val');
-const dbgGrid3DOffY     = document.getElementById('dbg-grid3d-offy');
-const dbgGrid3DOffYVal  = document.getElementById('dbg-grid3d-offy-val');
-const dbgGrid3DOffZ     = document.getElementById('dbg-grid3d-offz');
-const dbgGrid3DOffZVal  = document.getElementById('dbg-grid3d-offz-val');
-const dbgGridSurfRotZ   = document.getElementById('dbg-gridsurf-rotz');
-const dbgGridSurfRotZVal= document.getElementById('dbg-gridsurf-rotz-val');
-const dbgGridSurfOffX   = document.getElementById('dbg-gridsurf-offx');
-const dbgGridSurfOffXVal= document.getElementById('dbg-gridsurf-offx-val');
-const dbgGridSurfOffY   = document.getElementById('dbg-gridsurf-offy');
-const dbgGridSurfOffYVal= document.getElementById('dbg-gridsurf-offy-val');
+const dbgGridSurfOffVal = document.getElementById('dbg-gridsurf-off-val');
+const dbgGridSurfRotVal = document.getElementById('dbg-gridsurf-rot-val');
+const dbgGridSurfDpad   = document.querySelector('.dpad');
+const dbgGridSurfRotRow = document.querySelector('.rot-row');
 
 // ---- i18n ----
 // Per-app locale persisted in localStorage. Default = browser language
@@ -67,12 +46,9 @@ const I18N = {
     title: 'Terrain',
     'hint.text': 'Upload a coordinate file to build a 3D mesh.',
     'hint.sub': 'Each line: <code>x  y  elevation</code> (tabs or spaces; an optional id column is ignored).',
-    'readout.elev': 'Elevation',
+    'readout.title': 'Stats',
     'readout.parcelHeight': 'Parcel height',
-    'readout.footprint': 'Footprint',
     'readout.parcelArea': 'Parcel area',
-    'readout.density': 'Density',
-    'readout.grid': 'Grid step',
     'readout.note': "Areas assume the file's X/Y are metres.",
     'layers.title': 'Layers',
     'layers.all': 'All',
@@ -83,20 +59,12 @@ const I18N = {
     'layer.minors': 'Contours (10 cm)',
     'layer.labels': 'Contour labels',
     'layer.grid': 'Coord grid',
-    'layer.grid3d': '3D grid',
     'layer.gridsurf': 'Surface grid',
     'layer.parcels': 'Parcels',
-    'debug.contourLabels': 'Contour labels',
-    'debug.outwardOffset': 'Outward offset',
-    'debug.size': 'Size',
-    'debug.grid3d': '3D grid',
     'debug.surfaceGrid': 'Surface grid',
-    'debug.rotationZ': 'Rotation Z',
-    'debug.offsetX': 'Offset X',
-    'debug.offsetY': 'Offset Y',
-    'debug.offsetZ': 'Offset Z',
+    'debug.positionOffset': 'Position offset',
+    'debug.rotationOffset': 'Rotation offset',
     'btn.upload': 'Upload file',
-    'btn.sample': 'Sample',
     'btn.parcels': 'Parcels (DXF)',
     'btn.resetView': 'Reset view',
     'btn.export': 'Export &#9662;',
@@ -114,20 +82,14 @@ const I18N = {
     'msg.dxfFail': 'DXF parse failed: ',
     'msg.exported': (name) => `Exported ${name}`,
     'msg.glbFail': 'GLB export failed: ',
-    'count.fmt': (pts, tris, segs, ms) =>
-      `${pts.toLocaleString()} pts · ${tris.toLocaleString()} tris · ${segs.toLocaleString()} contour segs · ${Math.round(ms)} ms`,
-    'units.ptPerM2': 'pt/m²',
   },
   de: {
     title: 'Gelände',
     'hint.text': 'Koordinatendatei hochladen, um ein 3D-Modell zu erstellen.',
     'hint.sub': 'Jede Zeile: <code>x  y  Höhe</code> (Tabulator oder Leerzeichen; eine optionale ID-Spalte wird ignoriert).',
-    'readout.elev': 'Höhe',
+    'readout.title': 'Statistik',
     'readout.parcelHeight': 'Parzellenhöhe',
-    'readout.footprint': 'Grundfläche',
     'readout.parcelArea': 'Parzellenfläche',
-    'readout.density': 'Dichte',
-    'readout.grid': 'Rasterweite',
     'readout.note': 'Flächen setzen voraus, dass X/Y in Metern angegeben sind.',
     'layers.title': 'Ebenen',
     'layers.all': 'Alle',
@@ -138,20 +100,12 @@ const I18N = {
     'layer.minors': 'Höhenlinien (10 cm)',
     'layer.labels': 'Höhenlinienbeschriftung',
     'layer.grid': 'Koordinatenraster',
-    'layer.grid3d': '3D-Raster',
     'layer.gridsurf': 'Oberflächenraster',
     'layer.parcels': 'Parzellen',
-    'debug.contourLabels': 'Höhenlinienbeschriftung',
-    'debug.outwardOffset': 'Versatz nach außen',
-    'debug.size': 'Größe',
-    'debug.grid3d': '3D-Raster',
     'debug.surfaceGrid': 'Oberflächenraster',
-    'debug.rotationZ': 'Drehung Z',
-    'debug.offsetX': 'Versatz X',
-    'debug.offsetY': 'Versatz Y',
-    'debug.offsetZ': 'Versatz Z',
+    'debug.positionOffset': 'Positionsversatz',
+    'debug.rotationOffset': 'Drehversatz',
     'btn.upload': 'Datei hochladen',
-    'btn.sample': 'Beispiel',
     'btn.parcels': 'Parzellen (DXF)',
     'btn.resetView': 'Ansicht zurücksetzen',
     'btn.export': 'Exportieren &#9662;',
@@ -169,9 +123,6 @@ const I18N = {
     'msg.dxfFail': 'DXF-Verarbeitung fehlgeschlagen: ',
     'msg.exported': (name) => `${name} exportiert`,
     'msg.glbFail': 'GLB-Export fehlgeschlagen: ',
-    'count.fmt': (pts, tris, segs, ms) =>
-      `${pts.toLocaleString('de-DE')} Pkt. · ${tris.toLocaleString('de-DE')} Dr. · ${segs.toLocaleString('de-DE')} Höhensegm. · ${Math.round(ms)} ms`,
-    'units.ptPerM2': 'Pkt/m²',
   },
 };
 const LOCALE_KEY = 'terrain-locale';
@@ -265,97 +216,6 @@ const fallbackGrid = new THREE.GridHelper(4, 16, 0x223040, 0x18222e);
 fallbackGrid.position.y = -0.005;
 scene.add(fallbackGrid);
 
-// Green 3D box-lattice reference layer. Builds a cube of line
-// segments along all three axes so it reads as a stack of boxes.
-// Lives in world space, independent of the data — XY are
-// horizontal, Z is up (survey convention). The Layers panel's
-// debug section drives its yaw + XYZ offset live. Cells are 1 m
-// in survey coordinates, so a freshly-loaded mesh rebuilds the
-// lattice with `worldUnitsPerMeter` (the mesh's uniform scale)
-// driving the cell size and the dataset's longer-axis span
-// driving the cell count.
-const GRID3D_CELL_METERS       = 1;
-const GRID3D_MAX_CELLS         = 80;
-const GRID3D_FALLBACK_CELLS    = 10;
-const GRID3D_FALLBACK_CELL_W   = 0.2;
-function build3DBoxGridGeometry(cellWorldSize, cells) {
-  const half = (cells * cellWorldSize) / 2;
-  const verts = [];
-  for (let i = 0; i <= cells; i++) {
-    for (let j = 0; j <= cells; j++) {
-      const a = -half + i * cellWorldSize;
-      const b = -half + j * cellWorldSize;
-      verts.push(-half, a, b,   half, a, b);
-      verts.push(a, -half, b,   a, half, b);
-      verts.push(a, b, -half,   a, b, half);
-    }
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  return geo;
-}
-const grid3D = new THREE.LineSegments(
-  build3DBoxGridGeometry(GRID3D_FALLBACK_CELL_W, GRID3D_FALLBACK_CELLS),
-  new THREE.LineBasicMaterial({ color: 0x33ff66, transparent: true, opacity: 0.45 }),
-);
-scene.add(grid3D);
-function rebuild3DGridForData(worldUnitsPerMeter, spanMeters) {
-  const cells = Math.max(2, Math.min(GRID3D_MAX_CELLS, Math.ceil(spanMeters / GRID3D_CELL_METERS)));
-  const cellWorldSize = worldUnitsPerMeter * GRID3D_CELL_METERS;
-  const old = grid3D.geometry;
-  grid3D.geometry = build3DBoxGridGeometry(cellWorldSize, cells);
-  if (old) old.dispose();
-}
-
-// Live-tunable defaults for the 3D grid transform. Rot is around
-// the vertical (survey-Z = three.js-Y); offsets are in world units
-// with X = survey-X (lateral), Y = survey-Y (depth, three.js-Z),
-// Z = elevation (three.js-Y).
-const GRID3D_ROTZ_DEFAULT = 141;
-const GRID3D_OFFX_DEFAULT = 0;
-const GRID3D_OFFY_DEFAULT = 0;
-const GRID3D_OFFZ_DEFAULT = 0;
-let grid3DRotZ = GRID3D_ROTZ_DEFAULT;
-let grid3DOffX = GRID3D_OFFX_DEFAULT;
-let grid3DOffY = GRID3D_OFFY_DEFAULT;
-let grid3DOffZ = GRID3D_OFFZ_DEFAULT;
-function applyGrid3DSettings() {
-  grid3D.rotation.set(0, THREE.MathUtils.degToRad(grid3DRotZ), 0);
-  grid3D.position.set(grid3DOffX, grid3DOffZ, grid3DOffY);
-}
-function syncGrid3DUI() {
-  dbgGrid3DRotZ.value = String(grid3DRotZ);
-  dbgGrid3DRotZVal.textContent = `${Math.round(grid3DRotZ)}°`;
-  dbgGrid3DOffX.value = String(grid3DOffX);
-  dbgGrid3DOffXVal.textContent = grid3DOffX.toFixed(2);
-  dbgGrid3DOffY.value = String(grid3DOffY);
-  dbgGrid3DOffYVal.textContent = grid3DOffY.toFixed(2);
-  dbgGrid3DOffZ.value = String(grid3DOffZ);
-  dbgGrid3DOffZVal.textContent = grid3DOffZ.toFixed(2);
-}
-syncGrid3DUI();
-applyGrid3DSettings();
-dbgGrid3DRotZ.addEventListener('input', () => {
-  grid3DRotZ = parseFloat(dbgGrid3DRotZ.value);
-  dbgGrid3DRotZVal.textContent = `${Math.round(grid3DRotZ)}°`;
-  applyGrid3DSettings();
-});
-dbgGrid3DOffX.addEventListener('input', () => {
-  grid3DOffX = parseFloat(dbgGrid3DOffX.value);
-  dbgGrid3DOffXVal.textContent = grid3DOffX.toFixed(2);
-  applyGrid3DSettings();
-});
-dbgGrid3DOffY.addEventListener('input', () => {
-  grid3DOffY = parseFloat(dbgGrid3DOffY.value);
-  dbgGrid3DOffYVal.textContent = grid3DOffY.toFixed(2);
-  applyGrid3DSettings();
-});
-dbgGrid3DOffZ.addEventListener('input', () => {
-  grid3DOffZ = parseFloat(dbgGrid3DOffZ.value);
-  dbgGrid3DOffZVal.textContent = grid3DOffZ.toFixed(2);
-  applyGrid3DSettings();
-});
-
 // Surface grid — a flat 1 m × 1 m XY grid in survey coords that's
 // densely sampled and draped over the terrain so each line follows
 // the elevation underneath. Lives as a child of currentMesh so it
@@ -365,9 +225,15 @@ let gridSurf = null;
 const GRID_SURF_CELL_METERS    = 1;
 const GRID_SURF_MAX_CELLS      = 80;
 const GRID_SURF_LIFT           = 0.0025;
-const GRID_SURF_ROTZ_DEFAULT   = 141;
+// Hidden baseline so the grid lines start aligned with the dominant
+// parcel orientation; the UI shows the user offset on top of it,
+// capped at ±45° so the visual axes stay readable as N/S/E/W.
+const GRID_SURF_ROTZ_BASE      = 49;
+const GRID_SURF_ROTZ_DEFAULT   = 0;
+const GRID_SURF_ROTZ_LIMIT     = 45;
+const GRID_SURF_ROTZ_STEP      = 1;
 const GRID_SURF_OFFX_DEFAULT   = 0;
-const GRID_SURF_OFFY_DEFAULT   = 0;
+const GRID_SURF_OFFY_DEFAULT   = 0.4;
 let gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
 let gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
 let gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
@@ -385,7 +251,7 @@ function buildSurfaceGrid(drapeCtx) {
   const sampleSpacing = span / (index.N * 2);
   const lineSamples = Math.max(2, Math.ceil((cells * cellSize) / sampleSpacing));
 
-  const rot = THREE.MathUtils.degToRad(gridSurfRotZ);
+  const rot = THREE.MathUtils.degToRad(gridSurfRotZ + GRID_SURF_ROTZ_BASE);
   const cosR = Math.cos(rot);
   const sinR = Math.sin(rot);
   const segs = [];
@@ -396,10 +262,14 @@ function buildSurfaceGrid(drapeCtx) {
     for (let s = 0; s <= lineSamples; s++) {
       const t = s / lineSamples;
       const [lx, ly] = getLocalXY(t);
-      const rx = lx * cosR - ly * sinR;
-      const ry = lx * sinR + ly * cosR;
-      const X = cx + gridSurfOffX + rx;
-      const Y = cy + gridSurfOffY + ry;
+      // Offset is in the grid-local frame so D-pad N/S/E/W nudges
+      // the grid along its own axes, regardless of gridSurfRotZ.
+      const olx = lx + gridSurfOffX;
+      const oly = ly + gridSurfOffY;
+      const rx = olx * cosR - oly * sinR;
+      const ry = olx * sinR + oly * cosR;
+      const X = cx + rx;
+      const Y = cy + ry;
       const z = elevationAt(points, triangles, index, X, Y);
       if (z == null) { havePrev = false; continue; }
       const wx = (X - cx) * scale;
@@ -439,28 +309,53 @@ function rebuildSurfaceGrid() {
   gridSurf = buildSurfaceGrid(currentMesh.userData.drapeCtx);
   if (gridSurf) currentMesh.add(gridSurf);
 }
+// Survey-frame: +X = east, +Y = north. The D-pad nudges the surface
+// grid by 10 cm per click within ±50 m.
+const GRID_SURF_OFF_STEP = 0.1;
+const GRID_SURF_OFF_LIMIT = 50;
 function syncGridSurfUI() {
-  dbgGridSurfRotZ.value = String(gridSurfRotZ);
-  dbgGridSurfRotZVal.textContent = `${Math.round(gridSurfRotZ)}°`;
-  dbgGridSurfOffX.value = String(gridSurfOffX);
-  dbgGridSurfOffXVal.textContent = `${gridSurfOffX.toFixed(1)} m`;
-  dbgGridSurfOffY.value = String(gridSurfOffY);
-  dbgGridSurfOffYVal.textContent = `${gridSurfOffY.toFixed(1)} m`;
+  dbgGridSurfOffVal.textContent = `${gridSurfOffX.toFixed(1)}, ${gridSurfOffY.toFixed(1)} m`;
+  dbgGridSurfRotVal.textContent = `${Math.round(gridSurfRotZ)}°`;
 }
 syncGridSurfUI();
-dbgGridSurfRotZ.addEventListener('input', () => {
-  gridSurfRotZ = parseFloat(dbgGridSurfRotZ.value);
-  dbgGridSurfRotZVal.textContent = `${Math.round(gridSurfRotZ)}°`;
+dbgGridSurfRotRow.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-rot]');
+  if (!btn) return;
+  const action = btn.dataset.rot;
+  if (action === 'C') {
+    gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
+  } else {
+    const sign = action === 'CW' ? 1 : -1;
+    const next = gridSurfRotZ + sign * GRID_SURF_ROTZ_STEP;
+    gridSurfRotZ = Math.max(-GRID_SURF_ROTZ_LIMIT, Math.min(GRID_SURF_ROTZ_LIMIT, next));
+  }
+  syncGridSurfUI();
   rebuildSurfaceGrid();
 });
-dbgGridSurfOffX.addEventListener('input', () => {
-  gridSurfOffX = parseFloat(dbgGridSurfOffX.value);
-  dbgGridSurfOffXVal.textContent = `${gridSurfOffX.toFixed(1)} m`;
-  rebuildSurfaceGrid();
-});
-dbgGridSurfOffY.addEventListener('input', () => {
-  gridSurfOffY = parseFloat(dbgGridSurfOffY.value);
-  dbgGridSurfOffYVal.textContent = `${gridSurfOffY.toFixed(1)} m`;
+const DPAD_DELTAS = {
+  N: [0,  GRID_SURF_OFF_STEP],
+  S: [0, -GRID_SURF_OFF_STEP],
+  E: [ GRID_SURF_OFF_STEP, 0],
+  W: [-GRID_SURF_OFF_STEP, 0],
+};
+function clampOff(v) {
+  return Math.max(-GRID_SURF_OFF_LIMIT, Math.min(GRID_SURF_OFF_LIMIT, v));
+}
+dbgGridSurfDpad.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-dpad]');
+  if (!btn) return;
+  const dir = btn.dataset.dpad;
+  if (dir === 'C') {
+    gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
+    gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
+  } else {
+    const d = DPAD_DELTAS[dir];
+    if (!d) return;
+    // Avoid drift from binary float accumulation: round to mm.
+    gridSurfOffX = Math.round(clampOff(gridSurfOffX + d[0]) * 1000) / 1000;
+    gridSurfOffY = Math.round(clampOff(gridSurfOffY + d[1]) * 1000) / 1000;
+  }
+  syncGridSurfUI();
   rebuildSurfaceGrid();
 });
 
@@ -476,26 +371,23 @@ controls.minPolarAngle = 0.01;
 controls.maxPolarAngle = Math.PI - 0.01;
 
 // ---- Layers panel ----
-// Per-layer toggle + zoom-distance gate. Each entry resolves to the
-// THREE object(s) it represents on demand (currentMesh / parcels
-// can be null before anything has loaded). The animate loop calls
-// applyLayerVisibility every frame, so changing a slider or
-// checkbox is reflected immediately. defaultDist == controls.max
-// (8) means "always visible when toggled on" — the slider is still
-// available so any layer can be gated for debugging.
+// Per-layer checkbox toggle. Each entry resolves to the THREE
+// object(s) it represents on demand (currentMesh / parcels can be
+// null before anything has loaded). The animate loop calls
+// applyLayerVisibility every frame, so toggling a checkbox is
+// reflected immediately.
 const LAYERS = [
-  { id: 'surface', labelKey: 'layer.surface',  defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
-  { id: 'points',  labelKey: 'layer.points',   defaultDist: 8,   defaultEnabled: false, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
-  { id: 'majors',  labelKey: 'layer.majors',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
-  { id: 'minors',  labelKey: 'layer.minors',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
-  { id: 'labels',  labelKey: 'layer.labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
-  { id: 'grid',    labelKey: 'layer.grid',     defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
-  { id: 'grid3d',  labelKey: 'layer.grid3d',   defaultDist: 8,   defaultEnabled: false, get: () => grid3D },
-  { id: 'gridsurf', labelKey: 'layer.gridsurf', defaultDist: 8,  get: () => gridSurf },
-  { id: 'parcels', labelKey: 'layer.parcels',  defaultDist: 8,   get: () => currentParcels },
+  { id: 'surface', labelKey: 'layer.surface',  get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
+  { id: 'points',  labelKey: 'layer.points',   defaultEnabled: false, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
+  { id: 'majors',  labelKey: 'layer.majors',   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
+  { id: 'minors',  labelKey: 'layer.minors',   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
+  { id: 'labels',  labelKey: 'layer.labels',   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
+  { id: 'grid',    labelKey: 'layer.grid',     get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
+  { id: 'gridsurf', labelKey: 'layer.gridsurf', get: () => gridSurf },
+  { id: 'parcels', labelKey: 'layer.parcels',  get: () => currentParcels },
 ];
 const layerState = {};
-for (const L of LAYERS) layerState[L.id] = { enabled: L.defaultEnabled !== false, maxDist: L.defaultDist };
+for (const L of LAYERS) layerState[L.id] = { enabled: L.defaultEnabled !== false };
 
 for (const L of LAYERS) {
   const row = document.createElement('li');
@@ -505,11 +397,7 @@ for (const L of LAYERS) {
     `<label class="layer-toggle">` +
       `<input type="checkbox" data-layer="${L.id}" data-kind="enabled"${checkedAttr} />` +
       `<span data-layer-label="${L.id}">${t(L.labelKey)}</span>` +
-    `</label>` +
-    `<div class="layer-slider">` +
-      `<input type="range" data-layer="${L.id}" data-kind="dist" min="0.05" max="8" step="0.05" value="${L.defaultDist}" />` +
-      `<span class="layer-value" data-value-for="${L.id}">${L.defaultDist.toFixed(2)}</span>` +
-    `</div>`;
+    `</label>`;
   layersList.appendChild(row);
 }
 document.addEventListener('localechange', () => {
@@ -522,17 +410,9 @@ layersList.addEventListener('input', (e) => {
   const el = e.target;
   if (!el || !el.dataset) return;
   const id = el.dataset.layer;
-  const kind = el.dataset.kind;
-  if (!id || !layerState[id]) return;
-  if (kind === 'enabled') {
-    layerState[id].enabled = el.checked;
-    updateMasterCheckbox();
-  } else if (kind === 'dist') {
-    const v = parseFloat(el.value);
-    layerState[id].maxDist = v;
-    const valEl = layersList.querySelector(`[data-value-for="${id}"]`);
-    if (valEl) valEl.textContent = v.toFixed(2);
-  }
+  if (!id || !layerState[id] || el.dataset.kind !== 'enabled') return;
+  layerState[id].enabled = el.checked;
+  updateMasterCheckbox();
 });
 
 // Tri-state master: indeterminate when some layers are on and some
@@ -567,24 +447,9 @@ layersReset.addEventListener('click', () => {
   for (const L of LAYERS) {
     const on = L.defaultEnabled !== false;
     layerState[L.id].enabled = on;
-    layerState[L.id].maxDist = L.defaultDist;
     const cb = layersList.querySelector(`[data-layer="${L.id}"][data-kind="enabled"]`);
-    const sl = layersList.querySelector(`[data-layer="${L.id}"][data-kind="dist"]`);
-    const vl = layersList.querySelector(`[data-value-for="${L.id}"]`);
     if (cb) cb.checked = on;
-    if (sl) sl.value = String(L.defaultDist);
-    if (vl) vl.textContent = L.defaultDist.toFixed(2);
   }
-  labelOffset = LABEL_OFFSET_DEFAULT;
-  labelSize = LABEL_SIZE_DEFAULT;
-  syncLabelDebugUI();
-  applyLabelDebugSettings();
-  grid3DRotZ = GRID3D_ROTZ_DEFAULT;
-  grid3DOffX = GRID3D_OFFX_DEFAULT;
-  grid3DOffY = GRID3D_OFFY_DEFAULT;
-  grid3DOffZ = GRID3D_OFFZ_DEFAULT;
-  syncGrid3DUI();
-  applyGrid3DSettings();
   gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
   gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
   gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
@@ -594,53 +459,25 @@ layersReset.addEventListener('click', () => {
 });
 updateMasterCheckbox();
 
-// Contour-label debug knobs exposed in the Layers panel. Defaults
-// match the values that used to be baked into buildMesh /
-// makeContourLabel. applyLabelDebugSettings recomputes each
-// sprite's position (radial outward from world origin in XZ) and
-// its viewport-fraction scale from the stored anchor.
-const LABEL_OFFSET_DEFAULT = 0;
-const LABEL_SIZE_DEFAULT   = 0.033;
-let labelOffset = LABEL_OFFSET_DEFAULT;
-let labelSize   = LABEL_SIZE_DEFAULT;
+// Anchor sprites to their stored world position and apply the
+// viewport-fraction scale. Called whenever contour labels are
+// (re)built.
+const LABEL_SIZE = 0.033;
 function applyLabelDebugSettings(sprites) {
   const list = sprites || (currentMesh && currentMesh.userData && currentMesh.userData.contourLabels);
   if (!list) return;
-  const SY = labelSize;
+  const SY = LABEL_SIZE;
   const SX = SY * (LABEL_W / LABEL_H);
   for (const sprite of list) {
     const a = sprite.userData && sprite.userData.anchor;
-    if (a) {
-      const dx = a.bearingX || 0;
-      const dz = a.bearingZ || 0;
-      sprite.position.set(a.x + dx * labelOffset, a.y, a.z + dz * labelOffset);
-    }
+    if (a) sprite.position.set(a.x, a.y, a.z);
     sprite.scale.set(-SX, SY, 1);
   }
 }
-function syncLabelDebugUI() {
-  dbgLabelOffset.value = String(labelOffset);
-  dbgLabelOffsetVal.textContent = labelOffset.toFixed(3);
-  dbgLabelSize.value = String(labelSize);
-  dbgLabelSizeVal.textContent = labelSize.toFixed(3);
-}
-syncLabelDebugUI();
-dbgLabelOffset.addEventListener('input', () => {
-  labelOffset = parseFloat(dbgLabelOffset.value);
-  dbgLabelOffsetVal.textContent = labelOffset.toFixed(3);
-  applyLabelDebugSettings();
-});
-dbgLabelSize.addEventListener('input', () => {
-  labelSize = parseFloat(dbgLabelSize.value);
-  dbgLabelSizeVal.textContent = labelSize.toFixed(3);
-  applyLabelDebugSettings();
-});
 
 function applyLayerVisibility() {
-  const dist = controls.getDistance();
   for (const L of LAYERS) {
-    const s = layerState[L.id];
-    const visible = s.enabled && dist < s.maxDist;
+    const visible = layerState[L.id].enabled;
     const objs = L.get();
     if (!objs) continue;
     if (Array.isArray(objs)) {
@@ -791,30 +628,6 @@ function buildMesh(points) {
   const meshPoints = new THREE.Points(pointsGeom, pointsMat);
   meshPoints.renderOrder = 1;
 
-  // Areas computed in the file's native units (so if those units are
-  // metres, the numbers are m² straight off). The 2D footprint is
-  // the sum of triangle areas projected to the XY plane — for a
-  // gridded scan this equals the triangulated convex hull's area,
-  // which is what the user actually sees from above. The 3D surface
-  // area uses the real triangle areas (so steeper terrain reports a
-  // larger surface than its footprint, as expected).
-  let footprint = 0;
-  let surface = 0;
-  for (let t = 0; t < triangles.length; t += 3) {
-    const i = triangles[t], j = triangles[t + 1], k = triangles[t + 2];
-    const ax = points[i][0], ay = points[i][1], az = points[i][2];
-    const bx = points[j][0], by = points[j][1], bz = points[j][2];
-    const cxp = points[k][0], cyp = points[k][1], cz = points[k][2];
-    // 2D area = ½ |(b - a) × (c - a)|_z
-    footprint += Math.abs((bx - ax) * (cyp - ay) - (by - ay) * (cxp - ax)) * 0.5;
-    // 3D area = ½ |(b - a) × (c - a)|
-    const ux = bx - ax,  uy = by - ay,  uz = bz - az;
-    const vx = cxp - ax, vy = cyp - ay, vz = cz - az;
-    const nx = uy * vz - uz * vy;
-    const ny = uz * vx - ux * vz;
-    const nz = ux * vy - uy * vx;
-    surface += Math.sqrt(nx * nx + ny * ny + nz * nz) * 0.5;
-  }
 
   // Topographic contours every 10 cm of native elevation. Marching
   // triangles: for each contour level, walk every triangle and emit
@@ -988,12 +801,6 @@ function buildMesh(points) {
     group,
     mesh,
     bounds: { minX, maxX, minY, maxY, minZ, maxZ },
-    triangleCount: triangles.length / 3,
-    contourCount: minorSegs.length / 6 + majorSegs.length / 6,
-    gridStep,
-    footprint,
-    surface,
-    density: footprint > 0 ? points.length / footprint : 0,
   };
 }
 
@@ -1340,7 +1147,7 @@ function buildContourLabelsFromCrossings(crossings, drapeCtx, baseline) {
     const wz = (c.srcY - cy) * scale;
     const wy = (c.level - minZ) * scale + Z_LIFT_LABEL;
     const sprite = makeContourLabel(c.level, baseline);
-    sprite.userData.anchor = { x: wx, y: wy, z: wz, bearingX: 0, bearingZ: 0 };
+    sprite.userData.anchor = { x: wx, y: wy, z: wz };
     sprite.renderOrder = 3;
     sprites.push(sprite);
   }
@@ -1406,11 +1213,11 @@ function frameMesh(mesh) {
   const s = mesh.geometry.boundingSphere;
   if (!s) return;
   const fov = camera.fov * Math.PI / 180;
-  const dist = s.radius / Math.sin(fov / 2) * 1.1;
+  const dist = s.radius / Math.sin(fov / 2) * 0.8;
   const eye = new THREE.Vector3(
-    s.center.x + dist * 0.7,
+    s.center.x - dist * 0.7,
     s.center.y + dist * 0.55,
-    s.center.z + dist * 0.7,
+    s.center.z - dist * 0.7,
   );
   camera.position.copy(eye);
   controls.target.copy(s.center);
@@ -1448,12 +1255,6 @@ let readoutState = null;
 function renderReadout() {
   if (!readoutState) return;
   const s = readoutState;
-  readoutName.textContent = s.fileName;
-  readoutCount.textContent = t('count.fmt', s.pts, s.tris, s.segs, s.ms);
-  readoutElev.textContent = `${fmtNum(s.minZ, 2)} – ${fmtNum(s.maxZ, 2)} m`;
-  readoutFootprint.textContent = `${fmtArea(s.footprint)} (${fmtNum(s.fpW, 1)} × ${fmtNum(s.fpH, 1)} m)`;
-  readoutDensity.textContent = `${fmtNum(s.density, 2)} ${t('units.ptPerM2')}`;
-  readoutGrid.textContent = `${s.gridStep} m`;
   if (s.parcel) {
     readoutParcelH.textContent = `${fmtNum(s.parcel.h, 2)} m`;
     readoutParcelA.textContent = fmtArea(s.parcel.area);
@@ -1472,9 +1273,7 @@ async function loadFile(file) {
       showError(t('msg.need3rows'));
       return;
     }
-    const t0 = performance.now();
     const built = buildMesh(points);
-    const t1 = performance.now();
     if (currentMesh) {
       scene.remove(currentMesh);
       currentMesh.traverse((obj) => {
@@ -1488,11 +1287,6 @@ async function loadFile(file) {
     currentMesh = built.group;
     scene.add(currentMesh);
     fallbackGrid.visible = false;
-    {
-      const bb = built.bounds;
-      const span = Math.max(bb.maxX - bb.minX, bb.maxY - bb.minY, 1e-6);
-      rebuild3DGridForData(2 / span, span);
-    }
     gridSurf = null;
     rebuildSurfaceGrid();
     frameMesh(built.mesh);
@@ -1505,20 +1299,7 @@ async function loadFile(file) {
     exportBtn.hidden = false;
     currentParcels = null;
     currentFileName = file.name;
-    const b = built.bounds;
-    readoutState = {
-      fileName: file.name,
-      pts: points.length,
-      tris: built.triangleCount,
-      segs: built.contourCount,
-      ms: t1 - t0,
-      minZ: b.minZ, maxZ: b.maxZ,
-      footprint: built.footprint,
-      fpW: b.maxX - b.minX, fpH: b.maxY - b.minY,
-      density: built.density,
-      gridStep: built.gridStep,
-      parcel: null,
-    };
+    readoutState = { parcel: null };
     renderReadout();
   } catch (e) {
     showError(t('msg.readFail') + (e && e.message || e));
@@ -1559,7 +1340,6 @@ async function loadFullSample() {
   await loadBundledSample('sample-files/trebishte-high-res.txt', 'trebishte-high-res.txt');
   await loadBundledParcels('sample-files/trebishte.dxf', 'trebishte.dxf');
 }
-sampleBtn.addEventListener('click', loadFullSample);
 
 // ---- DXF parcel overlay ----
 // Parses LINE / LWPOLYLINE / POLYLINE entities from a user-supplied
@@ -1717,7 +1497,7 @@ exportMenu.addEventListener('click', (e) => {
 
 // Open the bundled Trebishte plot + parcels on first launch so the
 // user lands on a populated viewport instead of an empty grid.
-// Sample / Upload / Parcels remain available to swap files.
+// Upload / Parcels remain available to swap files.
 loadFullSample();
 
 resetBtn.addEventListener('click', () => {

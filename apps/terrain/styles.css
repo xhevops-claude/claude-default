@@ -84,8 +84,7 @@ body { overflow: hidden; }
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   list-style: none;
   user-select: none;
@@ -96,31 +95,25 @@ body { overflow: hidden; }
   padding-bottom: 6px;
   border-bottom: 1px solid var(--hud-border);
 }
-.readout-head-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
 .readout-caret {
   color: var(--fg-dim);
   font-size: 14px;
   line-height: 1;
+  margin-left: auto;
   transition: transform 0.15s ease;
 }
 .readout[open] .readout-caret { transform: rotate(180deg); }
-.readout-name {
+.readout-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.readout[open] .readout-icon { display: none; }
+.readout-title {
   font-weight: 600;
   font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none;
 }
-.readout-count {
-  color: var(--fg-dim);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-}
+.readout[open] .readout-title { display: inline; }
 .readout-grid {
   margin: 0;
   display: grid;
@@ -181,23 +174,30 @@ body { overflow: hidden; }
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   list-style: none;
   user-select: none;
   -webkit-user-select: none;
 }
 .layers-head::-webkit-details-marker { display: none; }
+.layers-head .readout-caret { margin-left: auto; }
 .layers[open] .layers-head {
   padding-bottom: 6px;
   border-bottom: 1px solid var(--hud-border);
 }
 .layers[open] .readout-caret { transform: rotate(180deg); }
+.layers-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.layers[open] .layers-icon { display: none; }
 .layers-title {
   font-weight: 600;
   font-size: 13px;
+  display: none;
 }
+.layers[open] .layers-title { display: inline; }
 .layers-controls {
   display: flex;
   align-items: center;
@@ -247,25 +247,6 @@ body { overflow: hidden; }
   margin: 0;
   accent-color: #5a7c3a;
 }
-.layer-slider {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  align-items: center;
-  padding-left: 22px;
-}
-.layer-slider input[type="range"] {
-  width: 100%;
-  margin: 0;
-  accent-color: #5a7c3a;
-}
-.layer-value {
-  color: var(--fg-dim);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-  min-width: 30px;
-  text-align: right;
-}
 
 .layers-debug {
   margin-top: 4px;
@@ -297,6 +278,64 @@ body { overflow: hidden; }
   min-width: 36px;
   text-align: right;
 }
+.dpad-block {
+  display: grid;
+  grid-template-columns: minmax(86px, auto) 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.rot-row {
+  justify-self: center;
+  display: flex;
+  gap: 2px;
+}
+.rot-c { color: var(--fg-dim); font-size: 11px; }
+.rot-btn {
+  appearance: none;
+  background: var(--hud-hover);
+  border: 1px solid var(--hud-border);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rot-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.rot-btn:active { transform: translateY(1px); }
+.dpad {
+  justify-self: center;
+  display: grid;
+  grid-template-columns: repeat(3, 26px);
+  grid-template-rows: repeat(3, 26px);
+  gap: 2px;
+}
+.dpad-n { grid-column: 2; grid-row: 1; }
+.dpad-w { grid-column: 1; grid-row: 2; }
+.dpad-c { grid-column: 2; grid-row: 2; font-size: 9px; color: var(--fg-dim); }
+.dpad-e { grid-column: 3; grid-row: 2; }
+.dpad-s { grid-column: 2; grid-row: 3; }
+.dpad-btn {
+  appearance: none;
+  background: var(--hud-hover);
+  border: 1px solid var(--hud-border);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dpad-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.dpad-btn:active { transform: translateY(1px); }
 
 .hud-bottom {
   position: absolute;
