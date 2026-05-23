@@ -30,8 +30,6 @@ const layersMaster = document.getElementById('layers-master');
 const layersReset  = document.getElementById('layers-reset');
 const exportBtn   = document.getElementById('export-btn');
 const exportMenu  = document.getElementById('export-menu');
-const dbgGridSurfRotZ   = document.getElementById('dbg-gridsurf-rotz');
-const dbgGridSurfRotZVal= document.getElementById('dbg-gridsurf-rotz-val');
 const dbgGridSurfOffVal = document.getElementById('dbg-gridsurf-off-val');
 const dbgGridSurfDpad   = document.querySelector('.dpad');
 
@@ -62,7 +60,6 @@ const I18N = {
     'layer.gridsurf': 'Surface grid',
     'layer.parcels': 'Parcels',
     'debug.surfaceGrid': 'Surface grid',
-    'debug.rotationZ': 'Rotation Z',
     'debug.offset': 'Offset',
     'btn.upload': 'Upload file',
     'btn.parcels': 'Parcels (DXF)',
@@ -103,7 +100,6 @@ const I18N = {
     'layer.gridsurf': 'Oberflächenraster',
     'layer.parcels': 'Parzellen',
     'debug.surfaceGrid': 'Oberflächenraster',
-    'debug.rotationZ': 'Drehung Z',
     'debug.offset': 'Versatz',
     'btn.upload': 'Datei hochladen',
     'btn.parcels': 'Parzellen (DXF)',
@@ -225,7 +221,10 @@ let gridSurf = null;
 const GRID_SURF_CELL_METERS    = 1;
 const GRID_SURF_MAX_CELLS      = 80;
 const GRID_SURF_LIFT           = 0.0025;
-const GRID_SURF_ROTZ_DEFAULT   = 49;
+// Capped at ±45° so the grid lines stay within roughly the same
+// quadrant as the survey axes — keeps the D-pad N/S/E/W directions
+// readable as visual grid axes.
+const GRID_SURF_ROTZ_DEFAULT   = 45;
 const GRID_SURF_OFFX_DEFAULT   = 0;
 const GRID_SURF_OFFY_DEFAULT   = 0.4;
 let gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
@@ -308,16 +307,9 @@ function rebuildSurfaceGrid() {
 const GRID_SURF_OFF_STEP = 0.1;
 const GRID_SURF_OFF_LIMIT = 50;
 function syncGridSurfUI() {
-  dbgGridSurfRotZ.value = String(gridSurfRotZ);
-  dbgGridSurfRotZVal.textContent = `${Math.round(gridSurfRotZ)}°`;
   dbgGridSurfOffVal.textContent = `${gridSurfOffX.toFixed(1)}, ${gridSurfOffY.toFixed(1)} m`;
 }
 syncGridSurfUI();
-dbgGridSurfRotZ.addEventListener('input', () => {
-  gridSurfRotZ = parseFloat(dbgGridSurfRotZ.value);
-  dbgGridSurfRotZVal.textContent = `${Math.round(gridSurfRotZ)}°`;
-  rebuildSurfaceGrid();
-});
 const DPAD_DELTAS = {
   N: [0,  GRID_SURF_OFF_STEP],
   S: [0, -GRID_SURF_OFF_STEP],
