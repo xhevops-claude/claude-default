@@ -18,7 +18,6 @@ const readoutParcelH  = document.getElementById('readout-parcel-height');
 const readoutParcelA  = document.getElementById('readout-parcel-area');
 const fileInput  = document.getElementById('file-input');
 const uploadBtn  = document.getElementById('upload-btn');
-const sampleBtn  = document.getElementById('sample-btn');
 const parcelBtn  = document.getElementById('parcel-btn');
 const parcelInput = document.getElementById('parcel-input');
 const resetBtn   = document.getElementById('reset-btn');
@@ -76,7 +75,6 @@ const I18N = {
     'debug.offsetX': 'Offset X',
     'debug.offsetY': 'Offset Y',
     'btn.upload': 'Upload file',
-    'btn.sample': 'Sample',
     'btn.parcels': 'Parcels (DXF)',
     'btn.resetView': 'Reset view',
     'btn.export': 'Export &#9662;',
@@ -122,7 +120,6 @@ const I18N = {
     'debug.offsetX': 'Versatz X',
     'debug.offsetY': 'Versatz Y',
     'btn.upload': 'Datei hochladen',
-    'btn.sample': 'Beispiel',
     'btn.parcels': 'Parzellen (DXF)',
     'btn.resetView': 'Ansicht zurücksetzen',
     'btn.export': 'Exportieren &#9662;',
@@ -1352,7 +1349,6 @@ async function loadFullSample() {
   await loadBundledSample('sample-files/trebishte-high-res.txt', 'trebishte-high-res.txt');
   await loadBundledParcels('sample-files/trebishte.dxf', 'trebishte.dxf');
 }
-sampleBtn.addEventListener('click', loadFullSample);
 
 // ---- DXF parcel overlay ----
 // Parses LINE / LWPOLYLINE / POLYLINE entities from a user-supplied
@@ -1510,7 +1506,7 @@ exportMenu.addEventListener('click', (e) => {
 
 // Open the bundled Trebishte plot + parcels on first launch so the
 // user lands on a populated viewport instead of an empty grid.
-// Sample / Upload / Parcels remain available to swap files.
+// Upload / Parcels remain available to swap files.
 loadFullSample();
 
 resetBtn.addEventListener('click', () => {
