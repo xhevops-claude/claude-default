@@ -280,15 +280,16 @@ body { overflow: hidden; }
 }
 .dpad-block {
   display: grid;
-  grid-template-columns: minmax(86px, auto) auto auto 1fr;
+  grid-template-columns: minmax(86px, auto) 1fr auto;
   gap: 8px;
   align-items: center;
 }
-.rot-btns {
+.rot-row {
+  justify-self: center;
   display: flex;
-  flex-direction: column;
   gap: 2px;
 }
+.rot-c { color: var(--fg-dim); font-size: 11px; }
 .rot-btn {
   appearance: none;
   background: var(--hud-hover);

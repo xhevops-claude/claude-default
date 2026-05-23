@@ -31,8 +31,9 @@ const layersReset  = document.getElementById('layers-reset');
 const exportBtn   = document.getElementById('export-btn');
 const exportMenu  = document.getElementById('export-menu');
 const dbgGridSurfOffVal = document.getElementById('dbg-gridsurf-off-val');
+const dbgGridSurfRotVal = document.getElementById('dbg-gridsurf-rot-val');
 const dbgGridSurfDpad   = document.querySelector('.dpad');
-const dbgGridSurfRotBtns = document.querySelector('.rot-btns');
+const dbgGridSurfRotRow = document.querySelector('.rot-row');
 
 // ---- i18n ----
 // Per-app locale persisted in localStorage. Default = browser language
@@ -61,7 +62,8 @@ const I18N = {
     'layer.gridsurf': 'Surface grid',
     'layer.parcels': 'Parcels',
     'debug.surfaceGrid': 'Surface grid',
-    'debug.offset': 'Offset',
+    'debug.positionOffset': 'Position offset',
+    'debug.rotationOffset': 'Rotation offset',
     'btn.upload': 'Upload file',
     'btn.parcels': 'Parcels (DXF)',
     'btn.resetView': 'Reset view',
@@ -101,7 +103,8 @@ const I18N = {
     'layer.gridsurf': 'Oberflächenraster',
     'layer.parcels': 'Parzellen',
     'debug.surfaceGrid': 'Oberflächenraster',
-    'debug.offset': 'Versatz',
+    'debug.positionOffset': 'Positionsversatz',
+    'debug.rotationOffset': 'Drehversatz',
     'btn.upload': 'Datei hochladen',
     'btn.parcels': 'Parzellen (DXF)',
     'btn.resetView': 'Ansicht zurücksetzen',
@@ -310,16 +313,21 @@ function rebuildSurfaceGrid() {
 const GRID_SURF_OFF_STEP = 0.1;
 const GRID_SURF_OFF_LIMIT = 50;
 function syncGridSurfUI() {
-  dbgGridSurfOffVal.textContent =
-    `${gridSurfOffX.toFixed(1)}, ${gridSurfOffY.toFixed(1)} m · ${Math.round(gridSurfRotZ)}°`;
+  dbgGridSurfOffVal.textContent = `${gridSurfOffX.toFixed(1)}, ${gridSurfOffY.toFixed(1)} m`;
+  dbgGridSurfRotVal.textContent = `${Math.round(gridSurfRotZ)}°`;
 }
 syncGridSurfUI();
-dbgGridSurfRotBtns.addEventListener('click', (e) => {
+dbgGridSurfRotRow.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-rot]');
   if (!btn) return;
-  const sign = btn.dataset.rot === 'CW' ? 1 : -1;
-  const next = gridSurfRotZ + sign * GRID_SURF_ROTZ_STEP;
-  gridSurfRotZ = Math.max(-GRID_SURF_ROTZ_LIMIT, Math.min(GRID_SURF_ROTZ_LIMIT, next));
+  const action = btn.dataset.rot;
+  if (action === 'C') {
+    gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
+  } else {
+    const sign = action === 'CW' ? 1 : -1;
+    const next = gridSurfRotZ + sign * GRID_SURF_ROTZ_STEP;
+    gridSurfRotZ = Math.max(-GRID_SURF_ROTZ_LIMIT, Math.min(GRID_SURF_ROTZ_LIMIT, next));
+  }
   syncGridSurfUI();
   rebuildSurfaceGrid();
 });
