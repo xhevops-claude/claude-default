@@ -32,6 +32,7 @@ const exportBtn   = document.getElementById('export-btn');
 const exportMenu  = document.getElementById('export-menu');
 const dbgGridSurfOffVal = document.getElementById('dbg-gridsurf-off-val');
 const dbgGridSurfDpad   = document.querySelector('.dpad');
+const dbgGridSurfRotBtns = document.querySelector('.rot-btns');
 
 // ---- i18n ----
 // Per-app locale persisted in localStorage. Default = browser language
@@ -225,6 +226,8 @@ const GRID_SURF_LIFT           = 0.0025;
 // quadrant as the survey axes — keeps the D-pad N/S/E/W directions
 // readable as visual grid axes.
 const GRID_SURF_ROTZ_DEFAULT   = 45;
+const GRID_SURF_ROTZ_LIMIT     = 45;
+const GRID_SURF_ROTZ_STEP      = 1;
 const GRID_SURF_OFFX_DEFAULT   = 0;
 const GRID_SURF_OFFY_DEFAULT   = 0.4;
 let gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
@@ -307,9 +310,19 @@ function rebuildSurfaceGrid() {
 const GRID_SURF_OFF_STEP = 0.1;
 const GRID_SURF_OFF_LIMIT = 50;
 function syncGridSurfUI() {
-  dbgGridSurfOffVal.textContent = `${gridSurfOffX.toFixed(1)}, ${gridSurfOffY.toFixed(1)} m`;
+  dbgGridSurfOffVal.textContent =
+    `${gridSurfOffX.toFixed(1)}, ${gridSurfOffY.toFixed(1)} m · ${Math.round(gridSurfRotZ)}°`;
 }
 syncGridSurfUI();
+dbgGridSurfRotBtns.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-rot]');
+  if (!btn) return;
+  const sign = btn.dataset.rot === 'CW' ? 1 : -1;
+  const next = gridSurfRotZ + sign * GRID_SURF_ROTZ_STEP;
+  gridSurfRotZ = Math.max(-GRID_SURF_ROTZ_LIMIT, Math.min(GRID_SURF_ROTZ_LIMIT, next));
+  syncGridSurfUI();
+  rebuildSurfaceGrid();
+});
 const DPAD_DELTAS = {
   N: [0,  GRID_SURF_OFF_STEP],
   S: [0, -GRID_SURF_OFF_STEP],
@@ -333,7 +346,7 @@ dbgGridSurfDpad.addEventListener('click', (e) => {
     gridSurfOffX = Math.round(clampOff(gridSurfOffX + d[0]) * 1000) / 1000;
     gridSurfOffY = Math.round(clampOff(gridSurfOffY + d[1]) * 1000) / 1000;
   }
-  dbgGridSurfOffVal.textContent = `${gridSurfOffX.toFixed(1)}, ${gridSurfOffY.toFixed(1)} m`;
+  syncGridSurfUI();
   rebuildSurfaceGrid();
 });
 

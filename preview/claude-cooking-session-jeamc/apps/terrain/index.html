@@ -34,7 +34,7 @@
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=4547cee" />
+  <link rel="stylesheet" href="styles.css?v=77be3ea" />
   <script type="importmap">
   {
     "imports": {
@@ -100,6 +100,10 @@
             <button type="button" class="dpad-btn dpad-e" data-dpad="E" aria-label="East">&#9654;</button>
             <button type="button" class="dpad-btn dpad-s" data-dpad="S" aria-label="South">&#9660;</button>
           </div>
+          <div class="rot-btns">
+            <button type="button" class="rot-btn" data-rot="CCW" aria-label="Rotate counter-clockwise">&#8634;</button>
+            <button type="button" class="rot-btn" data-rot="CW"  aria-label="Rotate clockwise">&#8635;</button>
+          </div>
           <span class="debug-value" id="dbg-gridsurf-off-val">0.0, 0.0 m</span>
         </div>
       </div>
@@ -129,6 +133,6 @@
     <div id="error" class="error" hidden role="alert"></div>
   </main>
 
-  <script type="module" src="app.js?v=4547cee"></script>
+  <script type="module" src="app.js?v=77be3ea"></script>
 </body>
 </html>
