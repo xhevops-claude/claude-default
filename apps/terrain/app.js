@@ -1213,7 +1213,7 @@ function frameMesh(mesh) {
   const s = mesh.geometry.boundingSphere;
   if (!s) return;
   const fov = camera.fov * Math.PI / 180;
-  const dist = s.radius / Math.sin(fov / 2) * 1.0;
+  const dist = s.radius / Math.sin(fov / 2) * 0.8;
   const eye = new THREE.Vector3(
     s.center.x - dist * 0.7,
     s.center.y + dist * 0.55,
