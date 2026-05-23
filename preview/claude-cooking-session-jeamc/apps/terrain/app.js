@@ -225,10 +225,11 @@ let gridSurf = null;
 const GRID_SURF_CELL_METERS    = 1;
 const GRID_SURF_MAX_CELLS      = 80;
 const GRID_SURF_LIFT           = 0.0025;
-// Capped at ±45° so the grid lines stay within roughly the same
-// quadrant as the survey axes — keeps the D-pad N/S/E/W directions
-// readable as visual grid axes.
-const GRID_SURF_ROTZ_DEFAULT   = 45;
+// Hidden baseline so the grid lines start aligned with the dominant
+// parcel orientation; the UI shows the user offset on top of it,
+// capped at ±45° so the visual axes stay readable as N/S/E/W.
+const GRID_SURF_ROTZ_BASE      = 49;
+const GRID_SURF_ROTZ_DEFAULT   = 0;
 const GRID_SURF_ROTZ_LIMIT     = 45;
 const GRID_SURF_ROTZ_STEP      = 1;
 const GRID_SURF_OFFX_DEFAULT   = 0;
@@ -250,7 +251,7 @@ function buildSurfaceGrid(drapeCtx) {
   const sampleSpacing = span / (index.N * 2);
   const lineSamples = Math.max(2, Math.ceil((cells * cellSize) / sampleSpacing));
 
-  const rot = THREE.MathUtils.degToRad(gridSurfRotZ);
+  const rot = THREE.MathUtils.degToRad(gridSurfRotZ + GRID_SURF_ROTZ_BASE);
   const cosR = Math.cos(rot);
   const sinR = Math.sin(rot);
   const segs = [];
