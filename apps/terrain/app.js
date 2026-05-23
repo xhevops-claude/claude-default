@@ -14,14 +14,8 @@ import DxfParser from 'dxf-parser';
 const canvasWrap = document.getElementById('canvas-wrap');
 const hint       = document.getElementById('hint');
 const readout    = document.getElementById('readout');
-const readoutName     = document.getElementById('readout-name');
-const readoutCount    = document.getElementById('readout-count');
-const readoutElev     = document.getElementById('readout-elev');
 const readoutParcelH  = document.getElementById('readout-parcel-height');
-const readoutFootprint = document.getElementById('readout-footprint');
 const readoutParcelA  = document.getElementById('readout-parcel-area');
-const readoutDensity  = document.getElementById('readout-density');
-const readoutGrid     = document.getElementById('readout-grid');
 const fileInput  = document.getElementById('file-input');
 const uploadBtn  = document.getElementById('upload-btn');
 const sampleBtn  = document.getElementById('sample-btn');
@@ -67,12 +61,9 @@ const I18N = {
     title: 'Terrain',
     'hint.text': 'Upload a coordinate file to build a 3D mesh.',
     'hint.sub': 'Each line: <code>x  y  elevation</code> (tabs or spaces; an optional id column is ignored).',
-    'readout.elev': 'Elevation',
+    'readout.title': 'Stats',
     'readout.parcelHeight': 'Parcel height',
-    'readout.footprint': 'Footprint',
     'readout.parcelArea': 'Parcel area',
-    'readout.density': 'Density',
-    'readout.grid': 'Grid step',
     'readout.note': "Areas assume the file's X/Y are metres.",
     'layers.title': 'Layers',
     'layers.all': 'All',
@@ -114,20 +105,14 @@ const I18N = {
     'msg.dxfFail': 'DXF parse failed: ',
     'msg.exported': (name) => `Exported ${name}`,
     'msg.glbFail': 'GLB export failed: ',
-    'count.fmt': (pts, tris, segs, ms) =>
-      `${pts.toLocaleString()} pts · ${tris.toLocaleString()} tris · ${segs.toLocaleString()} contour segs · ${Math.round(ms)} ms`,
-    'units.ptPerM2': 'pt/m²',
   },
   de: {
     title: 'Gelände',
     'hint.text': 'Koordinatendatei hochladen, um ein 3D-Modell zu erstellen.',
     'hint.sub': 'Jede Zeile: <code>x  y  Höhe</code> (Tabulator oder Leerzeichen; eine optionale ID-Spalte wird ignoriert).',
-    'readout.elev': 'Höhe',
+    'readout.title': 'Statistik',
     'readout.parcelHeight': 'Parzellenhöhe',
-    'readout.footprint': 'Grundfläche',
     'readout.parcelArea': 'Parzellenfläche',
-    'readout.density': 'Dichte',
-    'readout.grid': 'Rasterweite',
     'readout.note': 'Flächen setzen voraus, dass X/Y in Metern angegeben sind.',
     'layers.title': 'Ebenen',
     'layers.all': 'Alle',
@@ -169,9 +154,6 @@ const I18N = {
     'msg.dxfFail': 'DXF-Verarbeitung fehlgeschlagen: ',
     'msg.exported': (name) => `${name} exportiert`,
     'msg.glbFail': 'GLB-Export fehlgeschlagen: ',
-    'count.fmt': (pts, tris, segs, ms) =>
-      `${pts.toLocaleString('de-DE')} Pkt. · ${tris.toLocaleString('de-DE')} Dr. · ${segs.toLocaleString('de-DE')} Höhensegm. · ${Math.round(ms)} ms`,
-    'units.ptPerM2': 'Pkt/m²',
   },
 };
 const LOCALE_KEY = 'terrain-locale';
@@ -791,30 +773,6 @@ function buildMesh(points) {
   const meshPoints = new THREE.Points(pointsGeom, pointsMat);
   meshPoints.renderOrder = 1;
 
-  // Areas computed in the file's native units (so if those units are
-  // metres, the numbers are m² straight off). The 2D footprint is
-  // the sum of triangle areas projected to the XY plane — for a
-  // gridded scan this equals the triangulated convex hull's area,
-  // which is what the user actually sees from above. The 3D surface
-  // area uses the real triangle areas (so steeper terrain reports a
-  // larger surface than its footprint, as expected).
-  let footprint = 0;
-  let surface = 0;
-  for (let t = 0; t < triangles.length; t += 3) {
-    const i = triangles[t], j = triangles[t + 1], k = triangles[t + 2];
-    const ax = points[i][0], ay = points[i][1], az = points[i][2];
-    const bx = points[j][0], by = points[j][1], bz = points[j][2];
-    const cxp = points[k][0], cyp = points[k][1], cz = points[k][2];
-    // 2D area = ½ |(b - a) × (c - a)|_z
-    footprint += Math.abs((bx - ax) * (cyp - ay) - (by - ay) * (cxp - ax)) * 0.5;
-    // 3D area = ½ |(b - a) × (c - a)|
-    const ux = bx - ax,  uy = by - ay,  uz = bz - az;
-    const vx = cxp - ax, vy = cyp - ay, vz = cz - az;
-    const nx = uy * vz - uz * vy;
-    const ny = uz * vx - ux * vz;
-    const nz = ux * vy - uy * vx;
-    surface += Math.sqrt(nx * nx + ny * ny + nz * nz) * 0.5;
-  }
 
   // Topographic contours every 10 cm of native elevation. Marching
   // triangles: for each contour level, walk every triangle and emit
@@ -988,12 +946,6 @@ function buildMesh(points) {
     group,
     mesh,
     bounds: { minX, maxX, minY, maxY, minZ, maxZ },
-    triangleCount: triangles.length / 3,
-    contourCount: minorSegs.length / 6 + majorSegs.length / 6,
-    gridStep,
-    footprint,
-    surface,
-    density: footprint > 0 ? points.length / footprint : 0,
   };
 }
 
@@ -1448,12 +1400,6 @@ let readoutState = null;
 function renderReadout() {
   if (!readoutState) return;
   const s = readoutState;
-  readoutName.textContent = s.fileName;
-  readoutCount.textContent = t('count.fmt', s.pts, s.tris, s.segs, s.ms);
-  readoutElev.textContent = `${fmtNum(s.minZ, 2)} – ${fmtNum(s.maxZ, 2)} m`;
-  readoutFootprint.textContent = `${fmtArea(s.footprint)} (${fmtNum(s.fpW, 1)} × ${fmtNum(s.fpH, 1)} m)`;
-  readoutDensity.textContent = `${fmtNum(s.density, 2)} ${t('units.ptPerM2')}`;
-  readoutGrid.textContent = `${s.gridStep} m`;
   if (s.parcel) {
     readoutParcelH.textContent = `${fmtNum(s.parcel.h, 2)} m`;
     readoutParcelA.textContent = fmtArea(s.parcel.area);
@@ -1472,9 +1418,7 @@ async function loadFile(file) {
       showError(t('msg.need3rows'));
       return;
     }
-    const t0 = performance.now();
     const built = buildMesh(points);
-    const t1 = performance.now();
     if (currentMesh) {
       scene.remove(currentMesh);
       currentMesh.traverse((obj) => {
@@ -1505,20 +1449,7 @@ async function loadFile(file) {
     exportBtn.hidden = false;
     currentParcels = null;
     currentFileName = file.name;
-    const b = built.bounds;
-    readoutState = {
-      fileName: file.name,
-      pts: points.length,
-      tris: built.triangleCount,
-      segs: built.contourCount,
-      ms: t1 - t0,
-      minZ: b.minZ, maxZ: b.maxZ,
-      footprint: built.footprint,
-      fpW: b.maxX - b.minX, fpH: b.maxY - b.minY,
-      density: built.density,
-      gridStep: built.gridStep,
-      parcel: null,
-    };
+    readoutState = { parcel: null };
     renderReadout();
   } catch (e) {
     showError(t('msg.readFail') + (e && e.message || e));
