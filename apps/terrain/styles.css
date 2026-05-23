@@ -280,10 +280,33 @@ body { overflow: hidden; }
 }
 .dpad-block {
   display: grid;
-  grid-template-columns: minmax(86px, auto) 1fr auto;
+  grid-template-columns: minmax(86px, auto) auto auto 1fr;
   gap: 8px;
   align-items: center;
 }
+.rot-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rot-btn {
+  appearance: none;
+  background: var(--hud-hover);
+  border: 1px solid var(--hud-border);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rot-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.rot-btn:active { transform: translateY(1px); }
 .dpad {
   justify-self: center;
   display: grid;
