@@ -1197,9 +1197,9 @@ function frameMesh(mesh) {
   const fov = camera.fov * Math.PI / 180;
   const dist = s.radius / Math.sin(fov / 2) * 1.1;
   const eye = new THREE.Vector3(
-    s.center.x + dist * 0.7,
+    s.center.x - dist * 0.7,
     s.center.y + dist * 0.55,
-    s.center.z + dist * 0.7,
+    s.center.z - dist * 0.7,
   );
   camera.position.copy(eye);
   controls.target.copy(s.center);
