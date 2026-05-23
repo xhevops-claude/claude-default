@@ -207,6 +207,11 @@ body { overflow: hidden; }
   border-bottom: 1px solid var(--hud-border);
 }
 .layers-master-label { font-weight: 600; }
+.layers-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .layers-reset {
   background: transparent;
   color: var(--fg-dim);
@@ -220,6 +225,25 @@ body { overflow: hidden; }
 .layers-reset:hover {
   background: var(--hud-hover);
   color: var(--fg);
+}
+.layers-save {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--hud-border);
+  color: var(--fg);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.layers-save:hover:not(:disabled) {
+  background: var(--hud-hover);
+}
+.layers-save:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 .layers-list {
   list-style: none;
