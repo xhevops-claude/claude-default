@@ -159,6 +159,9 @@ body { overflow: hidden; }
   max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 100px);
   overflow-y: auto;
   overscroll-behavior: contain;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 @media (max-width: 600px) {
   .layers {
@@ -329,6 +332,10 @@ body { overflow: hidden; }
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .rot-btn:hover { background: rgba(255, 255, 255, 0.12); }
 .rot-btn:active { transform: translateY(1px); }
@@ -357,6 +364,10 @@ body { overflow: hidden; }
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .dpad-btn:hover { background: rgba(255, 255, 255, 0.12); }
 .dpad-btn:active { transform: translateY(1px); }
