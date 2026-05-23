@@ -34,7 +34,7 @@
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=5ba4ed9" />
+  <link rel="stylesheet" href="styles.css?v=f9cceba" />
   <script type="importmap">
   {
     "imports": {
@@ -64,25 +64,20 @@
 
     <details id="readout" class="readout" hidden>
       <summary class="readout-head">
-        <div class="readout-head-text">
-          <span id="readout-name" class="readout-name"></span>
-          <span id="readout-count" class="readout-count"></span>
-        </div>
+        <span class="readout-icon" aria-hidden="true">&#128200;</span>
+        <span class="readout-title" data-i18n="readout.title">Stats</span>
         <span class="readout-caret" aria-hidden="true">&#9662;</span>
       </summary>
       <dl class="readout-grid">
-        <div><dt data-i18n="readout.elev">Elevation</dt><dd id="readout-elev">&mdash;</dd></div>
         <div><dt data-i18n="readout.parcelHeight">Parcel height</dt><dd id="readout-parcel-height">&mdash;</dd></div>
-        <div><dt data-i18n="readout.footprint">Footprint</dt><dd id="readout-footprint">&mdash;</dd></div>
         <div><dt data-i18n="readout.parcelArea">Parcel area</dt><dd id="readout-parcel-area">&mdash;</dd></div>
-        <div><dt data-i18n="readout.density">Density</dt><dd id="readout-density">&mdash;</dd></div>
-        <div><dt data-i18n="readout.grid">Grid step</dt><dd id="readout-grid">&mdash;</dd></div>
       </dl>
       <p class="readout-note" data-i18n="readout.note">Areas assume the file's X/Y are metres.</p>
     </details>
 
     <details id="layers" class="layers" hidden>
       <summary class="layers-head">
+        <span class="layers-icon" aria-hidden="true">&#128451;&#65039;</span>
         <span class="layers-title" data-i18n="layers.title">Layers</span>
         <span class="readout-caret" aria-hidden="true">&#9662;</span>
       </summary>
@@ -95,53 +90,26 @@
       </div>
       <ul id="layers-list" class="layers-list"></ul>
       <div class="layers-debug">
-        <div class="debug-title" data-i18n="debug.contourLabels">Contour labels</div>
-        <div class="debug-row">
-          <span class="debug-label" data-i18n="debug.outwardOffset">Outward offset</span>
-          <input type="range" id="dbg-label-offset" min="0" max="0.3" step="0.005" />
-          <span class="debug-value" id="dbg-label-offset-val">0.000</span>
-        </div>
-        <div class="debug-row">
-          <span class="debug-label" data-i18n="debug.size">Size</span>
-          <input type="range" id="dbg-label-size" min="0.02" max="0.1" step="0.002" />
-          <span class="debug-value" id="dbg-label-size-val">0.000</span>
-        </div>
-        <div class="debug-title" data-i18n="debug.grid3d">3D grid</div>
-        <div class="debug-row">
-          <span class="debug-label" data-i18n="debug.rotationZ">Rotation Z</span>
-          <input type="range" id="dbg-grid3d-rotz" min="-180" max="180" step="1" />
-          <span class="debug-value" id="dbg-grid3d-rotz-val">0&deg;</span>
-        </div>
-        <div class="debug-row">
-          <span class="debug-label" data-i18n="debug.offsetX">Offset X</span>
-          <input type="range" id="dbg-grid3d-offx" min="-2" max="2" step="0.01" />
-          <span class="debug-value" id="dbg-grid3d-offx-val">0.00</span>
-        </div>
-        <div class="debug-row">
-          <span class="debug-label" data-i18n="debug.offsetY">Offset Y</span>
-          <input type="range" id="dbg-grid3d-offy" min="-2" max="2" step="0.01" />
-          <span class="debug-value" id="dbg-grid3d-offy-val">0.00</span>
-        </div>
-        <div class="debug-row">
-          <span class="debug-label" data-i18n="debug.offsetZ">Offset Z</span>
-          <input type="range" id="dbg-grid3d-offz" min="-2" max="2" step="0.01" />
-          <span class="debug-value" id="dbg-grid3d-offz-val">0.00</span>
-        </div>
         <div class="debug-title" data-i18n="debug.surfaceGrid">Surface grid</div>
-        <div class="debug-row">
-          <span class="debug-label" data-i18n="debug.rotationZ">Rotation Z</span>
-          <input type="range" id="dbg-gridsurf-rotz" min="-180" max="180" step="1" />
-          <span class="debug-value" id="dbg-gridsurf-rotz-val">0&deg;</span>
+        <div class="dpad-block">
+          <span class="debug-label" data-i18n="debug.rotationOffset">Rotation offset</span>
+          <div class="rot-row">
+            <button type="button" class="rot-btn" data-rot="CCW" aria-label="Rotate counter-clockwise">&#8635;</button>
+            <button type="button" class="rot-btn rot-c" data-rot="C" aria-label="Reset rotation">&#9675;</button>
+            <button type="button" class="rot-btn" data-rot="CW" aria-label="Rotate clockwise">&#8634;</button>
+          </div>
+          <span class="debug-value" id="dbg-gridsurf-rot-val">0&deg;</span>
         </div>
-        <div class="debug-row">
-          <span class="debug-label" data-i18n="debug.offsetX">Offset X</span>
-          <input type="range" id="dbg-gridsurf-offx" min="-50" max="50" step="0.1" />
-          <span class="debug-value" id="dbg-gridsurf-offx-val">0.0 m</span>
-        </div>
-        <div class="debug-row">
-          <span class="debug-label" data-i18n="debug.offsetY">Offset Y</span>
-          <input type="range" id="dbg-gridsurf-offy" min="-50" max="50" step="0.1" />
-          <span class="debug-value" id="dbg-gridsurf-offy-val">0.0 m</span>
+        <div class="dpad-block">
+          <span class="debug-label" data-i18n="debug.positionOffset">Position offset</span>
+          <div class="dpad">
+            <button type="button" class="dpad-btn dpad-n" data-dpad="N" aria-label="North">&#9650;</button>
+            <button type="button" class="dpad-btn dpad-w" data-dpad="W" aria-label="West">&#9664;</button>
+            <button type="button" class="dpad-btn dpad-c" data-dpad="C" aria-label="Reset to origin">&#9675;</button>
+            <button type="button" class="dpad-btn dpad-e" data-dpad="E" aria-label="East">&#9654;</button>
+            <button type="button" class="dpad-btn dpad-s" data-dpad="S" aria-label="South">&#9660;</button>
+          </div>
+          <span class="debug-value" id="dbg-gridsurf-off-val">0.0, 0.0 m</span>
         </div>
       </div>
     </details>
@@ -155,7 +123,6 @@
       <input id="file-input"   type="file" accept=".txt,.csv,.xyz,.tsv,text/plain" hidden />
       <input id="parcel-input" type="file" accept=".dxf,text/plain" hidden />
       <button id="upload-btn" type="button" class="hud-btn primary" style="display:none" data-i18n="btn.upload">Upload file</button>
-      <button id="sample-btn" type="button" class="hud-btn" data-i18n="btn.sample">Sample</button>
       <button id="parcel-btn" type="button" class="hud-btn" hidden style="display:none" data-i18n="btn.parcels">Parcels (DXF)</button>
       <button id="reset-btn"  type="button" class="hud-btn" hidden data-i18n="btn.resetView">Reset view</button>
       <div class="export-wrap">
@@ -171,6 +138,6 @@
     <div id="error" class="error" hidden role="alert"></div>
   </main>
 
-  <script type="module" src="app.js?v=5ba4ed9"></script>
+  <script type="module" src="app.js?v=f9cceba"></script>
 </body>
 </html>
