@@ -349,6 +349,42 @@ body { overflow: hidden; }
 }
 .export-menu[hidden] { display: none; }
 
+.lang-toggle {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  gap: 0;
+  padding: 3px;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.lang-toggle button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--fg-dim);
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+.lang-toggle button[aria-pressed="true"] {
+  background: var(--accent);
+  color: #0c1118;
+}
+.lang-toggle button:not([aria-pressed="true"]):hover {
+  color: var(--fg);
+}
+
 /* When embedded inside the shell iframe the parent owns close. */
 .embedded #quit-btn { display: inline-flex; }
 
