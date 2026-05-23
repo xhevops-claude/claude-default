@@ -256,10 +256,14 @@ function buildSurfaceGrid(drapeCtx) {
     for (let s = 0; s <= lineSamples; s++) {
       const t = s / lineSamples;
       const [lx, ly] = getLocalXY(t);
-      const rx = lx * cosR - ly * sinR;
-      const ry = lx * sinR + ly * cosR;
-      const X = cx + gridSurfOffX + rx;
-      const Y = cy + gridSurfOffY + ry;
+      // Offset is in the grid-local frame so D-pad N/S/E/W nudges
+      // the grid along its own axes, regardless of gridSurfRotZ.
+      const olx = lx + gridSurfOffX;
+      const oly = ly + gridSurfOffY;
+      const rx = olx * cosR - oly * sinR;
+      const ry = olx * sinR + oly * cosR;
+      const X = cx + rx;
+      const Y = cy + ry;
       const z = elevationAt(points, triangles, index, X, Y);
       if (z == null) { havePrev = false; continue; }
       const wx = (X - cx) * scale;
