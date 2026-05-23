@@ -247,25 +247,6 @@ body { overflow: hidden; }
   margin: 0;
   accent-color: #5a7c3a;
 }
-.layer-slider {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  align-items: center;
-  padding-left: 22px;
-}
-.layer-slider input[type="range"] {
-  width: 100%;
-  margin: 0;
-  accent-color: #5a7c3a;
-}
-.layer-value {
-  color: var(--fg-dim);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-  min-width: 30px;
-  text-align: right;
-}
 
 .layers-debug {
   margin-top: 4px;

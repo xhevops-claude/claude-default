@@ -458,26 +458,24 @@ controls.minPolarAngle = 0.01;
 controls.maxPolarAngle = Math.PI - 0.01;
 
 // ---- Layers panel ----
-// Per-layer toggle + zoom-distance gate. Each entry resolves to the
-// THREE object(s) it represents on demand (currentMesh / parcels
-// can be null before anything has loaded). The animate loop calls
-// applyLayerVisibility every frame, so changing a slider or
-// checkbox is reflected immediately. defaultDist == controls.max
-// (8) means "always visible when toggled on" — the slider is still
-// available so any layer can be gated for debugging.
+// Per-layer checkbox toggle. Each entry resolves to the THREE
+// object(s) it represents on demand (currentMesh / parcels can be
+// null before anything has loaded). The animate loop calls
+// applyLayerVisibility every frame, so toggling a checkbox is
+// reflected immediately.
 const LAYERS = [
-  { id: 'surface', labelKey: 'layer.surface',  defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
-  { id: 'points',  labelKey: 'layer.points',   defaultDist: 8,   defaultEnabled: false, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
-  { id: 'majors',  labelKey: 'layer.majors',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
-  { id: 'minors',  labelKey: 'layer.minors',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
-  { id: 'labels',  labelKey: 'layer.labels',   defaultDist: 8,   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
-  { id: 'grid',    labelKey: 'layer.grid',     defaultDist: 8,   get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
-  { id: 'grid3d',  labelKey: 'layer.grid3d',   defaultDist: 8,   defaultEnabled: false, get: () => grid3D },
-  { id: 'gridsurf', labelKey: 'layer.gridsurf', defaultDist: 8,  get: () => gridSurf },
-  { id: 'parcels', labelKey: 'layer.parcels',  defaultDist: 8,   get: () => currentParcels },
+  { id: 'surface', labelKey: 'layer.surface',  get: () => currentMesh && currentMesh.userData && currentMesh.userData.mesh },
+  { id: 'points',  labelKey: 'layer.points',   defaultEnabled: false, get: () => currentMesh && currentMesh.userData && currentMesh.userData.meshPoints },
+  { id: 'majors',  labelKey: 'layer.majors',   get: () => currentMesh && currentMesh.userData && currentMesh.userData.majorLines },
+  { id: 'minors',  labelKey: 'layer.minors',   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
+  { id: 'labels',  labelKey: 'layer.labels',   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
+  { id: 'grid',    labelKey: 'layer.grid',     get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
+  { id: 'grid3d',  labelKey: 'layer.grid3d',   defaultEnabled: false, get: () => grid3D },
+  { id: 'gridsurf', labelKey: 'layer.gridsurf', get: () => gridSurf },
+  { id: 'parcels', labelKey: 'layer.parcels',  get: () => currentParcels },
 ];
 const layerState = {};
-for (const L of LAYERS) layerState[L.id] = { enabled: L.defaultEnabled !== false, maxDist: L.defaultDist };
+for (const L of LAYERS) layerState[L.id] = { enabled: L.defaultEnabled !== false };
 
 for (const L of LAYERS) {
   const row = document.createElement('li');
@@ -487,11 +485,7 @@ for (const L of LAYERS) {
     `<label class="layer-toggle">` +
       `<input type="checkbox" data-layer="${L.id}" data-kind="enabled"${checkedAttr} />` +
       `<span data-layer-label="${L.id}">${t(L.labelKey)}</span>` +
-    `</label>` +
-    `<div class="layer-slider">` +
-      `<input type="range" data-layer="${L.id}" data-kind="dist" min="0.05" max="8" step="0.05" value="${L.defaultDist}" />` +
-      `<span class="layer-value" data-value-for="${L.id}">${L.defaultDist.toFixed(2)}</span>` +
-    `</div>`;
+    `</label>`;
   layersList.appendChild(row);
 }
 document.addEventListener('localechange', () => {
@@ -504,17 +498,9 @@ layersList.addEventListener('input', (e) => {
   const el = e.target;
   if (!el || !el.dataset) return;
   const id = el.dataset.layer;
-  const kind = el.dataset.kind;
-  if (!id || !layerState[id]) return;
-  if (kind === 'enabled') {
-    layerState[id].enabled = el.checked;
-    updateMasterCheckbox();
-  } else if (kind === 'dist') {
-    const v = parseFloat(el.value);
-    layerState[id].maxDist = v;
-    const valEl = layersList.querySelector(`[data-value-for="${id}"]`);
-    if (valEl) valEl.textContent = v.toFixed(2);
-  }
+  if (!id || !layerState[id] || el.dataset.kind !== 'enabled') return;
+  layerState[id].enabled = el.checked;
+  updateMasterCheckbox();
 });
 
 // Tri-state master: indeterminate when some layers are on and some
@@ -549,13 +535,8 @@ layersReset.addEventListener('click', () => {
   for (const L of LAYERS) {
     const on = L.defaultEnabled !== false;
     layerState[L.id].enabled = on;
-    layerState[L.id].maxDist = L.defaultDist;
     const cb = layersList.querySelector(`[data-layer="${L.id}"][data-kind="enabled"]`);
-    const sl = layersList.querySelector(`[data-layer="${L.id}"][data-kind="dist"]`);
-    const vl = layersList.querySelector(`[data-value-for="${L.id}"]`);
     if (cb) cb.checked = on;
-    if (sl) sl.value = String(L.defaultDist);
-    if (vl) vl.textContent = L.defaultDist.toFixed(2);
   }
   labelOffset = LABEL_OFFSET_DEFAULT;
   labelSize = LABEL_SIZE_DEFAULT;
@@ -619,10 +600,8 @@ dbgLabelSize.addEventListener('input', () => {
 });
 
 function applyLayerVisibility() {
-  const dist = controls.getDistance();
   for (const L of LAYERS) {
-    const s = layerState[L.id];
-    const visible = s.enabled && dist < s.maxDist;
+    const visible = layerState[L.id].enabled;
     const objs = L.get();
     if (!objs) continue;
     if (Array.isArray(objs)) {
