@@ -35,14 +35,6 @@ const dbgLabelOffset    = document.getElementById('dbg-label-offset');
 const dbgLabelOffsetVal = document.getElementById('dbg-label-offset-val');
 const dbgLabelSize      = document.getElementById('dbg-label-size');
 const dbgLabelSizeVal   = document.getElementById('dbg-label-size-val');
-const dbgGrid3DRotZ     = document.getElementById('dbg-grid3d-rotz');
-const dbgGrid3DRotZVal  = document.getElementById('dbg-grid3d-rotz-val');
-const dbgGrid3DOffX     = document.getElementById('dbg-grid3d-offx');
-const dbgGrid3DOffXVal  = document.getElementById('dbg-grid3d-offx-val');
-const dbgGrid3DOffY     = document.getElementById('dbg-grid3d-offy');
-const dbgGrid3DOffYVal  = document.getElementById('dbg-grid3d-offy-val');
-const dbgGrid3DOffZ     = document.getElementById('dbg-grid3d-offz');
-const dbgGrid3DOffZVal  = document.getElementById('dbg-grid3d-offz-val');
 const dbgGridSurfRotZ   = document.getElementById('dbg-gridsurf-rotz');
 const dbgGridSurfRotZVal= document.getElementById('dbg-gridsurf-rotz-val');
 const dbgGridSurfOffX   = document.getElementById('dbg-gridsurf-offx');
@@ -74,18 +66,15 @@ const I18N = {
     'layer.minors': 'Contours (10 cm)',
     'layer.labels': 'Contour labels',
     'layer.grid': 'Coord grid',
-    'layer.grid3d': '3D grid',
     'layer.gridsurf': 'Surface grid',
     'layer.parcels': 'Parcels',
     'debug.contourLabels': 'Contour labels',
     'debug.outwardOffset': 'Outward offset',
     'debug.size': 'Size',
-    'debug.grid3d': '3D grid',
     'debug.surfaceGrid': 'Surface grid',
     'debug.rotationZ': 'Rotation Z',
     'debug.offsetX': 'Offset X',
     'debug.offsetY': 'Offset Y',
-    'debug.offsetZ': 'Offset Z',
     'btn.upload': 'Upload file',
     'btn.sample': 'Sample',
     'btn.parcels': 'Parcels (DXF)',
@@ -123,18 +112,15 @@ const I18N = {
     'layer.minors': 'Höhenlinien (10 cm)',
     'layer.labels': 'Höhenlinienbeschriftung',
     'layer.grid': 'Koordinatenraster',
-    'layer.grid3d': '3D-Raster',
     'layer.gridsurf': 'Oberflächenraster',
     'layer.parcels': 'Parzellen',
     'debug.contourLabels': 'Höhenlinienbeschriftung',
     'debug.outwardOffset': 'Versatz nach außen',
     'debug.size': 'Größe',
-    'debug.grid3d': '3D-Raster',
     'debug.surfaceGrid': 'Oberflächenraster',
     'debug.rotationZ': 'Drehung Z',
     'debug.offsetX': 'Versatz X',
     'debug.offsetY': 'Versatz Y',
-    'debug.offsetZ': 'Versatz Z',
     'btn.upload': 'Datei hochladen',
     'btn.sample': 'Beispiel',
     'btn.parcels': 'Parzellen (DXF)',
@@ -246,97 +232,6 @@ scene.add(fill);
 const fallbackGrid = new THREE.GridHelper(4, 16, 0x223040, 0x18222e);
 fallbackGrid.position.y = -0.005;
 scene.add(fallbackGrid);
-
-// Green 3D box-lattice reference layer. Builds a cube of line
-// segments along all three axes so it reads as a stack of boxes.
-// Lives in world space, independent of the data — XY are
-// horizontal, Z is up (survey convention). The Layers panel's
-// debug section drives its yaw + XYZ offset live. Cells are 1 m
-// in survey coordinates, so a freshly-loaded mesh rebuilds the
-// lattice with `worldUnitsPerMeter` (the mesh's uniform scale)
-// driving the cell size and the dataset's longer-axis span
-// driving the cell count.
-const GRID3D_CELL_METERS       = 1;
-const GRID3D_MAX_CELLS         = 80;
-const GRID3D_FALLBACK_CELLS    = 10;
-const GRID3D_FALLBACK_CELL_W   = 0.2;
-function build3DBoxGridGeometry(cellWorldSize, cells) {
-  const half = (cells * cellWorldSize) / 2;
-  const verts = [];
-  for (let i = 0; i <= cells; i++) {
-    for (let j = 0; j <= cells; j++) {
-      const a = -half + i * cellWorldSize;
-      const b = -half + j * cellWorldSize;
-      verts.push(-half, a, b,   half, a, b);
-      verts.push(a, -half, b,   a, half, b);
-      verts.push(a, b, -half,   a, b, half);
-    }
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  return geo;
-}
-const grid3D = new THREE.LineSegments(
-  build3DBoxGridGeometry(GRID3D_FALLBACK_CELL_W, GRID3D_FALLBACK_CELLS),
-  new THREE.LineBasicMaterial({ color: 0x33ff66, transparent: true, opacity: 0.45 }),
-);
-scene.add(grid3D);
-function rebuild3DGridForData(worldUnitsPerMeter, spanMeters) {
-  const cells = Math.max(2, Math.min(GRID3D_MAX_CELLS, Math.ceil(spanMeters / GRID3D_CELL_METERS)));
-  const cellWorldSize = worldUnitsPerMeter * GRID3D_CELL_METERS;
-  const old = grid3D.geometry;
-  grid3D.geometry = build3DBoxGridGeometry(cellWorldSize, cells);
-  if (old) old.dispose();
-}
-
-// Live-tunable defaults for the 3D grid transform. Rot is around
-// the vertical (survey-Z = three.js-Y); offsets are in world units
-// with X = survey-X (lateral), Y = survey-Y (depth, three.js-Z),
-// Z = elevation (three.js-Y).
-const GRID3D_ROTZ_DEFAULT = 141;
-const GRID3D_OFFX_DEFAULT = 0;
-const GRID3D_OFFY_DEFAULT = 0;
-const GRID3D_OFFZ_DEFAULT = 0;
-let grid3DRotZ = GRID3D_ROTZ_DEFAULT;
-let grid3DOffX = GRID3D_OFFX_DEFAULT;
-let grid3DOffY = GRID3D_OFFY_DEFAULT;
-let grid3DOffZ = GRID3D_OFFZ_DEFAULT;
-function applyGrid3DSettings() {
-  grid3D.rotation.set(0, THREE.MathUtils.degToRad(grid3DRotZ), 0);
-  grid3D.position.set(grid3DOffX, grid3DOffZ, grid3DOffY);
-}
-function syncGrid3DUI() {
-  dbgGrid3DRotZ.value = String(grid3DRotZ);
-  dbgGrid3DRotZVal.textContent = `${Math.round(grid3DRotZ)}°`;
-  dbgGrid3DOffX.value = String(grid3DOffX);
-  dbgGrid3DOffXVal.textContent = grid3DOffX.toFixed(2);
-  dbgGrid3DOffY.value = String(grid3DOffY);
-  dbgGrid3DOffYVal.textContent = grid3DOffY.toFixed(2);
-  dbgGrid3DOffZ.value = String(grid3DOffZ);
-  dbgGrid3DOffZVal.textContent = grid3DOffZ.toFixed(2);
-}
-syncGrid3DUI();
-applyGrid3DSettings();
-dbgGrid3DRotZ.addEventListener('input', () => {
-  grid3DRotZ = parseFloat(dbgGrid3DRotZ.value);
-  dbgGrid3DRotZVal.textContent = `${Math.round(grid3DRotZ)}°`;
-  applyGrid3DSettings();
-});
-dbgGrid3DOffX.addEventListener('input', () => {
-  grid3DOffX = parseFloat(dbgGrid3DOffX.value);
-  dbgGrid3DOffXVal.textContent = grid3DOffX.toFixed(2);
-  applyGrid3DSettings();
-});
-dbgGrid3DOffY.addEventListener('input', () => {
-  grid3DOffY = parseFloat(dbgGrid3DOffY.value);
-  dbgGrid3DOffYVal.textContent = grid3DOffY.toFixed(2);
-  applyGrid3DSettings();
-});
-dbgGrid3DOffZ.addEventListener('input', () => {
-  grid3DOffZ = parseFloat(dbgGrid3DOffZ.value);
-  dbgGrid3DOffZVal.textContent = grid3DOffZ.toFixed(2);
-  applyGrid3DSettings();
-});
 
 // Surface grid — a flat 1 m × 1 m XY grid in survey coords that's
 // densely sampled and draped over the terrain so each line follows
@@ -470,7 +365,6 @@ const LAYERS = [
   { id: 'minors',  labelKey: 'layer.minors',   get: () => currentMesh && currentMesh.userData && currentMesh.userData.minorLines },
   { id: 'labels',  labelKey: 'layer.labels',   get: () => currentMesh && currentMesh.userData && currentMesh.userData.contourLabels },
   { id: 'grid',    labelKey: 'layer.grid',     get: () => currentMesh && currentMesh.userData && [currentMesh.userData.gridMinorLines, currentMesh.userData.gridMajorLines] },
-  { id: 'grid3d',  labelKey: 'layer.grid3d',   defaultEnabled: false, get: () => grid3D },
   { id: 'gridsurf', labelKey: 'layer.gridsurf', get: () => gridSurf },
   { id: 'parcels', labelKey: 'layer.parcels',  get: () => currentParcels },
 ];
@@ -542,12 +436,6 @@ layersReset.addEventListener('click', () => {
   labelSize = LABEL_SIZE_DEFAULT;
   syncLabelDebugUI();
   applyLabelDebugSettings();
-  grid3DRotZ = GRID3D_ROTZ_DEFAULT;
-  grid3DOffX = GRID3D_OFFX_DEFAULT;
-  grid3DOffY = GRID3D_OFFY_DEFAULT;
-  grid3DOffZ = GRID3D_OFFZ_DEFAULT;
-  syncGrid3DUI();
-  applyGrid3DSettings();
   gridSurfRotZ = GRID_SURF_ROTZ_DEFAULT;
   gridSurfOffX = GRID_SURF_OFFX_DEFAULT;
   gridSurfOffY = GRID_SURF_OFFY_DEFAULT;
@@ -1411,11 +1299,6 @@ async function loadFile(file) {
     currentMesh = built.group;
     scene.add(currentMesh);
     fallbackGrid.visible = false;
-    {
-      const bb = built.bounds;
-      const span = Math.max(bb.maxX - bb.minX, bb.maxY - bb.minY, 1e-6);
-      rebuild3DGridForData(2 / span, span);
-    }
     gridSurf = null;
     rebuildSurfaceGrid();
     frameMesh(built.mesh);
