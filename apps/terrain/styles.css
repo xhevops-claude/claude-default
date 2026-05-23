@@ -329,6 +329,7 @@ body { overflow: hidden; }
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
 }
 .rot-btn:hover { background: rgba(255, 255, 255, 0.12); }
 .rot-btn:active { transform: translateY(1px); }
@@ -357,6 +358,7 @@ body { overflow: hidden; }
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
 }
 .dpad-btn:hover { background: rgba(255, 255, 255, 0.12); }
 .dpad-btn:active { transform: translateY(1px); }
