@@ -165,6 +165,46 @@
   const floats = [];   // { c, r, text, color, t }
   function spawnFloat(c, r, text, color) { floats.push({ c, r, text, color, t: 0 }); }
 
+  // ---- Building / placement --------------------------------------------------
+  const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍞' };
+  const BUILDABLE = [
+    { type: 'house',  icon: '🏠', name: 'Hovel',  cost: { wood: 10, gold: 5 },  h: 1.0,  label: "Peasant's Hovel" },
+    { type: 'farm',   icon: '🌾', name: 'Farm',   cost: { wood: 8 },            h: 0.35, label: 'Wheat Farm' },
+    { type: 'market', icon: '🪙', name: 'Market', cost: { wood: 15, gold: 25 }, h: 1.3,  label: 'Market' },
+    { type: 'tent',   icon: '⛺', name: 'Tent',   cost: { gold: 15 },           h: 1.1,  label: 'Mercenary Tent' },
+    { type: 'tower',  icon: '🗼', name: 'Tower',  cost: { wood: 20, gold: 10 }, h: 2.4,  label: 'Square Tower' },
+  ];
+  let placing = null;   // the BUILDABLE entry currently being placed, or null
+
+  function screenToTile(px, py) {
+    const wx = (px - cam.x) / cam.zoom, wy = (py - cam.y) / cam.zoom;
+    return {
+      c: Math.round((wx / (TILE_W / 2) + wy / (TILE_H / 2)) / 2),
+      r: Math.round((wy / (TILE_H / 2) - wx / (TILE_W / 2)) / 2),
+    };
+  }
+  function occupied(c, r) {
+    for (const b of buildings) if (b.c === c && b.r === r) return true;
+    for (const w of walls) if (w.c === c && w.r === r) return true;
+    return false;
+  }
+  function canAfford(cost) { for (const k in cost) if (res[k] < cost[k]) return false; return true; }
+  function payFor(cost) { for (const k in cost) setRes(k, res[k] - cost[k]); }
+  function costText(cost) { return Object.keys(cost).map((k) => RES_ICON[k] + cost[k]).join(' '); }
+
+  function tryPlace(px, py) {
+    if (!placing) return;
+    const { c, r } = screenToTile(px, py);
+    const t = biomeAt(c, r);
+    if (t === 'w' || t === 'dw') { showTip("Can't build on water"); return; }
+    if (occupied(c, r)) { showTip('Tile occupied'); return; }
+    if (!canAfford(placing.cost)) { showTip('Not enough ' + Object.keys(placing.cost).map((k) => RES_ICON[k]).join('')); return; }
+    payFor(placing.cost);
+    buildings.push({ c, r, type: placing.type, h: placing.h, label: placing.label });
+    spawnFloat(c, r, 'built', '#cfe6a0');
+    refreshBuildList();   // some options may now be unaffordable
+  }
+
   const PROD_EVERY = 3;   // seconds per production cycle
   let prodAcc = 0;
   function tickEconomy(dt) {
@@ -443,6 +483,7 @@
     if (step === 1) {
       for (let c = b.cMin; c <= b.cMax; c++) {
         for (let r = b.rMin; r <= b.rMax; r++) {
+          if (occupied(c, r)) continue;   // a placed building clears the prop
           const p = propAt(c, r);
           if (p) objs.push({ d: c + r + 0.02, kind: 'bld', ref: { c, r, type: p.type, h: p.h } });
         }
@@ -534,7 +575,10 @@
     if (pointers.size < 2) pinch = null;
     if (pointers.size === 1) panLast = [...pointers.values()][0];
     else if (pointers.size === 0) {
-      if (wasTap) showTip(pickAt(downAt.x, downAt.y));
+      if (wasTap) {
+        if (placing) tryPlace(downAt.x, downAt.y);
+        else showTip(pickAt(downAt.x, downAt.y));
+      }
       panLast = null; downAt = null;
     }
   }
@@ -583,6 +627,83 @@
     } else { location.href = '../../'; }
   });
 
+  // ---- Build menu ------------------------------------------------------------
+  const buildSheet = document.getElementById('build-sheet');
+  const buildList = document.getElementById('build-list');
+  const placeBanner = document.getElementById('place-banner');
+  const placeText = document.getElementById('place-text');
+
+  function refreshBuildList() {
+    buildList.textContent = '';
+    for (const b of BUILDABLE) {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'build-opt';
+      el.disabled = !canAfford(b.cost);
+      const ic = document.createElement('span'); ic.className = 'bo-icon'; ic.textContent = b.icon;
+      const nm = document.createElement('span'); nm.className = 'bo-name'; nm.textContent = b.name;
+      const co = document.createElement('span'); co.className = 'bo-cost'; co.textContent = costText(b.cost);
+      el.append(ic, nm, co);
+      el.addEventListener('click', () => startPlacing(b));
+      buildList.appendChild(el);
+    }
+  }
+  function openBuild() { refreshBuildList(); buildSheet.dataset.open = 'true'; }
+  function closeBuild() { buildSheet.dataset.open = 'false'; }
+  function startPlacing(b) {
+    placing = b;
+    closeBuild();
+    placeText.textContent = 'Tap a tile to build ' + b.name + ' · ' + costText(b.cost);
+    placeBanner.classList.add('show');
+  }
+  function stopPlacing() { placing = null; placeBanner.classList.remove('show'); }
+
+  document.getElementById('build-btn').addEventListener('click', () => {
+    if (placing) { stopPlacing(); return; }
+    if (buildSheet.dataset.open === 'true') closeBuild();
+    else openBuild();
+  });
+  document.getElementById('build-close').addEventListener('click', closeBuild);
+  document.getElementById('place-cancel').addEventListener('click', stopPlacing);
+
+  // ---- On-screen joystick ----------------------------------------------------
+  const joyEl = document.getElementById('joystick');
+  const joyKnob = document.getElementById('joystick-knob');
+  const joyToggle = document.getElementById('joy-toggle');
+  const JOY_RADIUS = 44, PAN_SPEED = 540;   // knob travel (px) / pan rate (px/s)
+  const joyVec = { x: 0, y: 0 };            // normalised deflection, -1..1
+  let joyId = null;
+
+  function joyMove(e) {
+    const rect = joyEl.getBoundingClientRect();
+    const dx = e.clientX - (rect.left + rect.width / 2);
+    const dy = e.clientY - (rect.top + rect.height / 2);
+    const mag = Math.hypot(dx, dy) || 1;
+    const reach = Math.min(mag, JOY_RADIUS), nx = dx / mag, ny = dy / mag;
+    joyKnob.style.transform = 'translate(' + (nx * reach) + 'px,' + (ny * reach) + 'px)';
+    joyVec.x = nx * (reach / JOY_RADIUS);
+    joyVec.y = ny * (reach / JOY_RADIUS);
+  }
+  function joyReset() { joyVec.x = 0; joyVec.y = 0; joyKnob.style.transform = 'translate(0,0)'; }
+  joyEl.addEventListener('pointerdown', (e) => {
+    joyEl.setPointerCapture(e.pointerId); joyId = e.pointerId; joyMove(e); e.preventDefault();
+  });
+  joyEl.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) joyMove(e); });
+  function joyEnd(e) { if (e.pointerId === joyId) { joyId = null; joyReset(); } }
+  joyEl.addEventListener('pointerup', joyEnd);
+  joyEl.addEventListener('pointercancel', joyEnd);
+
+  function setJoystick(on) {
+    joyEl.classList.toggle('on', on);
+    if (!on) joyReset();
+    try { localStorage.setItem('crusaders-joystick', on ? '1' : '0'); } catch (_) {}
+  }
+  let joyOn = false;
+  try { joyOn = localStorage.getItem('crusaders-joystick') === '1'; } catch (_) {}
+  joyToggle.checked = joyOn;
+  setJoystick(joyOn);
+  joyToggle.addEventListener('change', () => setJoystick(joyToggle.checked));
+
   // ---- Main loop -------------------------------------------------------------
   let now = 0, last = 0;
   function frame(ts) {
@@ -592,7 +713,11 @@
       u.t += u.spd * dt;
       while (u.t >= 1) { u.t -= 1; u.i = (u.i + 1) % u.path.length; }
     }
+    if (joyVec.x || joyVec.y) { cam.x -= joyVec.x * PAN_SPEED * dt; cam.y -= joyVec.y * PAN_SPEED * dt; }
+    const goldWas = res.gold, woodWas = res.wood;
     tickEconomy(dt);
+    // Keep the build sheet's affordability greying in sync when it's open.
+    if (buildSheet.dataset.open === 'true' && (res.gold !== goldWas || res.wood !== woodWas)) refreshBuildList();
     for (let i = floats.length - 1; i >= 0; i--) {
       floats[i].t += dt;
       if (floats[i].t > 1.6) floats.splice(i, 1);
