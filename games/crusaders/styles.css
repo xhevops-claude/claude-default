@@ -1,0 +1,136 @@
+:root {
+  --sand: #e7b85b;
+  --ink: #2b1d12;
+  --parch: #f3e3c3;
+  --stone: #cdbfa3;
+  --shadow: rgba(20, 12, 4, 0.55);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: #2b1d12; color: var(--parch);
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+  user-select: none; -webkit-user-select: none;
+  touch-action: none;            /* we own the gestures */
+  overscroll-behavior: none;
+}
+
+.stage { position: fixed; inset: 0; }
+
+#map {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  cursor: grab;
+}
+#map:active { cursor: grabbing; }
+
+/* ---- Top HUD: resource bar ---- */
+.hud {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; gap: 6px; justify-content: center;
+  padding: max(10px, env(safe-area-inset-top)) 10px 10px;
+  pointer-events: none;
+  z-index: 5;
+}
+.res {
+  display: flex; align-items: center; gap: 6px;
+  background: linear-gradient(180deg, rgba(43,29,18,0.92), rgba(43,29,18,0.78));
+  border: 1px solid rgba(231,184,91,0.45);
+  border-radius: 999px;
+  padding: 6px 12px 6px 8px;
+  font-weight: 700; font-size: 14px;
+  color: var(--parch);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  min-width: 58px; justify-content: center;
+}
+.res-i { font-size: 15px; }
+
+/* ---- Selection tip ---- */
+.tip {
+  position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%);
+  background: rgba(43,29,18,0.94);
+  border: 1px solid rgba(231,184,91,0.5);
+  border-radius: 12px;
+  padding: 9px 16px;
+  font-size: 14px; font-weight: 600;
+  color: var(--parch);
+  opacity: 0; transition: opacity 0.25s ease;
+  pointer-events: none; z-index: 5;
+  max-width: 78vw; text-align: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+}
+.tip.show { opacity: 1; }
+
+/* ---- Bottom controls ---- */
+.controls {
+  position: absolute; left: 0; right: 0;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 12px;
+  justify-content: center;
+  padding: 0 14px;
+  z-index: 6;
+}
+.zoomers { display: flex; gap: 8px; margin-left: auto; }
+.ctl {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  border: 1px solid rgba(231,184,91,0.5);
+  background: linear-gradient(180deg, #3a2817, #2b1d12);
+  color: var(--sand);
+  font-size: 22px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.12s ease;
+}
+.ctl:active { transform: translateY(1px) scale(0.96); filter: brightness(1.15); }
+#menu-btn { margin-right: auto; }
+
+/* ---- Overlay / menu ---- */
+.overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background: radial-gradient(circle at 50% 35%, rgba(90,67,38,0.55), rgba(20,12,4,0.88));
+  backdrop-filter: blur(2px);
+  z-index: 20;
+  transition: opacity 0.35s ease;
+}
+.overlay[data-state="hidden"] { opacity: 0; pointer-events: none; }
+
+.panel {
+  width: min(360px, 92vw);
+  text-align: center;
+  background: linear-gradient(180deg, #3a2817, #2b1d12);
+  border: 1px solid rgba(231,184,91,0.5);
+  border-radius: 20px;
+  padding: 26px 24px 20px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.crest { font-size: 56px; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.45)); }
+.title {
+  margin: 8px 0 4px; font-size: 26px; line-height: 1.05;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--parch);
+}
+.title span { color: var(--sand); }
+.blurb { font-size: 14px; line-height: 1.5; color: #d8c8a6; margin: 10px 4px 20px; }
+.menu-actions { display: flex; flex-direction: column; gap: 10px; }
+.menu-actions button {
+  width: 100%; padding: 13px; border-radius: 12px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  border: 1px solid rgba(231,184,91,0.5);
+  transition: transform 0.08s ease, filter 0.12s ease;
+}
+.menu-actions button:active { transform: translateY(1px) scale(0.99); filter: brightness(1.1); }
+.primary { background: linear-gradient(180deg, #e7b85b, #c8902f); color: #2b1d12; }
+.ghost { background: transparent; color: var(--sand); }
+.proto-note { margin: 16px 0 2px; font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; color: #8a7654; }
+
+/* Hide the parent-only quit affordance is not needed; quit button works
+   both embedded (postMessage) and standalone. Keep menu reachable. */
+.embedded .proto-note::after { content: ""; }

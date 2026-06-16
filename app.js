@@ -24,6 +24,14 @@
       icon: '🐾',
       url: 'games/memory/',
     },
+    {
+      slug: 'crusaders',
+      name: 'Crusaders',
+      meta: 'Strategy',
+      tagline: 'Roam an isometric desert holding.',
+      icon: '🏰',
+      url: 'games/crusaders/',
+    },
   ];
 
   const apps = [
