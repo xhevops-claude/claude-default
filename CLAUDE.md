@@ -61,9 +61,11 @@ Every sub-experience's `index.html` ships a `#game-loading` (or `#app-loading`) 
 | Branch | Path |
 |---|---|
 | `main` | `/` |
-| any other | `/preview/<slug>/` where `<slug>` = branch name with `/`, `_`, ` ` → `-` and lowercased |
+| any other | `/preview/<slug>/<short-sha>/` where `<slug>` = branch name with `/`, `_`, ` ` → `-` and lowercased, and `<short-sha>` = the 7-char commit SHA |
 
-So pushing to e.g. `claude/foo-bar` deploys to `https://xhevops-claude.github.io/claude-default/preview/claude-foo-bar/`. Production and previews coexist on `gh-pages` because of `keep_files: true`.
+So pushing commit `abc1234` to e.g. `claude/foo-bar` deploys to `https://xhevops-claude.github.io/claude-default/preview/claude-foo-bar/abc1234/`. Production and previews coexist on `gh-pages` because of `keep_files: true`.
+
+Each push gets its own immutable, SHA-keyed preview URL, so the browser never serves a cached copy of a stale build. A "Prune this branch's previous preview" step deletes the branch's *old* `preview/<slug>/` directory (operating on `gh-pages` via a worktree) before the new SHA dir is published — old preview deleted, new one added. Production (`main` → `/`) and other branches' previews are never touched. Because the preview URL changes every push, you can't bookmark a stable per-branch preview link; grab the latest from the deploy notice / the reply's final line.
 
 The `exclude_assets` list in `pages.yml` controls what gets excluded from the deploy. If you add a new top-level dev-only file/dir (lockfiles, configs, docs), append it there.
 
@@ -75,7 +77,7 @@ Don't add `?v=` query strings manually to source HTML — they'd be redundant wi
 
 ### Always end with a clickable preview link
 
-After pushing changes, the final line of every reply must be a clickable Markdown link to the deployed preview, in the form `[Preview](https://xhevops-claude.github.io/claude-default/preview/<slug>/...)`. No bold, no surrounding `**`, no extra prose on that line — just the link. If the change targets a specific sub-experience, deep-link directly into it (e.g. `.../preview/<slug>/apps/locator/`). If pushed to `main`, link to the corresponding production path under `https://xhevops-claude.github.io/claude-default/`.
+After pushing changes, the final line of every reply must be a clickable Markdown link to the deployed preview, in the form `[Preview](https://xhevops-claude.github.io/claude-default/preview/<slug>/<short-sha>/...)`, where `<short-sha>` is the 7-char SHA of the commit you just pushed (`git rev-parse --short=7 HEAD`). No bold, no surrounding `**`, no extra prose on that line — just the link. If the change targets a specific sub-experience, deep-link directly into it (e.g. `.../preview/<slug>/<short-sha>/apps/locator/`). If pushed to `main`, link to the corresponding production path under `https://xhevops-claude.github.io/claude-default/`.
 
 ### Branch names — match the work
 
