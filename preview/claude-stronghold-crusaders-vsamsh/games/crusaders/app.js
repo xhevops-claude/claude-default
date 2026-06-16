@@ -145,7 +145,7 @@
 
   // ---- Camera ---------------------------------------------------------------
   const cam = { x: 0, y: 0, zoom: 1 };
-  const ZOOM_MIN = 0.5, ZOOM_MAX = 2.2;
+  const ZOOM_MIN = 0.22, ZOOM_MAX = 2.2;
 
   function tileTopScreen(c, r) {
     return { x: (c - r) * (TILE_W / 2), y: (c + r) * (TILE_H / 2) };
@@ -206,7 +206,9 @@
     if (t === 'w' || t === 'dw') sy += Math.sin(now / 600 + (c + r)) * 1.2;
     diamond(sx, sy, w, h);
     ctx.fillStyle = COLORS[t].top; ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.10)'; ctx.lineWidth = 1; ctx.stroke();
+    // The hairline grid reads as noise once tiles get tiny — drop it when
+    // zoomed far out (also saves a stroke per tile across thousands of them).
+    if (cam.zoom > 0.45) { ctx.strokeStyle = 'rgba(0,0,0,0.10)'; ctx.lineWidth = 1; ctx.stroke(); }
   }
 
   function drawBox(c, r, hUnits, faces, footScale) {
