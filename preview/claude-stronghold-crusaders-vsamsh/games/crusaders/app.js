@@ -143,6 +143,63 @@
     { color: '#caa23a', flag: '#2b1d12', path: [[5,2],[7,4],[6,6],[4,4]], i: 0, t: 0.6, spd: 0.36, label: 'Mercenary' },
   ];
 
+  // ---- Economy ---------------------------------------------------------------
+  // The holding is alive: producers pay out on a fixed cycle, the population
+  // eats, and peasants arrive while there's a food surplus. Each payout floats
+  // a "+N" above the building that earned it.
+  const hudEl = {
+    gold: document.getElementById('r-gold'),
+    food: document.getElementById('r-food'),
+    wood: document.getElementById('r-wood'),
+    pop:  document.getElementById('r-pop'),
+  };
+  const res = { gold: 200, food: 85, wood: 40, pop: 24 };
+  function setRes(k, v) {
+    res[k] = Math.max(0, Math.round(v));
+    if (hudEl[k]) hudEl[k].textContent = res[k];
+  }
+  const PRODUCERS = {
+    farm:   { res: 'food', amt: 3, color: '#e9d27a' },
+    market: { res: 'gold', amt: 6, color: '#f2d35a' },
+  };
+  const floats = [];   // { c, r, text, color, t }
+  function spawnFloat(c, r, text, color) { floats.push({ c, r, text, color, t: 0 }); }
+
+  const PROD_EVERY = 3;   // seconds per production cycle
+  let prodAcc = 0;
+  function tickEconomy(dt) {
+    prodAcc += dt;
+    if (prodAcc < PROD_EVERY) return;
+    prodAcc -= PROD_EVERY;
+    for (const b of buildings) {
+      const p = PRODUCERS[b.type];
+      if (!p) continue;
+      setRes(p.res, res[p.res] + p.amt);
+      spawnFloat(b.c, b.r, '+' + p.amt, p.color);
+    }
+    // Population eats; spare food draws new peasants to the hovels.
+    setRes('food', res.food - Math.ceil(res.pop * 0.1));
+    const hovels = buildings.filter((b) => b.type === 'house').length;
+    if (res.food > 30 && res.pop < 60) {
+      setRes('pop', res.pop + Math.max(1, Math.floor(hovels / 2)));
+      spawnFloat(0, 0, '+peasant', '#cfe6a0');
+    }
+  }
+
+  function drawFloats() {
+    ctx.textAlign = 'center';
+    for (const f of floats) {
+      const { sx, sy } = screenOf(f.c, f.r);
+      const y = sy - 26 * cam.zoom - f.t * 30;
+      ctx.globalAlpha = Math.max(0, 1 - f.t / 1.6);
+      ctx.fillStyle = f.color;
+      ctx.font = 'bold ' + Math.max(11, 13 * cam.zoom).toFixed(0) + 'px "Trebuchet MS", sans-serif';
+      ctx.fillText(f.text, sx, y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+  }
+
   // ---- Camera ---------------------------------------------------------------
   const cam = { x: 0, y: 0, zoom: 1 };
   const ZOOM_MIN = 0.08, ZOOM_MAX = 2.2;
@@ -402,6 +459,8 @@
       else if (o.kind === 'bld') drawBuilding(o.ref);
       else drawUnit(o.ref);
     }
+
+    drawFloats();
   }
 
   // ---- Picking ---------------------------------------------------------------
@@ -532,6 +591,11 @@
     for (const u of units) {
       u.t += u.spd * dt;
       while (u.t >= 1) { u.t -= 1; u.i = (u.i + 1) % u.path.length; }
+    }
+    tickEconomy(dt);
+    for (let i = floats.length - 1; i >= 0; i--) {
+      floats[i].t += dt;
+      if (floats[i].t > 1.6) floats.splice(i, 1);
     }
     render();
     requestAnimationFrame(frame);
