@@ -145,7 +145,17 @@
 
   // ---- Camera ---------------------------------------------------------------
   const cam = { x: 0, y: 0, zoom: 1 };
-  const ZOOM_MIN = 0.22, ZOOM_MAX = 2.2;
+  const ZOOM_MIN = 0.08, ZOOM_MAX = 2.2;
+
+  // Level of detail: when tiles get tiny, render them as larger merged blocks
+  // so the on-screen tile count stays bounded no matter how far we zoom out.
+  // (A step x step square of grid tiles maps to one larger iso diamond because
+  // the projection is affine.)
+  function lodStep() {
+    let step = 1;
+    while (TILE_W * cam.zoom * step < 14) step *= 2;
+    return step;
+  }
 
   function tileTopScreen(c, r) {
     return { x: (c - r) * (TILE_W / 2), y: (c + r) * (TILE_H / 2) };
@@ -197,18 +207,20 @@
     ctx.closePath();
   }
 
-  function drawTile(c, r) {
-    const t = biomeAt(c, r);
-    const { sx } = screenOf(c, r);
-    let { sy } = screenOf(c, r);
-    const w = TILE_W * cam.zoom, h = TILE_H * cam.zoom;
+  function drawTile(c, r, step) {
+    step = step || 1;
+    const cx = c + (step - 1) / 2, cy = r + (step - 1) / 2;  // block centroid
+    const t = biomeAt(Math.round(cx), Math.round(cy));
+    const p = screenOf(cx, cy);
+    const sx = p.sx; let sy = p.sy;
+    const w = TILE_W * cam.zoom * step, h = TILE_H * cam.zoom * step;
     if (sx < -w || sx > canvas.clientWidth + w || sy < -h || sy > canvas.clientHeight + h) return;
-    if (t === 'w' || t === 'dw') sy += Math.sin(now / 600 + (c + r)) * 1.2;
+    if ((t === 'w' || t === 'dw') && step === 1) sy += Math.sin(now / 600 + (c + r)) * 1.2;
     diamond(sx, sy, w, h);
     ctx.fillStyle = COLORS[t].top; ctx.fill();
-    // The hairline grid reads as noise once tiles get tiny — drop it when
-    // zoomed far out (also saves a stroke per tile across thousands of them).
-    if (cam.zoom > 0.45) { ctx.strokeStyle = 'rgba(0,0,0,0.10)'; ctx.lineWidth = 1; ctx.stroke(); }
+    // The hairline grid reads as noise once tiles get tiny — only stroke at
+    // full detail and a reasonable zoom (also saves a stroke per tile).
+    if (cam.zoom > 0.45 && step === 1) { ctx.strokeStyle = 'rgba(0,0,0,0.10)'; ctx.lineWidth = 1; ctx.stroke(); }
   }
 
   function drawBox(c, r, hUnits, faces, footScale) {
@@ -356,24 +368,27 @@
 
     const b = visibleBounds();
     const inView = (c, r) => c >= b.cMin && c <= b.cMax && r >= b.rMin && r <= b.rMax;
+    const step = lodStep();
 
-    // 1) ground tiles, back-to-front by (c + r)
-    for (let s = b.cMin + b.rMin; s <= b.cMax + b.rMax; s++) {
-      for (let c = b.cMin; c <= b.cMax; c++) {
-        const r = s - c;
-        if (r < b.rMin || r > b.rMax) continue;
-        drawTile(c, r);
-      }
-    }
+    // 1) ground. Flat diamonds don't overlap, so order doesn't matter; iterate
+    //    in LOD-sized blocks aligned to `step`.
+    const c0 = Math.floor(b.cMin / step) * step, r0 = Math.floor(b.rMin / step) * step;
+    for (let c = c0; c <= b.cMax; c += step)
+      for (let r = r0; r <= b.rMax; r += step)
+        drawTile(c, r, step);
 
     // 2) everything that stands up, depth-sorted
     const objs = [];
     for (const w of walls) if (inView(w.c, w.r)) objs.push({ d: w.c + w.r, kind: 'wall', ref: w });
     for (const bd of buildings) if (inView(bd.c, bd.r)) objs.push({ d: bd.c + bd.r, kind: 'bld', ref: bd });
-    for (let c = b.cMin; c <= b.cMax; c++) {
-      for (let r = b.rMin; r <= b.rMax; r++) {
-        const p = propAt(c, r);
-        if (p) objs.push({ d: c + r + 0.02, kind: 'bld', ref: { c, r, type: p.type, h: p.h } });
+    // Procedural props are sub-pixel specks when zoomed far out — only place
+    // them at full detail.
+    if (step === 1) {
+      for (let c = b.cMin; c <= b.cMax; c++) {
+        for (let r = b.rMin; r <= b.rMax; r++) {
+          const p = propAt(c, r);
+          if (p) objs.push({ d: c + r + 0.02, kind: 'bld', ref: { c, r, type: p.type, h: p.h } });
+        }
       }
     }
     for (const u of units) {
