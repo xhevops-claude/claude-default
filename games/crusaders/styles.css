@@ -37,17 +37,17 @@ html, body {
   z-index: 5;
 }
 .res {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 4px;
   background: linear-gradient(180deg, rgba(43,29,18,0.92), rgba(43,29,18,0.78));
   border: 1px solid rgba(231,184,91,0.45);
   border-radius: 999px;
-  padding: 6px 12px 6px 8px;
-  font-weight: 700; font-size: 14px;
+  padding: 5px 9px 5px 7px;
+  font-weight: 700; font-size: 13px;
   color: var(--parch);
   box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-  min-width: 58px; justify-content: center;
+  min-width: 42px; justify-content: center;
 }
-.res-i { font-size: 15px; }
+.res-i { font-size: 14px; }
 /* A resource sitting at its storage cap — flag it so the player knows to
    build more storage. */
 .res.full {
