@@ -31,7 +31,7 @@
       animation: gl-bar 1.2s cubic-bezier(0.45,0,0.55,1) infinite; }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=acfbde9" />
+  <link rel="stylesheet" href="styles.css?v=c7bce73" />
 </head>
 <body>
   <div id="game-loading">
@@ -58,8 +58,15 @@
   </header>
 
   <button id="quit-btn" type="button">Quit</button>
-  <div class="sel" id="sel" aria-live="polite"></div>
   <p class="hint" id="hint">Left-click select · left-drag move · right-drag rotate · wheel zoom</p>
+
+  <div class="obj-tools" id="obj-tools">
+    <span class="tool-name" id="tool-name">Structure</span>
+    <button id="tool-move" type="button">↔ Move</button>
+    <button id="tool-rotate" type="button">⟳ Rotate</button>
+    <button id="tool-dupe" type="button">⧉ Copy</button>
+    <button id="tool-delete" type="button" class="danger">🗑 Delete</button>
+  </div>
 
   <nav class="controls" id="controls">
     <button class="ctl" id="build-btn" type="button" aria-label="Build">🔨</button>
@@ -83,6 +90,6 @@
        plain script. CDN-pinned URLs are left untouched by the deploy rewrite. -->
   <script src="https://unpkg.com/three@0.136.0/build/three.min.js"></script>
   <script src="https://unpkg.com/three@0.136.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="app.js?v=acfbde9"></script>
+  <script src="app.js?v=c7bce73"></script>
 </body>
 </html>
