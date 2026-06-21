@@ -148,25 +148,37 @@
   // eats, and peasants arrive while there's a food surplus. Each payout floats
   // a "+N" above the building that earned it.
   const hudEl = {
-    gold: document.getElementById('r-gold'),
-    food: document.getElementById('r-food'),
-    wood: document.getElementById('r-wood'),
-    pop:  document.getElementById('r-pop'),
+    gold:  document.getElementById('r-gold'),
+    food:  document.getElementById('r-food'),
+    wood:  document.getElementById('r-wood'),
+    stone: document.getElementById('r-stone'),
+    iron:  document.getElementById('r-iron'),
+    pop:   document.getElementById('r-pop'),
   };
-  const res = { gold: 200, food: 85, wood: 40, pop: 24 };
+  const res = { gold: 200, food: 85, wood: 40, stone: 0, iron: 0, pop: 24 };
   function setRes(k, v) {
     res[k] = Math.max(0, Math.round(v));
     if (hudEl[k]) hudEl[k].textContent = res[k];
   }
+  // Gatherers: each adds `amt` of one resource per cycle. Some get a bonus for
+  // bordering the right terrain (woodcutter→woodland, quarry/mine→rock).
   const PRODUCERS = {
-    farm:       { res: 'food', amt: 3, color: '#e9d27a' },
-    market:     { res: 'gold', amt: 6, color: '#f2d35a' },
-    woodcutter: { res: 'wood', amt: 4, color: '#caa46a' },
+    farm:       { res: 'food',  amt: 3, color: '#e9d27a' },
+    market:     { res: 'gold',  amt: 6, color: '#f2d35a' },
+    woodcutter: { res: 'wood',  amt: 4, color: '#caa46a', bonus: 'fo' },
+    quarry:     { res: 'stone', amt: 3, color: '#cfc6b6', bonus: 'ro' },
+    ironmine:   { res: 'iron',  amt: 2, color: '#9fb0c2', bonus: 'ro' },
   };
-  // A woodcutter pulls more from tiles bordering woodland (up to +4).
-  function forestBonus(c, r) {
+  // Workshops: consume inputs to make outputs (only when the inputs are on
+  // hand), forming a simple production chain on top of the raw gatherers.
+  const CONVERTERS = {
+    blacksmith: { in: { iron: 2 }, out: { gold: 12 }, color: '#f2d35a' },
+  };
+  // +1 per neighbouring tile of the producer's bonus biome (up to +4).
+  function terrainBonus(biome, c, r) {
+    if (!biome) return 0;
     let n = 0;
-    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (biomeAt(c + dc, r + dr) === 'fo') n++;
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (biomeAt(c + dc, r + dr) === biome) n++;
     return n;
   }
   const floats = [];   // { c, r, text, color, t }
@@ -178,9 +190,12 @@
     { type: 'house',  icon: '🏠', name: 'Hovel',  cost: { wood: 10, gold: 5 },  h: 1.0,  label: "Peasant's Hovel" },
     { type: 'farm',   icon: '🌾', name: 'Farm',   cost: { wood: 8 },            h: 0.35, label: 'Wheat Farm' },
     { type: 'market', icon: '🪙', name: 'Market', cost: { wood: 15, gold: 25 }, h: 1.3,  label: 'Market' },
-    { type: 'woodcutter', icon: '🪓', name: 'Woodcutter', cost: { gold: 20 }, h: 1.2, label: "Woodcutter's Hut" },
-    { type: 'tent',   icon: '⛺', name: 'Tent',   cost: { gold: 15 },           h: 1.1,  label: 'Mercenary Tent' },
-    { type: 'tower',  icon: '🗼', name: 'Tower',  cost: { wood: 20, gold: 10 }, h: 2.4,  label: 'Square Tower' },
+    { type: 'woodcutter', icon: '🪓', name: 'Woodcutter', cost: { gold: 20 },            h: 1.2,  label: "Woodcutter's Hut" },
+    { type: 'quarry',     icon: '⛏️', name: 'Quarry',     cost: { gold: 25 },            h: 0.8,  label: 'Stone Quarry' },
+    { type: 'ironmine',   icon: '⚒️', name: 'Iron Mine',  cost: { gold: 30, wood: 10 },  h: 1.1,  label: 'Iron Mine' },
+    { type: 'blacksmith', icon: '🛠️', name: 'Blacksmith', cost: { wood: 15, stone: 10 }, h: 1.3,  label: 'Blacksmith' },
+    { type: 'tent',   icon: '⛺', name: 'Tent',   cost: { gold: 15 },            h: 1.1,  label: 'Mercenary Tent' },
+    { type: 'tower',  icon: '🗼', name: 'Tower',  cost: { stone: 15, wood: 5 },  h: 2.4,  label: 'Square Tower' },
   ];
   let placing = null;   // the BUILDABLE entry currently being placed, or null
 
@@ -222,9 +237,18 @@
     for (const b of buildings) {
       const p = PRODUCERS[b.type];
       if (!p) continue;
-      const amt = p.amt + (b.type === 'woodcutter' ? forestBonus(b.c, b.r) : 0);
+      const amt = p.amt + terrainBonus(p.bonus, b.c, b.r);
       setRes(p.res, res[p.res] + amt);
       spawnFloat(b.c, b.r, '+' + amt, p.color);
+    }
+    // Workshops convert raw resources into finished goods when stocked.
+    for (const b of buildings) {
+      const cv = CONVERTERS[b.type];
+      if (!cv || !canAfford(cv.in)) continue;
+      payFor(cv.in);
+      let out = '';
+      for (const k in cv.out) { setRes(k, res[k] + cv.out[k]); out += '+' + cv.out[k]; }
+      spawnFloat(b.c, b.r, out, cv.color);
     }
     // Safety net: the keep is permanent, so its gatherers always bring in a
     // small trickle of every resource. This makes a true dead-end impossible —
@@ -491,6 +515,40 @@
           const s = cam.zoom;   // stacked log pile to the side
           ctx.fillStyle = '#8a5a32'; ctx.fillRect(o.sx - o.w * 0.55, o.sy + 1 * s, 7 * s, 3.5 * s);
           ctx.fillStyle = '#a87248'; ctx.fillRect(o.sx - o.w * 0.55, o.sy - 2.5 * s, 7 * s, 3.5 * s);
+        }
+        break;
+      }
+      case 'quarry': {
+        groundShadow(b.c, b.r, 0.8);
+        const o = drawBox(b.c, b.r, b.h, STONE, 0.78);
+        if (detail) {
+          // pile of cut stone blocks on top
+          isoBox(o.sx - o.w * 0.12, o.sy - o.rise + o.h * 0.1, o.w * 0.3, o.h * 0.3, 6 * cam.zoom, ROCK);
+          isoBox(o.sx + o.w * 0.16, o.sy - o.rise, o.w * 0.26, o.h * 0.26, 9 * cam.zoom, ROCK);
+        }
+        break;
+      }
+      case 'ironmine': {
+        groundShadow(b.c, b.r, 0.8);
+        const o = drawBox(b.c, b.r, b.h, { top: '#7d7a72', l: '#5f5c55', r: '#4b4843' }, 0.8);
+        if (detail) {
+          pyramidRoof(o.sx, o.sy - o.rise, o.w * 0.84, o.h * 0.84, 11 * cam.zoom, '#3c3a36');
+          doorOn(o.sx, o.sy, o.w, o.h, o.rise);   // dark mine adit
+        }
+        break;
+      }
+      case 'blacksmith': {
+        groundShadow(b.c, b.r, 0.85);
+        const o = drawBox(b.c, b.r, b.h, { top: '#9a9088', l: '#787068', r: '#5f584f' }, 0.82);
+        const topY = o.sy - o.rise;
+        if (detail) {
+          pyramidRoof(o.sx, topY, o.w * 0.84, o.h * 0.84, 12 * cam.zoom, '#41423f');
+          const s = cam.zoom;
+          // chimney + forge glow
+          isoBox(o.sx + o.w * 0.18, topY - o.h * 0.18, o.w * 0.18, o.h * 0.18, 14 * s, { top: '#5f584f', l: '#4b463f', r: '#3a352f' });
+          const glow = 0.6 + 0.4 * Math.abs(Math.sin(now / 300));
+          ctx.fillStyle = 'rgba(255,140,40,' + glow.toFixed(2) + ')';
+          ctx.beginPath(); ctx.arc(o.sx - o.w * 0.12, o.sy + o.h * 0.05, 3 * s, 0, Math.PI * 2); ctx.fill();
         }
         break;
       }
