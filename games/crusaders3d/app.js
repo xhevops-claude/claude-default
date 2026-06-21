@@ -38,6 +38,8 @@
   controls.minDistance = 8;
   controls.maxDistance = 72;
   controls.maxPolarAngle = 1.45;   // don't dip under the ground
+  // Orbit on middle-button (scroll-wheel click) drag; left/right drag pans.
+  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN };
 
   // ---- Lighting --------------------------------------------------------------
   scene.add(new THREE.HemisphereLight(0xfff0d0, 0x4a3a28, 0.7));
