@@ -44,28 +44,32 @@ html, body { margin: 0; padding: 0; height: 100%;
 }
 .hint.gone { opacity: 0; }
 
-/* ---- Object tools (shown when a building is selected) ---- */
-.obj-tools {
-  position: absolute; left: 50%; top: max(56px, calc(env(safe-area-inset-top) + 46px));
-  transform: translateX(-50%);
-  display: none; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
-  background: rgba(28,19,11,0.95); border: 1px solid rgba(231,184,91,0.6);
-  border-radius: 14px; padding: 8px 10px; z-index: 7; max-width: 92vw;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+/* ---- Right info panel (shown when a building is selected) ---- */
+.info {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: min(280px, 78vw); z-index: 7;
+  background: linear-gradient(180deg, rgba(43,29,18,0.97), rgba(28,19,11,0.97));
+  border-left: 1px solid rgba(231,184,91,0.5);
+  padding: max(18px, env(safe-area-inset-top)) 18px 18px;
+  box-shadow: -8px 0 24px rgba(0,0,0,0.45);
+  transform: translateX(100%); transition: transform 0.25s ease;
+  display: flex; flex-direction: column; gap: 8px;
 }
-.obj-tools.show { display: flex; }
-.tool-name {
-  font-size: 13px; font-weight: 700; color: #2b1d12;
-  background: linear-gradient(180deg, #e7b85b, #c8902f);
-  padding: 5px 10px; border-radius: 8px; margin-right: 2px;
+.info.show { transform: translateX(0); }
+.info-close {
+  position: absolute; top: 10px; right: 12px;
+  border: none; background: transparent; color: #f3e3c3; font-size: 20px; cursor: pointer;
 }
-.obj-tools button {
-  border: 1px solid rgba(231,184,91,0.45); background: rgba(0,0,0,0.2);
-  color: #f3e3c3; font-weight: 700; font-size: 13px;
-  padding: 6px 10px; border-radius: 8px; cursor: pointer;
+.info-name { margin: 6px 0 0; font-size: 20px; color: #e7b85b; }
+.info-meta { margin: 0 0 8px; font-size: 13px; color: #d8c8a6; }
+.info-actions { display: flex; flex-direction: column; gap: 8px; }
+.info-actions button {
+  border: 1px solid rgba(231,184,91,0.45); background: rgba(0,0,0,0.22);
+  color: #f3e3c3; font-weight: 700; font-size: 14px;
+  padding: 10px; border-radius: 10px; cursor: pointer; text-align: left;
 }
-.obj-tools button:active { filter: brightness(1.2); }
-.obj-tools button.danger { color: #f3b0a0; border-color: rgba(217,106,74,0.6); }
+.info-actions button:active { filter: brightness(1.2); }
+.info-actions button.danger { color: #f3b0a0; border-color: rgba(217,106,74,0.6); }
 
 /* ---- Build controls + sheet (ported from the 2D game) ---- */
 .controls {
