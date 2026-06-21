@@ -186,37 +186,58 @@
 
   // ---- Building / placement --------------------------------------------------
   const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍞' };
+  // Categories mirror Stronghold's build tabs.
+  const CATEGORIES = [
+    { id: 'castle',    name: 'Castle',    icon: '🏰' },
+    { id: 'industry',  name: 'Industry',  icon: '⛏️' },
+    { id: 'farm',      name: 'Farm',      icon: '🌾' },
+    { id: 'housing',   name: 'Housing',   icon: '🏠' },
+    { id: 'community', name: 'Community', icon: '🏛️' },
+    { id: 'storage',   name: 'Storage',   icon: '📦' },
+    { id: 'weapons',   name: 'Weapons',   icon: '⚔️' },
+  ];
+  let activeCat = 'castle';
+
   const BUILDABLE = [
-    { type: 'house',  icon: '🏠', name: 'Hovel',  cost: { wood: 10, gold: 5 },  h: 1.0,  label: "Peasant's Hovel" },
-    { type: 'farm',   icon: '🌾', name: 'Farm',   cost: { wood: 8 },            h: 0.35, label: 'Wheat Farm' },
-    { type: 'market', icon: '🪙', name: 'Market', cost: { wood: 15, gold: 25 }, h: 1.3,  label: 'Market' },
-    { type: 'woodcutter', icon: '🪓', name: 'Woodcutter', cost: { gold: 20 },            h: 1.2,  label: "Woodcutter's Hut" },
-    { type: 'quarry',     icon: '⛏️', name: 'Quarry',     cost: { gold: 25 },            h: 0.8,  label: 'Stone Quarry' },
-    { type: 'ironmine',   icon: '⚒️', name: 'Iron Mine',  cost: { gold: 30, wood: 10 },  h: 1.1,  label: 'Iron Mine' },
-    { type: 'blacksmith', icon: '🛠️', name: 'Blacksmith', cost: { wood: 15, stone: 10 }, h: 1.3,  label: 'Blacksmith' },
-    { type: 'tent',   icon: '⛺', name: 'Tent',   cost: { gold: 15 },            h: 1.1,  label: 'Mercenary Tent' },
-    { type: 'tower',  icon: '🗼', name: 'Tower',  cost: { stone: 15, wood: 5 },  h: 2.4,  label: 'Square Tower' },
-    // --- Roadmap: shown now, buildable later (comingSoon) ---
-    { type: 'wall',         icon: '🧱', name: 'Wall',         comingSoon: true },
-    { type: 'gatehouse',    icon: '🚪', name: 'Gatehouse',    comingSoon: true },
-    { type: 'moat',         icon: '🌊', name: 'Moat',         comingSoon: true },
-    { type: 'granary',      icon: '🏬', name: 'Granary',      comingSoon: true },
-    { type: 'well',         icon: '💧', name: 'Well',         comingSoon: true },
-    { type: 'chapel',       icon: '⛪', name: 'Chapel',       comingSoon: true },
-    { type: 'orchard',      icon: '🍎', name: 'Apple Orchard', comingSoon: true },
-    { type: 'dairy',        icon: '🐄', name: 'Dairy Farm',   comingSoon: true },
-    { type: 'hunter',       icon: '🦌', name: "Hunter's Hut", comingSoon: true },
-    { type: 'mill',         icon: '🌀', name: 'Mill',         comingSoon: true },
-    { type: 'bakery',       icon: '🥖', name: 'Bakery',       comingSoon: true },
-    { type: 'brewery',      icon: '🍺', name: 'Brewery',      comingSoon: true },
-    { type: 'inn',          icon: '🍻', name: 'Inn',          comingSoon: true },
-    { type: 'pitchrig',     icon: '🛢️', name: 'Pitch Rig',    comingSoon: true },
-    { type: 'fletcher',     icon: '🏹', name: 'Fletcher',     comingSoon: true },
-    { type: 'poleturner',   icon: '🔱', name: 'Poleturner',   comingSoon: true },
-    { type: 'armourer',     icon: '🛡️', name: 'Armourer',     comingSoon: true },
-    { type: 'barracks',     icon: '⚔️', name: 'Barracks',     comingSoon: true },
-    { type: 'stables',      icon: '🐎', name: 'Stables',      comingSoon: true },
-    { type: 'mercpost',     icon: '🗡️', name: 'Mercenary Post', comingSoon: true },
+    { type: 'tower',  cat: 'castle',   icon: '🗼', name: 'Tower',  cost: { stone: 15, wood: 5 },  h: 2.4,  label: 'Square Tower' },
+    { type: 'wall',         cat: 'castle', icon: '🧱', name: 'Wall',         comingSoon: true },
+    { type: 'gatehouse',    cat: 'castle', icon: '🚪', name: 'Gatehouse',    comingSoon: true },
+    { type: 'moat',         cat: 'castle', icon: '🌊', name: 'Moat',         comingSoon: true },
+
+    { type: 'woodcutter', cat: 'industry', icon: '🪓', name: 'Woodcutter', cost: { gold: 20 },           h: 1.2,  label: "Woodcutter's Hut" },
+    { type: 'quarry',     cat: 'industry', icon: '⛏️', name: 'Quarry',     cost: { gold: 25 },           h: 0.8,  label: 'Stone Quarry' },
+    { type: 'ironmine',   cat: 'industry', icon: '⚒️', name: 'Iron Mine',  cost: { gold: 30, wood: 10 }, h: 1.1,  label: 'Iron Mine' },
+    { type: 'pitchrig',   cat: 'industry', icon: '🛢️', name: 'Pitch Rig',  comingSoon: true },
+
+    { type: 'farm',   cat: 'farm', icon: '🌾', name: 'Farm',   cost: { wood: 8 },            h: 0.35, label: 'Wheat Farm' },
+    { type: 'orchard', cat: 'farm', icon: '🍎', name: 'Apple Orchard', comingSoon: true },
+    { type: 'dairy',   cat: 'farm', icon: '🐄', name: 'Dairy Farm',    comingSoon: true },
+    { type: 'hunter',  cat: 'farm', icon: '🦌', name: "Hunter's Hut",  comingSoon: true },
+
+    { type: 'house',  cat: 'housing', icon: '🏠', name: 'Hovel',  cost: { wood: 10, gold: 5 }, h: 1.0, label: "Peasant's Hovel" },
+    { type: 'well',    cat: 'housing', icon: '💧', name: 'Well',    comingSoon: true },
+
+    { type: 'market', cat: 'community', icon: '🪙', name: 'Market', cost: { wood: 15, gold: 25 }, h: 1.3, label: 'Market' },
+    { type: 'chapel',  cat: 'community', icon: '⛪', name: 'Chapel',  comingSoon: true },
+    { type: 'inn',     cat: 'community', icon: '🍻', name: 'Inn',     comingSoon: true },
+    { type: 'mill',    cat: 'community', icon: '🌀', name: 'Mill',    comingSoon: true },
+    { type: 'bakery',  cat: 'community', icon: '🥖', name: 'Bakery',  comingSoon: true },
+    { type: 'brewery', cat: 'community', icon: '🍺', name: 'Brewery', comingSoon: true },
+
+    { type: 'granary',   cat: 'storage', icon: '🏬', name: 'Granary',   comingSoon: true },
+    { type: 'stockpile', cat: 'storage', icon: '📦', name: 'Stockpile', comingSoon: true },
+    { type: 'larder',    cat: 'storage', icon: '🧺', name: 'Larder',    comingSoon: true },
+    { type: 'barn',      cat: 'storage', icon: '🛖', name: 'Barn',      comingSoon: true },
+    { type: 'cistern',   cat: 'storage', icon: '🚰', name: 'Cistern',   comingSoon: true },
+
+    { type: 'blacksmith', cat: 'weapons', icon: '🛠️', name: 'Blacksmith', cost: { wood: 15, stone: 10 }, h: 1.3, label: 'Blacksmith' },
+    { type: 'tent',   cat: 'weapons', icon: '⛺', name: 'Tent',   cost: { gold: 15 },           h: 1.1, label: 'Mercenary Tent' },
+    { type: 'fletcher',   cat: 'weapons', icon: '🏹', name: 'Fletcher',   comingSoon: true },
+    { type: 'poleturner', cat: 'weapons', icon: '🔱', name: 'Poleturner', comingSoon: true },
+    { type: 'armourer',   cat: 'weapons', icon: '🛡️', name: 'Armourer',   comingSoon: true },
+    { type: 'barracks',   cat: 'weapons', icon: '⚔️', name: 'Barracks',   comingSoon: true },
+    { type: 'stables',    cat: 'weapons', icon: '🐎', name: 'Stables',    comingSoon: true },
+    { type: 'mercpost',   cat: 'weapons', icon: '🗡️', name: 'Mercenary Post', comingSoon: true },
   ];
   let placing = null;   // the BUILDABLE entry currently being placed, or null
 
@@ -869,12 +890,28 @@
   // ---- Build menu ------------------------------------------------------------
   const buildSheet = document.getElementById('build-sheet');
   const buildList = document.getElementById('build-list');
+  const buildTabs = document.getElementById('build-tabs');
   const placeBanner = document.getElementById('place-banner');
   const placeText = document.getElementById('place-text');
+
+  function renderTabs() {
+    buildTabs.textContent = '';
+    for (const c of CATEGORIES) {
+      const t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'build-tab' + (c.id === activeCat ? ' active' : '');
+      const ic = document.createElement('span'); ic.className = 'bt-icon'; ic.textContent = c.icon;
+      const nm = document.createElement('span'); nm.textContent = c.name;
+      t.append(ic, nm);
+      t.addEventListener('click', () => { activeCat = c.id; renderTabs(); refreshBuildList(); });
+      buildTabs.appendChild(t);
+    }
+  }
 
   function refreshBuildList() {
     buildList.textContent = '';
     for (const b of BUILDABLE) {
+      if (b.cat !== activeCat) continue;
       const el = document.createElement('button');
       el.type = 'button';
       el.className = 'build-opt';
@@ -896,7 +933,7 @@
       buildList.appendChild(el);
     }
   }
-  function openBuild() { refreshBuildList(); buildSheet.dataset.open = 'true'; }
+  function openBuild() { renderTabs(); refreshBuildList(); buildSheet.dataset.open = 'true'; }
   function closeBuild() { buildSheet.dataset.open = 'false'; }
   function startPlacing(b) {
     placing = b;
