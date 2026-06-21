@@ -196,6 +196,27 @@
     { type: 'blacksmith', icon: '🛠️', name: 'Blacksmith', cost: { wood: 15, stone: 10 }, h: 1.3,  label: 'Blacksmith' },
     { type: 'tent',   icon: '⛺', name: 'Tent',   cost: { gold: 15 },            h: 1.1,  label: 'Mercenary Tent' },
     { type: 'tower',  icon: '🗼', name: 'Tower',  cost: { stone: 15, wood: 5 },  h: 2.4,  label: 'Square Tower' },
+    // --- Roadmap: shown now, buildable later (comingSoon) ---
+    { type: 'wall',         icon: '🧱', name: 'Wall',         comingSoon: true },
+    { type: 'gatehouse',    icon: '🚪', name: 'Gatehouse',    comingSoon: true },
+    { type: 'moat',         icon: '🌊', name: 'Moat',         comingSoon: true },
+    { type: 'granary',      icon: '🏬', name: 'Granary',      comingSoon: true },
+    { type: 'well',         icon: '💧', name: 'Well',         comingSoon: true },
+    { type: 'chapel',       icon: '⛪', name: 'Chapel',       comingSoon: true },
+    { type: 'orchard',      icon: '🍎', name: 'Apple Orchard', comingSoon: true },
+    { type: 'dairy',        icon: '🐄', name: 'Dairy Farm',   comingSoon: true },
+    { type: 'hunter',       icon: '🦌', name: "Hunter's Hut", comingSoon: true },
+    { type: 'mill',         icon: '🌀', name: 'Mill',         comingSoon: true },
+    { type: 'bakery',       icon: '🥖', name: 'Bakery',       comingSoon: true },
+    { type: 'brewery',      icon: '🍺', name: 'Brewery',      comingSoon: true },
+    { type: 'inn',          icon: '🍻', name: 'Inn',          comingSoon: true },
+    { type: 'pitchrig',     icon: '🛢️', name: 'Pitch Rig',    comingSoon: true },
+    { type: 'fletcher',     icon: '🏹', name: 'Fletcher',     comingSoon: true },
+    { type: 'poleturner',   icon: '🔱', name: 'Poleturner',   comingSoon: true },
+    { type: 'armourer',     icon: '🛡️', name: 'Armourer',     comingSoon: true },
+    { type: 'barracks',     icon: '⚔️', name: 'Barracks',     comingSoon: true },
+    { type: 'stables',      icon: '🐎', name: 'Stables',      comingSoon: true },
+    { type: 'mercpost',     icon: '🗡️', name: 'Mercenary Post', comingSoon: true },
   ];
   let placing = null;   // the BUILDABLE entry currently being placed, or null
 
@@ -857,12 +878,21 @@
       const el = document.createElement('button');
       el.type = 'button';
       el.className = 'build-opt';
-      el.disabled = !canAfford(b.cost);
       const ic = document.createElement('span'); ic.className = 'bo-icon'; ic.textContent = b.icon;
       const nm = document.createElement('span'); nm.className = 'bo-name'; nm.textContent = b.name;
-      const co = document.createElement('span'); co.className = 'bo-cost'; co.textContent = costText(b.cost);
+      const co = document.createElement('span'); co.className = 'bo-cost';
       el.append(ic, nm, co);
-      el.addEventListener('click', () => startPlacing(b));
+      if (b.comingSoon) {
+        el.classList.add('soon');
+        co.textContent = 'Coming soon';
+        const ov = document.createElement('span'); ov.className = 'bo-soon'; ov.textContent = '🔒';
+        el.append(ov);
+        el.addEventListener('click', () => showTip(b.name + ' — coming soon'));
+      } else {
+        co.textContent = costText(b.cost);
+        el.disabled = !canAfford(b.cost);
+        el.addEventListener('click', () => startPlacing(b));
+      }
       buildList.appendChild(el);
     }
   }
