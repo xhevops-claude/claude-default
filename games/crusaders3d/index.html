@@ -46,7 +46,8 @@
     <span class="bar-title">Crusaders 3D · three.js prototype</span>
     <button id="quit-btn" type="button">Quit</button>
   </header>
-  <p class="hint" id="hint">Middle-click drag to orbit · wheel to zoom · left-drag to pan</p>
+  <p class="hint" id="hint">Left-click select · left-drag move · right-drag rotate · wheel zoom</p>
+  <div class="sel" id="sel" aria-live="polite"></div>
 
   <!-- three.js r136 classic (global THREE) + OrbitControls, so app.js stays a
        plain script. CDN-pinned URLs are left untouched by the deploy rewrite. -->

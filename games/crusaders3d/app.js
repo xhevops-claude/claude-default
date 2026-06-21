@@ -38,8 +38,10 @@
   controls.minDistance = 8;
   controls.maxDistance = 72;
   controls.maxPolarAngle = 1.45;   // don't dip under the ground
-  // Orbit on middle-button (scroll-wheel click) drag; left/right drag pans.
-  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN };
+  // Left-drag moves (pan), right-drag rotates, wheel zooms. A plain left-click
+  // (no drag) selects — handled separately below.
+  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
   // ---- Lighting --------------------------------------------------------------
   scene.add(new THREE.HemisphereLight(0xfff0d0, 0x4a3a28, 0.7));
@@ -131,43 +133,50 @@
   // ---- Buildings (the demo holding) ------------------------------------------
   const SP = 1.7;          // spacing scale so meshes don't overlap
   const BASE = 0.3;        // clearing ground height
+  const selectable = [];   // meshes a left-click can pick
   function mat(color, rough) { return new THREE.MeshStandardMaterial({ color: color, roughness: rough == null ? 0.9 : rough }); }
-  function box(w, h, d, color, c, r) {
+  function tag(m, name) { m.userData.name = name; selectable.push(m); return m; }
+  function box(w, h, d, color, c, r, name) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
     m.position.set(c * SP, BASE + h / 2, r * SP);
-    m.castShadow = true; m.receiveShadow = true; scene.add(m); return m;
+    m.castShadow = true; m.receiveShadow = true; scene.add(m);
+    if (name) tag(m, name);
+    return m;
   }
-  function pyramid(radius, h, color, c, r, yTop) {
+  function pyramid(radius, h, color, c, r, yTop, name) {
     const m = new THREE.Mesh(new THREE.ConeGeometry(radius, h, 4), mat(color));
     m.position.set(c * SP, yTop + h / 2, r * SP);
-    m.rotation.y = Math.PI / 4; m.castShadow = true; scene.add(m); return m;
+    m.rotation.y = Math.PI / 4; m.castShadow = true; scene.add(m);
+    if (name) tag(m, name);
+    return m;
   }
   // Keep
-  box(2.4, 3.4, 2.4, 0xded2b6, 0, 0);
+  box(2.4, 3.4, 2.4, 0xded2b6, 0, 0, 'The Keep');
   // Towers + conical roofs
   [[-2, -1], [2, -1], [-2, 2], [2, 2]].forEach(function (t) {
-    box(1.3, 2.8, 1.3, 0xcdbfa3, t[0], t[1]);
-    pyramid(1.05, 1.2, 0x525c70, t[0], t[1], BASE + 2.8);
+    box(1.3, 2.8, 1.3, 0xcdbfa3, t[0], t[1], 'Square Tower');
+    pyramid(1.05, 1.2, 0x525c70, t[0], t[1], BASE + 2.8, 'Square Tower');
   });
   // Gatehouse
-  box(1.6, 2.2, 1.6, 0xcdbfa3, 0, -3);
+  box(1.6, 2.2, 1.6, 0xcdbfa3, 0, -3, 'Gatehouse');
   // Curtain wall ring
   [[-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1], [-2, 0], [-2, 1], [-2, 2],
    [2, 0], [2, 1], [2, 2], [-1, 2], [0, 2], [1, 2]].forEach(function (w) {
-    box(1.05, 1.5, 1.05, 0xb9ad90, w[0], w[1]);
+    box(1.05, 1.5, 1.05, 0xb9ad90, w[0], w[1], 'Castle Wall');
   });
   // Hovels (box + terracotta roof)
   [[-4, 4], [-5, 5], [-3, 6]].forEach(function (hh) {
-    box(1.2, 1.0, 1.2, 0xb06a3b, hh[0], hh[1]);
-    pyramid(0.95, 0.9, 0xa14a2c, hh[0], hh[1], BASE + 1.0);
+    box(1.2, 1.0, 1.2, 0xb06a3b, hh[0], hh[1], "Peasant's Hovel");
+    pyramid(0.95, 0.9, 0xa14a2c, hh[0], hh[1], BASE + 1.0, "Peasant's Hovel");
   });
   // Mercenary tents (cones)
   [[5, 2], [6, 3]].forEach(function (tt) {
     const m = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.3, 12), mat(0xe3dcc7));
     m.position.set(tt[0] * SP, BASE + 0.65, tt[1] * SP); m.castShadow = true; scene.add(m);
+    tag(m, 'Mercenary Tent');
   });
   // Market
-  box(1.6, 1.2, 1.6, 0xc98f4e, 6, 1);
+  box(1.6, 1.2, 1.6, 0xc98f4e, 6, 1, 'Market');
 
   // Keep banner
   const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.6), new THREE.MeshStandardMaterial({ color: 0xd64545, side: THREE.DoubleSide, roughness: 1 }));
@@ -216,6 +225,35 @@
     if (window.self !== window.top) {
       try { window.parent.postMessage({ type: 'close-game' }, '*'); } catch (e) {}
     } else { location.href = '../../'; }
+  });
+
+  // ---- Left-click select (distinct from a left-drag pan) ---------------------
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const selEl = document.getElementById('sel');
+  let selected = null, downX = 0, downY = 0;
+
+  function setSelected(m) {
+    if (selected && selected.material && selected.material.emissive) selected.material.emissive.setHex(0x000000);
+    selected = m;
+    if (m) {
+      if (m.material && m.material.emissive) m.material.emissive.setHex(0x5a3a14);
+      selEl.textContent = '◈ ' + (m.userData.name || 'Structure');
+      selEl.classList.add('show');
+    } else {
+      selEl.classList.remove('show');
+    }
+  }
+  canvas.addEventListener('pointerdown', function (e) { if (e.button === 0) { downX = e.clientX; downY = e.clientY; } });
+  canvas.addEventListener('pointerup', function (e) {
+    if (e.button !== 0) return;
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;   // was a drag, not a click
+    const rect = canvas.getBoundingClientRect();
+    ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObjects(selectable, false);
+    setSelected(hits.length ? hits[0].object : null);
   });
 
   // ---- Loop ------------------------------------------------------------------
