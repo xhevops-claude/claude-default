@@ -31,7 +31,7 @@ html, body {
 /* ---- Top HUD: resource bar ---- */
 .hud {
   position: absolute; top: 0; left: 0; right: 0;
-  display: flex; gap: 6px; justify-content: center;
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
   padding: max(10px, env(safe-area-inset-top)) 10px 10px;
   pointer-events: none;
   z-index: 5;
