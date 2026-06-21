@@ -48,9 +48,14 @@
     <header class="hud" id="hud">
       <div class="res"><span class="res-i">🪙</span><span id="r-gold">200</span></div>
       <div class="res"><span class="res-i">🍞</span><span id="r-food">85</span></div>
+      <div class="res"><span class="res-i">💧</span><span id="r-water">30</span></div>
       <div class="res"><span class="res-i">🪵</span><span id="r-wood">40</span></div>
       <div class="res"><span class="res-i">🪨</span><span id="r-stone">0</span></div>
       <div class="res"><span class="res-i">⚙️</span><span id="r-iron">0</span></div>
+      <div class="res"><span class="res-i">🍺</span><span id="r-ale">0</span></div>
+      <div class="res"><span class="res-i">⚔️</span><span id="r-weapons">0</span></div>
+      <div class="res"><span class="res-i">🛡️</span><span id="r-army">0</span></div>
+      <div class="res"><span class="res-i">😊</span><span id="r-popularity">50</span></div>
       <div class="res"><span class="res-i">🧑‍🌾</span><span id="r-pop">24</span></div>
     </header>
 
@@ -95,6 +100,13 @@
         <div class="crest" aria-hidden="true">🏰</div>
         <h1 class="title">Stronghold<br><span>Crusaders</span></h1>
         <p class="blurb" id="overlay-blurb">A seeded, endless desert. Your keep sits at the heart of it — drag to roam the wilderness in any direction, pinch to zoom, tap anything to inspect it.</p>
+        <label class="mode-row" for="mode-select">
+          <span>Start</span>
+          <select id="mode-select" class="mode-select">
+            <option value="demo">Fully functional demo</option>
+            <option value="scratch">From scratch</option>
+          </select>
+        </label>
         <div class="seed-row">
           <span class="seed-label">Seed</span>
           <code id="seed-val">—</code>
