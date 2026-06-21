@@ -320,28 +320,91 @@
     if (cam.zoom > 0.45 && step === 1) { ctx.strokeStyle = 'rgba(0,0,0,0.10)'; ctx.lineWidth = 1; ctx.stroke(); }
   }
 
+  // Lighten (amt>0) or darken (amt<0) a #rrggbb color toward white/black.
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    const cl = (x) => Math.max(0, Math.min(255, Math.round(x + 255 * amt)));
+    return 'rgb(' + cl((n >> 16) & 255) + ',' + cl((n >> 8) & 255) + ',' + cl(n & 255) + ')';
+  }
+
+  // A vertically-shaded iso box anchored at screen point (sx,sy = base centre).
+  function isoBox(sx, sy, w, h, rise, faces) {
+    let grad = ctx.createLinearGradient(0, sy - rise, 0, sy + h / 2);
+    grad.addColorStop(0, shade(faces.l, 0.05)); grad.addColorStop(1, shade(faces.l, -0.07));
+    ctx.beginPath();
+    ctx.moveTo(sx - w / 2, sy); ctx.lineTo(sx, sy + h / 2);
+    ctx.lineTo(sx, sy + h / 2 - rise); ctx.lineTo(sx - w / 2, sy - rise);
+    ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    grad = ctx.createLinearGradient(0, sy - rise, 0, sy + h / 2);
+    grad.addColorStop(0, shade(faces.r, 0.02)); grad.addColorStop(1, shade(faces.r, -0.11));
+    ctx.beginPath();
+    ctx.moveTo(sx + w / 2, sy); ctx.lineTo(sx, sy + h / 2);
+    ctx.lineTo(sx, sy + h / 2 - rise); ctx.lineTo(sx + w / 2, sy - rise);
+    ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    diamond(sx, sy - rise, w, h);
+    ctx.fillStyle = faces.top; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1; ctx.stroke();
+  }
+
   function drawBox(c, r, hUnits, faces, footScale) {
     const { sx, sy } = screenOf(c, r);
     const w = TILE_W * cam.zoom * (footScale || 1);
     const h = TILE_H * cam.zoom * (footScale || 1);
     const rise = ELEV * hUnits * cam.zoom;
-    ctx.beginPath();
-    ctx.moveTo(sx - w / 2, sy); ctx.lineTo(sx, sy + h / 2);
-    ctx.lineTo(sx, sy + h / 2 - rise); ctx.lineTo(sx - w / 2, sy - rise);
-    ctx.closePath(); ctx.fillStyle = faces.l; ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(sx + w / 2, sy); ctx.lineTo(sx, sy + h / 2);
-    ctx.lineTo(sx, sy + h / 2 - rise); ctx.lineTo(sx + w / 2, sy - rise);
-    ctx.closePath(); ctx.fillStyle = faces.r; ctx.fill();
-    diamond(sx, sy - rise, w, h);
-    ctx.fillStyle = faces.top; ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1; ctx.stroke();
+    isoBox(sx, sy, w, h, rise, faces);
     return { sx, sy, rise, w, h };
   }
 
   const STONE = { top: '#cdbfa3', l: '#9c8e72', r: '#84765c' };
   const KEEP  = { top: '#ded2b6', l: '#a99c7e', r: '#8d8064' };
   const ROCK  = { top: '#9a9183', l: '#7a7264', r: '#615a4e' };
+  const HOUSE_ROOF = '#a14a2c', TOWER_ROOF = '#525c70';
+
+  // Soft contact shadow on the ground beneath a standing object.
+  function groundShadow(c, r, scale) {
+    const { sx, sy } = screenOf(c, r);
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    diamond(sx + 3 * cam.zoom, sy + 2 * cam.zoom, TILE_W * cam.zoom * scale, TILE_H * cam.zoom * scale);
+    ctx.fill();
+  }
+
+  // Battlement ring: small merlon cubes spaced around the top diamond rim.
+  function crenellate(sx, topY, w, h, faces) {
+    const mw = w * 0.2, mh = h * 0.2, mr = 5 * cam.zoom;
+    const pts = [
+      [sx, topY - h / 2], [sx + w / 2, topY], [sx, topY + h / 2], [sx - w / 2, topY],
+      [sx + w / 4, topY - h / 4], [sx + w / 4, topY + h / 4],
+      [sx - w / 4, topY + h / 4], [sx - w / 4, topY - h / 4],
+    ];
+    for (const [mx, my] of pts) isoBox(mx, my, mw, mh, mr, faces);
+  }
+
+  // Hip/pyramid roof rising `rh` above the top diamond at (sx, topY).
+  function pyramidRoof(sx, topY, w, h, rh, color) {
+    const apex = [sx, topY - rh];
+    const N = [sx, topY - h / 2], E = [sx + w / 2, topY], S = [sx, topY + h / 2], W = [sx - w / 2, topY];
+    const tri = (a, b, c2, col) => {
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c2[0], c2[1]);
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+    };
+    tri(apex, N, W, shade(color, 0.05));   // back-left
+    tri(apex, N, E, shade(color, 0.11));   // back-right, catches light
+    tri(apex, W, S, shade(color, -0.05));  // front-left
+    tri(apex, E, S, shade(color, -0.13));  // front-right, in shade
+  }
+
+  // A small arched door on the front-right face.
+  function doorOn(sx, sy, w, h, rise) {
+    const dw = w * 0.15, dh = rise * 0.5;
+    const dx = sx + w * 0.2, dy = sy + h * 0.12;
+    ctx.fillStyle = 'rgba(38,22,10,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(dx - dw / 2, dy);
+    ctx.lineTo(dx - dw / 2, dy - dh + dw / 2);
+    ctx.quadraticCurveTo(dx, dy - dh, dx + dw / 2, dy - dh + dw / 2);
+    ctx.lineTo(dx + dw / 2, dy);
+    ctx.closePath(); ctx.fill();
+  }
 
   function flagpole(sx, topY, pole) {
     const hgt = 16 * cam.zoom;
@@ -357,48 +420,108 @@
   }
 
   function drawBuilding(b) {
+    // Skip fine ornament (roofs, battlements, doors, stripes) when zoomed far
+    // out — it's invisible at that scale and keeps the far view cheap.
+    const detail = cam.zoom > 0.3;
     switch (b.type) {
       case 'keep': {
+        groundShadow(b.c, b.r, 1.05);
         const o = drawBox(b.c, b.r, b.h, KEEP, 1.05);
-        flagpole(o.sx, o.sy - o.rise, '#d64545');
+        const topY = o.sy - o.rise;
+        if (detail) { doorOn(o.sx, o.sy, o.w, o.h, o.rise); crenellate(o.sx, topY, o.w, o.h, KEEP); }
+        flagpole(o.sx, topY - (detail ? 5 * cam.zoom : 0), '#d64545');
         break;
       }
       case 'tower': {
+        groundShadow(b.c, b.r, 0.8);
         const o = drawBox(b.c, b.r, b.h, STONE, 0.8);
-        diamond(o.sx, o.sy - o.rise, o.w * 0.8, o.h * 0.8);
-        ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fill();
+        const topY = o.sy - o.rise;
+        if (detail) {
+          crenellate(o.sx, topY, o.w, o.h, STONE);
+          pyramidRoof(o.sx, topY - 5 * cam.zoom, o.w * 0.6, o.h * 0.6, 16 * cam.zoom, TOWER_ROOF);
+        }
         break;
       }
-      case 'gate': drawBox(b.c, b.r, b.h, STONE, 1.0); break;
+      case 'gate': {
+        groundShadow(b.c, b.r, 1.0);
+        const o = drawBox(b.c, b.r, b.h, STONE, 1.0);
+        if (detail) { doorOn(o.sx, o.sy, o.w, o.h, o.rise); crenellate(o.sx, o.sy - o.rise, o.w, o.h, STONE); }
+        break;
+      }
       case 'market': {
-        const o = drawBox(b.c, b.r, b.h, { top: '#c98f4e', l: '#a06f37', r: '#84592b' }, 0.95);
-        diamond(o.sx, o.sy - o.rise, o.w * 0.95, o.h * 0.95);
-        ctx.fillStyle = '#e0d2a0'; ctx.fill();
+        groundShadow(b.c, b.r, 0.95);
+        const o = drawBox(b.c, b.r, b.h, { top: '#b9823f', l: '#9a6a31', r: '#7e5527' }, 0.9);
+        const topY = o.sy - o.rise;
+        // striped awning, concentric diamonds
+        diamond(o.sx, topY, o.w, o.h); ctx.fillStyle = '#e7dcc0'; ctx.fill();
+        diamond(o.sx, topY, o.w * 0.66, o.h * 0.66); ctx.fillStyle = '#c0492f'; ctx.fill();
+        diamond(o.sx, topY, o.w * 0.33, o.h * 0.33); ctx.fillStyle = '#e7dcc0'; ctx.fill();
         break;
       }
-      case 'house': drawBox(b.c, b.r, b.h, { top: '#b06a3b', l: '#8a5a34', r: '#6f4828' }, 0.7); break;
-      case 'farm': drawBox(b.c, b.r, b.h, { top: '#b9a23f', l: '#8f7d30', r: '#766727' }, 1.0); break;
+      case 'house': {
+        groundShadow(b.c, b.r, 0.72);
+        const o = drawBox(b.c, b.r, b.h, { top: '#caa06a', l: '#a87f4c', r: '#8c673a' }, 0.72);
+        if (detail) pyramidRoof(o.sx, o.sy - o.rise, o.w * 0.78, o.h * 0.78, 13 * cam.zoom, HOUSE_ROOF);
+        break;
+      }
+      case 'farm': {
+        groundShadow(b.c, b.r, 1.0);
+        const o = drawBox(b.c, b.r, b.h, { top: '#b9a23f', l: '#8f7d30', r: '#766727' }, 1.0);
+        if (detail) {
+          const topY = o.sy - o.rise;
+          ctx.strokeStyle = 'rgba(86,70,22,0.55)'; ctx.lineWidth = 1.1 * cam.zoom;
+          for (const k of [-1, 0, 1]) {
+            const ox = k * o.w * 0.16, oy = -k * o.h * 0.16;
+            ctx.beginPath();
+            ctx.moveTo(o.sx + ox - o.w * 0.26, topY + oy - o.h * 0.26);
+            ctx.lineTo(o.sx + ox + o.w * 0.26, topY + oy + o.h * 0.26);
+            ctx.stroke();
+          }
+        }
+        break;
+      }
       case 'tent': {
+        groundShadow(b.c, b.r, 0.6);
         const { sx, sy } = screenOf(b.c, b.r);
-        const rise = ELEV * b.h * cam.zoom, w = TILE_W * 0.55 * cam.zoom;
+        const s = cam.zoom, rise = ELEV * b.h * s, w = TILE_W * 0.58 * s, base = sy + 4 * s;
         ctx.beginPath();
-        ctx.moveTo(sx, sy - rise);
-        ctx.lineTo(sx - w / 2, sy + 4 * cam.zoom);
-        ctx.lineTo(sx + w / 2, sy + 4 * cam.zoom);
-        ctx.closePath();
-        ctx.fillStyle = '#e3dcc7'; ctx.fill();
-        ctx.strokeStyle = '#b6402f'; ctx.lineWidth = 1.4 * cam.zoom; ctx.stroke();
+        ctx.moveTo(sx, sy - rise); ctx.lineTo(sx - w / 2, base); ctx.lineTo(sx + w / 2, base);
+        ctx.closePath(); ctx.fillStyle = '#e8e0cb'; ctx.fill();
+        // shaded right half
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - rise); ctx.lineTo(sx + w / 2, base); ctx.lineTo(sx, base);
+        ctx.closePath(); ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fill();
+        if (detail) {
+          ctx.strokeStyle = '#b6402f'; ctx.lineWidth = 1.5 * s; ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - rise); ctx.lineTo(sx - w / 2, base);
+          ctx.moveTo(sx, sy - rise); ctx.lineTo(sx + w / 2, base);
+          ctx.moveTo(sx - w / 2, base); ctx.lineTo(sx + w / 2, base);
+          ctx.stroke();
+          // pennant
+          ctx.strokeStyle = '#3a2817'; ctx.lineWidth = 1.4 * s;
+          ctx.beginPath(); ctx.moveTo(sx, sy - rise); ctx.lineTo(sx, sy - rise - 8 * s); ctx.stroke();
+          ctx.fillStyle = '#caa23a';
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - rise - 8 * s); ctx.lineTo(sx + 7 * s, sy - rise - 6 * s);
+          ctx.lineTo(sx, sy - rise - 4.5 * s); ctx.closePath(); ctx.fill();
+        }
         break;
       }
       case 'ruin': {
+        groundShadow(b.c, b.r, 0.7);
         const o = drawBox(b.c, b.r, b.h, STONE, 0.7);
-        // knock a notch out of the top to read as broken
-        ctx.fillStyle = 'rgba(0,0,0,0.22)';
-        ctx.fillRect(o.sx - 2 * cam.zoom, o.sy - o.rise - 8 * cam.zoom, 8 * cam.zoom, 8 * cam.zoom);
+        const topY = o.sy - o.rise;
+        ctx.fillStyle = 'rgba(0,0,0,0.2)'; diamond(o.sx, topY, o.w * 0.5, o.h * 0.5); ctx.fill();
+        if (detail) {
+          isoBox(o.sx - o.w / 4, topY + o.h / 4, o.w * 0.2, o.h * 0.2, 6 * cam.zoom, STONE);
+          isoBox(o.sx + o.w / 2, topY, o.w * 0.2, o.h * 0.2, 3 * cam.zoom, STONE);
+        }
         break;
       }
-      case 'rock': drawBox(b.c, b.r, b.h, ROCK, 0.6); break;
+      case 'rock': { groundShadow(b.c, b.r, 0.6); drawBox(b.c, b.r, b.h, ROCK, 0.6); break; }
       case 'cactus': {
+        groundShadow(b.c, b.r, 0.45);
         const { sx, sy } = screenOf(b.c, b.r);
         const s = cam.zoom, th = ELEV * b.h * s;
         ctx.strokeStyle = '#3f7a34'; ctx.lineWidth = 4 * s; ctx.lineCap = 'round';
@@ -409,12 +532,15 @@
         break;
       }
       case 'palm': {
+        groundShadow(b.c, b.r, 0.5);
         const { sx, sy } = screenOf(b.c, b.r);
         const s = cam.zoom, trunk = ELEV * b.h * s;
         ctx.strokeStyle = '#7a5a32'; ctx.lineWidth = 3 * s; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 2 * s, sy - trunk); ctx.stroke();
-        ctx.strokeStyle = '#4f8a3a'; ctx.lineWidth = 2.4 * s;
         const tx = sx + 2 * s, ty = sy - trunk, fr = 13 * s;
+        ctx.fillStyle = '#7a5230';   // coconut cluster
+        ctx.beginPath(); ctx.arc(tx, ty, 2.4 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#4f8a3a'; ctx.lineWidth = 2.4 * s;
         for (const a of [-2.5, -1.7, -0.9, -0.2, 0.6]) {
           ctx.beginPath(); ctx.moveTo(tx, ty);
           ctx.lineTo(tx + Math.cos(a) * fr, ty - Math.sin(a) * fr * 0.7); ctx.stroke();
@@ -422,14 +548,18 @@
         break;
       }
       case 'tree': {
+        groundShadow(b.c, b.r, 0.5);
         const { sx, sy } = screenOf(b.c, b.r);
-        const s = cam.zoom, th = ELEV * b.h * s;
-        ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 3 * s; ctx.lineCap = 'round';
+        const s = cam.zoom, th = ELEV * b.h * s, cy = sy - th - 3 * s;
+        ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 3.2 * s; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy - th); ctx.stroke();
+        ctx.fillStyle = '#2f6a2c';
+        ctx.beginPath(); ctx.arc(sx, cy + 3 * s, 10 * s, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#3f7a34';
-        ctx.beginPath(); ctx.arc(sx, sy - th - 4 * s, 9 * s, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#4f8f40';
-        ctx.beginPath(); ctx.arc(sx - 4 * s, sy - th, 6.5 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx - 5 * s, cy, 7.5 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx + 5 * s, cy + s, 7 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#4f9040';
+        ctx.beginPath(); ctx.arc(sx - 2 * s, cy - 4 * s, 6 * s, 0, Math.PI * 2); ctx.fill();
         break;
       }
     }
