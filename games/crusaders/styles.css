@@ -48,6 +48,12 @@ html, body {
   min-width: 58px; justify-content: center;
 }
 .res-i { font-size: 15px; }
+/* A resource sitting at its storage cap — flag it so the player knows to
+   build more storage. */
+.res.full {
+  border-color: #d96a4a;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4), 0 0 0 1px rgba(217,106,74,0.5) inset;
+}
 
 /* ---- Selection tip ---- */
 .tip {

@@ -156,9 +156,37 @@
     pop:   document.getElementById('r-pop'),
   };
   const res = { gold: 200, food: 85, wood: 40, stone: 0, iron: 0, pop: 24 };
+
+  // Capacity: each storable resource is capped. The keep grants a base cap;
+  // storage buildings raise it. Production clamps at the cap, so storage is
+  // what lets you stockpile more.
+  const BASE_CAP = { gold: 300, food: 200, wood: 150, stone: 120, iron: 100 };
+  const STORE_CAP = {
+    granary:   { food: 200 },
+    larder:    { food: 100 },
+    barn:      { food: 150 },
+    stockpile: { wood: 150, stone: 150, iron: 120 },
+  };
+  let caps = Object.assign({}, BASE_CAP);
+
   function setRes(k, v) {
-    res[k] = Math.max(0, Math.round(v));
-    if (hudEl[k]) hudEl[k].textContent = res[k];
+    v = Math.max(0, Math.round(v));
+    if (caps[k] != null) v = Math.min(v, caps[k]);
+    res[k] = v;
+    const el = hudEl[k];
+    if (el) {
+      el.textContent = res[k];
+      if (el.parentElement && caps[k] != null) el.parentElement.classList.toggle('full', res[k] >= caps[k]);
+    }
+  }
+  function recomputeCaps() {
+    caps = Object.assign({}, BASE_CAP);
+    for (const b of buildings) {
+      const sc = STORE_CAP[b.type];
+      if (!sc) continue;
+      for (const k in sc) caps[k] = (caps[k] || 0) + sc[k];
+    }
+    for (const k in caps) setRes(k, res[k]);   // re-clamp + refresh HUD
   }
   // Gatherers: each adds `amt` of one resource per cycle. Some get a bonus for
   // bordering the right terrain (woodcutter→woodland, quarry/mine→rock).
@@ -224,10 +252,10 @@
     { type: 'bakery',  cat: 'community', icon: '🥖', name: 'Bakery',  comingSoon: true },
     { type: 'brewery', cat: 'community', icon: '🍺', name: 'Brewery', comingSoon: true },
 
-    { type: 'granary',   cat: 'storage', icon: '🏬', name: 'Granary',   comingSoon: true },
-    { type: 'stockpile', cat: 'storage', icon: '📦', name: 'Stockpile', comingSoon: true },
-    { type: 'larder',    cat: 'storage', icon: '🧺', name: 'Larder',    comingSoon: true },
-    { type: 'barn',      cat: 'storage', icon: '🛖', name: 'Barn',      comingSoon: true },
+    { type: 'granary',   cat: 'storage', icon: '🏬', name: 'Granary',   cost: { wood: 12 },           h: 1.2, label: 'Granary (+food storage)' },
+    { type: 'stockpile', cat: 'storage', icon: '📦', name: 'Stockpile', cost: { wood: 15 },           h: 0.5, label: 'Stockpile (+materials storage)' },
+    { type: 'larder',    cat: 'storage', icon: '🧺', name: 'Larder',    cost: { wood: 8 },            h: 0.9, label: 'Larder (+food storage)' },
+    { type: 'barn',      cat: 'storage', icon: '🛖', name: 'Barn',      cost: { wood: 12, stone: 5 }, h: 1.3, label: 'Barn (+food storage)' },
     { type: 'cistern',   cat: 'storage', icon: '🚰', name: 'Cistern',   comingSoon: true },
 
     { type: 'blacksmith', cat: 'weapons', icon: '🛠️', name: 'Blacksmith', cost: { wood: 15, stone: 10 }, h: 1.3, label: 'Blacksmith' },
@@ -266,7 +294,13 @@
     if (!canAfford(placing.cost)) { showTip('Not enough ' + Object.keys(placing.cost).map((k) => RES_ICON[k]).join('')); return; }
     payFor(placing.cost);
     buildings.push({ c, r, type: placing.type, h: placing.h, label: placing.label });
-    spawnFloat(c, r, 'built', '#cfe6a0');
+    const sc = STORE_CAP[placing.type];
+    if (sc) {
+      recomputeCaps();
+      spawnFloat(c, r, Object.keys(sc).map((k) => '+' + sc[k] + RES_ICON[k]).join(' '), '#cfe6a0');
+    } else {
+      spawnFloat(c, r, 'built', '#cfe6a0');
+    }
     refreshBuildList();   // some options may now be unaffordable
   }
 
@@ -591,6 +625,45 @@
           const glow = 0.6 + 0.4 * Math.abs(Math.sin(now / 300));
           ctx.fillStyle = 'rgba(255,140,40,' + glow.toFixed(2) + ')';
           ctx.beginPath(); ctx.arc(o.sx - o.w * 0.12, o.sy + o.h * 0.05, 3 * s, 0, Math.PI * 2); ctx.fill();
+        }
+        break;
+      }
+      case 'granary': {
+        groundShadow(b.c, b.r, 0.82);
+        const o = drawBox(b.c, b.r, b.h, { top: '#d8c79a', l: '#b8a474', r: '#9c8a5e' }, 0.82);
+        if (detail) {
+          pyramidRoof(o.sx, o.sy - o.rise, o.w * 0.86, o.h * 0.86, 12 * cam.zoom, '#c8a85a');
+          const s = cam.zoom;   // grain sacks at the base
+          ctx.fillStyle = '#cdb079';
+          ctx.beginPath(); ctx.arc(o.sx - o.w * 0.3, o.sy + 2 * s, 3.2 * s, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(o.sx - o.w * 0.18, o.sy + 3 * s, 2.8 * s, 0, Math.PI * 2); ctx.fill();
+        }
+        break;
+      }
+      case 'larder': {
+        groundShadow(b.c, b.r, 0.7);
+        const o = drawBox(b.c, b.r, b.h, { top: '#c2a878', l: '#a48a5c', r: '#897248' }, 0.7);
+        if (detail) pyramidRoof(o.sx, o.sy - o.rise, o.w * 0.8, o.h * 0.8, 10 * cam.zoom, '#7a5a36');
+        break;
+      }
+      case 'barn': {
+        groundShadow(b.c, b.r, 0.92);
+        const o = drawBox(b.c, b.r, b.h, { top: '#b98a5a', l: '#9a6f44', r: '#7e5a36' }, 0.92);
+        if (detail) {
+          pyramidRoof(o.sx, o.sy - o.rise, o.w * 0.9, o.h * 0.9, 14 * cam.zoom, '#8c3f2a');
+          const s = cam.zoom;   // hay bale beside the barn
+          ctx.fillStyle = '#d6c069';
+          ctx.fillRect(o.sx - o.w * 0.55, o.sy - 1 * s, 7 * s, 5 * s);
+        }
+        break;
+      }
+      case 'stockpile': {
+        groundShadow(b.c, b.r, 1.0);
+        const o = drawBox(b.c, b.r, b.h, { top: '#a89a7e', l: '#897c62', r: '#6e6450' }, 1.0);
+        if (detail) {
+          const topY = o.sy - o.rise;   // stacked materials on an open yard
+          isoBox(o.sx - o.w * 0.2, topY + o.h * 0.12, o.w * 0.3, o.h * 0.3, 7 * cam.zoom, { top: '#a8814c', l: '#8a6638', r: '#6f5230' });
+          isoBox(o.sx + o.w * 0.18, topY + o.h * 0.05, o.w * 0.3, o.h * 0.3, 9 * cam.zoom, ROCK);
         }
         break;
       }
@@ -1013,6 +1086,7 @@
 
   // ---- Boot ------------------------------------------------------------------
   setSeed(seed);
+  recomputeCaps();   // apply base caps + clamp starting resources
   resize();
   centerOn(0, 0);
   window.addEventListener('resize', resize);
