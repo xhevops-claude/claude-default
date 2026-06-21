@@ -32,6 +32,14 @@
       icon: '🏰',
       url: 'games/crusaders/',
     },
+    {
+      slug: 'crusaders3d',
+      name: 'Crusaders 3D',
+      meta: 'Prototype',
+      tagline: 'The holding, rebuilt in three.js.',
+      icon: '🏯',
+      url: 'games/crusaders3d/',
+    },
   ];
 
   const apps = [
