@@ -159,9 +159,16 @@
     if (hudEl[k]) hudEl[k].textContent = res[k];
   }
   const PRODUCERS = {
-    farm:   { res: 'food', amt: 3, color: '#e9d27a' },
-    market: { res: 'gold', amt: 6, color: '#f2d35a' },
+    farm:       { res: 'food', amt: 3, color: '#e9d27a' },
+    market:     { res: 'gold', amt: 6, color: '#f2d35a' },
+    woodcutter: { res: 'wood', amt: 4, color: '#caa46a' },
   };
+  // A woodcutter pulls more from tiles bordering woodland (up to +4).
+  function forestBonus(c, r) {
+    let n = 0;
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (biomeAt(c + dc, r + dr) === 'fo') n++;
+    return n;
+  }
   const floats = [];   // { c, r, text, color, t }
   function spawnFloat(c, r, text, color) { floats.push({ c, r, text, color, t: 0 }); }
 
@@ -171,6 +178,7 @@
     { type: 'house',  icon: '🏠', name: 'Hovel',  cost: { wood: 10, gold: 5 },  h: 1.0,  label: "Peasant's Hovel" },
     { type: 'farm',   icon: '🌾', name: 'Farm',   cost: { wood: 8 },            h: 0.35, label: 'Wheat Farm' },
     { type: 'market', icon: '🪙', name: 'Market', cost: { wood: 15, gold: 25 }, h: 1.3,  label: 'Market' },
+    { type: 'woodcutter', icon: '🪓', name: 'Woodcutter', cost: { gold: 20 }, h: 1.2, label: "Woodcutter's Hut" },
     { type: 'tent',   icon: '⛺', name: 'Tent',   cost: { gold: 15 },           h: 1.1,  label: 'Mercenary Tent' },
     { type: 'tower',  icon: '🗼', name: 'Tower',  cost: { wood: 20, gold: 10 }, h: 2.4,  label: 'Square Tower' },
   ];
@@ -214,8 +222,19 @@
     for (const b of buildings) {
       const p = PRODUCERS[b.type];
       if (!p) continue;
-      setRes(p.res, res[p.res] + p.amt);
-      spawnFloat(b.c, b.r, '+' + p.amt, p.color);
+      const amt = p.amt + (b.type === 'woodcutter' ? forestBonus(b.c, b.r) : 0);
+      setRes(p.res, res[p.res] + amt);
+      spawnFloat(b.c, b.r, '+' + amt, p.color);
+    }
+    // Safety net: the keep is permanent, so its gatherers always bring in a
+    // small trickle of every resource. This makes a true dead-end impossible —
+    // even from zero you can wait and rebuild (e.g. afford a woodcutter again).
+    const keep = buildings.find((b) => b.type === 'keep');
+    if (keep) {
+      setRes('wood', res.wood + 1);
+      setRes('gold', res.gold + 1);
+      setRes('food', res.food + 1);
+      spawnFloat(keep.c, keep.r, '🪵+1', '#caa46a');
     }
     // Population eats; spare food draws new peasants to the hovels.
     setRes('food', res.food - Math.ceil(res.pop * 0.1));
@@ -462,6 +481,17 @@
         groundShadow(b.c, b.r, 0.72);
         const o = drawBox(b.c, b.r, b.h, { top: '#caa06a', l: '#a87f4c', r: '#8c673a' }, 0.72);
         if (detail) pyramidRoof(o.sx, o.sy - o.rise, o.w * 0.78, o.h * 0.78, 13 * cam.zoom, HOUSE_ROOF);
+        break;
+      }
+      case 'woodcutter': {
+        groundShadow(b.c, b.r, 0.78);
+        const o = drawBox(b.c, b.r, b.h, { top: '#b98a5a', l: '#996f44', r: '#7e5a36' }, 0.78);
+        if (detail) {
+          pyramidRoof(o.sx, o.sy - o.rise, o.w * 0.82, o.h * 0.82, 12 * cam.zoom, '#6e4a2b');
+          const s = cam.zoom;   // stacked log pile to the side
+          ctx.fillStyle = '#8a5a32'; ctx.fillRect(o.sx - o.w * 0.55, o.sy + 1 * s, 7 * s, 3.5 * s);
+          ctx.fillStyle = '#a87248'; ctx.fillRect(o.sx - o.w * 0.55, o.sy - 2.5 * s, 7 * s, 3.5 * s);
+        }
         break;
       }
       case 'farm': {
