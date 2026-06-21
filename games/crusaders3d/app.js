@@ -242,7 +242,7 @@
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const selEl = document.getElementById('sel');
-  let selected = null, downX = 0, downY = 0;
+  let selected = null, downX = 0, downY = 0, placing = null;
 
   function setSelected(m) {
     if (selected && selected.material && selected.material.emissive) selected.material.emissive.setHex(0x000000);
@@ -256,16 +256,119 @@
     }
   }
   canvas.addEventListener('pointerdown', function (e) { if (e.button === 0) { downX = e.clientX; downY = e.clientY; } });
-  canvas.addEventListener('pointerup', function (e) {
-    if (e.button !== 0) return;
-    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;   // was a drag, not a click
+  function pointerToNdc(e) {
     const rect = canvas.getBoundingClientRect();
     ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  }
+  canvas.addEventListener('pointerup', function (e) {
+    if (e.button !== 0) return;
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;   // was a drag, not a click
+    pointerToNdc(e);
     raycaster.setFromCamera(ndc, camera);
+    if (placing) { placeAt(); return; }                                // build instead of select
     const hits = raycaster.intersectObjects(selectable, false);
     setSelected(hits.length ? hits[0].object : null);
   });
+
+  // ---- Build menu (DOM overlay) + click-to-place -----------------------------
+  const CATEGORIES = [
+    { id: 'castle', name: 'Castle', icon: '🏰' },
+    { id: 'industry', name: 'Industry', icon: '⛏️' },
+    { id: 'farm', name: 'Farm', icon: '🌾' },
+    { id: 'housing', name: 'Housing', icon: '🏠' },
+    { id: 'community', name: 'Community', icon: '🏛️' },
+    { id: 'storage', name: 'Storage', icon: '📦' },
+    { id: 'weapons', name: 'Weapons', icon: '⚔️' },
+  ];
+  const BUILDABLE = [
+    { type: 'tower', cat: 'castle', icon: '🗼', name: 'Tower' },
+    { type: 'wall', cat: 'castle', icon: '🧱', name: 'Wall' },
+    { type: 'gatehouse', cat: 'castle', icon: '🚪', name: 'Gatehouse' },
+    { type: 'woodcutter', cat: 'industry', icon: '🪓', name: 'Woodcutter' },
+    { type: 'quarry', cat: 'industry', icon: '⛏️', name: 'Quarry' },
+    { type: 'ironmine', cat: 'industry', icon: '⚒️', name: 'Iron Mine' },
+    { type: 'farm', cat: 'farm', icon: '🌾', name: 'Farm' },
+    { type: 'orchard', cat: 'farm', icon: '🍎', name: 'Apple Orchard' },
+    { type: 'dairy', cat: 'farm', icon: '🐄', name: 'Dairy Farm' },
+    { type: 'house', cat: 'housing', icon: '🏠', name: 'Hovel' },
+    { type: 'well', cat: 'housing', icon: '💧', name: 'Well' },
+    { type: 'market', cat: 'community', icon: '🪙', name: 'Market' },
+    { type: 'chapel', cat: 'community', icon: '⛪', name: 'Chapel' },
+    { type: 'inn', cat: 'community', icon: '🍻', name: 'Inn' },
+    { type: 'mill', cat: 'community', icon: '🌀', name: 'Mill' },
+    { type: 'bakery', cat: 'community', icon: '🥖', name: 'Bakery' },
+    { type: 'granary', cat: 'storage', icon: '🏬', name: 'Granary' },
+    { type: 'stockpile', cat: 'storage', icon: '📦', name: 'Stockpile' },
+    { type: 'blacksmith', cat: 'weapons', icon: '🛠️', name: 'Blacksmith' },
+    { type: 'fletcher', cat: 'weapons', icon: '🏹', name: 'Fletcher' },
+    { type: 'barracks', cat: 'weapons', icon: '⚔️', name: 'Barracks' },
+  ];
+  const CAT_COLOR = {
+    castle: 0xcdbfa3, industry: 0xb98a5a, farm: 0x8a9b46, housing: 0xb06a3b,
+    community: 0xc98f4e, storage: 0xa89a7e, weapons: 0x9aa0a8,
+  };
+  const TALL = { tower: 1, gatehouse: 1, chapel: 1, barracks: 1, mill: 1 };
+  let activeCat = 'castle';
+
+  const buildSheet = document.getElementById('build-sheet');
+  const buildList = document.getElementById('build-list');
+  const buildTabs = document.getElementById('build-tabs');
+  const placeBanner = document.getElementById('place-banner');
+  const placeText = document.getElementById('place-text');
+
+  function renderTabs() {
+    buildTabs.textContent = '';
+    CATEGORIES.forEach(function (c) {
+      const t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'build-tab' + (c.id === activeCat ? ' active' : '');
+      const ic = document.createElement('span'); ic.className = 'bt-icon'; ic.textContent = c.icon;
+      const nm = document.createElement('span'); nm.textContent = c.name;
+      t.append(ic, nm);
+      t.addEventListener('click', function () { activeCat = c.id; renderTabs(); refreshList(); });
+      buildTabs.appendChild(t);
+    });
+  }
+  function refreshList() {
+    buildList.textContent = '';
+    BUILDABLE.forEach(function (b) {
+      if (b.cat !== activeCat) return;
+      const el = document.createElement('button');
+      el.type = 'button'; el.className = 'build-opt';
+      const ic = document.createElement('span'); ic.className = 'bo-icon'; ic.textContent = b.icon;
+      const nm = document.createElement('span'); nm.className = 'bo-name'; nm.textContent = b.name;
+      el.append(ic, nm);
+      el.addEventListener('click', function () { startPlacing(b); });
+      buildList.appendChild(el);
+    });
+  }
+  function openBuild() { renderTabs(); refreshList(); buildSheet.dataset.open = 'true'; }
+  function closeBuild() { buildSheet.dataset.open = 'false'; }
+  function startPlacing(b) { placing = b; closeBuild(); placeText.textContent = 'Click the ground to place ' + b.name; placeBanner.classList.add('show'); }
+  function stopPlacing() { placing = null; placeBanner.classList.remove('show'); }
+
+  document.getElementById('build-btn').addEventListener('click', function () {
+    if (placing) { stopPlacing(); return; }
+    if (buildSheet.dataset.open === 'true') closeBuild(); else openBuild();
+  });
+  document.getElementById('build-close').addEventListener('click', closeBuild);
+  document.getElementById('place-cancel').addEventListener('click', stopPlacing);
+
+  // Drop a building mesh on the ground tile under the cursor (raycaster is
+  // already aimed from the pointerup handler). Placement is free in this proto.
+  function placeAt() {
+    const hit = raycaster.intersectObject(ground, false)[0];
+    if (!hit) return;
+    const x = Math.round(hit.point.x), z = Math.round(hit.point.z);
+    const color = CAT_COLOR[placing.cat] || 0xcdbfa3;
+    const h = TALL[placing.type] ? 2.6 : 1.2;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(1.4, h, 1.4), mat(color));
+    b.position.set(x, BASE + h / 2, z); b.castShadow = true; b.receiveShadow = true;
+    scene.add(b); tag(b, placing.name);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.0, 4), mat(0x6e4a2b));
+    roof.position.set(x, BASE + h + 0.5, z); roof.rotation.y = Math.PI / 4; roof.castShadow = true; scene.add(roof);
+  }
 
   // ---- Loop ------------------------------------------------------------------
   const clock = new THREE.Clock();
