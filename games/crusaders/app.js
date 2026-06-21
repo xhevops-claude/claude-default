@@ -33,6 +33,7 @@
     seed = s >>> 0;
     try { localStorage.setItem('crusaders-seed', String(seed)); } catch (_) {}
     if (seedVal) seedVal.textContent = seed;
+    clearWorldCache();   // terrain depends on the seed
   }
 
   // ---- Seeded value noise ----------------------------------------------------
@@ -83,7 +84,14 @@
   const HOME_R = 9;
   function isHome(c, r) { return (c * c + r * r) < HOME_R * HOME_R; }
 
-  function biomeAt(c, r) {
+  // Terrain & props are static for a given seed, so memoize them — otherwise
+  // the multi-octave noise would re-run for every visible tile every frame,
+  // which is the main source of lag. Caches are cleared when the seed changes.
+  const biomeCache = new Map();
+  const propCache = new Map();
+  function clearWorldCache() { biomeCache.clear(); propCache.clear(); }
+
+  function computeBiome(c, r) {
     if (isHome(c, r)) return 'g';
     const e = fbm(seed, c * 0.06, r * 0.06);            // elevation
     const m = fbm(seed + 777, c * 0.05 + 100, r * 0.05 + 100); // moisture
@@ -94,12 +102,22 @@
     if (e < 0.84) return 'ro';
     return 'sn';
   }
+  function biomeAt(c, r) {
+    const key = c + ',' + r;
+    let v = biomeCache.get(key);
+    if (v === undefined) {
+      if (biomeCache.size > 60000) biomeCache.clear();   // bound memory as you roam
+      v = computeBiome(c, r);
+      biomeCache.set(key, v);
+    }
+    return v;
+  }
 
   // Deterministic prop per tile (trees, rocks, ruins...). Pure function of seed.
   const PROP_NAME = {
     tree: 'Tree', palm: 'Date palm', cactus: 'Cactus', rock: 'Boulder', ruin: 'Ancient ruin',
   };
-  function propAt(c, r) {
+  function computeProp(c, r) {
     if (isHome(c, r)) return null;
     const b = biomeAt(c, r);
     const h = hash2(seed ^ 0x9e37, c, r);
@@ -110,6 +128,17 @@
     else if (b === 'ro') { if (h < 0.20) return { type: 'rock', h: 0.7 + j * 0.8 }; }
     else if (b === 'sn') { if (h < 0.10) return { type: 'rock', h: 0.8 }; }
     return null;
+  }
+  function propAt(c, r) {
+    const key = c + ',' + r;
+    let v = propCache.get(key);
+    if (v === undefined) {
+      if (propCache.size > 60000) propCache.clear();
+      v = computeProp(c, r);
+      propCache.set(key, v === null ? false : v);   // distinguish "computed: nothing" from "uncomputed"
+      return v;
+    }
+    return v === false ? null : v;
   }
 
   // ---- The home holding ------------------------------------------------------
@@ -233,6 +262,7 @@
   function resetWorld(m) {
     mode = (m === 'scratch') ? 'scratch' : 'demo';
     buildWorld(mode);
+    rebuildOccupied();
     recomputeCaps();
     const s = START_RES[mode] || START_RES.demo;
     for (const k in s) setRes(k, s[k]);
@@ -247,6 +277,7 @@
     buildWorld(mode);                              // gives us units for the mode
     buildings.length = 0; for (const b of s.buildings) buildings.push(b);
     walls.length = 0; for (const w of (s.walls || [])) walls.push(w);
+    rebuildOccupied();
     recomputeCaps();
     for (const k in res) if (s.res && s.res[k] != null) setRes(k, s.res[k]);
   }
@@ -356,11 +387,15 @@
       r: Math.round((wy / (TILE_H / 2) - wx / (TILE_W / 2)) / 2),
     };
   }
-  function occupied(c, r) {
-    for (const b of buildings) if (b.c === c && b.r === r) return true;
-    for (const w of walls) if (w.c === c && w.r === r) return true;
-    return false;
+  // Occupancy as a Set for O(1) lookups — the render loop tests every visible
+  // tile each frame, so a linear scan over buildings was costly.
+  const occupiedSet = new Set();
+  function rebuildOccupied() {
+    occupiedSet.clear();
+    for (const b of buildings) occupiedSet.add(b.c + ',' + b.r);
+    for (const w of walls) occupiedSet.add(w.c + ',' + w.r);
   }
+  function occupied(c, r) { return occupiedSet.has(c + ',' + r); }
   function canAfford(cost) { for (const k in cost) if (res[k] < cost[k]) return false; return true; }
   function payFor(cost) { for (const k in cost) setRes(k, res[k] - cost[k]); }
   function costText(cost) { return Object.keys(cost).map((k) => RES_ICON[k] + cost[k]).join(' '); }
@@ -374,6 +409,7 @@
     if (!canAfford(placing.cost)) { showTip('Not enough ' + Object.keys(placing.cost).map((k) => RES_ICON[k]).join('')); return; }
     payFor(placing.cost);
     buildings.push({ c, r, type: placing.type, h: placing.h, label: placing.label });
+    rebuildOccupied();
     const sc = STORE_CAP[placing.type];
     if (sc) {
       recomputeCaps();
@@ -1333,6 +1369,7 @@
   if (saved) {
     applyState(saved);
   } else {
+    setSeed(seed);        // sync display + clear caches for the starting seed
     resetWorld('demo');
   }
   if (modeSelect) modeSelect.value = mode;
