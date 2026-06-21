@@ -33,6 +33,7 @@
     seed = s >>> 0;
     try { localStorage.setItem('crusaders-seed', String(seed)); } catch (_) {}
     if (seedVal) seedVal.textContent = seed;
+    clearWorldCache();   // terrain depends on the seed
   }
 
   // ---- Seeded value noise ----------------------------------------------------
@@ -83,7 +84,14 @@
   const HOME_R = 9;
   function isHome(c, r) { return (c * c + r * r) < HOME_R * HOME_R; }
 
-  function biomeAt(c, r) {
+  // Terrain & props are static for a given seed, so memoize them — otherwise
+  // the multi-octave noise would re-run for every visible tile every frame,
+  // which is the main source of lag. Caches are cleared when the seed changes.
+  const biomeCache = new Map();
+  const propCache = new Map();
+  function clearWorldCache() { biomeCache.clear(); propCache.clear(); }
+
+  function computeBiome(c, r) {
     if (isHome(c, r)) return 'g';
     const e = fbm(seed, c * 0.06, r * 0.06);            // elevation
     const m = fbm(seed + 777, c * 0.05 + 100, r * 0.05 + 100); // moisture
@@ -94,12 +102,22 @@
     if (e < 0.84) return 'ro';
     return 'sn';
   }
+  function biomeAt(c, r) {
+    const key = c + ',' + r;
+    let v = biomeCache.get(key);
+    if (v === undefined) {
+      if (biomeCache.size > 60000) biomeCache.clear();   // bound memory as you roam
+      v = computeBiome(c, r);
+      biomeCache.set(key, v);
+    }
+    return v;
+  }
 
   // Deterministic prop per tile (trees, rocks, ruins...). Pure function of seed.
   const PROP_NAME = {
     tree: 'Tree', palm: 'Date palm', cactus: 'Cactus', rock: 'Boulder', ruin: 'Ancient ruin',
   };
-  function propAt(c, r) {
+  function computeProp(c, r) {
     if (isHome(c, r)) return null;
     const b = biomeAt(c, r);
     const h = hash2(seed ^ 0x9e37, c, r);
@@ -111,37 +129,69 @@
     else if (b === 'sn') { if (h < 0.10) return { type: 'rock', h: 0.8 }; }
     return null;
   }
+  function propAt(c, r) {
+    const key = c + ',' + r;
+    let v = propCache.get(key);
+    if (v === undefined) {
+      if (propCache.size > 60000) propCache.clear();
+      v = computeProp(c, r);
+      propCache.set(key, v === null ? false : v);   // distinguish "computed: nothing" from "uncomputed"
+      return v;
+    }
+    return v === false ? null : v;
+  }
 
-  // ---- The home holding (fixed structures around spawn 0,0) -------------------
-  const buildings = [
-    { c: 0,  r: 0,  type: 'keep',   h: 3.0, label: 'The Keep' },
-    { c: -2, r: -1, type: 'tower',  h: 2.4, label: 'Square Tower' },
-    { c: 2,  r: -1, type: 'tower',  h: 2.4, label: 'Square Tower' },
-    { c: -2, r: 2,  type: 'tower',  h: 2.4, label: 'Square Tower' },
-    { c: 2,  r: 2,  type: 'tower',  h: 2.4, label: 'Square Tower' },
-    { c: 0,  r: -3, type: 'gate',   h: 1.8, label: 'Gatehouse' },
-    { c: -4, r: 4,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
-    { c: -5, r: 5,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
-    { c: -3, r: 6,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
-    { c: 5,  r: 2,  type: 'tent',   h: 1.1, label: 'Mercenary Tent' },
-    { c: 6,  r: 3,  type: 'tent',   h: 1.1, label: 'Mercenary Tent' },
-    { c: 3,  r: 6,  type: 'farm',   h: 0.35, label: 'Wheat Farm' },
-    { c: 5,  r: 7,  type: 'farm',   h: 0.35, label: 'Apple Orchard' },
-    { c: 6,  r: 1,  type: 'market', h: 1.3, label: 'Market' },
-  ];
+  // ---- The home holding ------------------------------------------------------
+  // Two start modes: a fully-built "demo" holding, or "scratch" (just the keep).
+  // Populated in place by buildWorld() so reset/restore keeps array references.
+  let mode = 'demo';
+  const buildings = [];
   const walls = [];
-  (function buildWalls() {
+  const units = [];
+
+  function buildWorld(m) {
+    buildings.length = 0; walls.length = 0; units.length = 0;
+    // The keep anchors both modes (permanent, drives the safety-net trickle).
+    buildings.push({ c: 0, r: 0, type: 'keep', h: 3.0, label: 'The Keep' });
+
+    if (m === 'scratch') {
+      // Bare beginning: just the keep and a lone guard to build out from.
+      units.push({ color: '#d64545', flag: '#f2d35a', path: [[-1, -2], [1, -2], [1, 2], [-1, 2]], i: 0, t: 0, spd: 0.4, label: 'Spearman' });
+      return;
+    }
+
+    // Demo: a fully functional holding.
+    buildings.push(
+      { c: -2, r: -1, type: 'tower',  h: 2.4, label: 'Square Tower' },
+      { c: 2,  r: -1, type: 'tower',  h: 2.4, label: 'Square Tower' },
+      { c: -2, r: 2,  type: 'tower',  h: 2.4, label: 'Square Tower' },
+      { c: 2,  r: 2,  type: 'tower',  h: 2.4, label: 'Square Tower' },
+      { c: 0,  r: -3, type: 'gate',   h: 1.8, label: 'Gatehouse' },
+      { c: -4, r: 4,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
+      { c: -5, r: 5,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
+      { c: -3, r: 6,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
+      { c: 5,  r: 2,  type: 'tent',   h: 1.1, label: 'Mercenary Tent' },
+      { c: 6,  r: 3,  type: 'tent',   h: 1.1, label: 'Mercenary Tent' },
+      { c: 3,  r: 6,  type: 'farm',   h: 0.35, label: 'Wheat Farm' },
+      { c: 5,  r: 7,  type: 'farm',   h: 0.35, label: 'Apple Orchard' },
+      { c: 6,  r: 1,  type: 'market', h: 1.3, label: 'Market' },
+    );
     const ring = [[-2,-1],[-1,-1],[0,-1],[1,-1],[2,-1],
                   [-2,0],[-2,1],[-2,2],
                   [2,0],[2,1],[2,2],
                   [-1,2],[0,2],[1,2]];
     for (const [c, r] of ring) walls.push({ c, r, h: 1.4 });
-  })();
-  const units = [
-    { color: '#d64545', flag: '#f2d35a', path: [[-1,-2],[1,-2],[1,3],[-1,3]], i: 0, t: 0, spd: 0.45, label: 'Spearman patrol' },
-    { color: '#3f5fb0', flag: '#e8e8e8', path: [[-4,4],[3,6],[5,3],[0,0]], i: 0, t: 0.3, spd: 0.30, label: 'Trader' },
-    { color: '#caa23a', flag: '#2b1d12', path: [[5,2],[7,4],[6,6],[4,4]], i: 0, t: 0.6, spd: 0.36, label: 'Mercenary' },
-  ];
+    units.push(
+      { color: '#d64545', flag: '#f2d35a', path: [[-1,-2],[1,-2],[1,3],[-1,3]], i: 0, t: 0, spd: 0.45, label: 'Spearman patrol' },
+      { color: '#3f5fb0', flag: '#e8e8e8', path: [[-4,4],[3,6],[5,3],[0,0]], i: 0, t: 0.3, spd: 0.30, label: 'Trader' },
+      { color: '#caa23a', flag: '#2b1d12', path: [[5,2],[7,4],[6,6],[4,4]], i: 0, t: 0.6, spd: 0.36, label: 'Mercenary' },
+    );
+  }
+
+  const START_RES = {
+    demo:    { gold: 200, food: 85, water: 30, wood: 40, stone: 0, iron: 0, ale: 0, weapons: 0, army: 0, popularity: 50, pop: 24 },
+    scratch: { gold: 60,  food: 40, water: 20, wood: 30, stone: 0, iron: 0, ale: 0, weapons: 0, army: 0, popularity: 50, pop: 6 },
+  };
 
   // ---- Economy ---------------------------------------------------------------
   // The holding is alive: producers pay out on a fixed cycle, the population
@@ -150,22 +200,28 @@
   const hudEl = {
     gold:  document.getElementById('r-gold'),
     food:  document.getElementById('r-food'),
+    water: document.getElementById('r-water'),
     wood:  document.getElementById('r-wood'),
     stone: document.getElementById('r-stone'),
     iron:  document.getElementById('r-iron'),
+    ale:   document.getElementById('r-ale'),
+    weapons: document.getElementById('r-weapons'),
+    army:  document.getElementById('r-army'),
+    popularity: document.getElementById('r-popularity'),
     pop:   document.getElementById('r-pop'),
   };
-  const res = { gold: 200, food: 85, wood: 40, stone: 0, iron: 0, pop: 24 };
+  const res = { gold: 200, food: 85, water: 30, wood: 40, stone: 0, iron: 0, ale: 0, weapons: 0, army: 0, popularity: 50, pop: 24 };
 
   // Capacity: each storable resource is capped. The keep grants a base cap;
   // storage buildings raise it. Production clamps at the cap, so storage is
   // what lets you stockpile more.
-  const BASE_CAP = { gold: 300, food: 200, wood: 150, stone: 120, iron: 100 };
+  const BASE_CAP = { gold: 300, food: 200, water: 100, wood: 150, stone: 120, iron: 100, ale: 60, weapons: 80, popularity: 100 };
   const STORE_CAP = {
     granary:   { food: 200 },
     larder:    { food: 100 },
     barn:      { food: 150 },
     stockpile: { wood: 150, stone: 150, iron: 120 },
+    cistern:   { water: 200 },
   };
   let caps = Object.assign({}, BASE_CAP);
 
@@ -188,6 +244,44 @@
     }
     for (const k in caps) setRes(k, res[k]);   // re-clamp + refresh HUD
   }
+
+  // ---- Save / restore (localStorage, so a refresh resumes the game) ----------
+  const SAVE_KEY = 'crusaders-save';
+  function saveState() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mode: mode, seed: seed, res: res, buildings: buildings, walls: walls }));
+    } catch (_) {}
+  }
+  function loadState() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+      return (s && s.v === 1 && Array.isArray(s.buildings)) ? s : null;
+    } catch (_) { return null; }
+  }
+  // Start a fresh game in the given mode (new layout + starting resources).
+  function resetWorld(m) {
+    mode = (m === 'scratch') ? 'scratch' : 'demo';
+    buildWorld(mode);
+    rebuildOccupied();
+    recomputeCaps();
+    const s = START_RES[mode] || START_RES.demo;
+    for (const k in s) setRes(k, s[k]);
+    if (typeof floats !== 'undefined') floats.length = 0;
+    prodAcc = 0;
+    saveState();
+  }
+  // Restore a previously saved game verbatim.
+  function applyState(s) {
+    mode = (s.mode === 'scratch') ? 'scratch' : 'demo';
+    setSeed((s.seed >>> 0) || seed);
+    buildWorld(mode);                              // gives us units for the mode
+    buildings.length = 0; for (const b of s.buildings) buildings.push(b);
+    walls.length = 0; for (const w of (s.walls || [])) walls.push(w);
+    rebuildOccupied();
+    recomputeCaps();
+    for (const k in res) if (s.res && s.res[k] != null) setRes(k, s.res[k]);
+  }
+
   // Gatherers: each adds `amt` of one resource per cycle. Some get a bonus for
   // bordering the right terrain (woodcutter→woodland, quarry/mine→rock).
   const PRODUCERS = {
@@ -196,11 +290,28 @@
     woodcutter: { res: 'wood',  amt: 4, color: '#caa46a', bonus: 'fo' },
     quarry:     { res: 'stone', amt: 3, color: '#cfc6b6', bonus: 'ro' },
     ironmine:   { res: 'iron',  amt: 2, color: '#9fb0c2', bonus: 'ro' },
+    orchard:    { res: 'food',  amt: 3, color: '#e9d27a', bonus: 'g' },
+    dairy:      { res: 'food',  amt: 4, color: '#e9d27a', bonus: 'g' },
+    hunter:     { res: 'food',  amt: 3, color: '#e9d27a', bonus: 'fo' },
+    mill:       { res: 'food',  amt: 5, color: '#e9d27a', bonus: 'g' },
+    well:       { res: 'water', amt: 4, color: '#7fc7e8', bonus: 'w' },
+    pitchrig:   { res: 'gold',  amt: 4, color: '#f2d35a', bonus: 'dw' },
   };
   // Workshops: consume inputs to make outputs (only when the inputs are on
   // hand), forming a simple production chain on top of the raw gatherers.
+  // (An empty `in` always runs — e.g. the chapel just radiates popularity.)
   const CONVERTERS = {
-    blacksmith: { in: { iron: 2 }, out: { gold: 12 }, color: '#f2d35a' },
+    blacksmith: { in: { iron: 2 },             out: { gold: 12 },     color: '#f2d35a' },
+    bakery:     { in: { wood: 1 },             out: { food: 8 },      color: '#e9d27a' },
+    brewery:    { in: { water: 2 },            out: { ale: 3 },       color: '#d8a24a' },
+    inn:        { in: { ale: 2 },              out: { popularity: 2 }, color: '#9fe07a' },
+    chapel:     { in: {},                      out: { popularity: 2 }, color: '#9fe07a' },
+    fletcher:   { in: { wood: 2 },             out: { weapons: 1 },   color: '#d0c0a0' },
+    poleturner: { in: { wood: 2 },             out: { weapons: 1 },   color: '#d0c0a0' },
+    armourer:   { in: { iron: 2 },             out: { weapons: 2 },   color: '#cdd6e2' },
+    barracks:   { in: { weapons: 2, gold: 5 }, out: { army: 1 },      color: '#e2c46a' },
+    stables:    { in: { gold: 15 },            out: { army: 1 },      color: '#e2c46a' },
+    mercpost:   { in: { gold: 12 },            out: { army: 1 },      color: '#e2c46a' },
   };
   // +1 per neighbouring tile of the producer's bonus biome (up to +4).
   function terrainBonus(biome, c, r) {
@@ -213,7 +324,7 @@
   function spawnFloat(c, r, text, color) { floats.push({ c, r, text, color, t: 0 }); }
 
   // ---- Building / placement --------------------------------------------------
-  const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍞' };
+  const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍞', water: '💧', stone: '🪨', iron: '⚙️', ale: '🍺', weapons: '⚔️', army: '🛡️', popularity: '😊' };
   // Categories mirror Stronghold's build tabs.
   const CATEGORIES = [
     { id: 'castle',    name: 'Castle',    icon: '🏰' },
@@ -227,45 +338,45 @@
   let activeCat = 'castle';
 
   const BUILDABLE = [
-    { type: 'tower',  cat: 'castle',   icon: '🗼', name: 'Tower',  cost: { stone: 15, wood: 5 },  h: 2.4,  label: 'Square Tower' },
-    { type: 'wall',         cat: 'castle', icon: '🧱', name: 'Wall',         comingSoon: true },
-    { type: 'gatehouse',    cat: 'castle', icon: '🚪', name: 'Gatehouse',    comingSoon: true },
-    { type: 'moat',         cat: 'castle', icon: '🌊', name: 'Moat',         comingSoon: true },
+    { type: 'tower',  cat: 'castle',   icon: '🗼', name: 'Tower',  cost: { stone: 15, wood: 5 },   h: 2.4,  label: 'Square Tower' },
+    { type: 'wall',      cat: 'castle', icon: '🧱', name: 'Wall',      cost: { stone: 5 },            h: 1.3, label: 'Castle Wall' },
+    { type: 'gatehouse', cat: 'castle', icon: '🚪', name: 'Gatehouse', cost: { stone: 20, wood: 10 }, h: 2.0, label: 'Gatehouse' },
+    { type: 'moat',      cat: 'castle', icon: '🌊', name: 'Moat',      cost: { wood: 5 },             h: 0.2, label: 'Moat' },
 
     { type: 'woodcutter', cat: 'industry', icon: '🪓', name: 'Woodcutter', cost: { gold: 20 },           h: 1.2,  label: "Woodcutter's Hut" },
     { type: 'quarry',     cat: 'industry', icon: '⛏️', name: 'Quarry',     cost: { gold: 25 },           h: 0.8,  label: 'Stone Quarry' },
     { type: 'ironmine',   cat: 'industry', icon: '⚒️', name: 'Iron Mine',  cost: { gold: 30, wood: 10 }, h: 1.1,  label: 'Iron Mine' },
-    { type: 'pitchrig',   cat: 'industry', icon: '🛢️', name: 'Pitch Rig',  comingSoon: true },
+    { type: 'pitchrig',   cat: 'industry', icon: '🛢️', name: 'Pitch Rig',  cost: { gold: 25, wood: 10 }, h: 1.2,  label: 'Pitch Rig' },
 
-    { type: 'farm',   cat: 'farm', icon: '🌾', name: 'Farm',   cost: { wood: 8 },            h: 0.35, label: 'Wheat Farm' },
-    { type: 'orchard', cat: 'farm', icon: '🍎', name: 'Apple Orchard', comingSoon: true },
-    { type: 'dairy',   cat: 'farm', icon: '🐄', name: 'Dairy Farm',    comingSoon: true },
-    { type: 'hunter',  cat: 'farm', icon: '🦌', name: "Hunter's Hut",  comingSoon: true },
+    { type: 'farm',   cat: 'farm', icon: '🌾', name: 'Farm',   cost: { wood: 8 },             h: 0.35, label: 'Wheat Farm' },
+    { type: 'orchard', cat: 'farm', icon: '🍎', name: 'Apple Orchard', cost: { wood: 10 },           h: 0.4,  label: 'Apple Orchard' },
+    { type: 'dairy',   cat: 'farm', icon: '🐄', name: 'Dairy Farm',    cost: { wood: 12, gold: 10 }, h: 1.0,  label: 'Dairy Farm' },
+    { type: 'hunter',  cat: 'farm', icon: '🦌', name: "Hunter's Hut",  cost: { wood: 8 },            h: 1.0,  label: "Hunter's Hut" },
 
     { type: 'house',  cat: 'housing', icon: '🏠', name: 'Hovel',  cost: { wood: 10, gold: 5 }, h: 1.0, label: "Peasant's Hovel" },
-    { type: 'well',    cat: 'housing', icon: '💧', name: 'Well',    comingSoon: true },
+    { type: 'well',    cat: 'housing', icon: '💧', name: 'Well',    cost: { wood: 10 },          h: 1.0, label: 'Well' },
 
     { type: 'market', cat: 'community', icon: '🪙', name: 'Market', cost: { wood: 15, gold: 25 }, h: 1.3, label: 'Market' },
-    { type: 'chapel',  cat: 'community', icon: '⛪', name: 'Chapel',  comingSoon: true },
-    { type: 'inn',     cat: 'community', icon: '🍻', name: 'Inn',     comingSoon: true },
-    { type: 'mill',    cat: 'community', icon: '🌀', name: 'Mill',    comingSoon: true },
-    { type: 'bakery',  cat: 'community', icon: '🥖', name: 'Bakery',  comingSoon: true },
-    { type: 'brewery', cat: 'community', icon: '🍺', name: 'Brewery', comingSoon: true },
+    { type: 'chapel',  cat: 'community', icon: '⛪', name: 'Chapel',  cost: { wood: 20, stone: 15 }, h: 2.2, label: 'Chapel' },
+    { type: 'inn',     cat: 'community', icon: '🍻', name: 'Inn',     cost: { wood: 15, gold: 10 },  h: 1.2, label: 'Inn' },
+    { type: 'mill',    cat: 'community', icon: '🌀', name: 'Mill',    cost: { wood: 15 },            h: 1.6, label: 'Mill' },
+    { type: 'bakery',  cat: 'community', icon: '🥖', name: 'Bakery',  cost: { wood: 12, stone: 5 },  h: 1.2, label: 'Bakery' },
+    { type: 'brewery', cat: 'community', icon: '🍺', name: 'Brewery', cost: { wood: 15 },            h: 1.3, label: 'Brewery' },
 
     { type: 'granary',   cat: 'storage', icon: '🏬', name: 'Granary',   cost: { wood: 12 },           h: 1.2, label: 'Granary (+food storage)' },
     { type: 'stockpile', cat: 'storage', icon: '📦', name: 'Stockpile', cost: { wood: 15 },           h: 0.5, label: 'Stockpile (+materials storage)' },
     { type: 'larder',    cat: 'storage', icon: '🧺', name: 'Larder',    cost: { wood: 8 },            h: 0.9, label: 'Larder (+food storage)' },
     { type: 'barn',      cat: 'storage', icon: '🛖', name: 'Barn',      cost: { wood: 12, stone: 5 }, h: 1.3, label: 'Barn (+food storage)' },
-    { type: 'cistern',   cat: 'storage', icon: '🚰', name: 'Cistern',   comingSoon: true },
+    { type: 'cistern',   cat: 'storage', icon: '🚰', name: 'Cistern',   cost: { wood: 12 },           h: 0.6, label: 'Cistern (+water storage)' },
 
     { type: 'blacksmith', cat: 'weapons', icon: '🛠️', name: 'Blacksmith', cost: { wood: 15, stone: 10 }, h: 1.3, label: 'Blacksmith' },
     { type: 'tent',   cat: 'weapons', icon: '⛺', name: 'Tent',   cost: { gold: 15 },           h: 1.1, label: 'Mercenary Tent' },
-    { type: 'fletcher',   cat: 'weapons', icon: '🏹', name: 'Fletcher',   comingSoon: true },
-    { type: 'poleturner', cat: 'weapons', icon: '🔱', name: 'Poleturner', comingSoon: true },
-    { type: 'armourer',   cat: 'weapons', icon: '🛡️', name: 'Armourer',   comingSoon: true },
-    { type: 'barracks',   cat: 'weapons', icon: '⚔️', name: 'Barracks',   comingSoon: true },
-    { type: 'stables',    cat: 'weapons', icon: '🐎', name: 'Stables',    comingSoon: true },
-    { type: 'mercpost',   cat: 'weapons', icon: '🗡️', name: 'Mercenary Post', comingSoon: true },
+    { type: 'fletcher',   cat: 'weapons', icon: '🏹', name: 'Fletcher',   cost: { wood: 15 },            h: 1.2, label: 'Fletcher' },
+    { type: 'poleturner', cat: 'weapons', icon: '🔱', name: 'Poleturner', cost: { wood: 15 },            h: 1.2, label: 'Poleturner' },
+    { type: 'armourer',   cat: 'weapons', icon: '🛡️', name: 'Armourer',   cost: { wood: 15, stone: 10 }, h: 1.3, label: 'Armourer' },
+    { type: 'barracks',   cat: 'weapons', icon: '⚔️', name: 'Barracks',   cost: { wood: 20, stone: 15 }, h: 1.6, label: 'Barracks' },
+    { type: 'stables',    cat: 'weapons', icon: '🐎', name: 'Stables',    cost: { wood: 20, gold: 15 },  h: 1.2, label: 'Stables' },
+    { type: 'mercpost',   cat: 'weapons', icon: '🗡️', name: 'Mercenary Post', cost: { gold: 20 },        h: 1.1, label: 'Mercenary Post' },
   ];
   let placing = null;   // the BUILDABLE entry currently being placed, or null
 
@@ -276,11 +387,15 @@
       r: Math.round((wy / (TILE_H / 2) - wx / (TILE_W / 2)) / 2),
     };
   }
-  function occupied(c, r) {
-    for (const b of buildings) if (b.c === c && b.r === r) return true;
-    for (const w of walls) if (w.c === c && w.r === r) return true;
-    return false;
+  // Occupancy as a Set for O(1) lookups — the render loop tests every visible
+  // tile each frame, so a linear scan over buildings was costly.
+  const occupiedSet = new Set();
+  function rebuildOccupied() {
+    occupiedSet.clear();
+    for (const b of buildings) occupiedSet.add(b.c + ',' + b.r);
+    for (const w of walls) occupiedSet.add(w.c + ',' + w.r);
   }
+  function occupied(c, r) { return occupiedSet.has(c + ',' + r); }
   function canAfford(cost) { for (const k in cost) if (res[k] < cost[k]) return false; return true; }
   function payFor(cost) { for (const k in cost) setRes(k, res[k] - cost[k]); }
   function costText(cost) { return Object.keys(cost).map((k) => RES_ICON[k] + cost[k]).join(' '); }
@@ -294,6 +409,7 @@
     if (!canAfford(placing.cost)) { showTip('Not enough ' + Object.keys(placing.cost).map((k) => RES_ICON[k]).join('')); return; }
     payFor(placing.cost);
     buildings.push({ c, r, type: placing.type, h: placing.h, label: placing.label });
+    rebuildOccupied();
     const sc = STORE_CAP[placing.type];
     if (sc) {
       recomputeCaps();
@@ -302,6 +418,7 @@
       spawnFloat(c, r, 'built', '#cfe6a0');
     }
     refreshBuildList();   // some options may now be unaffordable
+    saveState();
   }
 
   const PROD_EVERY = 3;   // seconds per production cycle
@@ -339,10 +456,11 @@
     // Population eats; spare food draws new peasants to the hovels.
     setRes('food', res.food - Math.ceil(res.pop * 0.1));
     const hovels = buildings.filter((b) => b.type === 'house').length;
-    if (res.food > 30 && res.pop < 60) {
+    if (res.food > 30 && res.popularity >= 45 && res.pop < 60) {
       setRes('pop', res.pop + Math.max(1, Math.floor(hovels / 2)));
       spawnFloat(0, 0, '+peasant', '#cfe6a0');
     }
+    saveState();   // persist resources each cycle so a refresh resumes
   }
 
   function drawFloats() {
@@ -537,6 +655,22 @@
     ctx.lineTo(sx, topY - hgt + 7 * cam.zoom);
     ctx.closePath(); ctx.fill();
   }
+
+  // Generic hut styling for the simpler production buildings: body colour +
+  // roof colour + footprint. A roof of null means flat (no pyramid roof).
+  const STYLE = {
+    dairy:      { body: { top: '#e6e0d4', l: '#c5beb0', r: '#a7a094' }, roof: '#8c3f2a', foot: 0.82 },
+    hunter:     { body: { top: '#9a7a4e', l: '#7c6240', r: '#634e32' }, roof: '#4a3722', foot: 0.74 },
+    inn:        { body: { top: '#c2935a', l: '#a3793f', r: '#876230' }, roof: '#6e4a2b', foot: 0.82 },
+    bakery:     { body: { top: '#caa06a', l: '#a87f4c', r: '#8c673a' }, roof: '#7a4a2a', foot: 0.8 },
+    fletcher:   { body: { top: '#b98a5a', l: '#996f44', r: '#7e5a36' }, roof: '#5f4326', foot: 0.78 },
+    poleturner: { body: { top: '#b98a5a', l: '#996f44', r: '#7e5a36' }, roof: '#5f4326', foot: 0.78 },
+    armourer:   { body: { top: '#9aa0a8', l: '#787e86', r: '#5f646b' }, roof: '#41464d', foot: 0.82 },
+    barracks:   { body: { top: '#c1b496', l: '#9f9376', r: '#83785e' }, roof: '#5a4a30', foot: 0.95 },
+    stables:    { body: { top: '#a87f4c', l: '#8a6638', r: '#6f5230' }, roof: '#5f4326', foot: 0.92 },
+    mercpost:   { body: { top: '#cdbfa3', l: '#9c8e72', r: '#84765c' }, roof: '#7a352a', foot: 0.78 },
+    gatehouse:  { body: STONE, roof: null, foot: 1.0 },
+  };
 
   function drawBuilding(b) {
     // Skip fine ornament (roofs, battlements, doors, stripes) when zoomed far
@@ -765,6 +899,142 @@
         ctx.beginPath(); ctx.arc(sx - 2 * s, cy - 4 * s, 6 * s, 0, Math.PI * 2); ctx.fill();
         break;
       }
+      case 'wall': {
+        groundShadow(b.c, b.r, 0.92);
+        const o = drawBox(b.c, b.r, b.h, STONE, 0.92);
+        if (detail) crenellate(o.sx, o.sy - o.rise, o.w, o.h, STONE);
+        break;
+      }
+      case 'gatehouse': {
+        groundShadow(b.c, b.r, 1.0);
+        const o = drawBox(b.c, b.r, b.h, STONE, 1.0);
+        if (detail) { doorOn(o.sx, o.sy, o.w, o.h, o.rise); crenellate(o.sx, o.sy - o.rise, o.w, o.h, STONE); }
+        break;
+      }
+      case 'moat': {
+        // A shallow water trench: a slightly sunken animated water diamond.
+        const { sx } = screenOf(b.c, b.r);
+        let { sy } = screenOf(b.c, b.r);
+        sy += Math.sin(now / 600 + (b.c + b.r)) * 1.2;
+        const w = TILE_W * cam.zoom * 0.96, h = TILE_H * cam.zoom * 0.96;
+        diamond(sx, sy, w, h); ctx.fillStyle = '#356f8f'; ctx.fill();
+        diamond(sx, sy, w * 0.7, h * 0.7); ctx.fillStyle = '#3f86a8'; ctx.fill();
+        break;
+      }
+      case 'well': {
+        groundShadow(b.c, b.r, 0.5);
+        const o = drawBox(b.c, b.r, 0.5, STONE, 0.4);   // low stone ring
+        if (detail) {
+          const s = cam.zoom, topY = o.sy - o.rise;
+          diamond(o.sx, topY, o.w * 0.5, o.h * 0.5); ctx.fillStyle = '#2d6586'; ctx.fill();
+          // two posts + a little roof over the shaft
+          ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 2 * s;
+          ctx.beginPath();
+          ctx.moveTo(o.sx - 6 * s, topY); ctx.lineTo(o.sx - 6 * s, topY - 14 * s);
+          ctx.moveTo(o.sx + 6 * s, topY); ctx.lineTo(o.sx + 6 * s, topY - 14 * s);
+          ctx.stroke();
+          ctx.fillStyle = '#8c3f2a';
+          ctx.beginPath();
+          ctx.moveTo(o.sx, topY - 20 * s); ctx.lineTo(o.sx - 9 * s, topY - 13 * s);
+          ctx.lineTo(o.sx + 9 * s, topY - 13 * s); ctx.closePath(); ctx.fill();
+        }
+        break;
+      }
+      case 'cistern': {
+        groundShadow(b.c, b.r, 0.85);
+        const o = drawBox(b.c, b.r, b.h, { top: '#356f8f', l: '#5f6b6f', r: '#4b5559' }, 0.82);
+        // shimmering water surface on top
+        const topY = o.sy - o.rise + Math.sin(now / 600 + b.c) * 1;
+        diamond(o.sx, topY, o.w * 0.8, o.h * 0.8); ctx.fillStyle = '#3f86a8'; ctx.fill();
+        break;
+      }
+      case 'mill': {
+        groundShadow(b.c, b.r, 0.8);
+        const o = drawBox(b.c, b.r, b.h, { top: '#cdbfa3', l: '#a99c7e', r: '#8d8064' }, 0.78);
+        const topY = o.sy - o.rise;
+        if (detail) {
+          const s = cam.zoom, a = now / 700;   // slowly turning sails
+          ctx.strokeStyle = '#5a4326'; ctx.lineWidth = 2.4 * s;
+          for (let k = 0; k < 4; k++) {
+            const ang = a + k * Math.PI / 2;
+            ctx.beginPath(); ctx.moveTo(o.sx, topY - 4 * s);
+            ctx.lineTo(o.sx + Math.cos(ang) * 14 * s, topY - 4 * s + Math.sin(ang) * 14 * s);
+            ctx.stroke();
+          }
+          ctx.fillStyle = '#3a2817';
+          ctx.beginPath(); ctx.arc(o.sx, topY - 4 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+        }
+        break;
+      }
+      case 'chapel': {
+        groundShadow(b.c, b.r, 0.85);
+        const o = drawBox(b.c, b.r, b.h, KEEP, 0.78);
+        const topY = o.sy - o.rise;
+        if (detail) {
+          pyramidRoof(o.sx, topY, o.w * 0.82, o.h * 0.82, 18 * cam.zoom, '#7d6a8a');
+          const s = cam.zoom;   // a cross on the apex
+          ctx.strokeStyle = '#e7d8a8'; ctx.lineWidth = 2 * s; ctx.lineCap = 'round';
+          const ay = topY - 18 * cam.zoom;
+          ctx.beginPath();
+          ctx.moveTo(o.sx, ay - 9 * s); ctx.lineTo(o.sx, ay - 1 * s);
+          ctx.moveTo(o.sx - 3 * s, ay - 6 * s); ctx.lineTo(o.sx + 3 * s, ay - 6 * s);
+          ctx.stroke();
+        }
+        break;
+      }
+      case 'brewery': {
+        groundShadow(b.c, b.r, 0.82);
+        const o = drawBox(b.c, b.r, b.h, STYLE.inn.body, 0.82);
+        if (detail) {
+          pyramidRoof(o.sx, o.sy - o.rise, o.w * 0.84, o.h * 0.84, 12 * cam.zoom, '#6e4a2b');
+          const s = cam.zoom;   // ale barrel
+          ctx.fillStyle = '#8a5a32'; ctx.fillRect(o.sx - o.w * 0.55, o.sy - 3 * s, 7 * s, 7 * s);
+          ctx.strokeStyle = '#4a3722'; ctx.lineWidth = 1 * s;
+          ctx.strokeRect(o.sx - o.w * 0.55, o.sy - 3 * s, 7 * s, 7 * s);
+        }
+        break;
+      }
+      case 'pitchrig': {
+        groundShadow(b.c, b.r, 0.8);
+        const o = drawBox(b.c, b.r, 0.6, { top: '#3c3a36', l: '#2e2c29', r: '#222120' }, 0.8);
+        if (detail) {
+          const s = cam.zoom, topY = o.sy - o.rise;
+          // black pitch pool + a derrick
+          diamond(o.sx, topY, o.w * 0.6, o.h * 0.6); ctx.fillStyle = '#16140f'; ctx.fill();
+          ctx.strokeStyle = '#5a4326'; ctx.lineWidth = 2 * s;
+          ctx.beginPath();
+          ctx.moveTo(o.sx - 7 * s, topY + 2 * s); ctx.lineTo(o.sx, topY - 18 * s);
+          ctx.lineTo(o.sx + 7 * s, topY + 2 * s); ctx.stroke();
+        }
+        break;
+      }
+      case 'orchard': {
+        groundShadow(b.c, b.r, 1.0);
+        drawBox(b.c, b.r, 0.18, { top: '#8a9b46', l: '#6f7d36', r: '#5c6829' }, 1.0);
+        if (detail) {
+          // a little grove of apple trees on the plot
+          const s = cam.zoom;
+          for (const [dx, dy] of [[-0.25, -0.12], [0.22, -0.05], [0, 0.18]]) {
+            const px = screenOf(b.c, b.r).sx + dx * TILE_W * cam.zoom;
+            const py = screenOf(b.c, b.r).sy + dy * TILE_H * cam.zoom;
+            ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 2 * s; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - 9 * s); ctx.stroke();
+            ctx.fillStyle = '#3f7a34';
+            ctx.beginPath(); ctx.arc(px, py - 12 * s, 5.5 * s, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#d6402f';
+            ctx.beginPath(); ctx.arc(px + 2 * s, py - 11 * s, 1.2 * s, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        break;
+      }
+      default: {
+        // Generic styled hut for the remaining production buildings.
+        const st = STYLE[b.type] || { body: { top: '#b0a487', l: '#8f846a', r: '#746b54' }, roof: '#5a4a30', foot: 0.8 };
+        groundShadow(b.c, b.r, st.foot);
+        const o = drawBox(b.c, b.r, b.h, st.body, st.foot);
+        if (detail && st.roof) pyramidRoof(o.sx, o.sy - o.rise, o.w * (st.foot + 0.04), o.h * (st.foot + 0.04), 12 * cam.zoom, st.roof);
+        break;
+      }
     }
   }
 
@@ -938,20 +1208,28 @@
   document.getElementById('center-btn').addEventListener('click', () => centerOn(0, 0));
   document.getElementById('menu-btn').addEventListener('click', openMenu);
 
+  const modeSelect = document.getElementById('mode-select');
+
   function openMenu() {
     if (seedVal) seedVal.textContent = seed;
+    if (modeSelect) modeSelect.value = mode;
     overlay.dataset.state = 'title';
   }
   function closeMenu() { overlay.dataset.state = 'hidden'; }
   document.getElementById('play-btn').addEventListener('click', closeMenu);
   document.getElementById('how-btn').addEventListener('click', () => {
-    blurb.textContent = 'Drag with one finger to roam the endless map. Pinch (or − / +) to zoom. Tap any building, prop or tile to inspect it. 🏰 recenters on your keep. Each seed is a different world — try “New world”.';
+    blurb.textContent = 'Drag with one finger to roam the endless map. Pinch (or − / +) to zoom. Tap any building, prop or tile to inspect it. 🏰 recenters on your keep. Pick a Start mode and hit “New world” for a fresh game — your progress is saved, so a refresh resumes where you left off.';
+  });
+  // Start dropdown: changing it begins a fresh game in that mode.
+  modeSelect.addEventListener('change', () => {
+    setSeed((Math.random() * 4294967296) >>> 0);
+    resetWorld(modeSelect.value);
+    centerOn(0, 0);
   });
   document.getElementById('reroll-btn').addEventListener('click', () => {
     setSeed((Math.random() * 4294967296) >>> 0);
+    resetWorld(mode);   // fresh layout + resources for the current mode
     centerOn(0, 0);
-    // reset patrol positions so units sit back home in the fresh world
-    for (const u of units) { u.i = 0; }
   });
 
   document.getElementById('quit-btn').addEventListener('click', () => {
@@ -1085,12 +1363,22 @@
   }
 
   // ---- Boot ------------------------------------------------------------------
-  setSeed(seed);
-  recomputeCaps();   // apply base caps + clamp starting resources
+  // Resume a saved game if there is one; otherwise start fresh in the default
+  // mode (demo). Either path leaves `mode`/resources/buildings ready to render.
+  const saved = loadState();
+  if (saved) {
+    applyState(saved);
+  } else {
+    setSeed(seed);        // sync display + clear caches for the starting seed
+    resetWorld('demo');
+  }
+  if (modeSelect) modeSelect.value = mode;
   resize();
   centerOn(0, 0);
   window.addEventListener('resize', resize);
   window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+  window.addEventListener('pagehide', saveState);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveState(); });
   requestAnimationFrame(frame);
 
   (function hideLoadingWhenReady() {
