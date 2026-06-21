@@ -142,10 +142,18 @@
   scene.add(water);
 
   // ---- Buildings (grouped so each can be selected & managed as one) ----------
-  const SP = 1.7;          // spacing scale so meshes don't overlap
+  const GRID = 2;          // world units per tile/cell (placement snaps to this)
+  const SP = GRID;         // demo spacing == grid so everything lines up
   const BASE = 0.3;        // clearing ground height
   const selectable = [];   // meshes a left-click can pick (each → userData.root)
   const objects = [];      // manageable building groups
+  function snap(v) { return Math.round(v / GRID) * GRID; }
+
+  // Tile grid over the ground, aligned so cells centre on placement points.
+  const grid = new THREE.GridHelper(SIZE, SIZE / GRID, 0x6b5836, 0x57462c);
+  grid.position.set(GRID / 2, BASE + 0.02, GRID / 2);
+  grid.material.transparent = true; grid.material.opacity = 0.4;
+  scene.add(grid);
   function mat(color, rough) { return new THREE.MeshStandardMaterial({ color: color, roughness: rough == null ? 0.9 : rough }); }
   function partBox(g, w, h, d, color, yBase) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
@@ -270,7 +278,6 @@
       tools.classList.remove('show');
     }
   }
-  canvas.addEventListener('pointerdown', function (e) { if (e.button === 0) { downX = e.clientX; downY = e.clientY; } });
   function pointerToNdc(e) {
     const rect = canvas.getBoundingClientRect();
     ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -278,8 +285,35 @@
   }
   function groundTile() {
     const hit = raycaster.intersectObject(ground, false)[0];
-    return hit ? { x: Math.round(hit.point.x), z: Math.round(hit.point.z) } : null;
+    return hit ? { x: snap(hit.point.x), z: snap(hit.point.z) } : null;
   }
+
+  // Global Move tool: when on, left-drag grabs the building under the cursor and
+  // slides it across the grid — no need to select first. Empty ground still pans.
+  let moveTool = false, dragObj = null;
+  canvas.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0) return;
+    downX = e.clientX; downY = e.clientY;
+    if (!moveTool) return;
+    pointerToNdc(e);
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObjects(selectable, false);
+    if (hits.length) {
+      dragObj = hits[0].object.userData.root;
+      setSelected(dragObj);
+      controls.enabled = false;   // don't pan while dragging a building
+    }
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!dragObj) return;
+    pointerToNdc(e);
+    raycaster.setFromCamera(ndc, camera);
+    const t = groundTile();
+    if (t) { dragObj.position.x = t.x; dragObj.position.z = t.z; }
+  });
+  function endDrag() { if (dragObj) { dragObj = null; controls.enabled = true; } }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
   canvas.addEventListener('pointerup', function (e) {
     if (e.button !== 0) return;
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;   // was a drag, not a click
@@ -412,6 +446,19 @@
   document.getElementById('build-close').addEventListener('click', closeBuild);
   document.getElementById('place-cancel').addEventListener('click', function () {
     if (moveMode) { moveMode = false; placeBanner.classList.remove('show'); } else stopPlacing();
+  });
+
+  const moveBtn = document.getElementById('movetool-btn');
+  moveBtn.addEventListener('click', function () {
+    moveTool = !moveTool;
+    if (moveTool) stopPlacing();
+    moveBtn.classList.toggle('active', moveTool);
+  });
+  const gridBtn = document.getElementById('grid-btn');
+  gridBtn.classList.add('active');
+  gridBtn.addEventListener('click', function () {
+    grid.visible = !grid.visible;
+    gridBtn.classList.toggle('active', grid.visible);
   });
 
   // Drop a building group on the ground tile under the cursor (raycaster is

@@ -70,7 +70,7 @@ html, body { margin: 0; padding: 0; height: 100%;
 /* ---- Build controls + sheet (ported from the 2D game) ---- */
 .controls {
   position: absolute; right: 14px; bottom: max(16px, env(safe-area-inset-bottom));
-  z-index: 6;
+  z-index: 6; display: flex; flex-direction: column; gap: 10px;
 }
 .ctl {
   width: 52px; height: 52px; border-radius: 14px;
@@ -81,6 +81,7 @@ html, body { margin: 0; padding: 0; height: 100%;
   box-shadow: 0 4px 12px rgba(0,0,0,0.45);
 }
 .ctl:active { transform: translateY(1px) scale(0.96); filter: brightness(1.15); }
+.ctl.active { background: linear-gradient(180deg, #e7b85b, #c8902f); color: #2b1d12; border-color: transparent; }
 
 .build-sheet {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 8;
