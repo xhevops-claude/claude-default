@@ -142,20 +142,24 @@
   scene.add(water);
 
   // ---- Buildings (grouped so each can be selected & managed as one) ----------
-  const GRID = 2;          // world units per tile/cell (placement snaps to this)
-  const SP = GRID;         // demo spacing == grid so everything lines up
+  const MAJOR = 2;         // demo spacing + major grid lines
+  const STEP = 0.2;        // fine movement/placement resolution (10x finer)
+  const SP = MAJOR;        // demo spacing
   const BASE = 0.3;        // clearing ground height
   const selectable = [];   // meshes a left-click can pick (each → userData.root)
   const objects = [];      // manageable building groups
-  function snap(v) { return Math.round(v / GRID) * GRID; }
+  function snap(v) { return Math.round(v / STEP) * STEP; }
 
-  // Tile grid over the ground. With SIZE/GRID divisions the helper's lines fall
-  // on odd coords, so even-snapped objects already sit in cell centres — no
-  // extra offset (that was the misalignment).
-  const grid = new THREE.GridHelper(SIZE, SIZE / GRID, 0x6b5836, 0x57462c);
-  grid.position.set(0, BASE + 0.02, 0);
-  grid.material.transparent = true; grid.material.opacity = 0.4;
-  scene.add(grid);
+  // Two grids: a faint fine grid at the snap resolution + a stronger major grid.
+  const gridFine = new THREE.GridHelper(SIZE, Math.round(SIZE / STEP), 0x5f4e30, 0x4f4029);
+  gridFine.position.set(0, BASE + 0.015, 0);
+  gridFine.material.transparent = true; gridFine.material.opacity = 0.18;
+  scene.add(gridFine);
+  const gridMajor = new THREE.GridHelper(SIZE, SIZE / MAJOR, 0x7a6638, 0x6b5836);
+  gridMajor.position.set(0, BASE + 0.02, 0);
+  gridMajor.material.transparent = true; gridMajor.material.opacity = 0.45;
+  scene.add(gridMajor);
+  function setGridVisible(v) { gridFine.visible = v; gridMajor.visible = v; }
   function mat(color, rough) { return new THREE.MeshStandardMaterial({ color: color, roughness: rough == null ? 0.9 : rough }); }
   function partBox(g, w, h, d, color, yBase) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
@@ -262,7 +266,7 @@
   const info = document.getElementById('info');
   const infoName = document.getElementById('info-name');
   const infoMeta = document.getElementById('info-meta');
-  let selected = null, downX = 0, downY = 0, placing = null, tool = 'select';
+  let selected = null, downX = 0, downY = 0, tool = 'select';
 
   function highlight(group, on) {
     group.traverse(function (o) {
@@ -298,32 +302,60 @@
     return hits.length ? hits[0].object.userData.root : null;
   }
 
-  // The active left-toolbar tool drives what a click/drag does.
-  let dragObj = null;
+  // ---- Carry: a ghost (build) or the real object (move) follows the cursor ---
+  let carry = null;   // { group, mode:'build'|'move', entry? }
+  function setGroupOpacity(g, o) {
+    g.traverse(function (m) { if (m.isMesh && m.material) { m.material.transparent = o < 1; m.material.opacity = o; m.material.depthWrite = o >= 1; } });
+  }
+  function startBuildCarry(entry) {
+    cancelCarry();
+    const ghost = makeBuildingGroup(entry); setGroupOpacity(ghost, 0.5); scene.add(ghost);
+    carry = { group: ghost, mode: 'build', entry: entry };
+    placeText.textContent = 'Click to place ' + entry.name + ' · Done to stop'; placeBanner.classList.add('show');
+  }
+  function startMoveCarry(group) {
+    cancelCarry();
+    setGroupOpacity(group, 0.5);
+    carry = { group: group, mode: 'move' };
+    placeText.textContent = 'Click to drop ' + (group.userData.name || 'it'); placeBanner.classList.add('show');
+  }
+  function cancelCarry() {
+    if (!carry) return;
+    if (carry.mode === 'build') scene.remove(carry.group); else setGroupOpacity(carry.group, 1);
+    carry = null; placeBanner.classList.remove('show');
+  }
+  function dropCarry() {
+    if (carry.mode === 'build') {
+      const solid = makeBuildingGroup(carry.entry);
+      solid.position.copy(carry.group.position);
+      registerGroup(solid, carry.entry.name, carry.entry.cat);
+      // keep carrying the ghost so you can place several in a row
+    } else {
+      setGroupOpacity(carry.group, 1);
+      setSelected(carry.group);
+      carry = null; placeBanner.classList.remove('show');
+    }
+  }
+  function carryToCursor(e) {
+    pointerToNdc(e); raycaster.setFromCamera(ndc, camera);
+    const t = groundTile();
+    if (t) { carry.group.position.x = t.x; carry.group.position.z = t.z; }
+  }
+
   canvas.addEventListener('pointerdown', function (e) {
     if (e.button !== 0) return;
     downX = e.clientX; downY = e.clientY;
-    if (tool === 'move') {                       // grab a building to slide it
-      const obj = pickObject(e);
-      if (obj) { dragObj = obj; setSelected(obj); controls.enabled = false; }
-    }
+    if (carry) carryToCursor(e);                 // snap ghost under finger (touch)
   });
-  canvas.addEventListener('pointermove', function (e) {
-    if (!dragObj) return;
-    pointerToNdc(e); raycaster.setFromCamera(ndc, camera);
-    const t = groundTile();
-    if (t) { dragObj.position.x = t.x; dragObj.position.z = t.z; }
-  });
-  function endDrag() { if (dragObj) { dragObj = null; controls.enabled = true; } }
-  canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('pointermove', function (e) { if (carry) carryToCursor(e); });
   canvas.addEventListener('pointerup', function (e) {
     if (e.button !== 0) return;
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;   // was a drag, not a click
-    if (placing) { pointerToNdc(e); raycaster.setFromCamera(ndc, camera); placeAt(); return; }
+    if (carry) { dropCarry(); return; }
     const obj = pickObject(e);
     if (tool === 'delete') { if (obj) deleteObj(obj); return; }
-    setSelected(obj);                            // select & move tools select on click
+    if (tool === 'move') { if (obj) startMoveCarry(obj); else setSelected(null); return; }
+    setSelected(obj);                            // select tool
   });
 
   // ---- Object operations -----------------------------------------------------
@@ -345,7 +377,7 @@
     if (!selected) return;
     const clone = selected.clone(true);
     clone.traverse(function (o) { if (o.isMesh && o.material) o.material = o.material.clone(); });
-    clone.position.x += GRID; clone.position.z += GRID;
+    clone.position.x += 1; clone.position.z += 1;
     registerGroup(clone, selected.userData.name, selected.userData.cat);
     setSelected(clone);
   });
@@ -355,7 +387,7 @@
   const TOOL_BTN = { select: document.getElementById('lt-select'), move: document.getElementById('lt-move'), delete: document.getElementById('lt-delete') };
   function setTool(t) {
     tool = t;
-    if (t !== 'move') endDrag();
+    cancelCarry();
     Object.keys(TOOL_BTN).forEach(function (k) { if (TOOL_BTN[k]) TOOL_BTN[k].classList.toggle('active', k === t); });
   }
   TOOL_BTN.select.addEventListener('click', function () { setTool('select'); });
@@ -400,7 +432,29 @@
     castle: 0xcdbfa3, industry: 0xb98a5a, farm: 0x8a9b46, housing: 0xb06a3b,
     community: 0xc98f4e, storage: 0xa89a7e, weapons: 0x9aa0a8,
   };
-  const TALL = { tower: 1, gatehouse: 1, chapel: 1, barracks: 1, mill: 1 };
+  // Per-type footprint { w, h, d, roof }. Buildings now differ in size.
+  const SIZES = {
+    tower: { w: 1.0, h: 3.0, d: 1.0, roof: 1 }, wall: { w: 1.8, h: 1.2, d: 0.5, roof: 0 },
+    gatehouse: { w: 1.6, h: 2.2, d: 1.6, roof: 0 },
+    woodcutter: { w: 1.2, h: 1.2, d: 1.2, roof: 1 }, quarry: { w: 1.6, h: 0.8, d: 1.6, roof: 0 },
+    ironmine: { w: 1.2, h: 1.4, d: 1.2, roof: 1 },
+    farm: { w: 2.0, h: 0.3, d: 2.0, roof: 0 }, orchard: { w: 2.0, h: 0.3, d: 2.0, roof: 0 },
+    dairy: { w: 1.6, h: 1.2, d: 1.2, roof: 1 },
+    house: { w: 1.0, h: 1.0, d: 1.0, roof: 1 }, well: { w: 0.8, h: 0.8, d: 0.8, roof: 0 },
+    market: { w: 2.2, h: 1.4, d: 2.2, roof: 0 }, chapel: { w: 1.2, h: 2.4, d: 1.8, roof: 1 },
+    inn: { w: 1.6, h: 1.4, d: 1.6, roof: 1 }, mill: { w: 1.0, h: 2.4, d: 1.0, roof: 1 },
+    bakery: { w: 1.4, h: 1.4, d: 1.4, roof: 1 },
+    granary: { w: 1.4, h: 1.6, d: 1.4, roof: 1 }, stockpile: { w: 2.0, h: 0.5, d: 2.0, roof: 0 },
+    blacksmith: { w: 1.4, h: 1.4, d: 1.4, roof: 1 }, fletcher: { w: 1.2, h: 1.4, d: 1.2, roof: 1 },
+    barracks: { w: 2.4, h: 1.6, d: 1.8, roof: 1 },
+  };
+  function makeBuildingGroup(entry) {
+    const s = SIZES[entry.type] || { w: 1.2, h: 1.2, d: 1.2, roof: 1 };
+    const g = new THREE.Group();
+    partBox(g, s.w, s.h, s.d, CAT_COLOR[entry.cat] || 0xcdbfa3, BASE);
+    if (s.roof) partRoof(g, Math.max(s.w, s.d) * 0.62, 1.0, 0x6e4a2b, BASE + s.h);
+    return g;
+  }
   let activeCat = 'castle';
 
   const buildSheet = document.getElementById('build-sheet');
@@ -437,35 +491,22 @@
   }
   function openBuild() { renderTabs(); refreshList(); buildSheet.dataset.open = 'true'; }
   function closeBuild() { buildSheet.dataset.open = 'false'; }
-  function startPlacing(b) { placing = b; closeBuild(); placeText.textContent = 'Click the ground to place ' + b.name; placeBanner.classList.add('show'); }
-  function stopPlacing() { placing = null; placeBanner.classList.remove('show'); }
+  function startPlacing(b) { closeBuild(); startBuildCarry(b); }   // ghost follows cursor
 
   document.getElementById('build-btn').addEventListener('click', function () {
-    if (placing) { stopPlacing(); return; }
+    if (carry) { cancelCarry(); return; }
     if (buildSheet.dataset.open === 'true') closeBuild(); else openBuild();
   });
   document.getElementById('build-close').addEventListener('click', closeBuild);
-  document.getElementById('place-cancel').addEventListener('click', stopPlacing);
+  document.getElementById('place-cancel').addEventListener('click', cancelCarry);
 
   const gridBtn = document.getElementById('grid-btn');
   gridBtn.classList.add('active');
+  let gridOn = true;
   gridBtn.addEventListener('click', function () {
-    grid.visible = !grid.visible;
-    gridBtn.classList.toggle('active', grid.visible);
+    gridOn = !gridOn; setGridVisible(gridOn);
+    gridBtn.classList.toggle('active', gridOn);
   });
-
-  // Drop a building group on the ground tile under the cursor (raycaster is
-  // already aimed from the pointerup handler). Placement is free in this proto.
-  function placeAt() {
-    const t = groundTile();
-    if (!t) return;
-    const color = CAT_COLOR[placing.cat] || 0xcdbfa3;
-    const h = TALL[placing.type] ? 2.6 : 1.2;
-    const g = new THREE.Group();
-    partBox(g, 1.4, h, 1.4, color, BASE);
-    partRoof(g, 1.15, 1.0, 0x6e4a2b, BASE + h);
-    place(g, t.x, t.z, placing.name, placing.cat);
-  }
 
   openBuild();   // bottom build menu visible by default
 
