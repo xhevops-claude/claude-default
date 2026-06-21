@@ -70,8 +70,14 @@
 
   <nav class="controls" id="controls">
     <button class="ctl" id="grid-btn" type="button" aria-label="Toggle grid">#️⃣</button>
-    <button class="ctl" id="movetool-btn" type="button" aria-label="Move tool">✋</button>
     <button class="ctl" id="build-btn" type="button" aria-label="Build">🔨</button>
+  </nav>
+
+  <!-- Left tool palette (Paint-style); more tools to come -->
+  <nav class="toolbar" id="toolbar">
+    <button class="tool" id="lt-select" type="button" title="Select"><span>🖱️</span>Select</button>
+    <button class="tool" id="lt-move" type="button" title="Move"><span>✋</span>Move</button>
+    <button class="tool" id="lt-delete" type="button" title="Delete"><span>🗑️</span>Delete</button>
   </nav>
 
   <div class="build-sheet" id="build-sheet" data-open="false">

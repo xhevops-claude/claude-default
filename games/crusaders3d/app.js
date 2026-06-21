@@ -149,9 +149,11 @@
   const objects = [];      // manageable building groups
   function snap(v) { return Math.round(v / GRID) * GRID; }
 
-  // Tile grid over the ground, aligned so cells centre on placement points.
+  // Tile grid over the ground. With SIZE/GRID divisions the helper's lines fall
+  // on odd coords, so even-snapped objects already sit in cell centres — no
+  // extra offset (that was the misalignment).
   const grid = new THREE.GridHelper(SIZE, SIZE / GRID, 0x6b5836, 0x57462c);
-  grid.position.set(GRID / 2, BASE + 0.02, GRID / 2);
+  grid.position.set(0, BASE + 0.02, 0);
   grid.material.transparent = true; grid.material.opacity = 0.4;
   scene.add(grid);
   function mat(color, rough) { return new THREE.MeshStandardMaterial({ color: color, roughness: rough == null ? 0.9 : rough }); }
@@ -259,7 +261,7 @@
   const ndc = new THREE.Vector2();
   const tools = document.getElementById('obj-tools');
   const toolName = document.getElementById('tool-name');
-  let selected = null, downX = 0, downY = 0, placing = null, moveMode = false;
+  let selected = null, downX = 0, downY = 0, placing = null, tool = 'select';
 
   function highlight(group, on) {
     group.traverse(function (o) {
@@ -269,7 +271,6 @@
   function setSelected(g) {
     if (selected) highlight(selected, false);
     selected = g;
-    moveMode = false; placeBanner.classList.remove('show');
     if (g) {
       highlight(g, true);
       toolName.textContent = g.userData.name || 'Structure';
@@ -287,27 +288,26 @@
     const hit = raycaster.intersectObject(ground, false)[0];
     return hit ? { x: snap(hit.point.x), z: snap(hit.point.z) } : null;
   }
-
-  // Global Move tool: when on, left-drag grabs the building under the cursor and
-  // slides it across the grid — no need to select first. Empty ground still pans.
-  let moveTool = false, dragObj = null;
-  canvas.addEventListener('pointerdown', function (e) {
-    if (e.button !== 0) return;
-    downX = e.clientX; downY = e.clientY;
-    if (!moveTool) return;
+  function pickObject(e) {
     pointerToNdc(e);
     raycaster.setFromCamera(ndc, camera);
     const hits = raycaster.intersectObjects(selectable, false);
-    if (hits.length) {
-      dragObj = hits[0].object.userData.root;
-      setSelected(dragObj);
-      controls.enabled = false;   // don't pan while dragging a building
+    return hits.length ? hits[0].object.userData.root : null;
+  }
+
+  // The active left-toolbar tool drives what a click/drag does.
+  let dragObj = null;
+  canvas.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0) return;
+    downX = e.clientX; downY = e.clientY;
+    if (tool === 'move') {                       // grab a building to slide it
+      const obj = pickObject(e);
+      if (obj) { dragObj = obj; setSelected(obj); controls.enabled = false; }
     }
   });
   canvas.addEventListener('pointermove', function (e) {
     if (!dragObj) return;
-    pointerToNdc(e);
-    raycaster.setFromCamera(ndc, camera);
+    pointerToNdc(e); raycaster.setFromCamera(ndc, camera);
     const t = groundTile();
     if (t) { dragObj.position.x = t.x; dragObj.position.z = t.z; }
   });
@@ -317,50 +317,48 @@
   canvas.addEventListener('pointerup', function (e) {
     if (e.button !== 0) return;
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;   // was a drag, not a click
-    pointerToNdc(e);
-    raycaster.setFromCamera(ndc, camera);
-    if (placing) { placeAt(); return; }                                // build from menu
-    if (moveMode && selected) {                                        // relocate selection
-      const t = groundTile();
-      if (t) { selected.position.x = t.x; selected.position.z = t.z; }
-      moveMode = false; placeBanner.classList.remove('show');
-      return;
-    }
-    const hits = raycaster.intersectObjects(selectable, false);
-    setSelected(hits.length ? hits[0].object.userData.root : null);
+    if (placing) { pointerToNdc(e); raycaster.setFromCamera(ndc, camera); placeAt(); return; }
+    const obj = pickObject(e);
+    if (tool === 'delete') { if (obj) deleteObj(obj); return; }
+    setSelected(obj);                            // select & move tools select on click
   });
 
-  // ---- Object tools: move / rotate / duplicate / delete ----------------------
+  // ---- Object operations -----------------------------------------------------
   function registerGroup(group, name) {   // like place() but keeps current position
     group.userData.name = name;
     group.traverse(function (o) { if (o.isMesh) { o.userData.root = group; selectable.push(o); } });
     scene.add(group); objects.push(group);
   }
-  document.getElementById('tool-move').addEventListener('click', function () {
-    if (!selected) return;
-    moveMode = true;
-    placeText.textContent = 'Click the ground to move ' + (selected.userData.name || 'it');
-    placeBanner.classList.add('show');
-  });
-  document.getElementById('tool-rotate').addEventListener('click', function () {
-    if (selected) selected.rotation.y += Math.PI / 2;
-  });
+  function deleteObj(g) {
+    scene.remove(g);
+    for (let i = selectable.length - 1; i >= 0; i--) if (selectable[i].userData.root === g) selectable.splice(i, 1);
+    const oi = objects.indexOf(g); if (oi >= 0) objects.splice(oi, 1);
+    if (selected === g) setSelected(null);
+  }
+  // Per-object panel (shown on select): Move switches to the move tool.
+  document.getElementById('tool-move').addEventListener('click', function () { setTool('move'); });
+  document.getElementById('tool-rotate').addEventListener('click', function () { if (selected) selected.rotation.y += Math.PI / 2; });
   document.getElementById('tool-dupe').addEventListener('click', function () {
     if (!selected) return;
     const clone = selected.clone(true);
     clone.traverse(function (o) { if (o.isMesh && o.material) o.material = o.material.clone(); });
-    clone.position.x += 1; clone.position.z += 1;
+    clone.position.x += GRID; clone.position.z += GRID;
     registerGroup(clone, selected.userData.name);
     setSelected(clone);
   });
-  document.getElementById('tool-delete').addEventListener('click', function () {
-    if (!selected) return;
-    const g = selected;
-    scene.remove(g);
-    for (let i = selectable.length - 1; i >= 0; i--) if (selectable[i].userData.root === g) selectable.splice(i, 1);
-    const oi = objects.indexOf(g); if (oi >= 0) objects.splice(oi, 1);
-    setSelected(null);
-  });
+  document.getElementById('tool-delete').addEventListener('click', function () { if (selected) deleteObj(selected); });
+
+  // ---- Left toolbar: tool modes (Paint-style) --------------------------------
+  const TOOL_BTN = { select: document.getElementById('lt-select'), move: document.getElementById('lt-move'), delete: document.getElementById('lt-delete') };
+  function setTool(t) {
+    tool = t;
+    if (t !== 'move') endDrag();
+    Object.keys(TOOL_BTN).forEach(function (k) { if (TOOL_BTN[k]) TOOL_BTN[k].classList.toggle('active', k === t); });
+  }
+  TOOL_BTN.select.addEventListener('click', function () { setTool('select'); });
+  TOOL_BTN.move.addEventListener('click', function () { setTool('move'); });
+  TOOL_BTN.delete.addEventListener('click', function () { setTool('delete'); });
+  setTool('select');
 
   // ---- Build menu (DOM overlay) + click-to-place -----------------------------
   const CATEGORIES = [
@@ -444,16 +442,8 @@
     if (buildSheet.dataset.open === 'true') closeBuild(); else openBuild();
   });
   document.getElementById('build-close').addEventListener('click', closeBuild);
-  document.getElementById('place-cancel').addEventListener('click', function () {
-    if (moveMode) { moveMode = false; placeBanner.classList.remove('show'); } else stopPlacing();
-  });
+  document.getElementById('place-cancel').addEventListener('click', stopPlacing);
 
-  const moveBtn = document.getElementById('movetool-btn');
-  moveBtn.addEventListener('click', function () {
-    moveTool = !moveTool;
-    if (moveTool) stopPlacing();
-    moveBtn.classList.toggle('active', moveTool);
-  });
   const gridBtn = document.getElementById('grid-btn');
   gridBtn.classList.add('active');
   gridBtn.addEventListener('click', function () {
