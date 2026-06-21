@@ -193,6 +193,7 @@
     { id: 'farm',      name: 'Farm',      icon: '🌾' },
     { id: 'housing',   name: 'Housing',   icon: '🏠' },
     { id: 'community', name: 'Community', icon: '🏛️' },
+    { id: 'storage',   name: 'Storage',   icon: '📦' },
     { id: 'weapons',   name: 'Weapons',   icon: '⚔️' },
   ];
   let activeCat = 'castle';
@@ -214,7 +215,6 @@
     { type: 'hunter',  cat: 'farm', icon: '🦌', name: "Hunter's Hut",  comingSoon: true },
 
     { type: 'house',  cat: 'housing', icon: '🏠', name: 'Hovel',  cost: { wood: 10, gold: 5 }, h: 1.0, label: "Peasant's Hovel" },
-    { type: 'granary', cat: 'housing', icon: '🏬', name: 'Granary', comingSoon: true },
     { type: 'well',    cat: 'housing', icon: '💧', name: 'Well',    comingSoon: true },
 
     { type: 'market', cat: 'community', icon: '🪙', name: 'Market', cost: { wood: 15, gold: 25 }, h: 1.3, label: 'Market' },
@@ -223,6 +223,12 @@
     { type: 'mill',    cat: 'community', icon: '🌀', name: 'Mill',    comingSoon: true },
     { type: 'bakery',  cat: 'community', icon: '🥖', name: 'Bakery',  comingSoon: true },
     { type: 'brewery', cat: 'community', icon: '🍺', name: 'Brewery', comingSoon: true },
+
+    { type: 'granary',   cat: 'storage', icon: '🏬', name: 'Granary',   comingSoon: true },
+    { type: 'stockpile', cat: 'storage', icon: '📦', name: 'Stockpile', comingSoon: true },
+    { type: 'larder',    cat: 'storage', icon: '🧺', name: 'Larder',    comingSoon: true },
+    { type: 'barn',      cat: 'storage', icon: '🛖', name: 'Barn',      comingSoon: true },
+    { type: 'cistern',   cat: 'storage', icon: '🚰', name: 'Cistern',   comingSoon: true },
 
     { type: 'blacksmith', cat: 'weapons', icon: '🛠️', name: 'Blacksmith', cost: { wood: 15, stone: 10 }, h: 1.3, label: 'Blacksmith' },
     { type: 'tent',   cat: 'weapons', icon: '⛺', name: 'Tent',   cost: { gold: 15 },           h: 1.1, label: 'Mercenary Tent' },
