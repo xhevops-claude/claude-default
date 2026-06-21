@@ -188,11 +188,12 @@
   const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍞' };
   // Categories mirror Stronghold's build tabs.
   const CATEGORIES = [
-    { id: 'castle',   name: 'Castle',   icon: '🏰' },
-    { id: 'industry', name: 'Industry', icon: '⛏️' },
-    { id: 'farm',     name: 'Farm',     icon: '🌾' },
-    { id: 'town',     name: 'Town',     icon: '🏘️' },
-    { id: 'weapons',  name: 'Weapons',  icon: '⚔️' },
+    { id: 'castle',    name: 'Castle',    icon: '🏰' },
+    { id: 'industry',  name: 'Industry',  icon: '⛏️' },
+    { id: 'farm',      name: 'Farm',      icon: '🌾' },
+    { id: 'housing',   name: 'Housing',   icon: '🏠' },
+    { id: 'community', name: 'Community', icon: '🏛️' },
+    { id: 'weapons',   name: 'Weapons',   icon: '⚔️' },
   ];
   let activeCat = 'castle';
 
@@ -212,15 +213,16 @@
     { type: 'dairy',   cat: 'farm', icon: '🐄', name: 'Dairy Farm',    comingSoon: true },
     { type: 'hunter',  cat: 'farm', icon: '🦌', name: "Hunter's Hut",  comingSoon: true },
 
-    { type: 'house',  cat: 'town', icon: '🏠', name: 'Hovel',  cost: { wood: 10, gold: 5 },  h: 1.0, label: "Peasant's Hovel" },
-    { type: 'market', cat: 'town', icon: '🪙', name: 'Market', cost: { wood: 15, gold: 25 }, h: 1.3, label: 'Market' },
-    { type: 'granary', cat: 'town', icon: '🏬', name: 'Granary', comingSoon: true },
-    { type: 'well',    cat: 'town', icon: '💧', name: 'Well',    comingSoon: true },
-    { type: 'chapel',  cat: 'town', icon: '⛪', name: 'Chapel',  comingSoon: true },
-    { type: 'mill',    cat: 'town', icon: '🌀', name: 'Mill',    comingSoon: true },
-    { type: 'bakery',  cat: 'town', icon: '🥖', name: 'Bakery',  comingSoon: true },
-    { type: 'brewery', cat: 'town', icon: '🍺', name: 'Brewery', comingSoon: true },
-    { type: 'inn',     cat: 'town', icon: '🍻', name: 'Inn',     comingSoon: true },
+    { type: 'house',  cat: 'housing', icon: '🏠', name: 'Hovel',  cost: { wood: 10, gold: 5 }, h: 1.0, label: "Peasant's Hovel" },
+    { type: 'granary', cat: 'housing', icon: '🏬', name: 'Granary', comingSoon: true },
+    { type: 'well',    cat: 'housing', icon: '💧', name: 'Well',    comingSoon: true },
+
+    { type: 'market', cat: 'community', icon: '🪙', name: 'Market', cost: { wood: 15, gold: 25 }, h: 1.3, label: 'Market' },
+    { type: 'chapel',  cat: 'community', icon: '⛪', name: 'Chapel',  comingSoon: true },
+    { type: 'inn',     cat: 'community', icon: '🍻', name: 'Inn',     comingSoon: true },
+    { type: 'mill',    cat: 'community', icon: '🌀', name: 'Mill',    comingSoon: true },
+    { type: 'bakery',  cat: 'community', icon: '🥖', name: 'Bakery',  comingSoon: true },
+    { type: 'brewery', cat: 'community', icon: '🍺', name: 'Brewery', comingSoon: true },
 
     { type: 'blacksmith', cat: 'weapons', icon: '🛠️', name: 'Blacksmith', cost: { wood: 15, stone: 10 }, h: 1.3, label: 'Blacksmith' },
     { type: 'tent',   cat: 'weapons', icon: '⛺', name: 'Tent',   cost: { gold: 15 },           h: 1.1, label: 'Mercenary Tent' },
