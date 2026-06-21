@@ -91,14 +91,14 @@
     if (e < 0.84) return 'ro';
     return 'sn';
   }
-  // Height + biome at a world point, with a flattened grass clearing at spawn.
+  // Flat ground: land sits at a constant height, water biomes dip below the
+  // water plane so the oasis still reads. (No hills/mountains.)
   function sample(x, z) {
     const e = fbm(seed, x * 0.05, z * 0.05);
     const m = fbm(seed + 777, x * 0.045 + 100, z * 0.045 + 100);
     let biome = biomeFrom(e, m);
-    let h = Math.max(-1.4, (e - 0.42) * 15);
-    const d = Math.hypot(x, z);
-    if (d < 13) { const t = clamp((d - 9) / 4, 0, 1); h = lerp(0.3, h, t); if (t < 0.5) biome = 'g'; }
+    if (Math.hypot(x, z) < 11) biome = 'g';   // grass clearing at spawn
+    const h = (biome === 'dw' || biome === 'w') ? -0.6 : 0.3;
     return { biome: biome, h: h };
   }
 
