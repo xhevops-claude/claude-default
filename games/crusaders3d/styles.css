@@ -44,17 +44,28 @@ html, body { margin: 0; padding: 0; height: 100%;
 }
 .hint.gone { opacity: 0; }
 
-.sel {
-  position: absolute; left: 50%; bottom: max(58px, calc(env(safe-area-inset-bottom) + 48px));
+/* ---- Object tools (shown when a building is selected) ---- */
+.obj-tools {
+  position: absolute; left: 50%; top: max(56px, calc(env(safe-area-inset-top) + 46px));
   transform: translateX(-50%);
-  font-size: 14px; font-weight: 700; color: #2b1d12;
-  background: linear-gradient(180deg, #e7b85b, #c8902f);
-  border: 1px solid rgba(0,0,0,0.25);
-  padding: 7px 16px; border-radius: 999px; z-index: 6;
-  opacity: 0; transition: opacity 0.2s ease; pointer-events: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  display: none; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  background: rgba(28,19,11,0.95); border: 1px solid rgba(231,184,91,0.6);
+  border-radius: 14px; padding: 8px 10px; z-index: 7; max-width: 92vw;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
 }
-.sel.show { opacity: 1; }
+.obj-tools.show { display: flex; }
+.tool-name {
+  font-size: 13px; font-weight: 700; color: #2b1d12;
+  background: linear-gradient(180deg, #e7b85b, #c8902f);
+  padding: 5px 10px; border-radius: 8px; margin-right: 2px;
+}
+.obj-tools button {
+  border: 1px solid rgba(231,184,91,0.45); background: rgba(0,0,0,0.2);
+  color: #f3e3c3; font-weight: 700; font-size: 13px;
+  padding: 6px 10px; border-radius: 8px; cursor: pointer;
+}
+.obj-tools button:active { filter: brightness(1.2); }
+.obj-tools button.danger { color: #f3b0a0; border-color: rgba(217,106,74,0.6); }
 
 /* ---- Build controls + sheet (ported from the 2D game) ---- */
 .controls {

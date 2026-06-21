@@ -141,60 +141,68 @@
   water.rotation.x = -Math.PI / 2; water.position.y = -0.05;
   scene.add(water);
 
-  // ---- Buildings (the demo holding) ------------------------------------------
+  // ---- Buildings (grouped so each can be selected & managed as one) ----------
   const SP = 1.7;          // spacing scale so meshes don't overlap
   const BASE = 0.3;        // clearing ground height
-  const selectable = [];   // meshes a left-click can pick
+  const selectable = [];   // meshes a left-click can pick (each → userData.root)
+  const objects = [];      // manageable building groups
   function mat(color, rough) { return new THREE.MeshStandardMaterial({ color: color, roughness: rough == null ? 0.9 : rough }); }
-  function tag(m, name) { m.userData.name = name; selectable.push(m); return m; }
-  function box(w, h, d, color, c, r, name) {
+  function partBox(g, w, h, d, color, yBase) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
-    m.position.set(c * SP, BASE + h / 2, r * SP);
-    m.castShadow = true; m.receiveShadow = true; scene.add(m);
-    if (name) tag(m, name);
-    return m;
+    m.position.set(0, yBase + h / 2, 0); m.castShadow = true; m.receiveShadow = true; g.add(m); return m;
   }
-  function pyramid(radius, h, color, c, r, yTop, name) {
+  function partRoof(g, radius, h, color, yTop) {
     const m = new THREE.Mesh(new THREE.ConeGeometry(radius, h, 4), mat(color));
-    m.position.set(c * SP, yTop + h / 2, r * SP);
-    m.rotation.y = Math.PI / 4; m.castShadow = true; scene.add(m);
-    if (name) tag(m, name);
-    return m;
+    m.position.set(0, yTop + h / 2, 0); m.rotation.y = Math.PI / 4; m.castShadow = true; g.add(m); return m;
   }
-  // Keep
-  box(2.4, 3.4, 2.4, 0xded2b6, 0, 0, 'The Keep');
+  function partCone(g, radius, h, color, yBase, segs) {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(radius, h, segs || 4), mat(color));
+    m.position.set(0, yBase + h / 2, 0); m.castShadow = true; g.add(m); return m;
+  }
+  // Register a building group at world (x,z): make its meshes pickable & track it.
+  function place(group, x, z, name) {
+    group.position.set(x, 0, z);
+    group.userData.name = name;
+    group.traverse(function (o) { if (o.isMesh) { o.userData.root = group; selectable.push(o); } });
+    scene.add(group); objects.push(group); return group;
+  }
+
+  // Keep (with banner)
+  let flag;
+  (function () {
+    const g = new THREE.Group();
+    partBox(g, 2.4, 3.4, 2.4, 0xded2b6, BASE);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 6), mat(0x3a2817));
+    pole.position.set(0, BASE + 3.9, 0); g.add(pole);
+    flag = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.6), new THREE.MeshStandardMaterial({ color: 0xd64545, side: THREE.DoubleSide, roughness: 1 }));
+    flag.position.set(0.5, BASE + 4.1, 0); g.add(flag);
+    place(g, 0, 0, 'The Keep');
+  })();
   // Towers + conical roofs
   [[-2, -1], [2, -1], [-2, 2], [2, 2]].forEach(function (t) {
-    box(1.3, 2.8, 1.3, 0xcdbfa3, t[0], t[1], 'Square Tower');
-    pyramid(1.05, 1.2, 0x525c70, t[0], t[1], BASE + 2.8, 'Square Tower');
+    const g = new THREE.Group();
+    partBox(g, 1.3, 2.8, 1.3, 0xcdbfa3, BASE);
+    partRoof(g, 1.05, 1.2, 0x525c70, BASE + 2.8);
+    place(g, t[0] * SP, t[1] * SP, 'Square Tower');
   });
   // Gatehouse
-  box(1.6, 2.2, 1.6, 0xcdbfa3, 0, -3, 'Gatehouse');
+  (function () { const g = new THREE.Group(); partBox(g, 1.6, 2.2, 1.6, 0xcdbfa3, BASE); place(g, 0, -3 * SP, 'Gatehouse'); })();
   // Curtain wall ring
   [[-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1], [-2, 0], [-2, 1], [-2, 2],
    [2, 0], [2, 1], [2, 2], [-1, 2], [0, 2], [1, 2]].forEach(function (w) {
-    box(1.05, 1.5, 1.05, 0xb9ad90, w[0], w[1], 'Castle Wall');
+    const g = new THREE.Group(); partBox(g, 1.05, 1.5, 1.05, 0xb9ad90, BASE); place(g, w[0] * SP, w[1] * SP, 'Castle Wall');
   });
   // Hovels (box + terracotta roof)
   [[-4, 4], [-5, 5], [-3, 6]].forEach(function (hh) {
-    box(1.2, 1.0, 1.2, 0xb06a3b, hh[0], hh[1], "Peasant's Hovel");
-    pyramid(0.95, 0.9, 0xa14a2c, hh[0], hh[1], BASE + 1.0, "Peasant's Hovel");
+    const g = new THREE.Group(); partBox(g, 1.2, 1.0, 1.2, 0xb06a3b, BASE); partRoof(g, 0.95, 0.9, 0xa14a2c, BASE + 1.0);
+    place(g, hh[0] * SP, hh[1] * SP, "Peasant's Hovel");
   });
-  // Mercenary tents (cones)
+  // Mercenary tents
   [[5, 2], [6, 3]].forEach(function (tt) {
-    const m = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.3, 12), mat(0xe3dcc7));
-    m.position.set(tt[0] * SP, BASE + 0.65, tt[1] * SP); m.castShadow = true; scene.add(m);
-    tag(m, 'Mercenary Tent');
+    const g = new THREE.Group(); partCone(g, 0.75, 1.3, 0xe3dcc7, BASE, 12); place(g, tt[0] * SP, tt[1] * SP, 'Mercenary Tent');
   });
   // Market
-  box(1.6, 1.2, 1.6, 0xc98f4e, 6, 1, 'Market');
-
-  // Keep banner
-  const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.6), new THREE.MeshStandardMaterial({ color: 0xd64545, side: THREE.DoubleSide, roughness: 1 }));
-  flag.position.set(0.55 * SP * 0 + 0, BASE + 4.1, 0); flag.position.x = 0.5;
-  scene.add(flag);
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 6), mat(0x3a2817));
-  pole.position.set(0, BASE + 3.9, 0); scene.add(pole);
+  (function () { const g = new THREE.Group(); partBox(g, 1.6, 1.2, 1.6, 0xc98f4e, BASE); place(g, 6 * SP, 1 * SP, 'Market'); })();
 
   // ---- Trees (InstancedMesh — the perf path for many objects) ----------------
   const treePts = [];
@@ -238,21 +246,28 @@
     } else { location.href = '../../'; }
   });
 
-  // ---- Left-click select (distinct from a left-drag pan) ---------------------
+  // ---- Left-click select + object tools --------------------------------------
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
-  const selEl = document.getElementById('sel');
-  let selected = null, downX = 0, downY = 0, placing = null;
+  const tools = document.getElementById('obj-tools');
+  const toolName = document.getElementById('tool-name');
+  let selected = null, downX = 0, downY = 0, placing = null, moveMode = false;
 
-  function setSelected(m) {
-    if (selected && selected.material && selected.material.emissive) selected.material.emissive.setHex(0x000000);
-    selected = m;
-    if (m) {
-      if (m.material && m.material.emissive) m.material.emissive.setHex(0x5a3a14);
-      selEl.textContent = '◈ ' + (m.userData.name || 'Structure');
-      selEl.classList.add('show');
+  function highlight(group, on) {
+    group.traverse(function (o) {
+      if (o.isMesh && o.material && o.material.emissive) o.material.emissive.setHex(on ? 0x5a3a14 : 0x000000);
+    });
+  }
+  function setSelected(g) {
+    if (selected) highlight(selected, false);
+    selected = g;
+    moveMode = false; placeBanner.classList.remove('show');
+    if (g) {
+      highlight(g, true);
+      toolName.textContent = g.userData.name || 'Structure';
+      tools.classList.add('show');
     } else {
-      selEl.classList.remove('show');
+      tools.classList.remove('show');
     }
   }
   canvas.addEventListener('pointerdown', function (e) { if (e.button === 0) { downX = e.clientX; downY = e.clientY; } });
@@ -261,14 +276,56 @@
     ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   }
+  function groundTile() {
+    const hit = raycaster.intersectObject(ground, false)[0];
+    return hit ? { x: Math.round(hit.point.x), z: Math.round(hit.point.z) } : null;
+  }
   canvas.addEventListener('pointerup', function (e) {
     if (e.button !== 0) return;
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;   // was a drag, not a click
     pointerToNdc(e);
     raycaster.setFromCamera(ndc, camera);
-    if (placing) { placeAt(); return; }                                // build instead of select
+    if (placing) { placeAt(); return; }                                // build from menu
+    if (moveMode && selected) {                                        // relocate selection
+      const t = groundTile();
+      if (t) { selected.position.x = t.x; selected.position.z = t.z; }
+      moveMode = false; placeBanner.classList.remove('show');
+      return;
+    }
     const hits = raycaster.intersectObjects(selectable, false);
-    setSelected(hits.length ? hits[0].object : null);
+    setSelected(hits.length ? hits[0].object.userData.root : null);
+  });
+
+  // ---- Object tools: move / rotate / duplicate / delete ----------------------
+  function registerGroup(group, name) {   // like place() but keeps current position
+    group.userData.name = name;
+    group.traverse(function (o) { if (o.isMesh) { o.userData.root = group; selectable.push(o); } });
+    scene.add(group); objects.push(group);
+  }
+  document.getElementById('tool-move').addEventListener('click', function () {
+    if (!selected) return;
+    moveMode = true;
+    placeText.textContent = 'Click the ground to move ' + (selected.userData.name || 'it');
+    placeBanner.classList.add('show');
+  });
+  document.getElementById('tool-rotate').addEventListener('click', function () {
+    if (selected) selected.rotation.y += Math.PI / 2;
+  });
+  document.getElementById('tool-dupe').addEventListener('click', function () {
+    if (!selected) return;
+    const clone = selected.clone(true);
+    clone.traverse(function (o) { if (o.isMesh && o.material) o.material = o.material.clone(); });
+    clone.position.x += 1; clone.position.z += 1;
+    registerGroup(clone, selected.userData.name);
+    setSelected(clone);
+  });
+  document.getElementById('tool-delete').addEventListener('click', function () {
+    if (!selected) return;
+    const g = selected;
+    scene.remove(g);
+    for (let i = selectable.length - 1; i >= 0; i--) if (selectable[i].userData.root === g) selectable.splice(i, 1);
+    const oi = objects.indexOf(g); if (oi >= 0) objects.splice(oi, 1);
+    setSelected(null);
   });
 
   // ---- Build menu (DOM overlay) + click-to-place -----------------------------
@@ -353,22 +410,24 @@
     if (buildSheet.dataset.open === 'true') closeBuild(); else openBuild();
   });
   document.getElementById('build-close').addEventListener('click', closeBuild);
-  document.getElementById('place-cancel').addEventListener('click', stopPlacing);
+  document.getElementById('place-cancel').addEventListener('click', function () {
+    if (moveMode) { moveMode = false; placeBanner.classList.remove('show'); } else stopPlacing();
+  });
 
-  // Drop a building mesh on the ground tile under the cursor (raycaster is
+  // Drop a building group on the ground tile under the cursor (raycaster is
   // already aimed from the pointerup handler). Placement is free in this proto.
   function placeAt() {
-    const hit = raycaster.intersectObject(ground, false)[0];
-    if (!hit) return;
-    const x = Math.round(hit.point.x), z = Math.round(hit.point.z);
+    const t = groundTile();
+    if (!t) return;
     const color = CAT_COLOR[placing.cat] || 0xcdbfa3;
     const h = TALL[placing.type] ? 2.6 : 1.2;
-    const b = new THREE.Mesh(new THREE.BoxGeometry(1.4, h, 1.4), mat(color));
-    b.position.set(x, BASE + h / 2, z); b.castShadow = true; b.receiveShadow = true;
-    scene.add(b); tag(b, placing.name);
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.0, 4), mat(0x6e4a2b));
-    roof.position.set(x, BASE + h + 0.5, z); roof.rotation.y = Math.PI / 4; roof.castShadow = true; scene.add(roof);
+    const g = new THREE.Group();
+    partBox(g, 1.4, h, 1.4, color, BASE);
+    partRoof(g, 1.15, 1.0, 0x6e4a2b, BASE + h);
+    place(g, t.x, t.z, placing.name);
   }
+
+  openBuild();   // bottom build menu visible by default
 
   // ---- Loop ------------------------------------------------------------------
   const clock = new THREE.Clock();
