@@ -42,12 +42,24 @@
 
   <canvas id="scene"></canvas>
 
-  <header class="bar">
-    <span class="bar-title">Crusaders 3D · three.js prototype</span>
-    <button id="quit-btn" type="button">Quit</button>
+  <!-- Resource HUD (DOM overlay; mirrors the 2D game's saved resources) -->
+  <header class="hud" id="hud">
+    <div class="res"><span class="res-i">🪙</span><span id="r-gold">200</span></div>
+    <div class="res"><span class="res-i">🍞</span><span id="r-food">85</span></div>
+    <div class="res"><span class="res-i">💧</span><span id="r-water">30</span></div>
+    <div class="res"><span class="res-i">🪵</span><span id="r-wood">40</span></div>
+    <div class="res"><span class="res-i">🪨</span><span id="r-stone">0</span></div>
+    <div class="res"><span class="res-i">⚙️</span><span id="r-iron">0</span></div>
+    <div class="res"><span class="res-i">🍺</span><span id="r-ale">0</span></div>
+    <div class="res"><span class="res-i">⚔️</span><span id="r-weapons">0</span></div>
+    <div class="res"><span class="res-i">🛡️</span><span id="r-army">0</span></div>
+    <div class="res"><span class="res-i">😊</span><span id="r-popularity">50</span></div>
+    <div class="res"><span class="res-i">🧑‍🌾</span><span id="r-pop">24</span></div>
   </header>
-  <p class="hint" id="hint">Left-click select · left-drag move · right-drag rotate · wheel zoom</p>
+
+  <button id="quit-btn" type="button">Quit</button>
   <div class="sel" id="sel" aria-live="polite"></div>
+  <p class="hint" id="hint">Left-click select · left-drag move · right-drag rotate · wheel zoom</p>
 
   <!-- three.js r136 classic (global THREE) + OrbitControls, so app.js stays a
        plain script. CDN-pinned URLs are left untouched by the deploy rewrite. -->

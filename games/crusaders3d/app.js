@@ -57,6 +57,17 @@
   // ---- Seeded value noise (shared idea with the 2D version) ------------------
   let seed = 1234567;
   try { const s = localStorage.getItem('crusaders-seed'); if (s) seed = (parseInt(s, 10) >>> 0); } catch (e) {}
+
+  // Mirror the 2D game's saved resources in the HUD overlay.
+  (function fillHud() {
+    const DEF = { gold: 200, food: 85, water: 30, wood: 40, stone: 0, iron: 0, ale: 0, weapons: 0, army: 0, popularity: 50, pop: 24 };
+    let saved = {};
+    try { const s = JSON.parse(localStorage.getItem('crusaders-save')); if (s && s.res) saved = s.res; } catch (e) {}
+    Object.keys(DEF).forEach(function (k) {
+      const el = document.getElementById('r-' + k);
+      if (el) el.textContent = (saved[k] != null ? saved[k] : DEF[k]);
+    });
+  })();
   function hash2(s, x, y) {
     let h = s | 0;
     h = Math.imul(h ^ (x | 0), 0x27d4eb2d);
