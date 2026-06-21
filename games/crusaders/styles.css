@@ -209,6 +209,21 @@ html, body {
   backdrop-filter: blur(0.5px);
 }
 
+/* ---- Start-mode dropdown ---- */
+.mode-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin: 0 2px 12px; font-size: 14px; color: #d8c8a6;
+}
+.mode-select {
+  flex: 1 1 auto; max-width: 64%;
+  appearance: none; -webkit-appearance: none;
+  background: rgba(0,0,0,0.3); color: var(--sand);
+  border: 1px solid rgba(231,184,91,0.45); border-radius: 8px;
+  padding: 7px 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+  font-family: inherit;
+}
+.mode-select:focus { outline: none; border-color: var(--sand); }
+
 /* ---- Settings toggle ---- */
 .toggle-row {
   display: flex; align-items: center; justify-content: space-between;

@@ -112,36 +112,57 @@
     return null;
   }
 
-  // ---- The home holding (fixed structures around spawn 0,0) -------------------
-  const buildings = [
-    { c: 0,  r: 0,  type: 'keep',   h: 3.0, label: 'The Keep' },
-    { c: -2, r: -1, type: 'tower',  h: 2.4, label: 'Square Tower' },
-    { c: 2,  r: -1, type: 'tower',  h: 2.4, label: 'Square Tower' },
-    { c: -2, r: 2,  type: 'tower',  h: 2.4, label: 'Square Tower' },
-    { c: 2,  r: 2,  type: 'tower',  h: 2.4, label: 'Square Tower' },
-    { c: 0,  r: -3, type: 'gate',   h: 1.8, label: 'Gatehouse' },
-    { c: -4, r: 4,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
-    { c: -5, r: 5,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
-    { c: -3, r: 6,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
-    { c: 5,  r: 2,  type: 'tent',   h: 1.1, label: 'Mercenary Tent' },
-    { c: 6,  r: 3,  type: 'tent',   h: 1.1, label: 'Mercenary Tent' },
-    { c: 3,  r: 6,  type: 'farm',   h: 0.35, label: 'Wheat Farm' },
-    { c: 5,  r: 7,  type: 'farm',   h: 0.35, label: 'Apple Orchard' },
-    { c: 6,  r: 1,  type: 'market', h: 1.3, label: 'Market' },
-  ];
+  // ---- The home holding ------------------------------------------------------
+  // Two start modes: a fully-built "demo" holding, or "scratch" (just the keep).
+  // Populated in place by buildWorld() so reset/restore keeps array references.
+  let mode = 'demo';
+  const buildings = [];
   const walls = [];
-  (function buildWalls() {
+  const units = [];
+
+  function buildWorld(m) {
+    buildings.length = 0; walls.length = 0; units.length = 0;
+    // The keep anchors both modes (permanent, drives the safety-net trickle).
+    buildings.push({ c: 0, r: 0, type: 'keep', h: 3.0, label: 'The Keep' });
+
+    if (m === 'scratch') {
+      // Bare beginning: just the keep and a lone guard to build out from.
+      units.push({ color: '#d64545', flag: '#f2d35a', path: [[-1, -2], [1, -2], [1, 2], [-1, 2]], i: 0, t: 0, spd: 0.4, label: 'Spearman' });
+      return;
+    }
+
+    // Demo: a fully functional holding.
+    buildings.push(
+      { c: -2, r: -1, type: 'tower',  h: 2.4, label: 'Square Tower' },
+      { c: 2,  r: -1, type: 'tower',  h: 2.4, label: 'Square Tower' },
+      { c: -2, r: 2,  type: 'tower',  h: 2.4, label: 'Square Tower' },
+      { c: 2,  r: 2,  type: 'tower',  h: 2.4, label: 'Square Tower' },
+      { c: 0,  r: -3, type: 'gate',   h: 1.8, label: 'Gatehouse' },
+      { c: -4, r: 4,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
+      { c: -5, r: 5,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
+      { c: -3, r: 6,  type: 'house',  h: 1.0, label: "Peasant's Hovel" },
+      { c: 5,  r: 2,  type: 'tent',   h: 1.1, label: 'Mercenary Tent' },
+      { c: 6,  r: 3,  type: 'tent',   h: 1.1, label: 'Mercenary Tent' },
+      { c: 3,  r: 6,  type: 'farm',   h: 0.35, label: 'Wheat Farm' },
+      { c: 5,  r: 7,  type: 'farm',   h: 0.35, label: 'Apple Orchard' },
+      { c: 6,  r: 1,  type: 'market', h: 1.3, label: 'Market' },
+    );
     const ring = [[-2,-1],[-1,-1],[0,-1],[1,-1],[2,-1],
                   [-2,0],[-2,1],[-2,2],
                   [2,0],[2,1],[2,2],
                   [-1,2],[0,2],[1,2]];
     for (const [c, r] of ring) walls.push({ c, r, h: 1.4 });
-  })();
-  const units = [
-    { color: '#d64545', flag: '#f2d35a', path: [[-1,-2],[1,-2],[1,3],[-1,3]], i: 0, t: 0, spd: 0.45, label: 'Spearman patrol' },
-    { color: '#3f5fb0', flag: '#e8e8e8', path: [[-4,4],[3,6],[5,3],[0,0]], i: 0, t: 0.3, spd: 0.30, label: 'Trader' },
-    { color: '#caa23a', flag: '#2b1d12', path: [[5,2],[7,4],[6,6],[4,4]], i: 0, t: 0.6, spd: 0.36, label: 'Mercenary' },
-  ];
+    units.push(
+      { color: '#d64545', flag: '#f2d35a', path: [[-1,-2],[1,-2],[1,3],[-1,3]], i: 0, t: 0, spd: 0.45, label: 'Spearman patrol' },
+      { color: '#3f5fb0', flag: '#e8e8e8', path: [[-4,4],[3,6],[5,3],[0,0]], i: 0, t: 0.3, spd: 0.30, label: 'Trader' },
+      { color: '#caa23a', flag: '#2b1d12', path: [[5,2],[7,4],[6,6],[4,4]], i: 0, t: 0.6, spd: 0.36, label: 'Mercenary' },
+    );
+  }
+
+  const START_RES = {
+    demo:    { gold: 200, food: 85, water: 30, wood: 40, stone: 0, iron: 0, ale: 0, weapons: 0, army: 0, popularity: 50, pop: 24 },
+    scratch: { gold: 60,  food: 40, water: 20, wood: 30, stone: 0, iron: 0, ale: 0, weapons: 0, army: 0, popularity: 50, pop: 6 },
+  };
 
   // ---- Economy ---------------------------------------------------------------
   // The holding is alive: producers pay out on a fixed cycle, the population
@@ -194,6 +215,42 @@
     }
     for (const k in caps) setRes(k, res[k]);   // re-clamp + refresh HUD
   }
+
+  // ---- Save / restore (localStorage, so a refresh resumes the game) ----------
+  const SAVE_KEY = 'crusaders-save';
+  function saveState() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mode: mode, seed: seed, res: res, buildings: buildings, walls: walls }));
+    } catch (_) {}
+  }
+  function loadState() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+      return (s && s.v === 1 && Array.isArray(s.buildings)) ? s : null;
+    } catch (_) { return null; }
+  }
+  // Start a fresh game in the given mode (new layout + starting resources).
+  function resetWorld(m) {
+    mode = (m === 'scratch') ? 'scratch' : 'demo';
+    buildWorld(mode);
+    recomputeCaps();
+    const s = START_RES[mode] || START_RES.demo;
+    for (const k in s) setRes(k, s[k]);
+    if (typeof floats !== 'undefined') floats.length = 0;
+    prodAcc = 0;
+    saveState();
+  }
+  // Restore a previously saved game verbatim.
+  function applyState(s) {
+    mode = (s.mode === 'scratch') ? 'scratch' : 'demo';
+    setSeed((s.seed >>> 0) || seed);
+    buildWorld(mode);                              // gives us units for the mode
+    buildings.length = 0; for (const b of s.buildings) buildings.push(b);
+    walls.length = 0; for (const w of (s.walls || [])) walls.push(w);
+    recomputeCaps();
+    for (const k in res) if (s.res && s.res[k] != null) setRes(k, s.res[k]);
+  }
+
   // Gatherers: each adds `amt` of one resource per cycle. Some get a bonus for
   // bordering the right terrain (woodcutter→woodland, quarry/mine→rock).
   const PRODUCERS = {
@@ -325,6 +382,7 @@
       spawnFloat(c, r, 'built', '#cfe6a0');
     }
     refreshBuildList();   // some options may now be unaffordable
+    saveState();
   }
 
   const PROD_EVERY = 3;   // seconds per production cycle
@@ -366,6 +424,7 @@
       setRes('pop', res.pop + Math.max(1, Math.floor(hovels / 2)));
       spawnFloat(0, 0, '+peasant', '#cfe6a0');
     }
+    saveState();   // persist resources each cycle so a refresh resumes
   }
 
   function drawFloats() {
@@ -1113,20 +1172,28 @@
   document.getElementById('center-btn').addEventListener('click', () => centerOn(0, 0));
   document.getElementById('menu-btn').addEventListener('click', openMenu);
 
+  const modeSelect = document.getElementById('mode-select');
+
   function openMenu() {
     if (seedVal) seedVal.textContent = seed;
+    if (modeSelect) modeSelect.value = mode;
     overlay.dataset.state = 'title';
   }
   function closeMenu() { overlay.dataset.state = 'hidden'; }
   document.getElementById('play-btn').addEventListener('click', closeMenu);
   document.getElementById('how-btn').addEventListener('click', () => {
-    blurb.textContent = 'Drag with one finger to roam the endless map. Pinch (or − / +) to zoom. Tap any building, prop or tile to inspect it. 🏰 recenters on your keep. Each seed is a different world — try “New world”.';
+    blurb.textContent = 'Drag with one finger to roam the endless map. Pinch (or − / +) to zoom. Tap any building, prop or tile to inspect it. 🏰 recenters on your keep. Pick a Start mode and hit “New world” for a fresh game — your progress is saved, so a refresh resumes where you left off.';
+  });
+  // Start dropdown: changing it begins a fresh game in that mode.
+  modeSelect.addEventListener('change', () => {
+    setSeed((Math.random() * 4294967296) >>> 0);
+    resetWorld(modeSelect.value);
+    centerOn(0, 0);
   });
   document.getElementById('reroll-btn').addEventListener('click', () => {
     setSeed((Math.random() * 4294967296) >>> 0);
+    resetWorld(mode);   // fresh layout + resources for the current mode
     centerOn(0, 0);
-    // reset patrol positions so units sit back home in the fresh world
-    for (const u of units) { u.i = 0; }
   });
 
   document.getElementById('quit-btn').addEventListener('click', () => {
@@ -1260,12 +1327,21 @@
   }
 
   // ---- Boot ------------------------------------------------------------------
-  setSeed(seed);
-  recomputeCaps();   // apply base caps + clamp starting resources
+  // Resume a saved game if there is one; otherwise start fresh in the default
+  // mode (demo). Either path leaves `mode`/resources/buildings ready to render.
+  const saved = loadState();
+  if (saved) {
+    applyState(saved);
+  } else {
+    resetWorld('demo');
+  }
+  if (modeSelect) modeSelect.value = mode;
   resize();
   centerOn(0, 0);
   window.addEventListener('resize', resize);
   window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+  window.addEventListener('pagehide', saveState);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveState(); });
   requestAnimationFrame(frame);
 
   (function hideLoadingWhenReady() {
