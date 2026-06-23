@@ -183,6 +183,7 @@
 
   // Keep (with banner)
   let flag;
+  function buildDemo() {
   (function () {
     const g = new THREE.Group();
     partBox(g, 2.4, 3.4, 2.4, 0xded2b6, BASE);
@@ -217,6 +218,8 @@
   });
   // Market
   (function () { const g = new THREE.Group(); partBox(g, 1.6, 1.2, 1.6, 0xc98f4e, BASE); place(g, 6 * SP, 1 * SP, 'Market', 'community'); })();
+  }   // end buildDemo
+  buildDemo();
 
   // ---- Trees (InstancedMesh — the perf path for many objects) ----------------
   const treePts = [];
@@ -254,11 +257,12 @@
   window.addEventListener('orientationchange', function () { setTimeout(resize, 200); });
 
   // ---- Quit ------------------------------------------------------------------
-  document.getElementById('quit-btn').addEventListener('click', function () {
+  function quitGame() {
     if (window.self !== window.top) {
       try { window.parent.postMessage({ type: 'close-game' }, '*'); } catch (e) {}
     } else { location.href = '../../'; }
-  });
+  }
+  document.getElementById('quit-btn').addEventListener('click', quitGame);
 
   // ---- Left-click select + object tools --------------------------------------
   const raycaster = new THREE.Raycaster();
@@ -370,6 +374,30 @@
     const oi = objects.indexOf(g); if (oi >= 0) objects.splice(oi, 1);
     if (selected === g) setSelected(null);
   }
+  function clearAll() {
+    cancelCarry();
+    objects.slice().forEach(function (g) { scene.remove(g); });
+    objects.length = 0; selectable.length = 0;
+    setSelected(null);
+  }
+
+  // ---- Main menu (Esc or the ☰ button) ---------------------------------------
+  const menuOverlay = document.getElementById('menu-overlay');
+  function menuOpen() { return menuOverlay.dataset.open === 'true'; }
+  function openMenu() { cancelCarry(); menuOverlay.dataset.open = 'true'; }
+  function closeMenu() { menuOverlay.dataset.open = 'false'; }
+  function toggleMenu() { if (menuOpen()) closeMenu(); else openMenu(); }
+  document.getElementById('menu-btn').addEventListener('click', toggleMenu);
+  document.getElementById('m-resume').addEventListener('click', closeMenu);
+  document.getElementById('m-restart').addEventListener('click', function () { clearAll(); buildDemo(); closeMenu(); });
+  document.getElementById('m-clear').addEventListener('click', function () { clearAll(); closeMenu(); });
+  document.getElementById('m-quit').addEventListener('click', quitGame);
+  window.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (carry) { cancelCarry(); return; }   // Esc first cancels a placement
+    toggleMenu();
+  });
+
   // Right info panel actions.
   document.getElementById('info-close').addEventListener('click', function () { setSelected(null); });
   document.getElementById('act-rotate').addEventListener('click', function () { if (selected) selected.rotation.y += Math.PI / 2; });

@@ -44,6 +44,43 @@ html, body { margin: 0; padding: 0; height: 100%;
 }
 .hint.gone { opacity: 0; }
 
+/* ---- Main menu ---- */
+.menu-btn {
+  position: absolute; right: 14px; top: max(12px, env(safe-area-inset-top)); z-index: 8;
+  width: 46px; height: 46px; border-radius: 12px;
+  border: 1px solid rgba(231,184,91,0.5);
+  background: linear-gradient(180deg, #3a2817, #2b1d12);
+  color: #e7b85b; font-size: 22px; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+}
+.menu-overlay {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: radial-gradient(circle at 50% 35%, rgba(90,67,38,0.55), rgba(15,10,5,0.9));
+  transition: opacity 0.25s ease;
+}
+.menu-overlay[data-open="false"] { opacity: 0; pointer-events: none; }
+.menu-panel {
+  width: min(340px, 92vw); text-align: center;
+  background: linear-gradient(180deg, #3a2817, #2b1d12);
+  border: 1px solid rgba(231,184,91,0.5); border-radius: 20px;
+  padding: 26px 24px 18px; box-shadow: 0 18px 50px rgba(0,0,0,0.6);
+}
+.menu-crest { font-size: 54px; line-height: 1; }
+.menu-title { margin: 8px 0 2px; font-size: 24px; letter-spacing: 2px;
+  text-transform: uppercase; color: #e7b85b; }
+.menu-sub { margin: 0 0 18px; font-size: 13px; color: #d8c8a6; }
+.menu-actions { display: flex; flex-direction: column; gap: 10px; }
+.menu-actions button {
+  width: 100%; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 700;
+  cursor: pointer; border: 1px solid rgba(231,184,91,0.5);
+}
+.menu-actions .primary { background: linear-gradient(180deg, #e7b85b, #c8902f); color: #2b1d12; }
+.menu-actions .ghost { background: transparent; color: #e7b85b; }
+.menu-actions button:active { filter: brightness(1.1); }
+.menu-hint { margin: 16px 0 2px; font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; color: #8a7654; }
+
 /* ---- Right info panel (shown when a building is selected) ---- */
 .info {
   position: absolute; right: 0; top: 0; bottom: 0;

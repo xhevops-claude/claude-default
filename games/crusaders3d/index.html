@@ -58,6 +58,22 @@
   </header>
 
   <button id="quit-btn" type="button">Quit</button>
+  <button id="menu-btn" class="menu-btn" type="button" aria-label="Menu">☰</button>
+
+  <div class="menu-overlay" id="menu-overlay" data-open="false">
+    <div class="menu-panel">
+      <div class="menu-crest" aria-hidden="true">🏯</div>
+      <h1 class="menu-title">Crusaders 3D</h1>
+      <p class="menu-sub">three.js sandbox</p>
+      <div class="menu-actions">
+        <button id="m-resume" class="primary" type="button">Resume</button>
+        <button id="m-restart" class="ghost" type="button">Restart layout</button>
+        <button id="m-clear" class="ghost" type="button">Clear everything</button>
+        <button id="m-quit" class="ghost" type="button">Quit to arcade</button>
+      </div>
+      <p class="menu-hint">Press Esc to open or close this menu</p>
+    </div>
+  </div>
   <p class="hint" id="hint">Left-click select · left-drag move · right-drag rotate · wheel zoom</p>
 
   <aside class="info" id="info">
