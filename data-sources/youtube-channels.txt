@@ -1,0 +1,16 @@
+# YouTube channels to scrape for the Binge app.
+#
+# One channel per line:  <slug> <channel-url>
+#   <slug>         lowercase, dashes only — becomes cdn/youtube/<slug>.json
+#   <channel-url>  any URL yt-dlp resolves to a channel's video list.
+#                  Prefer the /videos tab so we get uploads (not Shorts/live).
+#
+# Lines starting with # and blank lines are ignored. Editing this file
+# (or the youtube-refresh workflow) triggers a re-scrape on push; it also
+# runs daily on a schedule.
+#
+# Managed by hand — to add a channel, append a line and push.
+
+veritasium  https://www.youtube.com/@veritasium/videos
+kurzgesagt  https://www.youtube.com/@kurzgesagt/videos
+mkbhd       https://www.youtube.com/@mkbhd/videos

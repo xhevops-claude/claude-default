@@ -68,6 +68,14 @@
       url: 'apps/timemachine/',
     },
     {
+      slug: 'binge',
+      name: 'Binge',
+      meta: 'Video',
+      tagline: 'Watch channels start to finish, in order.',
+      icon: '🍿',
+      url: 'apps/binge/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',

@@ -1,0 +1,138 @@
+name: Refresh YouTube channels
+
+# Enumerates the full upload backlog of every channel listed in
+# data-sources/youtube-channels.txt (oldest -> newest) and publishes a
+# lean JSON per channel to the live site under /cdn/youtube/ on gh-pages,
+# alongside an index.json the Binge app reads to discover channels.
+#
+# No API key: yt-dlp scrapes YouTube's public listing. We pull a flat
+# playlist (ids + titles + whatever dates are exposed) — cheap enough to
+# run over whole channels daily.
+
+on:
+  schedule:
+    # 04:30 UTC daily. Off-peak; well clear of the data-refresh job (05:30).
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you running this manually?'
+        required: false
+        default: 'manual refresh'
+  push:
+    # Re-scrape as soon as the channel list (or this workflow) changes.
+    paths:
+      - 'data-sources/youtube-channels.txt'
+      - '.github/workflows/youtube-refresh.yml'
+
+permissions:
+  contents: write   # peaceiris/actions-gh-pages pushes to gh-pages
+
+# Serialize gh-pages writes with the deploy + data-refresh workflows.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install yt-dlp
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 --retry-delay 5 \
+            https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
+            -o /usr/local/bin/yt-dlp
+          chmod +x /usr/local/bin/yt-dlp
+          yt-dlp --version
+
+      - name: Restore previously published data
+        # Pull existing cdn/youtube/*.json off gh-pages so a channel that
+        # fails this run (or isn't re-scraped) stays in index.json and on
+        # the live site. Freshly scraped files overwrite these below.
+        run: |
+          set -uo pipefail
+          mkdir -p cdn/youtube
+          git fetch --depth=1 origin gh-pages 2>/dev/null \
+            && git archive origin/gh-pages cdn/youtube 2>/dev/null | tar -x -C . \
+            && echo "Restored prior data:" && ls cdn/youtube/ \
+            || echo "No prior gh-pages data (first run); proceeding."
+
+      - name: Scrape channels
+        id: scrape
+        run: |
+          set -uo pipefail
+          mkdir -p cdn/youtube
+          scraped=0
+
+          while IFS= read -r raw || [[ -n "$raw" ]]; do
+            line="${raw%%#*}"
+            line="$(echo "$line" | xargs || true)"
+            [[ -z "$line" ]] && continue
+            slug="$(echo "$line" | awk '{print $1}')"
+            url="$(echo "$line" | awk '{print $2}')"
+            if [[ -z "$slug" || -z "$url" ]]; then
+              echo "::warning::Skipping malformed line: $raw"
+              continue
+            fi
+
+            echo "::group::$slug"
+            raw_json="cdn/youtube/.${slug}.raw.json"
+
+            # Flat playlist: one pass, ids + titles + channel meta.
+            # approximate_date nudges the tab extractor to surface upload
+            # timestamps where it can (best-effort; missing dates are fine
+            # — the app falls back to listing order).
+            if yt-dlp \
+                  --flat-playlist \
+                  --extractor-args "youtubetab:approximate_date" \
+                  --ignore-errors --no-warnings \
+                  -J "$url" > "$raw_json" 2>scrape.err; then
+              if SLUG="$slug" SRC_URL="$url" \
+                  python3 .github/scripts/yt_transform.py "$raw_json" "cdn/youtube/${slug}.json"; then
+                scraped=$((scraped+1))
+              else
+                echo "::warning::Transform failed for $slug; keeping prior data if any."
+              fi
+            else
+              echo "::warning::yt-dlp failed for $slug; keeping prior data if any."
+              sed 's/^/  /' scrape.err | tail -20 || true
+            fi
+
+            rm -f "$raw_json" scrape.err
+            echo "::endgroup::"
+          done < data-sources/youtube-channels.txt
+
+          # Rebuild index.json from every channel file on disk (restored +
+          # freshly scraped), so the index always reflects the full set.
+          python3 .github/scripts/yt_index.py cdn/youtube
+
+          published="$(ls cdn/youtube/*.json 2>/dev/null | grep -vc 'index.json' || true)"
+          echo "scraped=$scraped" >> "$GITHUB_OUTPUT"
+          echo "published=$published" >> "$GITHUB_OUTPUT"
+          ls -lh cdn/youtube/ || true
+
+      - name: Publish /cdn/youtube to gh-pages
+        if: steps.scrape.outputs.published != '0'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./cdn
+          publish_branch: gh-pages
+          destination_dir: cdn
+          keep_files: true
+          commit_message: 'data: refresh youtube ${{ github.event.inputs.reason || ''scheduled'' }}'
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Print served URLs
+        if: steps.scrape.outputs.published != '0'
+        run: |
+          echo "::notice title=YouTube data published::https://xhevops-claude.github.io/claude-default/cdn/youtube/index.json"
+          for f in cdn/youtube/*.json; do
+            [[ -e "$f" ]] || continue
+            echo "  https://xhevops-claude.github.io/claude-default/cdn/youtube/$(basename "$f")"
+          done
