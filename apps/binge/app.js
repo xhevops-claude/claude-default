@@ -259,6 +259,17 @@
 
   // ---- filters / sliders ----
   function renderFilters() {
+    // Month/Day filtering needs exact dates. Those only exist when the
+    // scraper runs with an authenticated session (YT_COOKIES); otherwise we
+    // have year-level data only, so hide the finer sliders rather than show
+    // dead controls. They reappear automatically once exact dates arrive.
+    const hasPrecise = orderedVideos().some((v) => v.d);
+    document.getElementById('ds-month').hidden = !hasPrecise;
+    document.getElementById('ds-day').hidden = !hasPrecise;
+    if (!hasPrecise && (filter.month !== 'any' || filter.day !== 'any')) {
+      filter.month = 'any'; filter.day = 'any'; save(LS.filter, filter);
+    }
+
     const years = availableYears();
 
     // Year slider maps index 0 -> Any, 1..n -> years[n-1].

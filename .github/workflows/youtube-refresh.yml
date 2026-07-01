@@ -63,6 +63,12 @@ jobs:
 
       - name: Scrape channels
         id: scrape
+        env:
+          # Optional: browser-exported YouTube cookies (Netscape format).
+          # Exact per-video upload dates need an authenticated session —
+          # without this secret YouTube's bot wall blocks them from CI and we
+          # ship reliable year-level dates from the listing scrape instead.
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
           set -uo pipefail
           mkdir -p cdn/youtube
@@ -95,24 +101,28 @@ jobs:
                   python3 .github/scripts/yt_transform.py "$raw_json" "cdn/youtube/${slug}.json"; then
                 scraped=$((scraped+1))
 
-                # Enrich videos that still lack an exact upload date. This
-                # is the slow part (one extraction per video), so it's
-                # incremental — already-dated videos are skipped, and the
-                # per-run cap keeps big channels from hammering YouTube.
-                # Anything that fails stays undated and is retried next run.
+                # Enrich videos with their exact upload date — but only when
+                # YT_COOKIES is configured. Per-video metadata is bot-walled
+                # for anonymous CI IPs (it returns nothing and wastes minutes),
+                # so we skip it entirely without an authenticated session. The
+                # pass is incremental (already-dated videos are skipped) and
+                # self-healing (failures retry next run).
                 json="cdn/youtube/${slug}.json"
-                ids_file="$(mktemp)"; dates_file="$(mktemp)"
-                python3 .github/scripts/yt_pick_missing.py "$json" 600 > "$ids_file"
-                need="$(wc -l < "$ids_file" | tr -d ' ')"
-                if [[ "$need" != "0" ]]; then
-                  echo "Enriching $need videos with exact dates…"
-                  yt-dlp --skip-download --ignore-errors --no-warnings \
-                    --sleep-requests 0.2 \
-                    --print "%(id)s %(upload_date)s" \
-                    -a "$ids_file" > "$dates_file" 2>/dev/null || true
-                  python3 .github/scripts/yt_apply_dates.py "$json" "$dates_file" || true
+                if [[ -n "${YT_COOKIES:-}" ]]; then
+                  ids_file="$(mktemp)"; dates_file="$(mktemp)"; cookies_file="$(mktemp)"
+                  printf '%s\n' "$YT_COOKIES" > "$cookies_file"
+                  python3 .github/scripts/yt_pick_missing.py "$json" 600 > "$ids_file"
+                  need="$(wc -l < "$ids_file" | tr -d ' ')"
+                  if [[ "$need" != "0" ]]; then
+                    echo "Enriching $need videos with exact dates…"
+                    yt-dlp --skip-download --ignore-errors --no-warnings \
+                      --cookies "$cookies_file" --sleep-requests 0.2 \
+                      --print "%(id)s %(upload_date)s" \
+                      -a "$ids_file" > "$dates_file" 2>/dev/null || true
+                    python3 .github/scripts/yt_apply_dates.py "$json" "$dates_file" || true
+                  fi
+                  rm -f "$ids_file" "$dates_file" "$cookies_file"
                 fi
-                rm -f "$ids_file" "$dates_file"
               else
                 echo "::warning::Transform failed for $slug; keeping prior data if any."
               fi
