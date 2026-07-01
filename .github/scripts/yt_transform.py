@@ -40,6 +40,7 @@ def main():
             "duration": e.get("duration") or None,
             "ts": int(ts) if ts else None,
             "d": prior_d.get(e["id"]),
+            "vc": e.get("view_count") or None,   # for "sort by popular"
         })
 
     # Keep the exact videos-page order, oldest first: yt-dlp lists newest

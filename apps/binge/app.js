@@ -1,49 +1,46 @@
 (function () {
   'use strict';
 
-  // Channel data is published, decoupled from this app, by the
-  // youtube-refresh workflow to the live CDN. We always read the
-  // production path (works in preview deploys and local dev too).
   const CDN = 'https://xhevops-claude.github.io/claude-default/cdn/youtube/';
 
   const LS = {
-    follows: 'binge-follows',
+    selected: 'binge-selected',
     watched: 'binge-watched',
-    mode: 'binge-mode',
-    hide: 'binge-hidewatched',
-    chan: 'binge-active-channel',
-    filter: 'binge-filter',
+    showWatched: 'binge-showwatched',
+    cutoff: 'binge-cutoff',
+    view: 'binge-view',
+    sort: 'binge-sort',
+    group: 'binge-group',
     filtersOpen: 'binge-filters-open',
   };
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // ---- persisted state ----
   function load(key, fallback) {
     try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); }
     catch (e) { return fallback; }
   }
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
 
-  let follows = new Set(load(LS.follows, []));
+  // ---- persisted state ----
+  let selected = new Set();                       // channel slugs shown (default: all)
   let watched = new Set(load(LS.watched, []));
-  let mode = load(LS.mode, 'timeline');           // 'timeline' | 'channel'
-  let hideWatched = load(LS.hide, false);
-  let activeChannel = load(LS.chan, null);        // slug for 'channel' mode
-  const savedCutoff = load(LS.filter, null);          // show videos up to this date;
-  let cutoff = (savedCutoff && typeof savedCutoff.y === 'number')  // default today if
-    ? savedCutoff : todayYMD();                        // unset or old-format
-
-  let filtersOpen = load(LS.filtersOpen, true);   // whole filter section
-  let yearRange = [];                             // years the cutoff slider spans
+  let showWatched = load(LS.showWatched, true);
+  const savedCut = load(LS.cutoff, null);
+  let cutoff = (savedCut && typeof savedCut.y === 'number') ? savedCut : todayYMD();
+  let view = load(LS.view, 'list');               // 'list' | 'grid'
+  let sortBy = load(LS.sort, 'old');              // 'old' | 'new' | 'popular'
+  let groupBy = load(LS.group, 'year');           // 'year' | 'channel'
+  let filtersOpen = load(LS.filtersOpen, true);
 
   // ---- runtime state ----
-  let available = [];        // [{slug,name,count,url}] from index.json
-  let channelData = {};      // slug -> {name, videos:[...] }
-  let currentId = null;      // playing video id
+  let available = [];        // [{slug,name,count,url}]
+  let channelData = {};      // slug -> {name, videos:[...]}
+  let currentId = null;
   const unavailable = new Set();
-  const expandedYears = new Set();  // which year groups are open
+  const collapsed = new Set();   // collapsed section keys
+  let yearRange = [];
 
   // ---- elements ----
   const $ = (id) => document.getElementById(id);
@@ -51,20 +48,15 @@
   const veil = $('veil'), veilText = $('veil-text'), veilLink = $('veil-link');
   const nowTitle = $('now-title'), nowBy = $('now-by'), ytLink = $('yt-link');
   const watchedNextBtn = $('watched-next'), skipBtn = $('skip'), closePlayerBtn = $('close-player');
-  const modeTimeline = $('mode-timeline'), modeChannel = $('mode-channel');
-  const hideWatchedChk = $('hide-watched');
-  const chanStrip = $('chan-strip');
-  const filtersEl = $('filters'), filtersReset = $('filters-reset');
-  const filtersToggle = $('filters-toggle'), filtersBody = $('filters-body'), filtersSummary = $('filters-summary');
+  const filtersEl = $('filters'), filtersToggle = $('filters-toggle'), filtersBody = $('filters-body'), filtersSummary = $('filters-summary');
+  const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
+  const filtersReset = $('filters-reset'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
+  const toolbar = $('toolbar'), segView = $('seg-view'), selSort = $('sel-sort'), selGroup = $('sel-group');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
   const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
-  const yearsEl = $('years');
+  const sectionsEl = $('sections');
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
-  const channelsBtn = $('channels-btn');
-  const drawer = $('drawer'), drawerClose = $('drawer-close'), drawerSub = $('drawer-sub');
-  const chanList = $('chan-list'), clearWatchedBtn = $('clear-watched');
   const quitBtn = $('quit');
-  // sliders
   const fYear = $('f-year'), fMonth = $('f-month'), fDay = $('f-day');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
 
@@ -75,34 +67,31 @@
     try {
       const res = await fetch(CDN + 'index.json', { cache: 'no-store' });
       if (!res.ok) throw new Error('index ' + res.status);
-      const data = await res.json();
-      available = (data.channels || []).filter((c) => c && c.slug);
+      available = ((await res.json()).channels || []).filter((c) => c && c.slug);
     } catch (e) { available = []; }
   }
-
   async function loadChannel(slug) {
-    if (channelData[slug]) return channelData[slug];
-    const res = await fetch(CDN + slug + '.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error(slug + ' ' + res.status);
-    const data = await res.json();
-    const videos = (data.videos || []).map((v) => ({
-      id: v.id, title: v.title, duration: v.duration, ts: v.ts, d: v.d, i: v.i,
-      slug: slug, channelName: data.name || slug,
-    }));
-    channelData[slug] = { name: data.name || slug, videos: videos };
-    return channelData[slug];
+    if (channelData[slug]) return;
+    try {
+      const res = await fetch(CDN + slug + '.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error(slug + ' ' + res.status);
+      const data = await res.json();
+      channelData[slug] = {
+        name: data.name || slug,
+        videos: (data.videos || []).map((v) => ({
+          id: v.id, title: v.title, duration: v.duration, ts: v.ts, d: v.d, vc: v.vc, i: v.i,
+          slug: slug, channelName: data.name || slug,
+        })),
+      };
+    } catch (e) { /* leave unloaded; a later render picks it up */ }
   }
-
-  async function loadFollowed() {
-    const slugs = available.map((c) => c.slug).filter((s) => follows.has(s));
-    await Promise.all(slugs.map((s) => loadChannel(s).catch(() => null)));
+  async function loadAll() {
+    await Promise.all(available.map((c) => loadChannel(c.slug)));
   }
 
   // ---------------------------------------------------------------------------
-  // Dates
+  // Dates / formatting
   // ---------------------------------------------------------------------------
-  // Precise date (`d` = YYYYMMDD) when we have it; else derive the year from
-  // the approximate listing timestamp (`ts`), leaving month/day unknown.
   function vidDate(v) {
     if (v.d) {
       const s = String(v.d).padStart(8, '0');
@@ -116,69 +105,81 @@
     if (dt.precise) return Date.UTC(dt.y, dt.m - 1, dt.day) / 1000;
     return v.ts || 0;
   }
-  function fmtDate(v) {
-    const dt = vidDate(v);
-    if (dt.precise) return dt.day + ' ' + MONTHS[dt.m - 1] + ' ' + dt.y;
-    if (dt.y) return String(dt.y);
-    return '—';
-  }
-  function todayYMD() { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; }
-  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
-  // Comparable YYYYMMDD int for a video (exact date, else start of its year).
   function videoYMD(v) {
     const dt = vidDate(v);
     if (dt.precise) return dt.y * 10000 + dt.m * 100 + dt.day;
     if (dt.y) return dt.y * 10000 + 101;
     return 0;
   }
-
-  // ---------------------------------------------------------------------------
-  // Ordering + filtering
-  // ---------------------------------------------------------------------------
-  function modeVideos() {
-    if (mode === 'channel') {
-      const cd = channelData[activeChannel];
-      return cd ? cd.videos.slice() : [];
-    }
-    const out = [];
-    available.forEach((c) => {
-      if (!follows.has(c.slug)) return;
-      const cd = channelData[c.slug];
-      if (cd) out.push.apply(out, cd.videos);
-    });
-    return out;
+  function todayYMD() { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; }
+  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+  function fmtDate(v) {
+    const dt = vidDate(v);
+    if (dt.precise) return dt.day + ' ' + MONTHS[dt.m - 1] + ' ' + dt.y;
+    if (dt.y) return String(dt.y);
+    return '';
+  }
+  function fmtDur(s) {
+    if (!s && s !== 0) return '';
+    s = Math.round(s);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const mm = h ? String(m).padStart(2, '0') : String(m);
+    return (h ? h + ':' : '') + mm + ':' + String(sec).padStart(2, '0');
+  }
+  function fmtViews(n) {
+    if (!n && n !== 0) return '';
+    if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M views';
+    if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, '') + 'K views';
+    return n + ' views';
+  }
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  // Oldest first. By-channel follows the exact videos-page order (`i`);
-  // the merged timeline interleaves channels by date.
-  function orderedVideos() {
-    const vids = modeVideos();
-    if (mode === 'channel') return vids.sort((a, b) => a.i - b.i);
-    return vids.sort((a, b) => sortEpoch(a) - sortEpoch(b) || a.i - b.i);
-  }
-
-  function monthDayEnabled() { return orderedVideos().some((v) => v.d); }
-  // The cutoff as a YYYYMMDD int. With only year-level data, the finer
-  // sliders are hidden and the cutoff covers the whole selected year.
+  // ---------------------------------------------------------------------------
+  // Selection / cutoff / sort / group
+  // ---------------------------------------------------------------------------
+  function anySelected() { return available.some((c) => selected.has(c.slug)); }
+  function monthDayEnabled() { return baseVideosRaw().some((v) => v.d); }
   function cutoffInt() {
     if (!monthDayEnabled()) return cutoff.y * 10000 + 1231;
     const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
     return cutoff.y * 10000 + cutoff.m * 100 + d;
   }
-  // Everything published on or before the cutoff date, chronological.
-  function filteredVideos() {
-    const cut = cutoffInt();
-    return orderedVideos().filter((v) => videoYMD(v) <= cut);
+  // All videos from selected channels (no date filter) — used for slider ranges.
+  function baseVideosRaw() {
+    const out = [];
+    available.forEach((c) => {
+      if (!selected.has(c.slug)) return;
+      const cd = channelData[c.slug];
+      if (cd) out.push.apply(out, cd.videos);
+    });
+    return out;
   }
+  // Selected + within cutoff.
+  function baseVideos() {
+    const cut = cutoffInt();
+    return baseVideosRaw().filter((v) => videoYMD(v) <= cut);
+  }
+  function sortVids(arr) {
+    const a = arr.slice();
+    if (sortBy === 'popular') a.sort((x, y) => (y.vc || 0) - (x.vc || 0) || sortEpoch(y) - sortEpoch(x));
+    else if (sortBy === 'new') a.sort((x, y) => sortEpoch(y) - sortEpoch(x) || (x.id < y.id ? 1 : -1));
+    else a.sort((x, y) => sortEpoch(x) - sortEpoch(y) || (x.id < y.id ? -1 : 1));
+    return a;
+  }
+  // Ordered, filtered list that drives playback (ignores show-watched).
+  function playbackList() { return sortVids(baseVideos()); }
 
   function availableYears() {
     const set = new Set();
-    orderedVideos().forEach((v) => { const y = vidDate(v).y; if (y) set.add(y); });
+    baseVideosRaw().forEach((v) => { const y = vidDate(v).y; if (y) set.add(y); });
     return Array.from(set).sort((a, b) => a - b);
   }
 
   function nextUnwatched(after) {
-    const order = filteredVideos();
+    const order = playbackList();
     let started = after == null;
     for (const v of order) {
       if (!started) { if (v.id === after) started = true; continue; }
@@ -192,114 +193,106 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-  function fmtDur(s) {
-    if (!s && s !== 0) return '';
-    s = Math.round(s);
-    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-    const mm = h ? String(m).padStart(2, '0') : String(m);
-    return (h ? h + ':' : '') + mm + ':' + String(sec).padStart(2, '0');
-  }
-  function escapeHTML(s) {
-    return String(s).replace(/[&<>"']/g, (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  }
-
-  // ---------------------------------------------------------------------------
-  // Rendering
+  // Render
   // ---------------------------------------------------------------------------
   function render() {
-    modeTimeline.setAttribute('aria-selected', String(mode === 'timeline'));
-    modeChannel.setAttribute('aria-selected', String(mode === 'channel'));
-    hideWatchedChk.checked = hideWatched;
-
-    const anyFollowed = available.some((c) => follows.has(c.slug));
-
-    if (mode === 'channel' && anyFollowed) { chanStrip.hidden = false; renderChanStrip(); }
-    else chanStrip.hidden = true;
-
     if (!available.length) {
-      showStatus('🍿', 'No channel data yet. The scraper publishes channels to the CDN daily (and right after the list changes). Check back in a few minutes.', null);
-      hideBrowse();
-      return;
-    }
-    if (!anyFollowed) {
-      showStatus('📺', 'Follow a channel to start your binge.', 'Open channels', openDrawer);
-      hideBrowse();
+      filtersEl.hidden = true; toolbar.hidden = true; hideResults();
+      showStatus('🍿', 'No channel data yet. The scraper publishes to the CDN daily. Check back soon.', null);
       return;
     }
 
-    filtersEl.hidden = false;
-    renderFilters();
+    filtersEl.hidden = false; toolbar.hidden = false;
+    renderChannels(); renderFilters(); renderToolbar();
 
-    const filtered = filteredVideos();
-    const total = filtered.length;
-    const watchedCount = filtered.filter((v) => watched.has(v.id)).length;
+    if (!anySelected()) {
+      hideResults();
+      showStatus('📺', 'Select a channel above to start your binge.', null);
+      return;
+    }
+
+    const list = sortVids(baseVideos());
+    const total = list.length;
+    const watchedCount = list.filter((v) => watched.has(v.id)).length;
+    const remaining = total - watchedCount;
 
     progressEl.hidden = false;
     progressFill.style.width = total ? (watchedCount / total * 100) + '%' : '0%';
     progressText.textContent = watchedCount + ' / ' + total + ' watched';
 
     if (!total) {
-      resultsBar.hidden = true;
-      yearsEl.innerHTML = '';
-      showStatus('🔍', 'Nothing published on or before that date.', 'Reset to today', resetFilter);
+      hideResults(true);
+      showStatus('🔍', 'Nothing published on or before that date.', 'Reset to today', resetCutoff);
       return;
     }
-    // With "Hide watched" on, completed years vanish entirely; if nothing
-    // unwatched is left, say so instead of showing an empty list.
-    const remaining = total - watchedCount;
-    if (hideWatched && remaining === 0) {
-      resultsBar.hidden = true;
-      yearsEl.innerHTML = '';
-      showStatus('🎉', 'All caught up — everything up to this date is watched.', 'Show watched', showAllWatched);
+    if (!showWatched && remaining === 0) {
+      hideResults(true);
+      showStatus('🎉', 'All caught up — everything up to this date is watched.', 'Show watched', () => {
+        showWatched = true; showWatchedChk.checked = true; save(LS.showWatched, showWatched); render();
+      });
       return;
     }
+
     statusPanel.hidden = true;
     resultsBar.hidden = false;
-    resultsCount.textContent = hideWatched
-      ? remaining + ' left'
-      : total + (total === 1 ? ' video' : ' videos');
-    renderAccordion(filtered);
-  }
-  function showAllWatched() {
-    hideWatched = false;
-    hideWatchedChk.checked = false;
-    save(LS.hide, hideWatched);
-    render();
+    resultsCount.textContent = showWatched
+      ? total + (total === 1 ? ' video' : ' videos')
+      : remaining + ' left';
+    renderSections(list);
   }
 
-  function hideBrowse() {
-    filtersEl.hidden = true;
-    progressEl.hidden = true;
+  function hideResults(keepProgress) {
+    if (!keepProgress) progressEl.hidden = true;
     resultsBar.hidden = true;
-    yearsEl.innerHTML = '';
+    sectionsEl.innerHTML = '';
   }
-
   function showStatus(icon, msg, actionLabel, actionFn) {
     statusPanel.hidden = false;
     statusPanel.querySelector('.status-icon').textContent = icon;
     statusMsg.textContent = msg;
-    if (actionLabel) {
-      statusAction.hidden = false;
-      statusAction.textContent = actionLabel;
-      statusAction.onclick = actionFn || null;
-    } else {
-      statusAction.hidden = true;
-      statusAction.onclick = null;
-    }
+    if (actionLabel) { statusAction.hidden = false; statusAction.textContent = actionLabel; statusAction.onclick = actionFn || null; }
+    else { statusAction.hidden = true; statusAction.onclick = null; }
   }
 
-  // ---- filters / sliders ----
-  function renderFilters() {
-    // Month/Day only mean something with exact dates; hide them for
-    // year-level-only data (the cutoff then covers whole years).
-    const hasPrecise = orderedVideos().some((v) => v.d);
-    document.getElementById('ds-month').hidden = !hasPrecise;
-    document.getElementById('ds-day').hidden = !hasPrecise;
+  // ---- channels ----
+  // Build the switch rows once; afterwards only sync the checked state. Not
+  // rebuilding the DOM on every render keeps the control you're tapping stable,
+  // so hammering the switches can't drop or double-fire a toggle.
+  function renderChannels() {
+    const inputs = chanSwitches.querySelectorAll('.chan-switch .switch-input');
+    if (inputs.length !== available.length) {
+      chanSwitches.innerHTML = '';
+      available.forEach((c) => {
+        const row = document.createElement('label');
+        row.className = 'switch chan-switch';
+        row.innerHTML =
+          '<input type="checkbox" class="switch-input"' + (selected.has(c.slug) ? ' checked' : '') + ' />'
+          + '<span class="switch-track" aria-hidden="true"></span>'
+          + '<span class="switch-text">' + escapeHTML(c.name || c.slug)
+          + ' <span class="chan-n">' + (c.count || 0) + '</span></span>';
+        row.querySelector('input').addEventListener('change', () => toggleChannel(c.slug));
+        chanSwitches.appendChild(row);
+      });
+    } else {
+      available.forEach((c, i) => { inputs[i].checked = selected.has(c.slug); });
+    }
+  }
+  // Pure state flip — all channel data is preloaded, so rapid toggling can't
+  // race an in-flight fetch.
+  function toggleChannel(slug) {
+    if (selected.has(slug)) selected.delete(slug); else selected.add(slug);
+    save(LS.selected, Array.from(selected));
+    render();
+  }
+  function selectAllChannels() { selected = new Set(available.map((c) => c.slug)); save(LS.selected, Array.from(selected)); render(); }
+  function clearAllChannels() { selected = new Set(); save(LS.selected, Array.from(selected)); render(); }
 
-    // Year slider spans earliest video year .. current year.
+  // ---- filters (date cutoff) ----
+  function renderFilters() {
+    const hasPrecise = baseVideosRaw().some((v) => v.d);
+    $('ds-month').hidden = !hasPrecise;
+    $('ds-day').hidden = !hasPrecise;
+
     const years = availableYears();
     const curY = new Date().getFullYear();
     const minY = years.length ? years[0] : curY;
@@ -320,155 +313,143 @@
     dyValue.textContent = String(cutoff.d);
 
     filtersSummary.textContent = filterSummaryText();
-    applyFiltersOpen();
-  }
-  function filterSummaryText() {
-    const t = todayYMD();
-    const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
-    const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    return 'up to ' + d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y + (isToday ? ' · today' : '');
-  }
-  function applyFiltersOpen() {
     filtersBody.hidden = !filtersOpen;
     filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
     filtersToggle.classList.toggle('open', filtersOpen);
   }
-  function commitFilter() {
-    save(LS.filter, cutoff);
-    render();
+  function filterSummaryText() {
+    const sel = available.filter((c) => selected.has(c.slug)).length;
+    const t = todayYMD();
+    const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
+    const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
+    const upto = isToday ? 'today' : d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y;
+    return sel + '/' + available.length + ' channels · up to ' + upto;
   }
-  function resetFilter() {
-    cutoff = todayYMD();
-    save(LS.filter, cutoff);
-    render();
-  }
+  function resetCutoff() { cutoff = todayYMD(); save(LS.cutoff, cutoff); render(); }
+  function commitCutoff() { save(LS.cutoff, cutoff); render(); }
 
-  function renderChanStrip() {
-    const followed = available.filter((c) => follows.has(c.slug));
-    if (!activeChannel || !follows.has(activeChannel)) {
-      activeChannel = followed.length ? followed[0].slug : null;
-      save(LS.chan, activeChannel);
-    }
-    chanStrip.innerHTML = '';
-    followed.forEach((c) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'chan-chip';
-      b.setAttribute('aria-pressed', String(c.slug === activeChannel));
-      b.textContent = (channelData[c.slug] && channelData[c.slug].name) || c.name || c.slug;
-      b.addEventListener('click', () => { activeChannel = c.slug; save(LS.chan, activeChannel); render(); });
-      chanStrip.appendChild(b);
+  // ---- toolbar ----
+  function renderToolbar() {
+    Array.prototype.forEach.call(segView.querySelectorAll('.seg-btn'), (b) => {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-view') === view));
     });
+    selSort.value = sortBy;
+    selGroup.value = groupBy;
   }
 
-  // ---- accordion ----
-  function renderAccordion(filtered) {
-    // group by year (descending years unusual for binge; keep oldest first)
-    const groups = new Map();
-    filtered.forEach((v) => {
-      const y = vidDate(v).y || 0;
-      if (!groups.has(y)) groups.set(y, []);
-      groups.get(y).push(v);
+  // ---- sections ----
+  function buildGroups(list) {
+    const map = new Map();
+    list.forEach((v) => {
+      let key, title;
+      if (groupBy === 'channel') { key = 'c:' + v.slug; title = v.channelName; }
+      else { const y = vidDate(v).y || 0; key = 'y:' + y; title = y ? String(y) : 'Undated'; }
+      if (!map.has(key)) map.set(key, { key: key, title: title, vids: [] });
+      map.get(key).vids.push(v);
     });
-    let years = Array.from(groups.keys()).sort((a, b) => a - b);
-
-    // "Hide watched" makes fully-watched years vanish entirely (a completed
-    // year keeps only the currently-playing video, if any).
-    if (hideWatched) {
-      years = years.filter((y) => groups.get(y).some((v) => !watched.has(v.id) || v.id === currentId));
+    let groups = Array.from(map.values());
+    if (groupBy === 'year') {
+      groups.sort((a, b) => Number(a.key.slice(2)) - Number(b.key.slice(2)));
+      if (sortBy === 'new' || sortBy === 'popular') groups.reverse();
+    } else {
+      const order = available.map((c) => 'c:' + c.slug);
+      groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
     }
+    return groups;
+  }
 
-    // If nothing is explicitly expanded and there's just one year, open it.
-    if (!expandedYears.size && years.length === 1) expandedYears.add(years[0]);
-    updateCollapseAllLabel(years);
+  function renderSections(list) {
+    let groups = buildGroups(list);
+    if (!showWatched) {
+      groups = groups.filter((g) => g.vids.some((v) => !watched.has(v.id) || v.id === currentId));
+    }
+    updateCollapseAllLabel(groups);
 
-    const html = years.map((y) => {
-      const vids = groups.get(y);
-      const open = expandedYears.has(y);
-      const w = vids.filter((v) => watched.has(v.id)).length;
-      const shown = hideWatched ? vids.filter((v) => !watched.has(v.id) || v.id === currentId) : vids;
+    const html = groups.map((g) => {
+      const open = !collapsed.has(g.key);
+      const w = g.vids.filter((v) => watched.has(v.id)).length;
+      const shown = showWatched ? g.vids : g.vids.filter((v) => !watched.has(v.id) || v.id === currentId);
       const body = open
-        ? '<div class="year-videos">' + shown.map(itemHTML).join('') + '</div>'
+        ? '<div class="vids ' + view + '">' + shown.map(cardHTML).join('') + '</div>'
         : '';
-      const allWatched = w === vids.length;
-      return '<div class="year-group' + (open ? ' open' : '') + '">'
-        + '<div class="year-head">'
-        + '<button class="year-toggle" type="button" data-year="' + y + '" aria-expanded="' + open + '">'
-        + '<span class="year-chev" aria-hidden="true">▸</span>'
-        + '<span class="year-label">' + (y || 'Undated') + '</span>'
-        + '<span class="year-count">' + w + ' / ' + vids.length + '</span>'
+      const done = w === g.vids.length;
+      return '<div class="section' + (open ? ' open' : '') + '">'
+        + '<div class="section-head">'
+        + '<button class="section-toggle" type="button" data-key="' + escapeHTML(g.key) + '" aria-expanded="' + open + '">'
+        + '<span class="section-chev" aria-hidden="true">▸</span>'
+        + '<span class="section-title">' + escapeHTML(g.title) + '</span>'
+        + '<span class="section-count">' + w + ' / ' + g.vids.length + '</span>'
         + '</button>'
-        + '<button class="year-markall' + (allWatched ? ' done' : '') + '" type="button" data-markyear="' + y + '" '
-        + 'title="Mark this whole year watched" aria-label="Mark ' + (y || 'undated') + ' watched">✓ year</button>'
+        + '<button class="section-markall' + (done ? ' done' : '') + '" type="button" data-markkey="' + escapeHTML(g.key) + '" title="Mark section watched">✓</button>'
         + '</div>' + body + '</div>';
     });
-    yearsEl.innerHTML = html.join('');
+    sectionsEl.innerHTML = html.join('');
   }
 
-  function itemHTML(v) {
-    const isWatched = watched.has(v.id);
-    const isPlaying = v.id === currentId;
-    const cls = 'q-item' + (isWatched ? ' watched' : '') + (isPlaying ? ' playing' : '');
-    const sub = ['<span class="q-date">' + escapeHTML(fmtDate(v)) + '</span>'];
-    if (mode === 'timeline') sub.push('<span>' + escapeHTML(v.channelName) + '</span>');
-    if (v.duration) sub.push('<span>' + fmtDur(v.duration) + '</span>');
-    if (unavailable.has(v.id)) sub.push('<span class="q-badge">unavailable</span>');
+  function cardHTML(v) {
+    const isW = watched.has(v.id);
+    const isP = v.id === currentId;
+    const cls = 'vcard' + (isW ? ' watched' : '') + (isP ? ' playing' : '');
+    const thumb = 'https://i.ytimg.com/vi/' + v.id + '/mqdefault.jpg';
+    const bits = [];
+    if (groupBy !== 'channel') bits.push(escapeHTML(v.channelName));
+    if (v.vc) bits.push(fmtViews(v.vc));
+    if (fmtDate(v)) bits.push(escapeHTML(fmtDate(v)));
+    if (unavailable.has(v.id)) bits.push('<span class="v-badge">unavailable</span>');
     return '<div class="' + cls + '" data-id="' + escapeHTML(v.id) + '">'
-      + '<button class="q-check" data-act="toggle" data-id="' + escapeHTML(v.id) + '" aria-label="Toggle watched">✓</button>'
-      + '<div class="q-body">'
-      + '<div class="q-title">' + escapeHTML(v.title) + '</div>'
-      + '<div class="q-sub">' + sub.join('') + '</div>'
-      + '</div></div>';
+      + '<div class="vthumb"><img loading="lazy" src="' + thumb + '" alt="" />'
+      + (v.duration ? '<span class="vdur">' + fmtDur(v.duration) + '</span>' : '')
+      + '</div>'
+      + '<div class="vmeta"><div class="vtitle">' + escapeHTML(v.title) + '</div>'
+      + '<div class="vsub">' + bits.join(' · ') + '</div></div>'
+      + '<button class="vcheck" type="button" data-act="toggle" data-id="' + escapeHTML(v.id) + '" aria-label="Toggle watched">✓</button>'
+      + '</div>';
   }
 
-  function updateCollapseAllLabel(years) {
-    const allOpen = years.length > 0 && years.every((y) => expandedYears.has(y));
+  function updateCollapseAllLabel(groups) {
+    const allOpen = groups.length > 0 && groups.every((g) => !collapsed.has(g.key));
     collapseAllBtn.textContent = allOpen ? 'Collapse all' : 'Expand all';
     collapseAllBtn.dataset.allOpen = String(allOpen);
   }
 
-  // ---- delegated clicks ----
-  yearsEl.addEventListener('click', (e) => {
-    const markYear = e.target.closest('[data-markyear]');
-    if (markYear) { markYearWatched(Number(markYear.getAttribute('data-markyear'))); return; }
-    const ytoggle = e.target.closest('.year-toggle');
-    if (ytoggle) {
-      const y = Number(ytoggle.getAttribute('data-year'));
-      if (expandedYears.has(y)) expandedYears.delete(y); else expandedYears.add(y);
+  sectionsEl.addEventListener('click', (e) => {
+    const mark = e.target.closest('[data-markkey]');
+    if (mark) { markSectionWatched(mark.getAttribute('data-markkey')); return; }
+    const tog = e.target.closest('.section-toggle');
+    if (tog) {
+      const k = tog.getAttribute('data-key');
+      if (collapsed.has(k)) collapsed.delete(k); else collapsed.add(k);
       render();
       return;
     }
-    const toggle = e.target.closest('[data-act="toggle"]');
-    if (toggle) { e.stopPropagation(); toggleWatched(toggle.getAttribute('data-id')); return; }
-    const item = e.target.closest('.q-item');
-    if (item) play(item.getAttribute('data-id'));
+    const chk = e.target.closest('[data-act="toggle"]');
+    if (chk) { e.stopPropagation(); toggleWatched(chk.getAttribute('data-id')); return; }
+    const card = e.target.closest('.vcard');
+    if (card) play(card.getAttribute('data-id'));
   });
 
   collapseAllBtn.addEventListener('click', () => {
-    if (collapseAllBtn.dataset.allOpen === 'true') expandedYears.clear();
-    else { const shown = new Set(filteredVideos().map((v) => vidDate(v).y || 0)); shown.forEach((y) => expandedYears.add(y)); }
+    const groups = buildGroups(sortVids(baseVideos()));
+    if (collapseAllBtn.dataset.allOpen === 'true') groups.forEach((g) => collapsed.add(g.key));
+    else collapsed.clear();
     render();
   });
 
   // ---------------------------------------------------------------------------
-  // Watched tracking
+  // Watched
   // ---------------------------------------------------------------------------
   function toggleWatched(id) {
     if (watched.has(id)) watched.delete(id); else watched.add(id);
     save(LS.watched, Array.from(watched));
     render();
   }
-  function markWatched(id) {
-    if (!id) return;
-    watched.add(id);
-    save(LS.watched, Array.from(watched));
-  }
-  // Mark (or, if already fully watched, un-mark) every video in a year.
-  function markYearWatched(y) {
-    const vids = modeVideos().filter((v) => (vidDate(v).y || 0) === y);
-    if (!vids.length) return;
-    const allWatched = vids.every((v) => watched.has(v.id));
-    vids.forEach((v) => { if (allWatched) watched.delete(v.id); else watched.add(v.id); });
+  function markWatched(id) { if (id) { watched.add(id); save(LS.watched, Array.from(watched)); } }
+  function markSectionWatched(key) {
+    const groups = buildGroups(sortVids(baseVideos()));
+    const g = groups.find((x) => x.key === key);
+    if (!g) return;
+    const allW = g.vids.every((v) => watched.has(v.id));
+    g.vids.forEach((v) => { if (allW) watched.delete(v.id); else watched.add(v.id); });
     save(LS.watched, Array.from(watched));
     render();
   }
@@ -504,11 +485,9 @@
     render();
     try { playerWrap.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) {}
     if (!apiReady) { pendingId = id; return; }
-    if (!player) { startPlayer(id); return; }  // build once, in the now-visible container
+    if (!player) { startPlayer(id); return; }
     try { player.loadVideoById(id); } catch (e) { onPlayerError(); }
   }
-  // Create the player the first time we actually play something, so it's
-  // built inside a visible container (autoplay is unreliable otherwise).
   function startPlayer(id) {
     player = new YT.Player('player', {
       width: '100%', height: '100%',
@@ -525,22 +504,17 @@
   }
   function closePlayer() {
     if (player) { try { player.stopVideo(); } catch (e) {} }
-    currentId = null;
-    playerWrap.hidden = true;
-    setVeil('off');
-    render();
+    currentId = null; playerWrap.hidden = true; setVeil('off'); render();
   }
   function advance() {
     const next = nextUnwatched(currentId);
-    if (next) play(next.id);
-    else { closePlayer(); }
+    if (next) play(next.id); else closePlayer();
   }
   function onPlayerError() {
     if (currentId) unavailable.add(currentId);
     setVeil('lost', 'Can’t embed this one');
     render();
   }
-
   window.onYouTubeIframeAPIReady = function () {
     apiReady = true;
     if (pendingId != null) { const id = pendingId; pendingId = null; play(id); }
@@ -552,86 +526,50 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Drawer
-  // ---------------------------------------------------------------------------
-  function renderDrawer() {
-    drawerSub.textContent = available.length
-      ? 'Follow channels to add them to your binge.'
-      : 'No channels published yet — the scraper runs daily.';
-    chanList.innerHTML = '';
-    available.forEach((c) => {
-      const li = document.createElement('li');
-      li.className = 'chan-row';
-      const followed = follows.has(c.slug);
-      li.innerHTML =
-        '<div class="chan-row-body">'
-        + '<div class="chan-row-name">' + escapeHTML(c.name || c.slug) + '</div>'
-        + '<div class="chan-row-meta">' + (c.count || 0) + ' videos</div>'
-        + '</div>'
-        + '<button type="button" class="follow-btn" aria-pressed="' + followed + '">'
-        + (followed ? 'Following' : 'Follow') + '</button>';
-      li.querySelector('.follow-btn').addEventListener('click', () => toggleFollow(c.slug));
-      chanList.appendChild(li);
-    });
-  }
-  async function toggleFollow(slug) {
-    if (follows.has(slug)) follows.delete(slug);
-    else { follows.add(slug); try { await loadChannel(slug); } catch (e) {} }
-    save(LS.follows, Array.from(follows));
-    renderDrawer(); render();
-  }
-  function openDrawer() { renderDrawer(); drawer.hidden = false; }
-  function closeDrawer() { drawer.hidden = true; }
-
-  // ---------------------------------------------------------------------------
   // Wiring
   // ---------------------------------------------------------------------------
-  modeTimeline.addEventListener('click', () => { mode = 'timeline'; save(LS.mode, mode); expandedYears.clear(); render(); });
-  modeChannel.addEventListener('click', () => { mode = 'channel'; save(LS.mode, mode); expandedYears.clear(); render(); });
-  hideWatchedChk.addEventListener('change', () => { hideWatched = hideWatchedChk.checked; save(LS.hide, hideWatched); render(); });
-  filtersReset.addEventListener('click', resetFilter);
-
-  // whole filter section collapses/expands
   filtersToggle.addEventListener('click', () => {
-    filtersOpen = !filtersOpen; save(LS.filtersOpen, filtersOpen); applyFiltersOpen();
+    filtersOpen = !filtersOpen; save(LS.filtersOpen, filtersOpen);
+    filtersBody.hidden = !filtersOpen;
+    filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
+    filtersToggle.classList.toggle('open', filtersOpen);
   });
+  chanAllBtn.addEventListener('click', selectAllChannels);
+  chanNoneBtn.addEventListener('click', clearAllChannels);
+  filtersReset.addEventListener('click', resetCutoff);
+  showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; save(LS.showWatched, showWatched); render(); });
+  clearWatchedBtn.addEventListener('click', () => { if (watched.size) { watched = new Set(); save(LS.watched, []); render(); } });
 
   fYear.addEventListener('input', () => {
     cutoff.y = yearRange[Number(fYear.value)] || cutoff.y;
     cutoff.d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    yrValue.textContent = String(cutoff.y);
-    commitFilter();
+    yrValue.textContent = String(cutoff.y); commitCutoff();
   });
   fMonth.addEventListener('input', () => {
     cutoff.m = Number(fMonth.value);
     cutoff.d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    moValue.textContent = MONTHS[cutoff.m - 1];
-    commitFilter();
+    moValue.textContent = MONTHS[cutoff.m - 1]; commitCutoff();
   });
   fDay.addEventListener('input', () => {
     cutoff.d = Math.min(Number(fDay.value), daysInMonth(cutoff.y, cutoff.m));
-    dyValue.textContent = String(cutoff.d);
-    commitFilter();
+    dyValue.textContent = String(cutoff.d); commitCutoff();
   });
+
+  segView.addEventListener('click', (e) => {
+    const b = e.target.closest('.seg-btn'); if (!b) return;
+    view = b.getAttribute('data-view'); save(LS.view, view); render();
+  });
+  selSort.addEventListener('change', () => { sortBy = selSort.value; save(LS.sort, sortBy); render(); });
+  selGroup.addEventListener('change', () => { groupBy = selGroup.value; collapsed.clear(); save(LS.group, groupBy); render(); });
 
   watchedNextBtn.addEventListener('click', () => { markWatched(currentId); advance(); });
   skipBtn.addEventListener('click', advance);
   closePlayerBtn.addEventListener('click', closePlayer);
 
-  channelsBtn.addEventListener('click', openDrawer);
-  drawerClose.addEventListener('click', closeDrawer);
-  clearWatchedBtn.addEventListener('click', () => {
-    if (!watched.size) return;
-    watched = new Set();
-    save(LS.watched, []);
-    renderDrawer(); render();
-  });
-
   function quit() {
     if (player) { try { player.stopVideo(); } catch (e) {} }
-    if (window.self !== window.top) {
-      try { window.parent.postMessage({ type: 'close-game' }, '*'); } catch (e) {}
-    } else { location.href = '../../'; }
+    if (window.self !== window.top) { try { window.parent.postMessage({ type: 'close-game' }, '*'); } catch (e) {} }
+    else { location.href = '../../'; }
   }
   quitBtn.addEventListener('click', quit);
 
@@ -641,7 +579,14 @@
   (async function boot() {
     loadYouTubeAPI();
     await loadIndex();
-    await loadFollowed();
+    const savedSel = load(LS.selected, null);
+    selected = new Set(
+      (savedSel && Array.isArray(savedSel))
+        ? savedSel.filter((s) => available.some((c) => c.slug === s))
+        : available.map((c) => c.slug)   // default: all selected
+    );
+    showWatchedChk.checked = showWatched;
+    await loadAll();
     render();
   })();
 
@@ -649,11 +594,7 @@
     const loading = document.getElementById('app-loading');
     if (!loading) return;
     const navStart = (performance && performance.timeOrigin) || Date.now();
-    const elapsed = Date.now() - navStart;
-    const remaining = Math.max(0, 3000 - elapsed); // mandatory ≥3s splash
-    setTimeout(() => {
-      loading.classList.add('hidden');
-      setTimeout(() => loading.remove(), 500);
-    }, remaining);
+    const remaining = Math.max(0, 3000 - (Date.now() - navStart));
+    setTimeout(() => { loading.classList.add('hidden'); setTimeout(() => loading.remove(), 500); }, remaining);
   })();
 })();

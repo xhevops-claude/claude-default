@@ -8,9 +8,7 @@
     if (window.self !== window.top) document.documentElement.classList.add('embedded');
   </script>
   <style>
-    /* Critical inline CSS: paint the splash on the first frame, before
-       styles.css resolves. Self-contained palette; the shell does not
-       theme sub-experiences. */
+    /* Critical inline CSS: paint the splash on the first frame. */
     html, body { margin: 0; padding: 0; background: #0c0d12; color: #f4f5fb;
       font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
       touch-action: manipulation; }
@@ -45,9 +43,8 @@
       <span class="bg-logo" aria-hidden="true">🍿</span>
       <div class="bg-titles">
         <h1>Binge</h1>
-        <p>Watch channels start to finish, in order.</p>
+        <p>Watch channels start to finish.</p>
       </div>
-      <button id="channels-btn" type="button" class="btn ghost head-btn">Channels</button>
     </header>
 
     <!-- Player -->
@@ -73,54 +70,79 @@
       </div>
     </section>
 
-    <!-- Mode -->
-    <section class="controls">
-      <div class="seg" role="tablist" aria-label="Order">
-        <button id="mode-timeline" type="button" class="seg-btn" role="tab">Timeline</button>
-        <button id="mode-channel" type="button" class="seg-btn" role="tab">By channel</button>
-      </div>
-    </section>
-
-    <!-- Channel switcher (By channel mode) -->
-    <div class="chan-strip" id="chan-strip" hidden></div>
-
-    <!-- Filter section: whole section collapses; sliders inside stay open -->
+    <!-- Filters (collapsible): channels + date cutoff + show-watched -->
     <section class="filters" id="filters" hidden>
       <button class="filters-head" id="filters-toggle" type="button" aria-expanded="true" aria-controls="filters-body">
         <span class="filters-chev" aria-hidden="true">▸</span>
-        <span class="filters-title">Show up to</span>
-        <span class="filters-summary" id="filters-summary">up to today</span>
+        <span class="filters-title">Filters</span>
+        <span class="filters-summary" id="filters-summary"></span>
       </button>
 
       <div class="filters-body" id="filters-body">
-        <div class="dslider" id="ds-year">
-          <div class="dslider-row">
-            <span class="dslider-label">Year</span>
-            <span class="dslider-value" id="yr-value">Any</span>
+        <div class="fgroup">
+          <div class="fgroup-head">
+            <span class="fgroup-label">Channels</span>
+            <span class="fgroup-actions">
+              <button id="chan-all" type="button" class="linkbtn">Select all</button>
+              <button id="chan-none" type="button" class="linkbtn">Clear all</button>
+            </span>
           </div>
-          <input type="range" id="f-year" class="d-range" min="0" max="0" step="1" value="0" aria-label="Year" />
+          <div class="chan-switches" id="chan-switches"></div>
         </div>
 
-        <div class="dslider" id="ds-month">
-          <div class="dslider-row">
-            <span class="dslider-label">Month</span>
-            <span class="dslider-value" id="mo-value">Any</span>
+        <div class="fgroup">
+          <div class="fgroup-head">
+            <span class="fgroup-label">Show up to</span>
+            <span class="fgroup-actions"><button id="filters-reset" type="button" class="linkbtn">Today</button></span>
           </div>
-          <input type="range" id="f-month" class="d-range" min="1" max="12" step="1" value="1" aria-label="Month" />
+          <div class="dslider" id="ds-year">
+            <div class="dslider-row"><span class="dslider-label">Year</span><span class="dslider-value" id="yr-value">—</span></div>
+            <input type="range" id="f-year" class="d-range" min="0" max="0" step="1" value="0" aria-label="Year" />
+          </div>
+          <div class="dslider" id="ds-month">
+            <div class="dslider-row"><span class="dslider-label">Month</span><span class="dslider-value" id="mo-value">—</span></div>
+            <input type="range" id="f-month" class="d-range" min="1" max="12" step="1" value="1" aria-label="Month" />
+          </div>
+          <div class="dslider" id="ds-day">
+            <div class="dslider-row"><span class="dslider-label">Day</span><span class="dslider-value" id="dy-value">—</span></div>
+            <input type="range" id="f-day" class="d-range" min="1" max="31" step="1" value="1" aria-label="Day" />
+          </div>
         </div>
 
-        <div class="dslider" id="ds-day">
-          <div class="dslider-row">
-            <span class="dslider-label">Day</span>
-            <span class="dslider-value" id="dy-value">Any</span>
-          </div>
-          <input type="range" id="f-day" class="d-range" min="1" max="31" step="1" value="1" aria-label="Day" />
+        <div class="fgroup-foot">
+          <label class="switch">
+            <input type="checkbox" id="show-watched" class="switch-input" />
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Show already-watched videos</span>
+          </label>
+          <button id="clear-watched" type="button" class="linkbtn">Clear watched</button>
         </div>
+      </div>
+    </section>
 
-        <div class="filters-foot">
-          <label class="chk"><input type="checkbox" id="hide-watched" /> Hide watched</label>
-          <button id="filters-reset" type="button" class="btn ghost small">Today</button>
+    <!-- Toolbar: View / Sort / Group -->
+    <section class="toolbar" id="toolbar" hidden>
+      <div class="tb-item">
+        <span class="tb-label">View</span>
+        <div class="seg" id="seg-view" role="tablist" aria-label="View">
+          <button type="button" class="seg-btn" data-view="list" role="tab">List</button>
+          <button type="button" class="seg-btn" data-view="grid" role="tab">Grid</button>
         </div>
+      </div>
+      <div class="tb-item">
+        <label class="tb-label" for="sel-sort">Sort</label>
+        <select id="sel-sort" class="tb-select">
+          <option value="old">Oldest first</option>
+          <option value="new">Newest first</option>
+          <option value="popular">Most viewed</option>
+        </select>
+      </div>
+      <div class="tb-item">
+        <label class="tb-label" for="sel-group">Group</label>
+        <select id="sel-group" class="tb-select">
+          <option value="year">Year</option>
+          <option value="channel">Channel</option>
+        </select>
       </div>
     </section>
 
@@ -130,14 +152,16 @@
       <span class="progress-text" id="progress-text">—</span>
     </div>
 
-    <!-- Results accordion -->
+    <!-- Results header -->
     <div class="results-bar" id="results-bar" hidden>
       <span class="results-count" id="results-count">—</span>
-      <button id="collapse-all" type="button" class="btn ghost small">Expand all</button>
+      <button id="collapse-all" type="button" class="btn ghost small">Collapse all</button>
     </div>
-    <section class="years" id="years" aria-label="Videos by year"></section>
 
-    <!-- Empty / status -->
+    <!-- Grouped sections -->
+    <section class="sections" id="sections" aria-label="Videos"></section>
+
+    <!-- Status / empty -->
     <section class="status-panel" id="status-panel">
       <div class="status-icon" aria-hidden="true">🍿</div>
       <div class="status-msg" id="status-msg">Loading channels…</div>
@@ -148,19 +172,6 @@
       <button id="quit" type="button" class="btn ghost">Quit</button>
     </div>
   </main>
-
-  <!-- Channels drawer -->
-  <div class="drawer" id="drawer" hidden role="dialog" aria-label="Channels">
-    <div class="drawer-head">
-      <span class="drawer-title">Channels</span>
-      <button id="drawer-close" type="button" class="drawer-close" aria-label="Close">×</button>
-    </div>
-    <p class="drawer-sub" id="drawer-sub">Follow channels to add them to your binge.</p>
-    <ul class="chan-list" id="chan-list"></ul>
-    <div class="drawer-foot">
-      <button id="clear-watched" type="button" class="btn ghost small">Clear watched history</button>
-    </div>
-  </div>
 
   <script src="app.js"></script>
 </body>
