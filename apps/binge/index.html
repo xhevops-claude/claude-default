@@ -69,6 +69,7 @@
         <button id="watched-next" type="button" class="btn primary">✓ Watched · next</button>
         <button id="skip" type="button" class="btn ghost">Skip ›</button>
         <a id="yt-link" class="btn ghost" href="#" target="_blank" rel="noopener">YouTube ↗</a>
+        <button id="close-player" type="button" class="btn ghost">✕ Close</button>
       </div>
     </section>
 
@@ -83,47 +84,44 @@
     <!-- Channel switcher (By channel mode) -->
     <div class="chan-strip" id="chan-strip" hidden></div>
 
-    <!-- Filter section: collapsible Y / M / D sliders + hide watched -->
+    <!-- Filter section: whole section collapses; sliders inside stay open -->
     <section class="filters" id="filters" hidden>
-      <div class="filters-head">
+      <button class="filters-head" id="filters-toggle" type="button" aria-expanded="true" aria-controls="filters-body">
+        <span class="filters-chev" aria-hidden="true">▸</span>
         <span class="filters-title">Filter by date</span>
-        <button id="filters-reset" type="button" class="btn ghost small">Reset</button>
-      </div>
+        <span class="filters-summary" id="filters-summary">All dates</span>
+      </button>
 
-      <div class="dslider" id="ds-year">
-        <button class="dslider-head" id="yr-head" type="button" aria-expanded="false" aria-controls="yr-body">
-          <span class="dslider-label">Year</span>
-          <span class="dslider-value" id="yr-value">Any</span>
-          <span class="dslider-chev" aria-hidden="true">▸</span>
-        </button>
-        <div class="dslider-body" id="yr-body" hidden>
+      <div class="filters-body" id="filters-body">
+        <div class="dslider" id="ds-year">
+          <div class="dslider-row">
+            <span class="dslider-label">Year</span>
+            <span class="dslider-value" id="yr-value">Any</span>
+          </div>
           <input type="range" id="f-year" class="d-range" min="0" max="0" step="1" value="0" aria-label="Year" />
         </div>
-      </div>
 
-      <div class="dslider" id="ds-month">
-        <button class="dslider-head" id="mo-head" type="button" aria-expanded="false" aria-controls="mo-body">
-          <span class="dslider-label">Month</span>
-          <span class="dslider-value" id="mo-value">Any</span>
-          <span class="dslider-chev" aria-hidden="true">▸</span>
-        </button>
-        <div class="dslider-body" id="mo-body" hidden>
+        <div class="dslider" id="ds-month">
+          <div class="dslider-row">
+            <span class="dslider-label">Month</span>
+            <span class="dslider-value" id="mo-value">Any</span>
+          </div>
           <input type="range" id="f-month" class="d-range" min="0" max="12" step="1" value="0" aria-label="Month" />
         </div>
-      </div>
 
-      <div class="dslider" id="ds-day">
-        <button class="dslider-head" id="dy-head" type="button" aria-expanded="false" aria-controls="dy-body">
-          <span class="dslider-label">Day</span>
-          <span class="dslider-value" id="dy-value">Any</span>
-          <span class="dslider-chev" aria-hidden="true">▸</span>
-        </button>
-        <div class="dslider-body" id="dy-body" hidden>
+        <div class="dslider" id="ds-day">
+          <div class="dslider-row">
+            <span class="dslider-label">Day</span>
+            <span class="dslider-value" id="dy-value">Any</span>
+          </div>
           <input type="range" id="f-day" class="d-range" min="0" max="31" step="1" value="0" aria-label="Day" />
         </div>
-      </div>
 
-      <label class="chk"><input type="checkbox" id="hide-watched" /> Hide watched</label>
+        <div class="filters-foot">
+          <label class="chk"><input type="checkbox" id="hide-watched" /> Hide watched</label>
+          <button id="filters-reset" type="button" class="btn ghost small">Reset</button>
+        </div>
+      </div>
     </section>
 
     <!-- Progress -->

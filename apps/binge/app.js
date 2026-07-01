@@ -13,6 +13,7 @@
     hide: 'binge-hidewatched',
     chan: 'binge-active-channel',
     filter: 'binge-filter',
+    filtersOpen: 'binge-filters-open',
   };
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -31,6 +32,7 @@
   let hideWatched = load(LS.hide, false);
   let activeChannel = load(LS.chan, null);        // slug for 'channel' mode
   let filter = load(LS.filter, { year: 'any', month: 'any', day: 'any' });
+  let filtersOpen = load(LS.filtersOpen, true);   // whole filter section
 
   // ---- runtime state ----
   let available = [];        // [{slug,name,count,url}] from index.json
@@ -38,18 +40,18 @@
   let currentId = null;      // playing video id
   const unavailable = new Set();
   const expandedYears = new Set();  // which year groups are open
-  const sliderOpen = { year: false, month: false, day: false };
 
   // ---- elements ----
   const $ = (id) => document.getElementById(id);
   const playerWrap = $('player-wrap');
   const veil = $('veil'), veilText = $('veil-text'), veilLink = $('veil-link');
   const nowTitle = $('now-title'), nowBy = $('now-by'), ytLink = $('yt-link');
-  const watchedNextBtn = $('watched-next'), skipBtn = $('skip');
+  const watchedNextBtn = $('watched-next'), skipBtn = $('skip'), closePlayerBtn = $('close-player');
   const modeTimeline = $('mode-timeline'), modeChannel = $('mode-channel');
   const hideWatchedChk = $('hide-watched');
   const chanStrip = $('chan-strip');
   const filtersEl = $('filters'), filtersReset = $('filters-reset');
+  const filtersToggle = $('filters-toggle'), filtersBody = $('filters-body'), filtersSummary = $('filters-summary');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
   const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
   const yearsEl = $('years');
@@ -60,8 +62,6 @@
   const quitBtn = $('quit');
   // sliders
   const fYear = $('f-year'), fMonth = $('f-month'), fDay = $('f-day');
-  const yrHead = $('yr-head'), moHead = $('mo-head'), dyHead = $('dy-head');
-  const yrBody = $('yr-body'), moBody = $('mo-body'), dyBody = $('dy-body');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
 
   // ---------------------------------------------------------------------------
@@ -288,14 +288,20 @@
     fDay.value = String(filter.day === 'any' ? 0 : filter.day);
     dyValue.textContent = filter.day === 'any' ? 'Any' : String(filter.day);
 
-    setSlider('year', yrHead, yrBody);
-    setSlider('month', moHead, moBody);
-    setSlider('day', dyHead, dyBody);
+    filtersSummary.textContent = filterSummaryText();
+    applyFiltersOpen();
   }
-  function setSlider(level, head, body) {
-    body.hidden = !sliderOpen[level];
-    head.setAttribute('aria-expanded', String(sliderOpen[level]));
-    head.classList.toggle('open', sliderOpen[level]);
+  function filterSummaryText() {
+    if (filter.year === 'any' && filter.month === 'any' && filter.day === 'any') return 'All dates';
+    const parts = [filter.year === 'any' ? 'Any year' : String(filter.year)];
+    if (filter.month !== 'any') parts.push(MONTHS[filter.month - 1]);
+    if (filter.day !== 'any') parts.push('Day ' + filter.day);
+    return parts.join(' · ');
+  }
+  function applyFiltersOpen() {
+    filtersBody.hidden = !filtersOpen;
+    filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
+    filtersToggle.classList.toggle('open', filtersOpen);
   }
   function commitFilter() {
     save(LS.filter, filter);
@@ -350,12 +356,17 @@
       const body = open
         ? '<div class="year-videos">' + shown.map(itemHTML).join('') + '</div>'
         : '';
+      const allWatched = w === vids.length;
       return '<div class="year-group' + (open ? ' open' : '') + '">'
-        + '<button class="year-head" type="button" data-year="' + y + '" aria-expanded="' + open + '">'
+        + '<div class="year-head">'
+        + '<button class="year-toggle" type="button" data-year="' + y + '" aria-expanded="' + open + '">'
         + '<span class="year-chev" aria-hidden="true">▸</span>'
         + '<span class="year-label">' + (y || 'Undated') + '</span>'
         + '<span class="year-count">' + w + ' / ' + vids.length + '</span>'
-        + '</button>' + body + '</div>';
+        + '</button>'
+        + '<button class="year-markall' + (allWatched ? ' done' : '') + '" type="button" data-markyear="' + y + '" '
+        + 'title="Mark this whole year watched" aria-label="Mark ' + (y || 'undated') + ' watched">✓ year</button>'
+        + '</div>' + body + '</div>';
     });
     yearsEl.innerHTML = html.join('');
   }
@@ -384,9 +395,11 @@
 
   // ---- delegated clicks ----
   yearsEl.addEventListener('click', (e) => {
-    const yhead = e.target.closest('.year-head');
-    if (yhead) {
-      const y = Number(yhead.getAttribute('data-year'));
+    const markYear = e.target.closest('[data-markyear]');
+    if (markYear) { markYearWatched(Number(markYear.getAttribute('data-markyear'))); return; }
+    const ytoggle = e.target.closest('.year-toggle');
+    if (ytoggle) {
+      const y = Number(ytoggle.getAttribute('data-year'));
       if (expandedYears.has(y)) expandedYears.delete(y); else expandedYears.add(y);
       render();
       return;
@@ -416,11 +429,20 @@
     watched.add(id);
     save(LS.watched, Array.from(watched));
   }
+  // Mark (or, if already fully watched, un-mark) every video in a year.
+  function markYearWatched(y) {
+    const vids = modeVideos().filter((v) => (vidDate(v).y || 0) === y);
+    if (!vids.length) return;
+    const allWatched = vids.every((v) => watched.has(v.id));
+    vids.forEach((v) => { if (allWatched) watched.delete(v.id); else watched.add(v.id); });
+    save(LS.watched, Array.from(watched));
+    render();
+  }
 
   // ---------------------------------------------------------------------------
   // Playback (YouTube IFrame API)
   // ---------------------------------------------------------------------------
-  let player = null, playerReady = false, pendingId = null;
+  let player = null, apiReady = false, pendingId = null;
 
   function findVideo(id) {
     for (const slug in channelData) {
@@ -447,13 +469,37 @@
     setVeil('on', 'Loading…');
     render();
     try { playerWrap.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) {}
-    if (!playerReady) { pendingId = id; return; }
+    if (!apiReady) { pendingId = id; return; }
+    if (!player) { startPlayer(id); return; }  // build once, in the now-visible container
     try { player.loadVideoById(id); } catch (e) { onPlayerError(); }
+  }
+  // Create the player the first time we actually play something, so it's
+  // built inside a visible container (autoplay is unreliable otherwise).
+  function startPlayer(id) {
+    player = new YT.Player('player', {
+      width: '100%', height: '100%',
+      videoId: id,
+      playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+      events: {
+        onStateChange: function (e) {
+          if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.BUFFERING) setVeil('off');
+          if (e.data === YT.PlayerState.ENDED) { markWatched(currentId); advance(); }
+        },
+        onError: function () { onPlayerError(); },
+      },
+    });
+  }
+  function closePlayer() {
+    if (player) { try { player.stopVideo(); } catch (e) {} }
+    currentId = null;
+    playerWrap.hidden = true;
+    setVeil('off');
+    render();
   }
   function advance() {
     const next = nextUnwatched(currentId);
     if (next) play(next.id);
-    else { currentId = null; render(); }
+    else { closePlayer(); }
   }
   function onPlayerError() {
     if (currentId) unavailable.add(currentId);
@@ -462,21 +508,8 @@
   }
 
   window.onYouTubeIframeAPIReady = function () {
-    player = new YT.Player('player', {
-      width: '100%', height: '100%',
-      playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
-      events: {
-        onReady: function () {
-          playerReady = true;
-          if (pendingId) { const id = pendingId; pendingId = null; play(id); }
-        },
-        onStateChange: function (e) {
-          if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.BUFFERING) setVeil('off');
-          if (e.data === YT.PlayerState.ENDED) { markWatched(currentId); advance(); }
-        },
-        onError: function () { onPlayerError(); },
-      },
-    });
+    apiReady = true;
+    if (pendingId != null) { const id = pendingId; pendingId = null; play(id); }
   };
   function loadYouTubeAPI() {
     const tag = document.createElement('script');
@@ -524,10 +557,10 @@
   hideWatchedChk.addEventListener('change', () => { hideWatched = hideWatchedChk.checked; save(LS.hide, hideWatched); render(); });
   filtersReset.addEventListener('click', resetFilter);
 
-  // slider heads toggle open/collapsed
-  yrHead.addEventListener('click', () => { sliderOpen.year = !sliderOpen.year; setSlider('year', yrHead, yrBody); });
-  moHead.addEventListener('click', () => { sliderOpen.month = !sliderOpen.month; setSlider('month', moHead, moBody); });
-  dyHead.addEventListener('click', () => { sliderOpen.day = !sliderOpen.day; setSlider('day', dyHead, dyBody); });
+  // whole filter section collapses/expands
+  filtersToggle.addEventListener('click', () => {
+    filtersOpen = !filtersOpen; save(LS.filtersOpen, filtersOpen); applyFiltersOpen();
+  });
 
   fYear.addEventListener('input', () => {
     const years = availableYears();
@@ -551,6 +584,7 @@
 
   watchedNextBtn.addEventListener('click', () => { markWatched(currentId); advance(); });
   skipBtn.addEventListener('click', advance);
+  closePlayerBtn.addEventListener('click', closePlayer);
 
   channelsBtn.addEventListener('click', openDrawer);
   drawerClose.addEventListener('click', closeDrawer);
@@ -562,7 +596,7 @@
   });
 
   function quit() {
-    if (player && playerReady) { try { player.stopVideo(); } catch (e) {} }
+    if (player) { try { player.stopVideo(); } catch (e) {} }
     if (window.self !== window.top) {
       try { window.parent.postMessage({ type: 'close-game' }, '*'); } catch (e) {}
     } else { location.href = '../../'; }

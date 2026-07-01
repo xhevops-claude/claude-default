@@ -159,23 +159,23 @@ html, body {
 .follow-btn[aria-pressed="true"] { background: var(--red); border-color: transparent; color: #fff; }
 .drawer-foot { border-top: 1px solid var(--line); padding-top: 12px; display: flex; justify-content: center; }
 
-/* Filter section */
-.filters { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px;
-  background: var(--panel); border: 1px solid var(--line); }
-.filters-head { display: flex; align-items: center; justify-content: space-between; }
-.filters-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-
-/* Collapsible date slider */
-.dslider { border-radius: 10px; background: var(--panel-2); overflow: hidden; }
-.dslider-head {
+/* Filter section — the whole section collapses; sliders inside stay open */
+.filters { border-radius: 12px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
+.filters-head {
   width: 100%; display: flex; align-items: center; gap: 10px; cursor: pointer;
   font: inherit; color: var(--ink); background: transparent; border: 0; padding: 12px 14px; text-align: left;
 }
-.dslider-label { font-weight: 700; font-size: 14px; flex: none; min-width: 52px; }
-.dslider-value { flex: 1; color: var(--amber); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
-.dslider-chev { color: var(--muted); transition: transform 0.18s ease; }
-.dslider-head.open .dslider-chev { transform: rotate(90deg); }
-.dslider-body { padding: 4px 14px 16px; }
+.filters-chev { color: var(--muted); transition: transform 0.18s ease; flex: none; }
+.filters-head.open .filters-chev { transform: rotate(90deg); }
+.filters-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; flex: none; }
+.filters-summary { flex: 1; text-align: right; color: var(--amber); font-weight: 700; font-size: 13px; }
+.filters-body { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 14px; }
+.filters-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* Date slider (always visible when the section is open) */
+.dslider-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.dslider-label { font-weight: 700; font-size: 14px; }
+.dslider-value { color: var(--amber); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
 .d-range {
   -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 4px;
   background: linear-gradient(90deg, var(--red), var(--amber)); outline: none; cursor: pointer;
@@ -194,14 +194,22 @@ html, body {
 .results-count { color: var(--muted); font-size: 13px; }
 .years { display: flex; flex-direction: column; gap: 6px; }
 .year-group { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
-.year-head {
-  width: 100%; display: flex; align-items: center; gap: 10px; cursor: pointer;
+.year-head { display: flex; align-items: center; gap: 6px; padding-right: 8px; }
+.year-toggle {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer;
   font: inherit; color: var(--ink); background: transparent; border: 0; padding: 13px 14px; text-align: left;
 }
 .year-chev { color: var(--muted); transition: transform 0.18s ease; flex: none; }
 .year-group.open .year-chev { transform: rotate(90deg); }
 .year-label { flex: 1; font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
 .year-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.year-markall {
+  flex: none; cursor: pointer; font: inherit; font-weight: 700; font-size: 12px;
+  padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line);
+  background: transparent; color: var(--muted); white-space: nowrap;
+}
+.year-markall:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.22); }
+.year-markall.done { background: var(--green); border-color: transparent; color: #06281c; }
 .year-videos { padding: 4px 8px 10px; display: flex; flex-direction: column; gap: 2px; }
 
 .q-date { color: var(--amber); }
