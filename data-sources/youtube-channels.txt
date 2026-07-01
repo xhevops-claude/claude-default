@@ -11,6 +11,6 @@
 #
 # Managed by hand — to add a channel, append a line and push.
 
-veritasium  https://www.youtube.com/@veritasium/videos
-kurzgesagt  https://www.youtube.com/@kurzgesagt/videos
-mkbhd       https://www.youtube.com/@mkbhd/videos
+campingwithsteve   https://www.youtube.com/@campingwithsteve/videos
+stevewallisstep2   https://www.youtube.com/@SteveWallisStep2/videos
+crazyneighbour2429 https://www.youtube.com/@crazyneighbour2429/videos

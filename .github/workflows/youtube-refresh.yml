@@ -106,8 +106,24 @@ jobs:
             echo "::endgroup::"
           done < data-sources/youtube-channels.txt
 
-          # Rebuild index.json from every channel file on disk (restored +
-          # freshly scraped), so the index always reflects the full set.
+          # Prune restored files for channels no longer in the list, so the
+          # index (and app) reflect exactly the current channel list. The
+          # orphaned file may linger on gh-pages (keep_files) but is no
+          # longer referenced by index.json.
+          desired=" $(awk '{sub(/#.*/, "")} NF {print $1}' data-sources/youtube-channels.txt | tr '\n' ' ') "
+          for f in cdn/youtube/*.json; do
+            [[ -e "$f" ]] || continue
+            base="$(basename "$f" .json)"
+            [[ "$base" == "index" ]] && continue
+            if [[ "$desired" != *" $base "* ]]; then
+              echo "Pruning $base (not in channel list)"
+              rm -f "$f"
+            fi
+          done
+
+          # Rebuild index.json from the channel files that remain on disk
+          # (restored + freshly scraped, minus pruned), so it always
+          # reflects the current channel list.
           python3 .github/scripts/yt_index.py cdn/youtube
 
           published="$(ls cdn/youtube/*.json 2>/dev/null | grep -vc 'index.json' || true)"
