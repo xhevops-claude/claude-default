@@ -60,6 +60,22 @@
       url: 'apps/terrain/',
     },
     {
+      slug: 'timemachine',
+      name: 'Time Machine',
+      meta: 'Video',
+      tagline: 'Dial a year. Watch what defined it.',
+      icon: '📼',
+      url: 'apps/timemachine/',
+    },
+    {
+      slug: 'binge',
+      name: 'Binge',
+      meta: 'Video',
+      tagline: 'Watch channels start to finish, in order.',
+      icon: '🍿',
+      url: 'apps/binge/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',
