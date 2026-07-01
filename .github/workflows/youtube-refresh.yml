@@ -64,6 +64,12 @@ jobs:
 
       - name: Scrape channels
         id: scrape
+        env:
+          # Optional free YouTube Data API key. With it, every video gets its
+          # exact publish date (videos.list). Without it, we ship exact dates
+          # for the ~15 most recent uploads (RSS) plus approximate years for
+          # the rest — anonymous per-video dates are bot-walled from CI.
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
         run: |
           set -uo pipefail
           mkdir -p cdn/youtube
@@ -110,13 +116,10 @@ jobs:
                   rm -f "$rss"
                 fi
 
-                # Exact date for every remaining video, scraped one-by-one
-                # from its watch page (the microformat publishDate). Plain HTML
-                # GETs get through where yt-dlp's API is bot-walled. Incremental
-                # (videos that already have a date are skipped) and self-healing
-                # (anything that fails stays undated and is retried next run);
-                # the per-run cap bounds big channels.
-                python3 .github/scripts/yt_scrape_dates.py "$json" 800 || true
+                # Exact date for every remaining video via the YouTube Data
+                # API (only when YT_API_KEY is set). Incremental — already-dated
+                # videos are skipped, so each is looked up once, ever.
+                python3 .github/scripts/yt_api_dates.py "$json" 2000 || true
               else
                 echo "::warning::Transform failed for $slug; keeping prior data if any."
               fi
