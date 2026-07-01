@@ -19,16 +19,22 @@ def main():
     with open(raw_path) as f:
         data = json.load(f)
 
-    # Carry forward precise dates already known for these video ids.
+    # Carry forward precise dates + view counts already known for these ids
+    # (the flat listing exposes neither; the API pass fills them in).
     prior_d = {}
+    prior_vc = {}
     if os.path.exists(out_path):
         try:
             with open(out_path) as f:
                 for v in json.load(f).get("videos", []):
-                    if v.get("id") and v.get("d"):
+                    if not v.get("id"):
+                        continue
+                    if v.get("d"):
                         prior_d[v["id"]] = v["d"]
+                    if v.get("vc"):
+                        prior_vc[v["id"]] = v["vc"]
         except Exception:
-            prior_d = {}
+            prior_d, prior_vc = {}, {}
 
     entries = [e for e in (data.get("entries") or []) if e and e.get("id")]
     vids = []
@@ -40,6 +46,7 @@ def main():
             "duration": e.get("duration") or None,
             "ts": int(ts) if ts else None,
             "d": prior_d.get(e["id"]),
+            "vc": e.get("view_count") or prior_vc.get(e["id"]) or None,   # views (API-filled)
         })
 
     # Keep the exact videos-page order, oldest first: yt-dlp lists newest
