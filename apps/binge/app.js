@@ -12,7 +12,11 @@
     mode: 'binge-mode',
     hide: 'binge-hidewatched',
     chan: 'binge-active-channel',
+    filter: 'binge-filter',
   };
+
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   // ---- persisted state ----
   function load(key, fallback) {
@@ -26,12 +30,15 @@
   let mode = load(LS.mode, 'timeline');           // 'timeline' | 'channel'
   let hideWatched = load(LS.hide, false);
   let activeChannel = load(LS.chan, null);        // slug for 'channel' mode
+  let filter = load(LS.filter, { year: 'any', month: 'any', day: 'any' });
 
   // ---- runtime state ----
   let available = [];        // [{slug,name,count,url}] from index.json
-  let channelData = {};      // slug -> {name, videos:[{id,title,duration,ts,i, slug, channelName}]}
+  let channelData = {};      // slug -> {name, videos:[...] }
   let currentId = null;      // playing video id
-  const unavailable = new Set(); // ids the player refused this session
+  const unavailable = new Set();
+  const expandedYears = new Set();  // which year groups are open
+  const sliderOpen = { year: false, month: false, day: false };
 
   // ---- elements ----
   const $ = (id) => document.getElementById(id);
@@ -42,13 +49,20 @@
   const modeTimeline = $('mode-timeline'), modeChannel = $('mode-channel');
   const hideWatchedChk = $('hide-watched');
   const chanStrip = $('chan-strip');
+  const filtersEl = $('filters'), filtersReset = $('filters-reset');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
-  const queueEl = $('queue');
+  const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
+  const yearsEl = $('years');
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
   const channelsBtn = $('channels-btn');
   const drawer = $('drawer'), drawerClose = $('drawer-close'), drawerSub = $('drawer-sub');
   const chanList = $('chan-list'), clearWatchedBtn = $('clear-watched');
   const quitBtn = $('quit');
+  // sliders
+  const fYear = $('f-year'), fMonth = $('f-month'), fDay = $('f-day');
+  const yrHead = $('yr-head'), moHead = $('mo-head'), dyHead = $('dy-head');
+  const yrBody = $('yr-body'), moBody = $('mo-body'), dyBody = $('dy-body');
+  const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
 
   // ---------------------------------------------------------------------------
   // Data loading
@@ -59,9 +73,7 @@
       if (!res.ok) throw new Error('index ' + res.status);
       const data = await res.json();
       available = (data.channels || []).filter((c) => c && c.slug);
-    } catch (e) {
-      available = [];
-    }
+    } catch (e) { available = []; }
   }
 
   async function loadChannel(slug) {
@@ -70,7 +82,7 @@
     if (!res.ok) throw new Error(slug + ' ' + res.status);
     const data = await res.json();
     const videos = (data.videos || []).map((v) => ({
-      id: v.id, title: v.title, duration: v.duration, ts: v.ts, i: v.i,
+      id: v.id, title: v.title, duration: v.duration, ts: v.ts, d: v.d, i: v.i,
       slug: slug, channelName: data.name || slug,
     }));
     channelData[slug] = { name: data.name || slug, videos: videos };
@@ -83,9 +95,38 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Ordering
+  // Dates
   // ---------------------------------------------------------------------------
-  function followedVideos() {
+  // Precise date (`d` = YYYYMMDD) when we have it; else derive the year from
+  // the approximate listing timestamp (`ts`), leaving month/day unknown.
+  function vidDate(v) {
+    if (v.d) {
+      const s = String(v.d).padStart(8, '0');
+      return { y: +s.slice(0, 4), m: +s.slice(4, 6), day: +s.slice(6, 8), precise: true };
+    }
+    if (v.ts) return { y: new Date(v.ts * 1000).getUTCFullYear(), m: null, day: null, precise: false };
+    return { y: null, m: null, day: null, precise: false };
+  }
+  function sortEpoch(v) {
+    const dt = vidDate(v);
+    if (dt.precise) return Date.UTC(dt.y, dt.m - 1, dt.day) / 1000;
+    return v.ts || 0;
+  }
+  function fmtDate(v) {
+    const dt = vidDate(v);
+    if (dt.precise) return dt.day + ' ' + MONTHS[dt.m - 1] + ' ' + dt.y;
+    if (dt.y) return String(dt.y);
+    return '—';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ordering + filtering
+  // ---------------------------------------------------------------------------
+  function modeVideos() {
+    if (mode === 'channel') {
+      const cd = channelData[activeChannel];
+      return cd ? cd.videos.slice() : [];
+    }
     const out = [];
     available.forEach((c) => {
       if (!follows.has(c.slug)) return;
@@ -95,48 +136,37 @@
     return out;
   }
 
-  // Merged timeline. Sort by real upload time when every video has one;
-  // otherwise interleave fairly by each video's normalized position within
-  // its own channel (early uploads of all channels first).
-  function timelineOrder() {
-    const vids = followedVideos();
-    if (!vids.length) return [];
-    const allTs = vids.every((v) => v.ts);
-    if (allTs) return vids.slice().sort((a, b) => a.ts - b.ts);
-    const len = {};
-    vids.forEach((v) => { len[v.slug] = Math.max(len[v.slug] || 0, v.i + 1); });
-    return vids.slice().sort((a, b) => {
-      const na = a.i / Math.max(1, (len[a.slug] - 1));
-      const nb = b.i / Math.max(1, (len[b.slug] - 1));
-      if (na !== nb) return na - nb;
-      return a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : a.i - b.i;
-    });
+  // Chronological, oldest first.
+  function orderedVideos() {
+    return modeVideos().sort((a, b) => sortEpoch(a) - sortEpoch(b) || a.i - b.i);
   }
 
-  function channelOrder() {
-    const cd = channelData[activeChannel];
-    if (!cd) return [];
-    return cd.videos.slice().sort((a, b) => a.i - b.i);
+  function passesDate(v) {
+    const dt = vidDate(v);
+    if (filter.year !== 'any' && dt.y !== filter.year) return false;
+    if (filter.month !== 'any' && dt.m !== filter.month) return false;
+    if (filter.day !== 'any' && dt.day !== filter.day) return false;
+    return true;
   }
 
-  function currentOrder() {
-    return mode === 'channel' ? channelOrder() : timelineOrder();
+  // Videos matching the date filter, chronological. Drives playback order.
+  function filteredVideos() {
+    return orderedVideos().filter(passesDate);
   }
 
-  function visibleQueue() {
-    let q = currentOrder();
-    if (hideWatched) q = q.filter((v) => !watched.has(v.id) || v.id === currentId);
-    return q;
+  function availableYears() {
+    const set = new Set();
+    orderedVideos().forEach((v) => { const y = vidDate(v).y; if (y) set.add(y); });
+    return Array.from(set).sort((a, b) => a - b);
   }
 
   function nextUnwatched(after) {
-    const order = currentOrder();
+    const order = filteredVideos();
     let started = after == null;
     for (const v of order) {
       if (!started) { if (v.id === after) started = true; continue; }
       if (!watched.has(v.id) && !unavailable.has(v.id)) return v;
     }
-    // wrap from the top if nothing after the cursor
     for (const v of order) {
       if (v.id === after) break;
       if (!watched.has(v.id) && !unavailable.has(v.id)) return v;
@@ -145,7 +175,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Rendering
+  // Helpers
   // ---------------------------------------------------------------------------
   function fmtDur(s) {
     if (!s && s !== 0) return '';
@@ -154,62 +184,63 @@
     const mm = h ? String(m).padStart(2, '0') : String(m);
     return (h ? h + ':' : '') + mm + ':' + String(sec).padStart(2, '0');
   }
-
   function escapeHTML(s) {
     return String(s).replace(/[&<>"']/g, (c) =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // ---------------------------------------------------------------------------
+  // Rendering
+  // ---------------------------------------------------------------------------
   function render() {
-    // mode tabs
     modeTimeline.setAttribute('aria-selected', String(mode === 'timeline'));
     modeChannel.setAttribute('aria-selected', String(mode === 'channel'));
     hideWatchedChk.checked = hideWatched;
 
     const anyFollowed = available.some((c) => follows.has(c.slug));
 
-    // channel strip (only in channel mode)
-    if (mode === 'channel' && anyFollowed) {
-      chanStrip.hidden = false;
-      renderChanStrip();
-    } else {
-      chanStrip.hidden = true;
-    }
+    if (mode === 'channel' && anyFollowed) { chanStrip.hidden = false; renderChanStrip(); }
+    else chanStrip.hidden = true;
 
-    // empty states
     if (!available.length) {
-      showStatus('🍿', 'No channel data yet. The scraper publishes channels to the CDN on a daily schedule (and right after the list changes). Check back in a few minutes.', null);
-      hideQueueChrome();
+      showStatus('🍿', 'No channel data yet. The scraper publishes channels to the CDN daily (and right after the list changes). Check back in a few minutes.', null);
+      hideBrowse();
       return;
     }
     if (!anyFollowed) {
       showStatus('📺', 'Follow a channel to start your binge.', 'Open channels', openDrawer);
-      hideQueueChrome();
+      hideBrowse();
       return;
     }
 
-    const order = currentOrder();
-    const q = visibleQueue();
-    const total = order.length;
-    const watchedCount = order.filter((v) => watched.has(v.id)).length;
+    filtersEl.hidden = false;
+    renderFilters();
 
-    // progress
+    const filtered = filteredVideos();
+    const total = filtered.length;
+    const watchedCount = filtered.filter((v) => watched.has(v.id)).length;
+
     progressEl.hidden = false;
     progressFill.style.width = total ? (watchedCount / total * 100) + '%' : '0%';
     progressText.textContent = watchedCount + ' / ' + total + ' watched';
 
-    if (!q.length) {
-      queueEl.innerHTML = '';
-      showStatus('🎉', total ? 'All caught up here — nothing left to watch.' : 'This channel has no videos yet.', null);
+    if (!total) {
+      resultsBar.hidden = true;
+      yearsEl.innerHTML = '';
+      showStatus('🔍', 'Nothing matches this date filter.', 'Reset filter', resetFilter);
       return;
     }
     statusPanel.hidden = true;
-    renderQueue(q);
+    resultsBar.hidden = false;
+    resultsCount.textContent = total + (total === 1 ? ' video' : ' videos');
+    renderAccordion(filtered);
   }
 
-  function hideQueueChrome() {
+  function hideBrowse() {
+    filtersEl.hidden = true;
     progressEl.hidden = true;
-    queueEl.innerHTML = '';
+    resultsBar.hidden = true;
+    yearsEl.innerHTML = '';
   }
 
   function showStatus(icon, msg, actionLabel, actionFn) {
@@ -224,6 +255,47 @@
       statusAction.hidden = true;
       statusAction.onclick = null;
     }
+  }
+
+  // ---- filters / sliders ----
+  function renderFilters() {
+    const years = availableYears();
+
+    // Year slider maps index 0 -> Any, 1..n -> years[n-1].
+    fYear.max = String(years.length);
+    let yIdx = 0;
+    if (filter.year !== 'any') {
+      const at = years.indexOf(filter.year);
+      if (at === -1) { filter.year = 'any'; } else { yIdx = at + 1; }
+    }
+    fYear.value = String(yIdx);
+    yrValue.textContent = filter.year === 'any' ? 'Any' : String(filter.year);
+
+    fMonth.value = String(filter.month === 'any' ? 0 : filter.month);
+    moValue.textContent = filter.month === 'any' ? 'Any' : MONTHS[filter.month - 1];
+
+    fDay.value = String(filter.day === 'any' ? 0 : filter.day);
+    dyValue.textContent = filter.day === 'any' ? 'Any' : String(filter.day);
+
+    setSlider('year', yrHead, yrBody);
+    setSlider('month', moHead, moBody);
+    setSlider('day', dyHead, dyBody);
+  }
+  function setSlider(level, head, body) {
+    body.hidden = !sliderOpen[level];
+    head.setAttribute('aria-expanded', String(sliderOpen[level]));
+    head.classList.toggle('open', sliderOpen[level]);
+  }
+  function commitFilter() {
+    save(LS.filter, filter);
+    // auto-expand the year that's now in focus so results are visible
+    if (filter.year !== 'any') expandedYears.add(filter.year);
+    render();
+  }
+  function resetFilter() {
+    filter = { year: 'any', month: 'any', day: 'any' };
+    save(LS.filter, filter);
+    render();
   }
 
   function renderChanStrip() {
@@ -244,31 +316,80 @@
     });
   }
 
-  function renderQueue(q) {
-    const rows = q.map((v) => {
-      const isWatched = watched.has(v.id);
-      const isPlaying = v.id === currentId;
-      const cls = 'q-item' + (isWatched ? ' watched' : '') + (isPlaying ? ' playing' : '');
-      const sub = [];
-      if (mode === 'timeline') sub.push('<span>' + escapeHTML(v.channelName) + '</span>');
-      if (v.duration) sub.push('<span>' + fmtDur(v.duration) + '</span>');
-      if (unavailable.has(v.id)) sub.push('<span class="q-badge">unavailable</span>');
-      return '<div class="' + cls + '" data-id="' + escapeHTML(v.id) + '">'
-        + '<button class="q-check" data-act="toggle" data-id="' + escapeHTML(v.id) + '" aria-label="Toggle watched">✓</button>'
-        + '<div class="q-body">'
-        + '<div class="q-title">' + escapeHTML(v.title) + '</div>'
-        + '<div class="q-sub">' + sub.join('') + '</div>'
-        + '</div></div>';
+  // ---- accordion ----
+  function renderAccordion(filtered) {
+    // group by year (descending years unusual for binge; keep oldest first)
+    const groups = new Map();
+    filtered.forEach((v) => {
+      const y = vidDate(v).y || 0;
+      if (!groups.has(y)) groups.set(y, []);
+      groups.get(y).push(v);
     });
-    queueEl.innerHTML = rows.join('');
+    const years = Array.from(groups.keys()).sort((a, b) => a - b);
+
+    // If nothing is explicitly expanded and there's just one year, open it.
+    if (!expandedYears.size && years.length === 1) expandedYears.add(years[0]);
+    updateCollapseAllLabel(years);
+
+    const html = years.map((y) => {
+      const vids = groups.get(y);
+      const open = expandedYears.has(y);
+      const w = vids.filter((v) => watched.has(v.id)).length;
+      const shown = hideWatched ? vids.filter((v) => !watched.has(v.id) || v.id === currentId) : vids;
+      const body = open
+        ? '<div class="year-videos">' + shown.map(itemHTML).join('') + '</div>'
+        : '';
+      return '<div class="year-group' + (open ? ' open' : '') + '">'
+        + '<button class="year-head" type="button" data-year="' + y + '" aria-expanded="' + open + '">'
+        + '<span class="year-chev" aria-hidden="true">▸</span>'
+        + '<span class="year-label">' + (y || 'Undated') + '</span>'
+        + '<span class="year-count">' + w + ' / ' + vids.length + '</span>'
+        + '</button>' + body + '</div>';
+    });
+    yearsEl.innerHTML = html.join('');
   }
 
-  // delegated queue clicks
-  queueEl.addEventListener('click', (e) => {
+  function itemHTML(v) {
+    const isWatched = watched.has(v.id);
+    const isPlaying = v.id === currentId;
+    const cls = 'q-item' + (isWatched ? ' watched' : '') + (isPlaying ? ' playing' : '');
+    const sub = ['<span class="q-date">' + escapeHTML(fmtDate(v)) + '</span>'];
+    if (mode === 'timeline') sub.push('<span>' + escapeHTML(v.channelName) + '</span>');
+    if (v.duration) sub.push('<span>' + fmtDur(v.duration) + '</span>');
+    if (unavailable.has(v.id)) sub.push('<span class="q-badge">unavailable</span>');
+    return '<div class="' + cls + '" data-id="' + escapeHTML(v.id) + '">'
+      + '<button class="q-check" data-act="toggle" data-id="' + escapeHTML(v.id) + '" aria-label="Toggle watched">✓</button>'
+      + '<div class="q-body">'
+      + '<div class="q-title">' + escapeHTML(v.title) + '</div>'
+      + '<div class="q-sub">' + sub.join('') + '</div>'
+      + '</div></div>';
+  }
+
+  function updateCollapseAllLabel(years) {
+    const allOpen = years.length > 0 && years.every((y) => expandedYears.has(y));
+    collapseAllBtn.textContent = allOpen ? 'Collapse all' : 'Expand all';
+    collapseAllBtn.dataset.allOpen = String(allOpen);
+  }
+
+  // ---- delegated clicks ----
+  yearsEl.addEventListener('click', (e) => {
+    const yhead = e.target.closest('.year-head');
+    if (yhead) {
+      const y = Number(yhead.getAttribute('data-year'));
+      if (expandedYears.has(y)) expandedYears.delete(y); else expandedYears.add(y);
+      render();
+      return;
+    }
     const toggle = e.target.closest('[data-act="toggle"]');
     if (toggle) { e.stopPropagation(); toggleWatched(toggle.getAttribute('data-id')); return; }
     const item = e.target.closest('.q-item');
     if (item) play(item.getAttribute('data-id'));
+  });
+
+  collapseAllBtn.addEventListener('click', () => {
+    if (collapseAllBtn.dataset.allOpen === 'true') expandedYears.clear();
+    else { const shown = new Set(filteredVideos().map((v) => vidDate(v).y || 0)); shown.forEach((y) => expandedYears.add(y)); }
+    render();
   });
 
   // ---------------------------------------------------------------------------
@@ -297,21 +418,19 @@
     }
     return null;
   }
-
   function setVeil(state, text) {
     if (state === 'off') { veil.hidden = true; return; }
     veil.hidden = false;
     veilText.textContent = text || 'Loading…';
     veilLink.hidden = state !== 'lost';
   }
-
   function play(id) {
     const v = findVideo(id);
     if (!v) return;
     currentId = id;
     playerWrap.hidden = false;
     nowTitle.textContent = v.title;
-    nowBy.textContent = v.channelName;
+    nowBy.textContent = v.channelName + ' · ' + fmtDate(v);
     const url = 'https://www.youtube.com/watch?v=' + id;
     ytLink.href = url; veilLink.href = url;
     setVeil('on', 'Loading…');
@@ -320,13 +439,11 @@
     if (!playerReady) { pendingId = id; return; }
     try { player.loadVideoById(id); } catch (e) { onPlayerError(); }
   }
-
   function advance() {
     const next = nextUnwatched(currentId);
     if (next) play(next.id);
     else { currentId = null; render(); }
   }
-
   function onPlayerError() {
     if (currentId) unavailable.add(currentId);
     setVeil('lost', 'Can’t embed this one');
@@ -350,7 +467,6 @@
       },
     });
   };
-
   function loadYouTubeAPI() {
     const tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
@@ -358,7 +474,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Drawer (channel follow management)
+  // Drawer
   // ---------------------------------------------------------------------------
   function renderDrawer() {
     drawerSub.textContent = available.length
@@ -380,28 +496,47 @@
       chanList.appendChild(li);
     });
   }
-
   async function toggleFollow(slug) {
-    if (follows.has(slug)) {
-      follows.delete(slug);
-    } else {
-      follows.add(slug);
-      try { await loadChannel(slug); } catch (e) { /* surfaced as 0 videos */ }
-    }
+    if (follows.has(slug)) follows.delete(slug);
+    else { follows.add(slug); try { await loadChannel(slug); } catch (e) {} }
     save(LS.follows, Array.from(follows));
-    renderDrawer();
-    render();
+    renderDrawer(); render();
   }
-
   function openDrawer() { renderDrawer(); drawer.hidden = false; }
   function closeDrawer() { drawer.hidden = true; }
 
   // ---------------------------------------------------------------------------
   // Wiring
   // ---------------------------------------------------------------------------
-  modeTimeline.addEventListener('click', () => { mode = 'timeline'; save(LS.mode, mode); render(); });
-  modeChannel.addEventListener('click', () => { mode = 'channel'; save(LS.mode, mode); render(); });
+  modeTimeline.addEventListener('click', () => { mode = 'timeline'; save(LS.mode, mode); expandedYears.clear(); render(); });
+  modeChannel.addEventListener('click', () => { mode = 'channel'; save(LS.mode, mode); expandedYears.clear(); render(); });
   hideWatchedChk.addEventListener('change', () => { hideWatched = hideWatchedChk.checked; save(LS.hide, hideWatched); render(); });
+  filtersReset.addEventListener('click', resetFilter);
+
+  // slider heads toggle open/collapsed
+  yrHead.addEventListener('click', () => { sliderOpen.year = !sliderOpen.year; setSlider('year', yrHead, yrBody); });
+  moHead.addEventListener('click', () => { sliderOpen.month = !sliderOpen.month; setSlider('month', moHead, moBody); });
+  dyHead.addEventListener('click', () => { sliderOpen.day = !sliderOpen.day; setSlider('day', dyHead, dyBody); });
+
+  fYear.addEventListener('input', () => {
+    const years = availableYears();
+    const idx = Number(fYear.value);
+    filter.year = idx === 0 ? 'any' : years[idx - 1];
+    yrValue.textContent = filter.year === 'any' ? 'Any' : String(filter.year);
+    commitFilter();
+  });
+  fMonth.addEventListener('input', () => {
+    const m = Number(fMonth.value);
+    filter.month = m === 0 ? 'any' : m;
+    moValue.textContent = filter.month === 'any' ? 'Any' : MONTHS[filter.month - 1];
+    commitFilter();
+  });
+  fDay.addEventListener('input', () => {
+    const d = Number(fDay.value);
+    filter.day = d === 0 ? 'any' : d;
+    dyValue.textContent = filter.day === 'any' ? 'Any' : String(filter.day);
+    commitFilter();
+  });
 
   watchedNextBtn.addEventListener('click', () => { markWatched(currentId); advance(); });
   skipBtn.addEventListener('click', advance);

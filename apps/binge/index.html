@@ -12,7 +12,8 @@
        styles.css resolves. Self-contained palette; the shell does not
        theme sub-experiences. */
     html, body { margin: 0; padding: 0; background: #0c0d12; color: #f4f5fb;
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; }
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+      touch-action: manipulation; }
     #app-loading {
       position: fixed; inset: 0; z-index: 9999;
       background: radial-gradient(120% 90% at 50% 16%, #181b27 0%, #0c0d12 64%);
@@ -71,19 +72,59 @@
       </div>
     </section>
 
-    <!-- Controls -->
+    <!-- Mode -->
     <section class="controls">
       <div class="seg" role="tablist" aria-label="Order">
         <button id="mode-timeline" type="button" class="seg-btn" role="tab">Timeline</button>
         <button id="mode-channel" type="button" class="seg-btn" role="tab">By channel</button>
       </div>
-      <div class="ctl-right">
-        <label class="chk"><input type="checkbox" id="hide-watched" /> Hide watched</label>
-      </div>
     </section>
 
     <!-- Channel switcher (By channel mode) -->
     <div class="chan-strip" id="chan-strip" hidden></div>
+
+    <!-- Filter section: collapsible Y / M / D sliders + hide watched -->
+    <section class="filters" id="filters" hidden>
+      <div class="filters-head">
+        <span class="filters-title">Filter by date</span>
+        <button id="filters-reset" type="button" class="btn ghost small">Reset</button>
+      </div>
+
+      <div class="dslider" id="ds-year">
+        <button class="dslider-head" id="yr-head" type="button" aria-expanded="false" aria-controls="yr-body">
+          <span class="dslider-label">Year</span>
+          <span class="dslider-value" id="yr-value">Any</span>
+          <span class="dslider-chev" aria-hidden="true">▸</span>
+        </button>
+        <div class="dslider-body" id="yr-body" hidden>
+          <input type="range" id="f-year" class="d-range" min="0" max="0" step="1" value="0" aria-label="Year" />
+        </div>
+      </div>
+
+      <div class="dslider" id="ds-month">
+        <button class="dslider-head" id="mo-head" type="button" aria-expanded="false" aria-controls="mo-body">
+          <span class="dslider-label">Month</span>
+          <span class="dslider-value" id="mo-value">Any</span>
+          <span class="dslider-chev" aria-hidden="true">▸</span>
+        </button>
+        <div class="dslider-body" id="mo-body" hidden>
+          <input type="range" id="f-month" class="d-range" min="0" max="12" step="1" value="0" aria-label="Month" />
+        </div>
+      </div>
+
+      <div class="dslider" id="ds-day">
+        <button class="dslider-head" id="dy-head" type="button" aria-expanded="false" aria-controls="dy-body">
+          <span class="dslider-label">Day</span>
+          <span class="dslider-value" id="dy-value">Any</span>
+          <span class="dslider-chev" aria-hidden="true">▸</span>
+        </button>
+        <div class="dslider-body" id="dy-body" hidden>
+          <input type="range" id="f-day" class="d-range" min="0" max="31" step="1" value="0" aria-label="Day" />
+        </div>
+      </div>
+
+      <label class="chk"><input type="checkbox" id="hide-watched" /> Hide watched</label>
+    </section>
 
     <!-- Progress -->
     <div class="progress" id="progress" hidden>
@@ -91,8 +132,12 @@
       <span class="progress-text" id="progress-text">—</span>
     </div>
 
-    <!-- Up next list -->
-    <section class="queue" id="queue" aria-label="Up next"></section>
+    <!-- Results accordion -->
+    <div class="results-bar" id="results-bar" hidden>
+      <span class="results-count" id="results-count">—</span>
+      <button id="collapse-all" type="button" class="btn ghost small">Expand all</button>
+    </div>
+    <section class="years" id="years" aria-label="Videos by year"></section>
 
     <!-- Empty / status -->
     <section class="status-panel" id="status-panel">

@@ -94,6 +94,25 @@ jobs:
               if SLUG="$slug" SRC_URL="$url" \
                   python3 .github/scripts/yt_transform.py "$raw_json" "cdn/youtube/${slug}.json"; then
                 scraped=$((scraped+1))
+
+                # Enrich videos that still lack an exact upload date. This
+                # is the slow part (one extraction per video), so it's
+                # incremental — already-dated videos are skipped, and the
+                # per-run cap keeps big channels from hammering YouTube.
+                # Anything that fails stays undated and is retried next run.
+                json="cdn/youtube/${slug}.json"
+                ids_file="$(mktemp)"; dates_file="$(mktemp)"
+                python3 .github/scripts/yt_pick_missing.py "$json" 600 > "$ids_file"
+                need="$(wc -l < "$ids_file" | tr -d ' ')"
+                if [[ "$need" != "0" ]]; then
+                  echo "Enriching $need videos with exact dates…"
+                  yt-dlp --skip-download --ignore-errors --no-warnings \
+                    --sleep-requests 0.2 \
+                    --print "%(id)s %(upload_date)s" \
+                    -a "$ids_file" > "$dates_file" 2>/dev/null || true
+                  python3 .github/scripts/yt_apply_dates.py "$json" "$dates_file" || true
+                fi
+                rm -f "$ids_file" "$dates_file"
               else
                 echo "::warning::Transform failed for $slug; keeping prior data if any."
               fi

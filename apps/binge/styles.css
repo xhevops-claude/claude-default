@@ -159,6 +159,53 @@ html, body {
 .follow-btn[aria-pressed="true"] { background: var(--red); border-color: transparent; color: #fff; }
 .drawer-foot { border-top: 1px solid var(--line); padding-top: 12px; display: flex; justify-content: center; }
 
+/* Filter section */
+.filters { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); }
+.filters-head { display: flex; align-items: center; justify-content: space-between; }
+.filters-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Collapsible date slider */
+.dslider { border-radius: 10px; background: var(--panel-2); overflow: hidden; }
+.dslider-head {
+  width: 100%; display: flex; align-items: center; gap: 10px; cursor: pointer;
+  font: inherit; color: var(--ink); background: transparent; border: 0; padding: 12px 14px; text-align: left;
+}
+.dslider-label { font-weight: 700; font-size: 14px; flex: none; min-width: 52px; }
+.dslider-value { flex: 1; color: var(--amber); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.dslider-chev { color: var(--muted); transition: transform 0.18s ease; }
+.dslider-head.open .dslider-chev { transform: rotate(90deg); }
+.dslider-body { padding: 4px 14px 16px; }
+.d-range {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--red), var(--amber)); outline: none; cursor: pointer;
+}
+.d-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ink); border: 3px solid var(--red); box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); cursor: pointer;
+}
+.d-range::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ink); border: 3px solid var(--red); box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); cursor: pointer;
+}
+
+/* Results bar + year accordion */
+.results-bar { display: flex; align-items: center; justify-content: space-between; }
+.results-count { color: var(--muted); font-size: 13px; }
+.years { display: flex; flex-direction: column; gap: 6px; }
+.year-group { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
+.year-head {
+  width: 100%; display: flex; align-items: center; gap: 10px; cursor: pointer;
+  font: inherit; color: var(--ink); background: transparent; border: 0; padding: 13px 14px; text-align: left;
+}
+.year-chev { color: var(--muted); transition: transform 0.18s ease; flex: none; }
+.year-group.open .year-chev { transform: rotate(90deg); }
+.year-label { flex: 1; font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
+.year-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.year-videos { padding: 4px 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+
+.q-date { color: var(--amber); }
+
 @media (max-width: 480px) {
   .now-actions .btn { flex: 1 1 auto; justify-content: center; }
 }
