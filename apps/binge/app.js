@@ -458,6 +458,7 @@
   // Playback (YouTube IFrame API)
   // ---------------------------------------------------------------------------
   let player = null, apiReady = false, pendingId = null;
+  let veilState = '', veilTimer = null;
 
   function findVideo(id) {
     for (const slug in channelData) {
@@ -467,6 +468,8 @@
     return null;
   }
   function setVeil(state, text) {
+    veilState = state;
+    if (veilTimer) { clearTimeout(veilTimer); veilTimer = null; }
     if (state === 'off') { veil.hidden = true; return; }
     veil.hidden = false;
     veilText.textContent = text || 'Loading…';
@@ -482,6 +485,10 @@
     const url = 'https://www.youtube.com/watch?v=' + id;
     ytLink.href = url; veilLink.href = url;
     setVeil('on', 'Loading…');
+    // Safety net: if the embed can't autoplay (the click gesture doesn't cross
+    // into the YouTube iframe), the PLAYING event never fires — so reveal the
+    // player anyway after a moment instead of leaving the overlay stuck.
+    veilTimer = setTimeout(function () { if (veilState === 'on') setVeil('off'); }, 2500);
     render();
     try { playerWrap.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) {}
     if (!apiReady) { pendingId = id; return; }
@@ -494,6 +501,7 @@
       videoId: id,
       playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
       events: {
+        onReady: function () { setVeil('off'); },
         onStateChange: function (e) {
           if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.BUFFERING) setVeil('off');
           if (e.data === YT.PlayerState.ENDED) { markWatched(currentId); advance(); }
