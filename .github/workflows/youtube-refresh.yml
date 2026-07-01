@@ -100,6 +100,20 @@ jobs:
               if SLUG="$slug" SRC_URL="$url" \
                   python3 .github/scripts/yt_transform.py "$raw_json" "cdn/youtube/${slug}.json"; then
                 scraped=$((scraped+1))
+                json="cdn/youtube/${slug}.json"
+
+                # Exact dates for the ~15 most recent uploads via the RSS feed
+                # (not bot-walled, no auth). Cheap win for every channel, and
+                # the only date source for channels whose listing exposes none.
+                cid="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('channelId') or '')" "$json" 2>/dev/null || true)"
+                if [[ -n "$cid" ]]; then
+                  rss="$(mktemp)"
+                  if curl -fsSL --retry 2 --retry-delay 3 \
+                      "https://www.youtube.com/feeds/videos.xml?channel_id=${cid}" -o "$rss"; then
+                    python3 .github/scripts/yt_rss_dates.py "$json" "$rss" || true
+                  fi
+                  rm -f "$rss"
+                fi
 
                 # Enrich videos with their exact upload date — but only when
                 # YT_COOKIES is configured. Per-video metadata is bot-walled
