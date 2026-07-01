@@ -10,6 +10,7 @@
 # runs daily on a schedule.
 #
 # Managed by hand — to add a channel, append a line and push.
+# Exact per-video dates are enabled via the YT_API_KEY repo secret.
 
 campingwithsteve   https://www.youtube.com/@campingwithsteve/videos
 stevewallisstep2   https://www.youtube.com/@SteveWallisStep2/videos
