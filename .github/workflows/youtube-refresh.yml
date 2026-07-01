@@ -63,12 +63,6 @@ jobs:
 
       - name: Scrape channels
         id: scrape
-        env:
-          # Optional: browser-exported YouTube cookies (Netscape format).
-          # Exact per-video upload dates need an authenticated session —
-          # without this secret YouTube's bot wall blocks them from CI and we
-          # ship reliable year-level dates from the listing scrape instead.
-          YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
           set -uo pipefail
           mkdir -p cdn/youtube
@@ -115,28 +109,13 @@ jobs:
                   rm -f "$rss"
                 fi
 
-                # Enrich videos with their exact upload date — but only when
-                # YT_COOKIES is configured. Per-video metadata is bot-walled
-                # for anonymous CI IPs (it returns nothing and wastes minutes),
-                # so we skip it entirely without an authenticated session. The
-                # pass is incremental (already-dated videos are skipped) and
-                # self-healing (failures retry next run).
-                json="cdn/youtube/${slug}.json"
-                if [[ -n "${YT_COOKIES:-}" ]]; then
-                  ids_file="$(mktemp)"; dates_file="$(mktemp)"; cookies_file="$(mktemp)"
-                  printf '%s\n' "$YT_COOKIES" > "$cookies_file"
-                  python3 .github/scripts/yt_pick_missing.py "$json" 600 > "$ids_file"
-                  need="$(wc -l < "$ids_file" | tr -d ' ')"
-                  if [[ "$need" != "0" ]]; then
-                    echo "Enriching $need videos with exact dates…"
-                    yt-dlp --skip-download --ignore-errors --no-warnings \
-                      --cookies "$cookies_file" --sleep-requests 0.2 \
-                      --print "%(id)s %(upload_date)s" \
-                      -a "$ids_file" > "$dates_file" 2>/dev/null || true
-                    python3 .github/scripts/yt_apply_dates.py "$json" "$dates_file" || true
-                  fi
-                  rm -f "$ids_file" "$dates_file" "$cookies_file"
-                fi
+                # Exact date for every remaining video, scraped one-by-one
+                # from its watch page (the microformat publishDate). Plain HTML
+                # GETs get through where yt-dlp's API is bot-walled. Incremental
+                # (videos that already have a date are skipped) and self-healing
+                # (anything that fails stays undated and is retried next run);
+                # the per-run cap bounds big channels.
+                python3 .github/scripts/yt_scrape_dates.py "$json" 800 || true
               else
                 echo "::warning::Transform failed for $slug; keeping prior data if any."
               fi

@@ -136,9 +136,12 @@
     return out;
   }
 
-  // Chronological, oldest first.
+  // Oldest first. By-channel follows the exact videos-page order (`i`);
+  // the merged timeline interleaves channels by date.
   function orderedVideos() {
-    return modeVideos().sort((a, b) => sortEpoch(a) - sortEpoch(b) || a.i - b.i);
+    const vids = modeVideos();
+    if (mode === 'channel') return vids.sort((a, b) => a.i - b.i);
+    return vids.sort((a, b) => sortEpoch(a) - sortEpoch(b) || a.i - b.i);
   }
 
   function passesDate(v) {

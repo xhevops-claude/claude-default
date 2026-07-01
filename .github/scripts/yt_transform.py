@@ -3,32 +3,15 @@
 Binge app reads. Oldest video first.
 
 Preserves any precise upload dates (`d`, YYYYMMDD) already present in a
-previously published file at out_path, so the slow date-enrichment pass
-(see yt_apply_dates.py) only has to run once per video.
+previously published file at out_path, so the per-video date scrape
+(see yt_scrape_dates.py) only has to run once per video.
 
 Usage: yt_transform.py <raw_json> <out_json>
 Env:   SLUG, SRC_URL
 """
-import calendar
 import json
 import os
 import sys
-
-
-def d_to_epoch(d):
-    """YYYYMMDD int/str -> UTC epoch seconds, or None."""
-    if not d:
-        return None
-    s = str(int(d)).zfill(8)
-    try:
-        return calendar.timegm((int(s[0:4]), int(s[4:6]), int(s[6:8]), 0, 0, 0))
-    except (ValueError, OverflowError):
-        return None
-
-
-def sort_key(v):
-    """Precise date if we have it, else the approximate listing timestamp."""
-    return d_to_epoch(v.get("d")) or v.get("ts") or 0
 
 
 def main():
@@ -59,13 +42,12 @@ def main():
             "d": prior_d.get(e["id"]),
         })
 
-    # Oldest first: precise date when known, approximate listing time
-    # otherwise. If nothing has any date, fall back to reversing the
-    # newest-first listing yt-dlp returns.
-    if any(sort_key(v) for v in vids):
-        vids.sort(key=sort_key)
-    else:
-        vids.reverse()
+    # Keep the exact videos-page order, oldest first: yt-dlp lists newest
+    # first, so we just reverse. We deliberately do NOT re-sort by parsed
+    # date — the page order is the source of truth for per-channel order,
+    # and dates (exact or approximate) only drive labels / year grouping /
+    # the merged timeline.
+    vids.reverse()
     for i, v in enumerate(vids):
         v["i"] = i
 

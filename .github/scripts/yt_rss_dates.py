@@ -3,28 +3,14 @@
 
 The RSS feed (feeds/videos.xml) exposes precise <published> dates for the
 ~15 most recent uploads and, unlike per-video metadata, isn't bot-walled —
-so it works from anonymous CI. Re-sorts oldest-first and reindexes.
+so it works from anonymous CI. Only sets `d`; leaves the videos-page order
+(set by yt_transform) untouched.
 
 Usage: yt_rss_dates.py <json> <rss_xml>
 """
-import calendar
 import json
 import re
 import sys
-
-
-def d_to_epoch(d):
-    if not d:
-        return None
-    s = str(int(d)).zfill(8)
-    try:
-        return calendar.timegm((int(s[0:4]), int(s[4:6]), int(s[6:8]), 0, 0, 0))
-    except (ValueError, OverflowError):
-        return None
-
-
-def sort_key(v):
-    return d_to_epoch(v.get("d")) or v.get("ts") or 0
 
 
 def main():
@@ -47,12 +33,6 @@ def main():
         if v.get("id") in dates and not v.get("d"):
             v["d"] = dates[v["id"]]
             applied += 1
-
-    vids = doc.get("videos", [])
-    if any(sort_key(v) for v in vids):
-        vids.sort(key=sort_key)
-    for i, v in enumerate(vids):
-        v["i"] = i
 
     with open(json_path, "w") as f:
         json.dump(doc, f, separators=(",", ":"), ensure_ascii=False)
