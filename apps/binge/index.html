@@ -88,8 +88,8 @@
     <section class="filters" id="filters" hidden>
       <button class="filters-head" id="filters-toggle" type="button" aria-expanded="true" aria-controls="filters-body">
         <span class="filters-chev" aria-hidden="true">▸</span>
-        <span class="filters-title">Filter by date</span>
-        <span class="filters-summary" id="filters-summary">All dates</span>
+        <span class="filters-title">Show up to</span>
+        <span class="filters-summary" id="filters-summary">up to today</span>
       </button>
 
       <div class="filters-body" id="filters-body">
@@ -106,7 +106,7 @@
             <span class="dslider-label">Month</span>
             <span class="dslider-value" id="mo-value">Any</span>
           </div>
-          <input type="range" id="f-month" class="d-range" min="0" max="12" step="1" value="0" aria-label="Month" />
+          <input type="range" id="f-month" class="d-range" min="1" max="12" step="1" value="1" aria-label="Month" />
         </div>
 
         <div class="dslider" id="ds-day">
@@ -114,12 +114,12 @@
             <span class="dslider-label">Day</span>
             <span class="dslider-value" id="dy-value">Any</span>
           </div>
-          <input type="range" id="f-day" class="d-range" min="0" max="31" step="1" value="0" aria-label="Day" />
+          <input type="range" id="f-day" class="d-range" min="1" max="31" step="1" value="1" aria-label="Day" />
         </div>
 
         <div class="filters-foot">
           <label class="chk"><input type="checkbox" id="hide-watched" /> Hide watched</label>
-          <button id="filters-reset" type="button" class="btn ghost small">Reset</button>
+          <button id="filters-reset" type="button" class="btn ghost small">Today</button>
         </div>
       </div>
     </section>

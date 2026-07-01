@@ -31,8 +31,9 @@
   let mode = load(LS.mode, 'timeline');           // 'timeline' | 'channel'
   let hideWatched = load(LS.hide, false);
   let activeChannel = load(LS.chan, null);        // slug for 'channel' mode
-  let filter = load(LS.filter, { year: 'any', month: 'any', day: 'any' });
+  let cutoff = load(LS.filter, null) || todayYMD();   // show videos up to this date
   let filtersOpen = load(LS.filtersOpen, true);   // whole filter section
+  let yearRange = [];                             // years the cutoff slider spans
 
   // ---- runtime state ----
   let available = [];        // [{slug,name,count,url}] from index.json
@@ -118,6 +119,15 @@
     if (dt.y) return String(dt.y);
     return '—';
   }
+  function todayYMD() { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; }
+  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+  // Comparable YYYYMMDD int for a video (exact date, else start of its year).
+  function videoYMD(v) {
+    const dt = vidDate(v);
+    if (dt.precise) return dt.y * 10000 + dt.m * 100 + dt.day;
+    if (dt.y) return dt.y * 10000 + 101;
+    return 0;
+  }
 
   // ---------------------------------------------------------------------------
   // Ordering + filtering
@@ -144,17 +154,18 @@
     return vids.sort((a, b) => sortEpoch(a) - sortEpoch(b) || a.i - b.i);
   }
 
-  function passesDate(v) {
-    const dt = vidDate(v);
-    if (filter.year !== 'any' && dt.y !== filter.year) return false;
-    if (filter.month !== 'any' && dt.m !== filter.month) return false;
-    if (filter.day !== 'any' && dt.day !== filter.day) return false;
-    return true;
+  function monthDayEnabled() { return orderedVideos().some((v) => v.d); }
+  // The cutoff as a YYYYMMDD int. With only year-level data, the finer
+  // sliders are hidden and the cutoff covers the whole selected year.
+  function cutoffInt() {
+    if (!monthDayEnabled()) return cutoff.y * 10000 + 1231;
+    const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
+    return cutoff.y * 10000 + cutoff.m * 100 + d;
   }
-
-  // Videos matching the date filter, chronological. Drives playback order.
+  // Everything published on or before the cutoff date, chronological.
   function filteredVideos() {
-    return orderedVideos().filter(passesDate);
+    const cut = cutoffInt();
+    return orderedVideos().filter((v) => videoYMD(v) <= cut);
   }
 
   function availableYears() {
@@ -230,7 +241,7 @@
     if (!total) {
       resultsBar.hidden = true;
       yearsEl.innerHTML = '';
-      showStatus('🔍', 'Nothing matches this date filter.', 'Reset filter', resetFilter);
+      showStatus('🔍', 'Nothing published on or before that date.', 'Reset to today', resetFilter);
       return;
     }
     statusPanel.hidden = true;
@@ -262,44 +273,40 @@
 
   // ---- filters / sliders ----
   function renderFilters() {
-    // Month/Day filtering needs exact dates. Those only exist when the
-    // scraper runs with an authenticated session (YT_COOKIES); otherwise we
-    // have year-level data only, so hide the finer sliders rather than show
-    // dead controls. They reappear automatically once exact dates arrive.
+    // Month/Day only mean something with exact dates; hide them for
+    // year-level-only data (the cutoff then covers whole years).
     const hasPrecise = orderedVideos().some((v) => v.d);
     document.getElementById('ds-month').hidden = !hasPrecise;
     document.getElementById('ds-day').hidden = !hasPrecise;
-    if (!hasPrecise && (filter.month !== 'any' || filter.day !== 'any')) {
-      filter.month = 'any'; filter.day = 'any'; save(LS.filter, filter);
-    }
 
+    // Year slider spans earliest video year .. current year.
     const years = availableYears();
+    const curY = new Date().getFullYear();
+    const minY = years.length ? years[0] : curY;
+    const maxY = Math.max(curY, years.length ? years[years.length - 1] : curY);
+    yearRange = [];
+    for (let y = minY; y <= maxY; y++) yearRange.push(y);
+    cutoff.y = Math.min(Math.max(cutoff.y, minY), maxY);
+    fYear.max = String(yearRange.length - 1);
+    fYear.value = String(yearRange.indexOf(cutoff.y));
+    yrValue.textContent = String(cutoff.y);
 
-    // Year slider maps index 0 -> Any, 1..n -> years[n-1].
-    fYear.max = String(years.length);
-    let yIdx = 0;
-    if (filter.year !== 'any') {
-      const at = years.indexOf(filter.year);
-      if (at === -1) { filter.year = 'any'; } else { yIdx = at + 1; }
-    }
-    fYear.value = String(yIdx);
-    yrValue.textContent = filter.year === 'any' ? 'Any' : String(filter.year);
+    cutoff.m = Math.min(Math.max(cutoff.m, 1), 12);
+    fMonth.value = String(cutoff.m);
+    moValue.textContent = MONTHS[cutoff.m - 1];
 
-    fMonth.value = String(filter.month === 'any' ? 0 : filter.month);
-    moValue.textContent = filter.month === 'any' ? 'Any' : MONTHS[filter.month - 1];
-
-    fDay.value = String(filter.day === 'any' ? 0 : filter.day);
-    dyValue.textContent = filter.day === 'any' ? 'Any' : String(filter.day);
+    cutoff.d = Math.min(Math.max(cutoff.d, 1), daysInMonth(cutoff.y, cutoff.m));
+    fDay.value = String(cutoff.d);
+    dyValue.textContent = String(cutoff.d);
 
     filtersSummary.textContent = filterSummaryText();
     applyFiltersOpen();
   }
   function filterSummaryText() {
-    if (filter.year === 'any' && filter.month === 'any' && filter.day === 'any') return 'All dates';
-    const parts = [filter.year === 'any' ? 'Any year' : String(filter.year)];
-    if (filter.month !== 'any') parts.push(MONTHS[filter.month - 1]);
-    if (filter.day !== 'any') parts.push('Day ' + filter.day);
-    return parts.join(' · ');
+    const t = todayYMD();
+    const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
+    const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
+    return 'up to ' + d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y + (isToday ? ' · today' : '');
   }
   function applyFiltersOpen() {
     filtersBody.hidden = !filtersOpen;
@@ -307,14 +314,12 @@
     filtersToggle.classList.toggle('open', filtersOpen);
   }
   function commitFilter() {
-    save(LS.filter, filter);
-    // auto-expand the year that's now in focus so results are visible
-    if (filter.year !== 'any') expandedYears.add(filter.year);
+    save(LS.filter, cutoff);
     render();
   }
   function resetFilter() {
-    filter = { year: 'any', month: 'any', day: 'any' };
-    save(LS.filter, filter);
+    cutoff = todayYMD();
+    save(LS.filter, cutoff);
     render();
   }
 
@@ -566,22 +571,20 @@
   });
 
   fYear.addEventListener('input', () => {
-    const years = availableYears();
-    const idx = Number(fYear.value);
-    filter.year = idx === 0 ? 'any' : years[idx - 1];
-    yrValue.textContent = filter.year === 'any' ? 'Any' : String(filter.year);
+    cutoff.y = yearRange[Number(fYear.value)] || cutoff.y;
+    cutoff.d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
+    yrValue.textContent = String(cutoff.y);
     commitFilter();
   });
   fMonth.addEventListener('input', () => {
-    const m = Number(fMonth.value);
-    filter.month = m === 0 ? 'any' : m;
-    moValue.textContent = filter.month === 'any' ? 'Any' : MONTHS[filter.month - 1];
+    cutoff.m = Number(fMonth.value);
+    cutoff.d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
+    moValue.textContent = MONTHS[cutoff.m - 1];
     commitFilter();
   });
   fDay.addEventListener('input', () => {
-    const d = Number(fDay.value);
-    filter.day = d === 0 ? 'any' : d;
-    dyValue.textContent = filter.day === 'any' ? 'Any' : String(filter.day);
+    cutoff.d = Math.min(Number(fDay.value), daysInMonth(cutoff.y, cutoff.m));
+    dyValue.textContent = String(cutoff.d);
     commitFilter();
   });
 
