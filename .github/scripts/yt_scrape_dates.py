@@ -32,12 +32,15 @@ HEADERS = {
 }
 
 
-def fetch_date(vid):
+def fetch_html(vid):
     url = ("https://www.youtube.com/watch?v=%s&hl=en&gl=US"
            "&bpctr=9999999999&has_verified=1" % vid)
     req = urllib.request.Request(url, headers=HEADERS)
     with urllib.request.urlopen(req, timeout=15) as resp:
-        html = resp.read().decode("utf-8", "replace")
+        return resp.getcode(), resp.geturl(), resp.read().decode("utf-8", "replace")
+
+
+def parse_date(html):
     for rx in DATE_RES:
         m = rx.search(html)
         if m:
@@ -58,16 +61,24 @@ def main():
 
     applied = 0
     fails = 0
-    for v in todo:
+    for n, v in enumerate(todo):
         try:
-            d = fetch_date(v["id"])
+            _, _, html = fetch_html(v["id"])
+            d = parse_date(html)
+            if n < 3 and not d:  # diagnose why the first few miss
+                markers = [k for k in ("publishDate", "uploadDate", "datePublished",
+                                       "not a bot", "Before you continue", "consent", "captcha")
+                           if k in html]
+                print("  DIAG %s: len=%d markers=%s" % (v["id"], len(html), markers))
             if d:
                 v["d"] = d
                 applied += 1
                 fails = 0
             else:
                 fails += 1
-        except Exception:
+        except Exception as e:
+            if n < 3:
+                print("  DIAG %s: error %r" % (v["id"], e))
             fails += 1
         # Checkpoint periodically so a killed job keeps progress.
         if applied and applied % 25 == 0:
