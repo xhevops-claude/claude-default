@@ -31,7 +31,10 @@
   let mode = load(LS.mode, 'timeline');           // 'timeline' | 'channel'
   let hideWatched = load(LS.hide, false);
   let activeChannel = load(LS.chan, null);        // slug for 'channel' mode
-  let cutoff = load(LS.filter, null) || todayYMD();   // show videos up to this date
+  const savedCutoff = load(LS.filter, null);          // show videos up to this date;
+  let cutoff = (savedCutoff && typeof savedCutoff.y === 'number')  // default today if
+    ? savedCutoff : todayYMD();                        // unset or old-format
+
   let filtersOpen = load(LS.filtersOpen, true);   // whole filter section
   let yearRange = [];                             // years the cutoff slider spans
 
@@ -244,10 +247,27 @@
       showStatus('🔍', 'Nothing published on or before that date.', 'Reset to today', resetFilter);
       return;
     }
+    // With "Hide watched" on, completed years vanish entirely; if nothing
+    // unwatched is left, say so instead of showing an empty list.
+    const remaining = total - watchedCount;
+    if (hideWatched && remaining === 0) {
+      resultsBar.hidden = true;
+      yearsEl.innerHTML = '';
+      showStatus('🎉', 'All caught up — everything up to this date is watched.', 'Show watched', showAllWatched);
+      return;
+    }
     statusPanel.hidden = true;
     resultsBar.hidden = false;
-    resultsCount.textContent = total + (total === 1 ? ' video' : ' videos');
+    resultsCount.textContent = hideWatched
+      ? remaining + ' left'
+      : total + (total === 1 ? ' video' : ' videos');
     renderAccordion(filtered);
+  }
+  function showAllWatched() {
+    hideWatched = false;
+    hideWatchedChk.checked = false;
+    save(LS.hide, hideWatched);
+    render();
   }
 
   function hideBrowse() {
@@ -350,7 +370,13 @@
       if (!groups.has(y)) groups.set(y, []);
       groups.get(y).push(v);
     });
-    const years = Array.from(groups.keys()).sort((a, b) => a - b);
+    let years = Array.from(groups.keys()).sort((a, b) => a - b);
+
+    // "Hide watched" makes fully-watched years vanish entirely (a completed
+    // year keeps only the currently-playing video, if any).
+    if (hideWatched) {
+      years = years.filter((y) => groups.get(y).some((v) => !watched.has(v.id) || v.id === currentId));
+    }
 
     // If nothing is explicitly expanded and there's just one year, open it.
     if (!expandedYears.size && years.length === 1) expandedYears.add(years[0]);
