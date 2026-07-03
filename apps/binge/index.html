@@ -29,7 +29,7 @@
       animation: gl-run 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
     @keyframes gl-run { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=7c05201" />
+  <link rel="stylesheet" href="styles.css?v=f588eef" />
 </head>
 <body>
   <div id="app-loading">
@@ -115,7 +115,10 @@
             <span class="switch-track" aria-hidden="true"></span>
             <span class="switch-text">Show already-watched videos</span>
           </label>
-          <button id="clear-watched" type="button" class="linkbtn">Clear watched</button>
+          <span class="foot-actions">
+            <button id="sync-open" type="button" class="linkbtn">Sync ☁</button>
+            <button id="clear-watched" type="button" class="linkbtn">Clear watched</button>
+          </span>
         </div>
       </div>
     </section>
@@ -173,6 +176,23 @@
     </div>
   </main>
 
-  <script src="app.js?v=7c05201"></script>
+  <!-- Sync (no backend): copy your data to save it as the shared baseline -->
+  <div class="sync-modal" id="sync-modal" hidden role="dialog" aria-label="Sync data">
+    <div class="sync-card">
+      <div class="sync-head">
+        <span class="sync-title">Sync across devices</span>
+        <button id="sync-close" type="button" class="sync-x" aria-label="Close">×</button>
+      </div>
+      <p class="sync-sub">No account needed. <b>Copy your data</b> and paste it to Claude to save it as the shared baseline — every device loads that on top of its own changes. Or paste someone's data below and <b>Merge</b> to pull it in here.</p>
+      <button id="sync-copy" type="button" class="btn primary">⧉ Copy my data</button>
+      <textarea id="sync-paste" class="sync-ta" placeholder="Paste data here, then Merge…" spellcheck="false"></textarea>
+      <div class="sync-actions">
+        <button id="sync-apply" type="button" class="btn">Merge pasted data</button>
+      </div>
+      <div class="sync-note" id="sync-note" role="status"></div>
+    </div>
+  </div>
+
+  <script src="app.js?v=f588eef"></script>
 </body>
 </html>
