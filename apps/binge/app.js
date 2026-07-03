@@ -57,6 +57,8 @@
   const sectionsEl = $('sections');
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
   const quitBtn = $('quit');
+  const syncOpenBtn = $('sync-open'), syncModal = $('sync-modal'), syncClose = $('sync-close');
+  const syncCopyBtn = $('sync-copy'), syncPaste = $('sync-paste'), syncApplyBtn = $('sync-apply'), syncNote = $('sync-note');
   const fYear = $('f-year'), fMonth = $('f-month'), fDay = $('f-day');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
 
@@ -582,18 +584,88 @@
   quitBtn.addEventListener('click', quit);
 
   // ---------------------------------------------------------------------------
-  // Boot
+  // Cross-device sync — no backend. A committed db.json is the shared
+  // baseline; localStorage layers on top. `watched` unions (never loses a
+  // mark); per-device prefs fill only when this device hasn't set them.
+  // Cutoff stays local (defaults to today).
   // ---------------------------------------------------------------------------
-  (async function boot() {
-    loadYouTubeAPI();
-    await loadIndex();
+  const SYNC_FILL = [LS.selected, LS.showWatched, LS.view, LS.sort, LS.group, LS.filtersOpen];
+
+  async function loadDB() {
+    try {
+      const res = await fetch('db.json', { cache: 'no-store' });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return {};
+  }
+  function mergeDB(db) {
+    if (!db || typeof db !== 'object') return;
+    const baseW = Array.isArray(db[LS.watched]) ? db[LS.watched] : [];
+    const localW = load(LS.watched, []);
+    save(LS.watched, Array.from(new Set(baseW.concat(localW))));   // union
+    SYNC_FILL.forEach((k) => {
+      if (localStorage.getItem(k) == null && db[k] !== undefined) {
+        try { localStorage.setItem(k, JSON.stringify(db[k])); } catch (e) {}
+      }
+    });
+  }
+  // Re-read runtime state from (possibly just-merged) localStorage.
+  function reloadState() {
+    watched = new Set(load(LS.watched, []));
+    showWatched = load(LS.showWatched, true);
+    const sc = load(LS.cutoff, null);
+    cutoff = (sc && typeof sc.y === 'number') ? sc : todayYMD();
+    view = load(LS.view, 'list');
+    sortBy = load(LS.sort, 'old');
+    groupBy = load(LS.group, 'year');
+    filtersOpen = load(LS.filtersOpen, true);
     const savedSel = load(LS.selected, null);
     selected = new Set(
       (savedSel && Array.isArray(savedSel))
         ? savedSel.filter((s) => available.some((c) => c.slug === s))
-        : available.map((c) => c.slug)   // default: all selected
+        : available.map((c) => c.slug)
     );
     showWatchedChk.checked = showWatched;
+  }
+
+  function syncNoteMsg(m) { syncNote.textContent = m || ''; }
+  function exportData() {
+    const out = {};
+    Object.values(LS).forEach((k) => {
+      const v = localStorage.getItem(k);
+      if (v != null) { try { out[k] = JSON.parse(v); } catch (e) {} }
+    });
+    const text = JSON.stringify(out);
+    syncPaste.value = text;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => syncNoteMsg('Copied to clipboard — paste it to Claude to save it.'),
+        () => { syncPaste.select(); syncNoteMsg('Couldn’t auto-copy — select the text above and copy it.'); }
+      );
+    } else { syncPaste.select(); syncNoteMsg('Select the text above and copy it.'); }
+  }
+  function applyPaste() {
+    let obj;
+    try { obj = JSON.parse(syncPaste.value); } catch (e) { syncNoteMsg('That doesn’t look like valid sync data.'); return; }
+    mergeDB(obj);
+    reloadState();
+    render();
+    syncNoteMsg('Merged. Watched list and settings updated on this device.');
+  }
+  syncOpenBtn.addEventListener('click', () => { syncNoteMsg(''); syncPaste.value = ''; syncModal.hidden = false; });
+  syncClose.addEventListener('click', () => { syncModal.hidden = true; });
+  syncModal.addEventListener('click', (e) => { if (e.target === syncModal) syncModal.hidden = true; });
+  syncCopyBtn.addEventListener('click', exportData);
+  syncApplyBtn.addEventListener('click', applyPaste);
+
+  // ---------------------------------------------------------------------------
+  // Boot
+  // ---------------------------------------------------------------------------
+  (async function boot() {
+    loadYouTubeAPI();
+    const [db] = await Promise.all([loadDB(), loadIndex()]);
+    mergeDB(db);
+    reloadState();
     await loadAll();
     render();
   })();
