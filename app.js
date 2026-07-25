@@ -76,6 +76,14 @@
       url: 'apps/binge/',
     },
     {
+      slug: 'marathon',
+      name: 'Marathon',
+      meta: 'Movies',
+      tagline: 'Every movie, every saga — in order.',
+      icon: '🎬',
+      url: 'apps/marathon/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',
