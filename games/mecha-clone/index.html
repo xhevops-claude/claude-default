@@ -47,6 +47,7 @@
     <div class="hud-top">
       <div class="pill" id="round-pill">Round <span id="round">1</span></div>
       <div class="pill big" id="phase-pill">GET READY</div>
+      <div class="pill" id="hiders-pill">🦎 <span id="hiders">3</span></div>
       <div class="pill" id="best-pill">Best <span id="best">0</span></div>
     </div>
 
@@ -55,17 +56,32 @@
       <div class="suspicion-track"><div class="suspicion-fill" id="suspicion-fill"></div></div>
     </div>
 
-    <div class="paint-hud">
-      <div class="swatch-wrap">
-        <span class="swatch-label">Paint</span>
-        <span class="swatch" id="paint-swatch"></span>
+    <div class="palette" id="palette-panel">
+      <div class="palette-head">
+        <span class="palette-title">Body paint</span>
+        <span class="palette-preview" id="palette-preview"></span>
       </div>
-      <div class="swatch-wrap">
-        <span class="swatch-label">Aim</span>
-        <span class="swatch" id="aim-swatch"></span>
+      <div class="part-chips" id="part-chips">
+        <button type="button" data-part="all" class="active">All</button>
+        <button type="button" data-part="body">Body</button>
+        <button type="button" data-part="head">Head</button>
+        <button type="button" data-part="legs">Legs</button>
+        <button type="button" data-part="tail">Tail</button>
       </div>
+      <label class="slider-row">
+        <span>Hue</span>
+        <input type="range" id="hue" min="0" max="360" value="120" step="1" aria-label="Hue" />
+      </label>
+      <label class="slider-row">
+        <span>Sat</span>
+        <input type="range" id="sat" min="0" max="100" value="0" step="1" aria-label="Saturation" />
+      </label>
+      <label class="slider-row">
+        <span>Lit</span>
+        <input type="range" id="lit" min="0" max="100" value="95" step="1" aria-label="Lightness" />
+      </label>
       <div class="blend-wrap">
-        <span class="swatch-label">Blend</span>
+        <span>Blend</span>
         <div class="blend-track"><div class="blend-fill" id="blend-fill"></div></div>
       </div>
     </div>
@@ -75,23 +91,25 @@
     <div class="banner" id="banner"></div>
 
     <div class="touch-actions">
-      <button id="paint-btn" type="button">🎨 Paint</button>
+      <button id="palette-btn" type="button" class="on">🎨 Palette</button>
+      <button id="sample-btn" type="button">💉 Sample</button>
       <button id="pose-btn" type="button">🧊 Freeze</button>
     </div>
 
     <div class="hint">
-      <span class="hint-keys"><kbd>WASD</kbd> move · drag mouse to look · <kbd>E</kbd> paint what you aim at · <kbd>Space</kbd> freeze pose</span>
-      <span class="hint-touch">Left side: move · right side: look · buttons to paint / freeze</span>
+      <span class="hint-keys"><kbd>WASD</kbd> move · drag to look · <kbd>E</kbd> sample aimed color · <kbd>Space</kbd> freeze · sliders paint the selected part</span>
+      <span class="hint-touch">Left: move · right: look · sample steals the aimed color · sliders fine-tune</span>
     </div>
   </div>
 
   <div class="overlay" id="overlay" data-state="ready">
     <h2 id="overlay-title">Mecha Clone</h2>
     <p id="overlay-text">
-      You are a plain white chameleon mech. Before the seeker wakes up,
-      paint yourself to match the scenery: aim at any wall, floor or crate
-      and sample its color. Then pick a spot, freeze your pose, and let the
-      seeker walk right past you. Get spotted and it's over.
+      You are a plain white chameleon mech among decoys. Before the seekers
+      wake up: sample colors from the scenery, fine-tune your paint job with
+      the palette sliders — per body part — then pick a spot, freeze, and
+      don't get verified. Hiders win the round if you're still free when the
+      clock runs out.
     </p>
     <div class="overlay-actions">
       <button id="action-btn" type="button">Play</button>
