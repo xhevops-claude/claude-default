@@ -33,6 +33,14 @@
       url: 'games/crusaders/',
     },
     {
+      slug: 'mecha-clone',
+      name: 'Mecha Clone',
+      meta: 'Hide & Seek',
+      tagline: 'Blend in. Freeze. Outlast the seeker.',
+      icon: '🦎',
+      url: 'games/mecha-clone/',
+    },
+    {
       slug: 'crusaders3d',
       name: 'Crusaders 3D',
       meta: 'Prototype',
