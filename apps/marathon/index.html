@@ -56,11 +56,11 @@
     <!-- Discover -->
     <section id="view-discover" hidden>
       <div class="search-row">
-        <input type="search" id="search-input" class="search-input" placeholder="Search any movie…"
-          autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search movies" />
+        <input type="search" id="search-input" class="search-input" placeholder="Search a movie, actor or producer…"
+          autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search movies and people" />
         <button id="search-clear" type="button" class="search-clear" aria-label="Clear search" hidden>×</button>
       </div>
-      <p class="search-hint" id="search-hint">Powered by Wikidata + Wikipedia — cast, crew and posters for practically every film ever made.</p>
+      <p class="search-hint" id="search-hint">Powered by Wikidata + Wikipedia — films, actors, producers and directors, with cast and posters for practically everything ever made.</p>
       <div class="results-grid" id="results"></div>
       <section class="status-panel" id="discover-status" hidden>
         <div class="status-icon" aria-hidden="true">🎬</div>
@@ -71,6 +71,58 @@
 
     <!-- My Marathon -->
     <section id="view-list" hidden>
+      <!-- Filters (collapsible): collections + date cutoff + show-watched -->
+      <section class="filters" id="flt" hidden>
+        <button class="filters-head" id="flt-toggle" type="button" aria-expanded="false" aria-controls="flt-body">
+          <span class="filters-chev" aria-hidden="true">▸</span>
+          <span class="filters-title">Filters</span>
+          <span class="filters-summary" id="flt-summary"></span>
+        </button>
+
+        <div class="filters-body" id="flt-body" hidden>
+          <div class="fgroup">
+            <div class="fgroup-head">
+              <span class="fgroup-label">Collections</span>
+              <span class="fgroup-actions">
+                <button id="col-all" type="button" class="linkbtn">Select all</button>
+                <button id="col-none" type="button" class="linkbtn">Clear all</button>
+              </span>
+            </div>
+            <div class="col-switches" id="col-switches"></div>
+          </div>
+
+          <div class="fgroup">
+            <div class="fgroup-head">
+              <span class="fgroup-label">Released up to</span>
+              <span class="fgroup-actions"><button id="flt-reset" type="button" class="linkbtn">Today</button></span>
+            </div>
+            <div class="dslider">
+              <div class="dslider-row"><span class="dslider-label">Year</span><span class="dslider-value" id="yr-value">—</span></div>
+              <input type="range" id="f-year" class="d-range" min="0" max="0" step="1" value="0" aria-label="Year" />
+            </div>
+            <div class="dslider">
+              <div class="dslider-row"><span class="dslider-label">Month</span><span class="dslider-value" id="mo-value">—</span></div>
+              <input type="range" id="f-month" class="d-range" min="1" max="12" step="1" value="1" aria-label="Month" />
+            </div>
+            <div class="dslider">
+              <div class="dslider-row"><span class="dslider-label">Day</span><span class="dslider-value" id="dy-value">—</span></div>
+              <input type="range" id="f-day" class="d-range" min="1" max="31" step="1" value="1" aria-label="Day" />
+            </div>
+          </div>
+
+          <div class="fgroup-foot">
+            <label class="switch">
+              <input type="checkbox" id="show-watched" class="switch-input" checked />
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Show already-watched films</span>
+            </label>
+            <span class="foot-actions">
+              <button id="clear-watched" type="button" class="linkbtn">Clear watched</button>
+            </span>
+          </div>
+        </div>
+      </section>
+
       <div class="toolbar" id="list-toolbar">
         <div class="tb-item">
           <label class="tb-label" for="sel-sort">Sort</label>
@@ -82,15 +134,11 @@
         <div class="tb-item">
           <label class="tb-label" for="sel-group">Group</label>
           <select id="sel-group" class="tb-select">
-            <option value="saga">Saga</option>
+            <option value="none">Timeline</option>
+            <option value="saga">Collection</option>
             <option value="year">Year</option>
           </select>
         </div>
-        <label class="switch tb-switch">
-          <input type="checkbox" id="show-watched" class="switch-input" checked />
-          <span class="switch-track" aria-hidden="true"></span>
-          <span class="switch-text">Show watched</span>
-        </label>
       </div>
 
       <div class="progress" id="progress" hidden>
@@ -137,6 +185,7 @@
       </div>
       <p class="detail-plot" id="detail-plot"></p>
       <div class="detail-saga" id="detail-saga" hidden></div>
+      <div class="detail-filmo" id="detail-filmo" hidden></div>
       <h3 class="cast-head" id="cast-head" hidden>Cast</h3>
       <div class="cast-grid" id="cast-grid"></div>
       <div class="detail-links" id="detail-links"></div>
