@@ -1,9 +1,9 @@
 :root {
-  --bg: #0b0f14;
-  --panel: #121a22;
-  --line: #1f2c38;
+  --bg: #10151c;
+  --panel: rgba(13, 19, 26, 0.82);
+  --line: #263544;
   --ink: #d7e4e8;
-  --dim: #6d8290;
+  --dim: #7d93a2;
   --accent: #3ddc84;
   --danger: #ff5f6d;
 }
@@ -12,206 +12,250 @@
 
 html, body {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background:
-    radial-gradient(1000px 600px at 50% -10%, rgba(61, 220, 132, 0.06), transparent 60%),
-    var(--bg);
+  background: var(--bg);
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 18px 12px 26px;
-  width: 100%;
-  max-width: 560px;
+#scene {
+  position: fixed;
+  inset: 0;
+}
+
+#scene canvas {
+  display: block;
+  touch-action: none;
 }
 
 /* ---- HUD ---- */
 
-.scoreboard {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-  max-width: 480px;
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
 }
 
-.stat {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 10px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-
-.stat-label {
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
-
-.stat-value {
-  font-size: 20px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---- Arena ---- */
-
-.canvas-wrap {
-  position: relative;
-  width: 100%;
-  max-width: 480px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--panel);
-}
-
-canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  image-rendering: pixelated;
-}
-
-.phase-banner {
+.hud-top {
   position: absolute;
   top: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.pill {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.pill.big {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pill.big.warn { color: var(--danger); border-color: var(--danger); }
+.pill.big.safe { color: var(--accent); border-color: var(--accent); }
+
+/* ---- Suspicion meter ---- */
+
+.suspicion {
+  position: absolute;
+  top: 52px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 4px 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+  width: min(320px, 70vw);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suspicion-label {
+  font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  background: rgba(11, 15, 20, 0.75);
-  border: 1px solid var(--line);
   color: var(--dim);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
-.phase-banner.show { opacity: 1; }
-.phase-banner.warn { color: var(--danger); border-color: var(--danger); animation: banner-pulse 0.5s ease infinite alternate; }
-.phase-banner.safe { color: var(--accent); border-color: var(--accent); }
-
-@keyframes banner-pulse {
-  from { transform: translateX(-50%) scale(1); }
-  to   { transform: translateX(-50%) scale(1.06); }
+.suspicion-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  overflow: hidden;
 }
 
-/* ---- Overlay (start / game over) ---- */
+.suspicion-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ffd23f, var(--danger));
+  transition: width 0.12s linear;
+}
 
-.overlay {
+/* ---- Paint HUD ---- */
+
+.paint-hud {
   position: absolute;
-  inset: 0;
+  left: 12px;
+  bottom: 92px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 24px;
-  text-align: center;
-  background: rgba(11, 15, 20, 0.88);
-  backdrop-filter: blur(4px);
-  transition: opacity 0.3s ease;
-}
-
-.overlay[data-state="playing"] {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.overlay h2 {
-  margin: 0;
-  font-size: 26px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.overlay p {
-  margin: 0;
-  max-width: 360px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--dim);
-}
-
-.overlay-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.overlay button {
-  padding: 10px 26px;
-  font: inherit;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #06130b;
-  background: var(--accent);
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.overlay button.ghost {
-  background: transparent;
-  color: var(--dim);
+  gap: 8px;
+  padding: 10px;
+  background: var(--panel);
   border: 1px solid var(--line);
+  border-radius: 12px;
 }
 
-.overlay button:active { transform: scale(0.96); }
-
-/* ---- Camo swatches ---- */
-
-.camo-bar {
+.swatch-wrap {
   display: flex;
-  gap: 10px;
   align-items: center;
-  justify-content: center;
-  min-height: 44px;
+  gap: 8px;
 }
 
-.camo-swatch {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  border: 2px solid transparent;
+.swatch-label {
+  width: 44px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #f2f2f2;
   outline: 1px solid var(--line);
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
-.camo-swatch.active {
-  border-color: #fff;
-  transform: scale(1.12);
+.blend-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+
+.blend-track {
+  width: 96px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.blend-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.15s linear;
+}
+
+/* ---- Crosshair ---- */
+
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+.crosshair::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 2px;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border-radius: 50%;
+}
+
+/* ---- Center banner ---- */
+
+.banner {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  font-size: clamp(26px, 6vw, 44px);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.banner.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.banner.danger { color: var(--danger); }
+.banner.safe { color: var(--accent); }
+
+/* ---- Action buttons ---- */
+
+.touch-actions {
+  position: absolute;
+  right: 12px;
+  bottom: 92px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.touch-actions button {
+  padding: 12px 18px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.touch-actions button:active { transform: scale(0.95); }
+.touch-actions button.on { border-color: var(--accent); color: var(--accent); }
 
 /* ---- Hints ---- */
 
 .hint {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  text-align: center;
   font-size: 12px;
   color: var(--dim);
-  text-align: center;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+  padding: 0 12px;
 }
 
 kbd {
@@ -232,3 +276,67 @@ kbd {
   .hint-keys { display: none; }
   .hint-touch { display: inline; }
 }
+
+/* ---- Overlay (start / game over) ---- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(16, 21, 28, 0.86);
+  backdrop-filter: blur(5px);
+  transition: opacity 0.3s ease;
+}
+
+.overlay[data-state="playing"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.overlay h2 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.overlay p {
+  margin: 0;
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--dim);
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.overlay button {
+  padding: 11px 28px;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #06130b;
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.overlay button.ghost {
+  background: transparent;
+  color: var(--dim);
+  border: 1px solid var(--line);
+}
+
+.overlay button:active { transform: scale(0.96); }

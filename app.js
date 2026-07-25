@@ -35,8 +35,8 @@
     {
       slug: 'mecha-clone',
       name: 'Mecha Clone',
-      meta: 'Hide & Seek',
-      tagline: 'Blend in. Freeze. Outlast the seeker.',
+      meta: '3D Hide & Seek',
+      tagline: 'Paint yourself into the scenery.',
       icon: '🦎',
       url: 'games/mecha-clone/',
     },

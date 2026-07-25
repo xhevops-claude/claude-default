@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Mecha Clone</title>
   <script>
     if (window.self !== window.top) document.documentElement.classList.add('embedded');
   </script>
-  <!-- Critical inline CSS so the loading screen paints on the first
-       frame, before styles.css resolves. -->
+  <!-- Critical inline CSS so the loading screen paints on the first frame,
+       before styles.css and the (large) three.js download resolve. -->
   <style>
-    html, body { margin: 0; padding: 0; background: #0b0f14; color: #d7e4e8;
+    html, body { margin: 0; padding: 0; background: #10151c; color: #d7e4e8;
       font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
     #game-loading {
       position: fixed; inset: 0; z-index: 9999;
-      background: #0b0f14;
+      background: #10151c;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 22px;
@@ -41,47 +41,67 @@
     <div class="gl-bar" aria-label="Loading"></div>
   </div>
 
-  <main class="stage">
-    <div class="scoreboard">
-      <div class="stat">
-        <span class="stat-label">Score</span>
-        <span class="stat-value" id="score">0</span>
+  <div id="scene"></div>
+
+  <div class="hud">
+    <div class="hud-top">
+      <div class="pill" id="round-pill">Round <span id="round">1</span></div>
+      <div class="pill big" id="phase-pill">GET READY</div>
+      <div class="pill" id="best-pill">Best <span id="best">0</span></div>
+    </div>
+
+    <div class="suspicion" id="suspicion-wrap" hidden>
+      <div class="suspicion-label">Suspicion</div>
+      <div class="suspicion-track"><div class="suspicion-fill" id="suspicion-fill"></div></div>
+    </div>
+
+    <div class="paint-hud">
+      <div class="swatch-wrap">
+        <span class="swatch-label">Paint</span>
+        <span class="swatch" id="paint-swatch"></span>
       </div>
-      <div class="stat">
-        <span class="stat-label">Wave</span>
-        <span class="stat-value" id="wave">1</span>
+      <div class="swatch-wrap">
+        <span class="swatch-label">Aim</span>
+        <span class="swatch" id="aim-swatch"></span>
       </div>
-      <div class="stat">
-        <span class="stat-label">Best</span>
-        <span class="stat-value" id="best">0</span>
+      <div class="blend-wrap">
+        <span class="swatch-label">Blend</span>
+        <div class="blend-track"><div class="blend-fill" id="blend-fill"></div></div>
       </div>
     </div>
 
-    <div class="canvas-wrap">
-      <canvas id="game" width="480" height="480" aria-label="Mecha Clone arena"></canvas>
-      <div class="phase-banner" id="phase-banner" aria-live="polite"></div>
-      <div class="overlay" id="overlay" data-state="ready">
-        <h2 id="overlay-title">Mecha Clone</h2>
-        <p id="overlay-text">
-          A rogue seeker sweeps the arena. Match your camo plating to the
-          floor tile under you and freeze while the beam passes — or get
-          spotted. Grab power cores between sweeps.
-        </p>
-        <div class="overlay-actions">
-          <button id="action-btn" type="button">Play</button>
-          <button id="quit-btn" type="button" class="ghost">Quit</button>
-        </div>
-      </div>
-    </div>
+    <div class="crosshair" aria-hidden="true"></div>
 
-    <div class="camo-bar" id="camo-bar" role="group" aria-label="Camouflage color"></div>
+    <div class="banner" id="banner"></div>
+
+    <div class="touch-actions">
+      <button id="paint-btn" type="button">🎨 Paint</button>
+      <button id="pose-btn" type="button">🧊 Freeze</button>
+    </div>
 
     <div class="hint">
-      <span class="hint-keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd> move · <kbd>Space</kbd>/<kbd>C</kbd> cycle camo</span>
-      <span class="hint-touch">Swipe to move · tap a swatch to change camo</span>
+      <span class="hint-keys"><kbd>WASD</kbd> move · drag mouse to look · <kbd>E</kbd> paint what you aim at · <kbd>Space</kbd> freeze pose</span>
+      <span class="hint-touch">Left side: move · right side: look · buttons to paint / freeze</span>
     </div>
-  </main>
+  </div>
 
+  <div class="overlay" id="overlay" data-state="ready">
+    <h2 id="overlay-title">Mecha Clone</h2>
+    <p id="overlay-text">
+      You are a plain white chameleon mech. Before the seeker wakes up,
+      paint yourself to match the scenery: aim at any wall, floor or crate
+      and sample its color. Then pick a spot, freeze your pose, and let the
+      seeker walk right past you. Get spotted and it's over.
+    </p>
+    <div class="overlay-actions">
+      <button id="action-btn" type="button">Play</button>
+      <button id="quit-btn" type="button" class="ghost">Quit</button>
+    </div>
+  </div>
+
+  <!-- three.js r136 classic (global THREE), same pinning pattern as crusaders3d,
+       so app.js stays a plain script with no build step. -->
+  <script src="https://unpkg.com/three@0.136.0/build/three.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
