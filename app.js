@@ -76,6 +76,14 @@
       url: 'apps/binge/',
     },
     {
+      slug: 'usage',
+      name: 'Usage',
+      meta: 'Status',
+      tagline: 'Claude usage meters, live from the feed.',
+      icon: '📊',
+      url: 'apps/usage/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',
