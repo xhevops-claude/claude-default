@@ -10,8 +10,9 @@
 <title>Claude Usage</title>
 <script>
   if (window.self !== window.top) document.documentElement.classList.add('embedded');
-  // Template pre-paint: ?template=oled pins it (handy for kiosk/mini devices),
-  // otherwise the last picked one from localStorage. "classic" = no attribute.
+  // Template pre-paint: ?template=classic pins it (handy for kiosk/mini
+  // devices), otherwise the last picked one from localStorage, otherwise
+  // oled. "classic" = no attribute. OLED boots in minimal (.min) mode.
   (function () {
     var valid = ['classic', 'oled'];
     var t = new URLSearchParams(location.search).get('template');
@@ -20,7 +21,9 @@
     } else {
       try { t = localStorage.getItem('usage-template'); } catch (e) { t = null; }
     }
-    if (valid.indexOf(t) !== -1 && t !== 'classic') document.documentElement.dataset.template = t;
+    if (valid.indexOf(t) === -1) t = 'oled';
+    if (t !== 'classic') document.documentElement.dataset.template = t;
+    if (t === 'oled') document.documentElement.classList.add('min');
   })();
 </script>
 <style>
@@ -114,8 +117,7 @@
      media query), so the template wins in both color schemes. */
 
   /* OLED: true-black page (pixels fully off), everything Claude orange,
-     hairline-thin bars. Minimal by default: only labels + sliders, centered.
-     Tapping anywhere toggles .peek, which reveals the normal chrome. */
+     hairline-thin bars. Boots in minimal mode. */
   html[data-template="oled"] {
     --page: #000; --ink: #d97757; --ink2: #8f8a7e; --muted: #5c584f;
     --track: #141414; --hairline: #1b1b1b; --accent: #d97757; --rest: #d97757;
@@ -124,17 +126,18 @@
   html[data-template="oled"] .fill { border-radius: 0 2px 2px 0; min-width: 2px; background: #d97757; }
   html[data-template="oled"] .tick { display: none; }
   html[data-template="oled"] .status-dot { width: 6px; height: 6px; }
-  html[data-template="oled"]:not(.peek) header,
-  html[data-template="oled"]:not(.peek) .banner,
-  html[data-template="oled"]:not(.peek) .meter-value,
-  html[data-template="oled"]:not(.peek) .meter-sub,
-  html[data-template="oled"]:not(.peek) .money,
-  html[data-template="oled"]:not(.peek) footer { display: none; }
-  html[data-template="oled"]:not(.peek) body {
-    display: flex; align-items: center; padding: 24px 0;
-  }
-  html[data-template="oled"]:not(.peek) main { width: 100%; }
-  html[data-template="oled"]:not(.peek) .meter:last-child { margin-bottom: 0; }
+
+  /* Minimal mode (.min), any template: only labels + sliders, centered.
+     Tapping anywhere (not on a control) toggles it. */
+  html.min header,
+  html.min .banner,
+  html.min .meter-value,
+  html.min .meter-sub,
+  html.min .money,
+  html.min footer { display: none; }
+  html.min body { display: flex; align-items: center; padding: 24px 0; }
+  html.min main { width: 100%; }
+  html.min .meter:last-child { margin-bottom: 0; }
 </style>
 </head>
 <body>
@@ -320,17 +323,18 @@
     if (!TEMPLATES.includes(t)) return;
     if (t === "classic") delete document.documentElement.dataset.template;
     else document.documentElement.dataset.template = t;
+    // each template returns to its default mode: oled minimal, classic full
+    document.documentElement.classList.toggle("min", t === "oled");
     try { localStorage.setItem("usage-template", t); } catch (e) {}
     markTemplatePicker();
   });
   markTemplatePicker();
 
-  // OLED is chrome-less; tapping anywhere (not on a control) peeks the
-  // full UI — quit, picker, resets — and tapping again hides it.
+  // Tapping anywhere (not on a control) toggles minimal mode — labels and
+  // sliders only. Works in both templates; tap again for the full UI.
   document.addEventListener("click", (ev) => {
-    if (currentTemplate() !== "oled") return;
     if (ev.target.closest("button, a")) return;
-    document.documentElement.classList.toggle("peek");
+    document.documentElement.classList.toggle("min");
   });
 
   $("quit").addEventListener("click", () => {
