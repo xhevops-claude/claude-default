@@ -1,0 +1,14 @@
+{
+  "id": "a1f0c2d4-0014-4a00-9000-000000000014",
+  "date": "2026-04-13",
+  "amount": 362500,
+  "currency": "MKD",
+  "vendor": "Gradba-Tim",
+  "category": "labor",
+  "description": "Structure crew — first floor",
+  "details": {
+    "crew": "Gradba-Tim (9 workers)",
+    "period": "March–April 2026"
+  },
+  "attachments": []
+}

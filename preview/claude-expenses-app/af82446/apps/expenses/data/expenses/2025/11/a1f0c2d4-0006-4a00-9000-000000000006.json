@@ -1,0 +1,14 @@
+{
+  "id": "a1f0c2d4-0006-4a00-9000-000000000006",
+  "date": "2025-11-10",
+  "amount": 415300,
+  "currency": "MKD",
+  "vendor": "Beton-Grad DOO",
+  "category": "materials",
+  "description": "Foundation concrete C30/37",
+  "details": {
+    "supplier": "Beton-Grad DOO Skopje",
+    "quantity": "64 m³"
+  },
+  "attachments": []
+}

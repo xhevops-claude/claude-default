@@ -1,0 +1,14 @@
+{
+  "id": "a1f0c2d4-0004-4a00-9000-000000000004",
+  "date": "2025-10-14",
+  "amount": 3400,
+  "currency": "EUR",
+  "vendor": "GeoTerra",
+  "category": "design",
+  "description": "Geotechnical survey and soil report",
+  "details": {
+    "firm": "GeoTerra DOO",
+    "phase": "Geomehanika"
+  },
+  "attachments": []
+}
