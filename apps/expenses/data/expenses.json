@@ -5,7 +5,7 @@
     "fixedRates": {
       "MKD": 61.5
     },
-    "updated": "2026-07-30T17:57:05.388Z"
+    "updated": "2026-07-30T20:44:03.425Z"
   },
   "categories": [
     {
@@ -154,7 +154,8 @@
           "mime": "image/svg+xml",
           "size": 1179,
           "uploaded": "2025-09-23T09:14:00Z",
-          "extractedText": "OPSTINA CENTAR — SKOPJE\nSektor za urbanizam i gradezni raboti\n\nPOTVRDA ZA UPLATA\nBr. 09-4471/2 · Datum: 22.09.2025\n\nNadomest za odobrenie za gradenje —\nstanbena zgrada P+4, KP 1123/7\n\nIznos: 184.200,00 MKD\nUplateno na trezorska smetka 100-0000000630-95\n\nSample document — generated for demo data."
+          "extractedText": "OPSTINA CENTAR — SKOPJE\nSektor za urbanizam i gradezni raboti\n\nPOTVRDA ZA UPLATA\nBr. 09-4471/2 · Datum: 22.09.2025\n\nNadomest za odobrenie za gradenje —\nstanbena zgrada P+4, KP 1123/7\n\nIznos: 184.200,00 MKD\nUplateno na trezorska smetka 100-0000000630-95\n\nSample document — generated for demo data.",
+          "sha256": "6146ece094ad6bae5aaeeb5a33f6159f235ab7734dcc8f4d2f72049d752c55be"
         }
       ]
     },
@@ -341,7 +342,8 @@
           "mime": "image/svg+xml",
           "size": 1415,
           "uploaded": "2026-05-13T07:41:00Z",
-          "extractedText": "BETON-GRAD DOO Skopje\nul. Industriska 14, Skopje · MK4080012345678\n\nFAKTURA br. 2026-0517\nDatum: 12.05.2026 · Valuta: MKD\n\nBeton M400, pumpan — 46 m³ × 6.500 MKD ... 299.000,00\nTransport mikser 4 turi ... 18.500,00\n\nVKUPNO za plakjanje: 317.500,00 MKD\n\nSample document — generated for demo data."
+          "extractedText": "BETON-GRAD DOO Skopje\nul. Industriska 14, Skopje · MK4080012345678\n\nFAKTURA br. 2026-0517\nDatum: 12.05.2026 · Valuta: MKD\n\nBeton M400, pumpan — 46 m³ × 6.500 MKD ... 299.000,00\nTransport mikser 4 turi ... 18.500,00\n\nVKUPNO za plakjanje: 317.500,00 MKD\n\nSample document — generated for demo data.",
+          "sha256": "060113b3dab6fed92afb9637b4e9bfd9f8c70c167a268a11ff666391cf25b5c8"
         }
       ]
     },
@@ -378,7 +380,8 @@
           "mime": "image/svg+xml",
           "size": 1444,
           "uploaded": "2026-06-19T10:02:00Z",
-          "extractedText": "ALUMIL Systems GmbH\nAluminium & glazing systems · EU-VAT DE811223344\n\nINVOICE No. INV-2026-1184\nDate: 2026-06-18 · Currency: EUR\n\nWindow units, 3-pane PVC-Alu — floors 1–3 (48 pcs) ... 21,340.00\nDelivery & on-site crane ... 1,260.00\n\nTOTAL DUE: € 22,600.00\n\nSample document — generated for demo data."
+          "extractedText": "ALUMIL Systems GmbH\nAluminium & glazing systems · EU-VAT DE811223344\n\nINVOICE No. INV-2026-1184\nDate: 2026-06-18 · Currency: EUR\n\nWindow units, 3-pane PVC-Alu — floors 1–3 (48 pcs) ... 21,340.00\nDelivery & on-site crane ... 1,260.00\n\nTOTAL DUE: € 22,600.00\n\nSample document — generated for demo data.",
+          "sha256": "8b3d77341de9cc3b890300279ab7559f5085f56342c307d51d191dbe491dbd1f"
         }
       ]
     },
@@ -400,7 +403,8 @@
           "mime": "image/jpeg",
           "size": 3246966,
           "uploaded": "2026-07-30T00:40:00Z",
-          "extractedText": "Комерцијална банка — УПЛАТНИЦА (образец ПП10)\n\nУПЛАТУВАЧ\nНазив и седиште на уплатувач: ЏЕВАТ ИБРАИМИ\nБанка на уплатувач: Комерцијална банка а.д. Скопје\nДаночен број или ЕМБГ и повикување на број: 80710-03862491\nЦел на дознака: Уплата на тековна трансакциска сметка\n\nПРИМАЧ\nНазив и седиште на примач: ЏЕВАТ ИБРАИМИ\nБанка на примач: Комерцијална банка а.д. Скопје\nТрансакциска сметка: 300000710386245-1\nИЗНОС: МКД 2.700,00\nШифра: 289\nНачин: 0\n\nДатум на уплата: 02.07.2026\nМесто на уплата: ТЕТОВО\nПотпис: (потпишано)\n\nФискален печат: 4668 3610 1 0154 Бр.К.Л.031/8\n02.07.26 12:14 0610 -001-"
+          "extractedText": "Комерцијална банка — УПЛАТНИЦА (образец ПП10)\n\nУПЛАТУВАЧ\nНазив и седиште на уплатувач: ЏЕВАТ ИБРАИМИ\nБанка на уплатувач: Комерцијална банка а.д. Скопје\nДаночен број или ЕМБГ и повикување на број: 80710-03862491\nЦел на дознака: Уплата на тековна трансакциска сметка\n\nПРИМАЧ\nНазив и седиште на примач: ЏЕВАТ ИБРАИМИ\nБанка на примач: Комерцијална банка а.д. Скопје\nТрансакциска сметка: 300000710386245-1\nИЗНОС: МКД 2.700,00\nШифра: 289\nНачин: 0\n\nДатум на уплата: 02.07.2026\nМесто на уплата: ТЕТОВО\nПотпис: (потпишано)\n\nФискален печат: 4668 3610 1 0154 Бр.К.Л.031/8\n02.07.26 12:14 0610 -001-",
+          "sha256": "75c1212f4d4dd2f80decbd2113995cc2ee946b01a637df9f69656e413631d62e"
         }
       ]
     },
