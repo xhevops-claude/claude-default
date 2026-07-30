@@ -10,17 +10,20 @@
 <title>Claude Usage</title>
 <script>
   if (window.self !== window.top) document.documentElement.classList.add('embedded');
-  // Template pre-paint: ?template=oled pins it (handy for kiosk/mini devices),
-  // otherwise the last picked one from localStorage. "classic" = no attribute.
+  // Template pre-paint: ?template=classic pins it (handy for kiosk/mini
+  // devices), otherwise the last picked one from localStorage, otherwise
+  // oled. "classic" = no attribute. OLED boots in minimal (.min) mode.
   (function () {
-    var valid = ['classic', 'oled', 'mono', 'paper'];
+    var valid = ['classic', 'oled'];
     var t = new URLSearchParams(location.search).get('template');
     if (valid.indexOf(t) !== -1) {
       try { localStorage.setItem('usage-template', t); } catch (e) {}
     } else {
       try { t = localStorage.getItem('usage-template'); } catch (e) { t = null; }
     }
-    if (valid.indexOf(t) !== -1 && t !== 'classic') document.documentElement.dataset.template = t;
+    if (valid.indexOf(t) === -1) t = 'oled';
+    if (t !== 'classic') document.documentElement.dataset.template = t;
+    if (t === 'oled') document.documentElement.classList.add('min');
   })();
 </script>
 <style>
@@ -111,34 +114,30 @@
 
   /* --- Templates ---------------------------------------------------------
      html[data-template=...] outranks the :root defaults (and the dark-mode
-     media query), so each template wins in both color schemes. */
+     media query), so the template wins in both color schemes. */
 
-  /* OLED: true-black page, Claude orange, hairline-thin minimal bars.
-     Pure #000 lets OLED panels switch pixels off entirely. */
+  /* OLED: true-black page (pixels fully off), everything Claude orange,
+     hairline-thin bars. Boots in minimal mode. */
   html[data-template="oled"] {
-    --page: #000; --ink: #ece7dc; --ink2: #8f8a7e; --muted: #5c584f;
+    --page: #000; --ink: #d97757; --ink2: #8f8a7e; --muted: #5c584f;
     --track: #141414; --hairline: #1b1b1b; --accent: #d97757; --rest: #d97757;
   }
   html[data-template="oled"] .track { height: 4px; border-radius: 2px; background: #141414; }
-  html[data-template="oled"] .fill { border-radius: 0 2px 2px 0; min-width: 2px; }
-  html[data-template="oled"] .tick { opacity: .3; }
+  html[data-template="oled"] .fill { border-radius: 0 2px 2px 0; min-width: 2px; background: #d97757; }
+  html[data-template="oled"] .tick { display: none; }
   html[data-template="oled"] .status-dot { width: 6px; height: 6px; }
 
-  /* Mono: true-black with soft warm-gray bars — no color at all. */
-  html[data-template="mono"] {
-    --page: #000; --ink: #dedad1; --ink2: #8f8a7e; --muted: #5c584f;
-    --track: #141414; --hairline: #1b1b1b; --accent: #a39e91; --rest: #a39e91;
-  }
-  html[data-template="mono"] .track { height: 4px; border-radius: 2px; background: #141414; }
-  html[data-template="mono"] .fill { border-radius: 0 2px 2px 0; min-width: 2px; }
-  html[data-template="mono"] .tick { opacity: .3; }
-  html[data-template="mono"] .status-dot { width: 6px; height: 6px; }
-
-  /* Paper: flat white, near-black ink — high contrast, e-ink friendly. */
-  html[data-template="paper"] {
-    --page: #fff; --ink: #111; --ink2: #3d3d3d; --muted: #6e6e6e;
-    --track: #ececec; --hairline: #ddd; --accent: #c15f3c; --rest: #111;
-  }
+  /* Minimal mode (.min), any template: only labels + sliders, centered.
+     Tapping anywhere (not on a control) toggles it. */
+  html.min header,
+  html.min .banner,
+  html.min .meter-value,
+  html.min .meter-sub,
+  html.min .money,
+  html.min footer { display: none; }
+  html.min body { display: flex; align-items: center; padding: 24px 0; }
+  html.min main { width: 100%; }
+  html.min .meter:last-child { margin-bottom: 0; }
 </style>
 </head>
 <body>
@@ -162,8 +161,6 @@
       <nav class="templates" id="templates" aria-label="Template">
         <button type="button" data-template="classic">classic</button>
         <button type="button" data-template="oled">oled</button>
-        <button type="button" data-template="mono">mono</button>
-        <button type="button" data-template="paper">paper</button>
       </nav>
     </footer>
     <noscript>This page needs JavaScript to fetch the usage feed.</noscript>
@@ -309,7 +306,7 @@
     }
   }
 
-  const TEMPLATES = ["classic", "oled", "mono", "paper"];
+  const TEMPLATES = ["classic", "oled"];
 
   function currentTemplate() {
     return document.documentElement.dataset.template || "classic";
@@ -326,10 +323,19 @@
     if (!TEMPLATES.includes(t)) return;
     if (t === "classic") delete document.documentElement.dataset.template;
     else document.documentElement.dataset.template = t;
+    // each template returns to its default mode: oled minimal, classic full
+    document.documentElement.classList.toggle("min", t === "oled");
     try { localStorage.setItem("usage-template", t); } catch (e) {}
     markTemplatePicker();
   });
   markTemplatePicker();
+
+  // Tapping anywhere (not on a control) toggles minimal mode — labels and
+  // sliders only. Works in both templates; tap again for the full UI.
+  document.addEventListener("click", (ev) => {
+    if (ev.target.closest("button, a")) return;
+    document.documentElement.classList.toggle("min");
+  });
 
   $("quit").addEventListener("click", () => {
     if (window.self !== window.top) {
