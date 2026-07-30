@@ -127,7 +127,14 @@ Do this with `grep` only — never read expense files in bulk; the check must co
 1. **Exact re-upload:** `grep -rl "<sha256-of-new-file>" apps/expenses/data/expenses/` — a hit means this exact document is already attached to an expense.
 2. **Same invoice, different photo:** `grep -rl '"amount": <amount>' apps/expenses/data/expenses/<yyyy>/` then narrow the (few) hits by currency/date/vendor, and compare invoice/reference numbers against the new document's text.
 
-On any hit, show the user the matching expense (vendor, date, amount, file) and ask whether this is really a second, intentional entry. Only after they explicitly confirm, write the new expense with `"allowDuplicate": true` — the build script fails CI on duplicate `sha256` or duplicate date+amount+currency+vendor without that flag, so an unconfirmed duplicate cannot merge.
+### On detection: always prompt, and batch the prompts
+
+A suspected duplicate is never resolved in prose or by guessing — put an explicit choice in front of the user with the AskUserQuestion tool:
+
+- **Single bill:** show the matching existing expense (vendor, date, amount, its attached file) next to the new bill's extracted details, and ask with options like **Skip — already recorded** / **Add as intentional duplicate**. Do not write anything for that bill until one of those is picked.
+- **Batch upload (several bills at once):** extract and duplicate-check *all* files first, then raise all suspects together in one prompt round — one question per suspected bill, each self-contained (new bill vs. matching expense) so it can be answered without scrolling back. AskUserQuestion takes up to 4 questions per call; chunk into consecutive calls if there are more. Clean bills are written without prompting; skipped bills are dropped entirely.
+
+Only a bill the user explicitly confirmed gets `"allowDuplicate": true`. The build script remains the backstop: CI fails on duplicate `sha256` or duplicate date+amount+currency+vendor without that flag, so an unconfirmed duplicate cannot merge either way.
 
 ## Conventions worth preserving
 
