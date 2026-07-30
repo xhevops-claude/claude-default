@@ -10,6 +10,18 @@
 <title>Claude Usage</title>
 <script>
   if (window.self !== window.top) document.documentElement.classList.add('embedded');
+  // Template pre-paint: ?template=oled pins it (handy for kiosk/mini devices),
+  // otherwise the last picked one from localStorage. "classic" = no attribute.
+  (function () {
+    var valid = ['classic', 'oled', 'terminal', 'paper'];
+    var t = new URLSearchParams(location.search).get('template');
+    if (valid.indexOf(t) !== -1) {
+      try { localStorage.setItem('usage-template', t); } catch (e) {}
+    } else {
+      try { t = localStorage.getItem('usage-template'); } catch (e) { t = null; }
+    }
+    if (valid.indexOf(t) !== -1 && t !== 'classic') document.documentElement.dataset.template = t;
+  })();
 </script>
 <style>
   /* Claude-themed chrome: ivory page, warm ink, terracotta accent.
@@ -88,6 +100,47 @@
   .skeleton .track { opacity: .5; }
   noscript { display: block; padding: 20px 0; color: var(--ink2); }
   @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+
+  .templates { margin-top: 10px; display: flex; gap: 12px; }
+  .templates button {
+    appearance: none; border: 0; background: none; padding: 0; cursor: pointer;
+    font: inherit; font-size: 12px; color: var(--muted);
+  }
+  .templates button:hover { color: var(--ink2); }
+  .templates button[aria-pressed="true"] { color: var(--accent); }
+
+  /* --- Templates ---------------------------------------------------------
+     html[data-template=...] outranks the :root defaults (and the dark-mode
+     media query), so each template wins in both color schemes. */
+
+  /* OLED: true-black page, Claude orange, hairline-thin minimal bars.
+     Pure #000 lets OLED panels switch pixels off entirely. */
+  html[data-template="oled"] {
+    --page: #000; --ink: #ece7dc; --ink2: #8f8a7e; --muted: #5c584f;
+    --track: #141414; --hairline: #1b1b1b; --accent: #d97757; --rest: #d97757;
+  }
+  html[data-template="oled"] .track { height: 4px; border-radius: 2px; background: #141414; }
+  html[data-template="oled"] .fill { border-radius: 0 2px 2px 0; min-width: 2px; }
+  html[data-template="oled"] .tick { opacity: .3; }
+  html[data-template="oled"] .status-dot { width: 6px; height: 6px; }
+
+  /* Terminal: green phosphor on black, monospace everything. */
+  html[data-template="terminal"] {
+    --page: #000; --ink: #4ade80; --ink2: #34a45c; --muted: #1f7a40;
+    --track: #0c1a10; --hairline: #123920; --accent: #4ade80; --rest: #4ade80;
+  }
+  html[data-template="terminal"] body,
+  html[data-template="terminal"] h1 {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  html[data-template="terminal"] .track { border-radius: 0; }
+  html[data-template="terminal"] .fill { border-radius: 0; }
+
+  /* Paper: flat white, near-black ink — high contrast, e-ink friendly. */
+  html[data-template="paper"] {
+    --page: #fff; --ink: #111; --ink2: #3d3d3d; --muted: #6e6e6e;
+    --track: #ececec; --hairline: #ddd; --accent: #c15f3c; --rest: #111;
+  }
 </style>
 </head>
 <body>
@@ -106,7 +159,15 @@
       <div class="meter"><div class="meter-top"><span class="meter-label">&nbsp;</span></div><div class="track"></div></div>
     </div>
     <div class="money" id="money" hidden></div>
-    <footer>one shared pool: claude.ai · Claude Code · artifacts</footer>
+    <footer>
+      one shared pool: claude.ai · Claude Code · artifacts
+      <nav class="templates" id="templates" aria-label="Template">
+        <button type="button" data-template="classic">classic</button>
+        <button type="button" data-template="oled">oled</button>
+        <button type="button" data-template="terminal">terminal</button>
+        <button type="button" data-template="paper">paper</button>
+      </nav>
+    </footer>
     <noscript>This page needs JavaScript to fetch the usage feed.</noscript>
   </main>
 <script>
@@ -249,6 +310,28 @@
       updateBanner();
     }
   }
+
+  const TEMPLATES = ["classic", "oled", "terminal", "paper"];
+
+  function currentTemplate() {
+    return document.documentElement.dataset.template || "classic";
+  }
+
+  function markTemplatePicker() {
+    for (const btn of $("templates").querySelectorAll("button")) {
+      btn.setAttribute("aria-pressed", String(btn.dataset.template === currentTemplate()));
+    }
+  }
+
+  $("templates").addEventListener("click", (ev) => {
+    const t = ev.target.dataset && ev.target.dataset.template;
+    if (!TEMPLATES.includes(t)) return;
+    if (t === "classic") delete document.documentElement.dataset.template;
+    else document.documentElement.dataset.template = t;
+    try { localStorage.setItem("usage-template", t); } catch (e) {}
+    markTemplatePicker();
+  });
+  markTemplatePicker();
 
   $("quit").addEventListener("click", () => {
     if (window.self !== window.top) {
