@@ -183,13 +183,19 @@
 
     let files = '';
     if (Array.isArray(e.attachments) && e.attachments.length) {
-      // Stored under a GUID; label + download name are the original filename.
+      // Stored under a GUID; label + download name are the original
+      // filename. Tapping the name previews, the arrow downloads.
       files = `<div class="exp-files">${e.attachments.map((a) => `
-        <a class="exp-file" href="${escapeHTML(a.file)}" download="${escapeHTML(a.originalName)}">
-          <span aria-hidden="true">📎</span>
-          <span class="fname">${escapeHTML(a.originalName)}</span>
-          <span class="fsize">${escapeHTML(fmtSize(a.size))}</span>
-        </a>
+        <div class="exp-file-row">
+          <a class="exp-file" href="${escapeHTML(a.file)}"
+             data-name="${escapeHTML(a.originalName)}" data-mime="${escapeHTML(a.mime || '')}">
+            <span aria-hidden="true">📎</span>
+            <span class="fname">${escapeHTML(a.originalName)}</span>
+            <span class="fsize">${escapeHTML(fmtSize(a.size))}</span>
+          </a>
+          <a class="exp-dl" href="${escapeHTML(a.file)}" download="${escapeHTML(a.originalName)}"
+             aria-label="Download ${escapeHTML(a.originalName)}">⬇</a>
+        </div>
       `).join('')}</div>`;
     }
 
@@ -423,9 +429,58 @@
 
   // Expand / collapse expense rows (skip clicks on attachment links).
   document.addEventListener('click', (e) => {
-    if (e.target.closest('.exp-file')) return;
+    if (e.target.closest('.exp-file-row')) return;
     const head = e.target.closest('.exp-head');
     if (head) head.parentElement.classList.toggle('open');
+  });
+
+  // ---- Attachment preview lightbox ----
+  const lightbox = $('lightbox');
+
+  function previewKind(mime, file) {
+    const m = (mime || '').toLowerCase();
+    if (m.startsWith('image/')) return 'image';
+    if (m === 'application/pdf') return 'pdf';
+    const ext = (file.split('.').pop() || '').toLowerCase();
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif'].indexOf(ext) !== -1) return 'image';
+    if (ext === 'pdf') return 'pdf';
+    return null;
+  }
+
+  function openLightbox(file, name, mime) {
+    const kind = previewKind(mime, file);
+    const dl = $('lb-download');
+    $('lb-name').textContent = name;
+    dl.href = file;
+    dl.setAttribute('download', name);
+    if (kind === 'image') {
+      $('lb-body').innerHTML = `<img src="${escapeHTML(file)}" alt="${escapeHTML(name)}">`;
+    } else if (kind === 'pdf') {
+      $('lb-body').innerHTML = `<iframe src="${escapeHTML(file)}" title="${escapeHTML(name)}"></iframe>`;
+    } else {
+      $('lb-body').innerHTML = '<div class="lb-fallback">No inline preview for this file type — use Download.</div>';
+    }
+    lightbox.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    lightbox.hidden = true;
+    $('lb-body').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('click', (e) => {
+    const open = e.target.closest('.exp-file');
+    if (!open) return;
+    e.preventDefault();
+    openLightbox(open.getAttribute('href'), open.dataset.name, open.dataset.mime);
+  });
+
+  $('lb-close').addEventListener('click', closeLightbox);
+  lightbox.querySelector('.lb-backdrop').addEventListener('click', closeLightbox);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
   });
 
   $('quit').addEventListener('click', () => {

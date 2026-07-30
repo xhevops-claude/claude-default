@@ -112,6 +112,18 @@
     </footer>
   </div>
 
+  <div id="lightbox" hidden>
+    <div class="lb-backdrop"></div>
+    <div class="lb-panel" role="dialog" aria-modal="true" aria-label="Attachment preview">
+      <div class="lb-bar">
+        <span class="lb-name" id="lb-name"></span>
+        <a class="lb-btn" id="lb-download" href="#" download>⬇ Download</a>
+        <button class="lb-btn" id="lb-close" type="button" aria-label="Close preview">✕</button>
+      </div>
+      <div class="lb-body" id="lb-body"></div>
+    </div>
+  </div>
+
   <noscript>This app needs JavaScript to load the ledger.</noscript>
   <script src="app.js"></script>
 </body>

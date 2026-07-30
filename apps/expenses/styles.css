@@ -301,6 +301,19 @@ body {
 
 .exp-files { display: flex; flex-direction: column; gap: 6px; }
 
+.exp-file-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+.exp-dl {
+  flex: none;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px 6px;
+}
+
+.exp-dl:hover { color: var(--accent); }
+
 .exp-file {
   display: inline-flex;
   align-items: center;
@@ -444,6 +457,90 @@ body {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* ---- Attachment preview lightbox ---- */
+
+#lightbox { position: fixed; inset: 0; z-index: 1000; }
+
+.lb-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 13, 10, 0.72);
+}
+
+.lb-panel {
+  position: absolute;
+  inset: clamp(10px, 4vh, 40px) clamp(10px, 4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.lb-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.lb-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-btn {
+  appearance: none;
+  flex: none;
+  border: 1px solid var(--hairline);
+  background: none;
+  color: var(--ink2);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 7px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.lb-btn:hover { color: var(--ink); border-color: var(--muted); }
+
+.lb-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--page);
+}
+
+.lb-body img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.lb-body iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.lb-fallback {
+  padding: 30px;
+  text-align: center;
+  color: var(--ink2);
+  font-size: 14px;
 }
 
 /* ---- Footer ---- */
