@@ -98,7 +98,9 @@ html, body {
 
 .chan-switches { display: flex; flex-direction: column; gap: 2px; }
 .chan-switch { padding: 8px 2px; }
-.chan-switch .switch-text { flex: 1; display: flex; justify-content: space-between; gap: 10px; }
+.chan-switch .switch-text { flex: 1; display: flex; align-items: baseline; gap: 10px; }
+.chan-name { flex: 1; }
+.chan-upto { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .chan-n { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* Date sliders */
