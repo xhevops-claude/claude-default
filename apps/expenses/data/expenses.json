@@ -2,8 +2,10 @@
   "meta": {
     "project": "Apartment building — P+4, KP 1123/7",
     "baseCurrency": "EUR",
-    "fixedRates": { "MKD": 61.5 },
-    "updated": "2026-07-30T00:00:00Z"
+    "fixedRates": {
+      "MKD": 61.5
+    },
+    "updated": "2026-07-30T17:57:05.388Z"
   },
   "categories": [
     {
@@ -11,8 +13,14 @@
       "name": "Permits & Fees",
       "icon": "📋",
       "fields": [
-        { "key": "authority", "label": "Authority" },
-        { "key": "reference", "label": "Reference no." }
+        {
+          "key": "authority",
+          "label": "Authority"
+        },
+        {
+          "key": "reference",
+          "label": "Reference no."
+        }
       ]
     },
     {
@@ -20,8 +28,14 @@
       "name": "Design & Engineering",
       "icon": "📐",
       "fields": [
-        { "key": "firm", "label": "Firm" },
-        { "key": "phase", "label": "Phase" }
+        {
+          "key": "firm",
+          "label": "Firm"
+        },
+        {
+          "key": "phase",
+          "label": "Phase"
+        }
       ]
     },
     {
@@ -29,8 +43,14 @@
       "name": "Materials",
       "icon": "🧱",
       "fields": [
-        { "key": "supplier", "label": "Supplier" },
-        { "key": "quantity", "label": "Quantity" }
+        {
+          "key": "supplier",
+          "label": "Supplier"
+        },
+        {
+          "key": "quantity",
+          "label": "Quantity"
+        }
       ]
     },
     {
@@ -38,8 +58,14 @@
       "name": "Labor",
       "icon": "👷",
       "fields": [
-        { "key": "crew", "label": "Crew / contractor" },
-        { "key": "period", "label": "Work period" }
+        {
+          "key": "crew",
+          "label": "Crew / contractor"
+        },
+        {
+          "key": "period",
+          "label": "Work period"
+        }
       ]
     },
     {
@@ -47,8 +73,14 @@
       "name": "Machinery & Equipment",
       "icon": "🚜",
       "fields": [
-        { "key": "machine", "label": "Machine" },
-        { "key": "hours", "label": "Hours / days" }
+        {
+          "key": "machine",
+          "label": "Machine"
+        },
+        {
+          "key": "hours",
+          "label": "Hours / days"
+        }
       ]
     },
     {
@@ -56,7 +88,10 @@
       "name": "Transport",
       "icon": "🚚",
       "fields": [
-        { "key": "route", "label": "Route" }
+        {
+          "key": "route",
+          "label": "Route"
+        }
       ]
     },
     {
@@ -70,9 +105,18 @@
       "name": "Insurance",
       "icon": "🛡️",
       "fields": [
-        { "key": "provider", "label": "Provider" },
-        { "key": "reference", "label": "Reference no." },
-        { "key": "period", "label": "Period covered" }
+        {
+          "key": "provider",
+          "label": "Provider"
+        },
+        {
+          "key": "reference",
+          "label": "Reference no."
+        },
+        {
+          "key": "period",
+          "label": "Period covered"
+        }
       ]
     }
   ],
@@ -85,7 +129,10 @@
       "vendor": "Arhitektonsko studio Linea",
       "category": "design",
       "description": "Main architectural design package",
-      "details": { "firm": "Studio Linea DOOEL", "phase": "Osnoven proekt" },
+      "details": {
+        "firm": "Studio Linea DOOEL",
+        "phase": "Osnoven proekt"
+      },
       "attachments": []
     },
     {
@@ -96,14 +143,18 @@
       "vendor": "Opstina Centar",
       "category": "permits",
       "description": "Building permit fee",
-      "details": { "authority": "Opstina Centar — urbanizam", "reference": "09-4471/2" },
+      "details": {
+        "authority": "Opstina Centar — urbanizam",
+        "reference": "09-4471/2"
+      },
       "attachments": [
         {
           "file": "files/9b2f8c3a-1e6d-4f5b-8a7c-2d4e6f8a0b1c.svg",
           "originalName": "Potvrda-uplata-odobrenie-za-gradba.svg",
           "mime": "image/svg+xml",
           "size": 1179,
-          "uploaded": "2025-09-23T09:14:00Z"
+          "uploaded": "2025-09-23T09:14:00Z",
+          "extractedText": "OPSTINA CENTAR — SKOPJE\nSektor za urbanizam i gradezni raboti\n\nPOTVRDA ZA UPLATA\nBr. 09-4471/2 · Datum: 22.09.2025\n\nNadomest za odobrenie za gradenje —\nstanbena zgrada P+4, KP 1123/7\n\nIznos: 184.200,00 MKD\nUplateno na trezorska smetka 100-0000000630-95\n\nSample document — generated for demo data."
         }
       ]
     },
@@ -126,7 +177,10 @@
       "vendor": "GeoTerra",
       "category": "design",
       "description": "Geotechnical survey and soil report",
-      "details": { "firm": "GeoTerra DOO", "phase": "Geomehanika" },
+      "details": {
+        "firm": "GeoTerra DOO",
+        "phase": "Geomehanika"
+      },
       "attachments": []
     },
     {
@@ -137,7 +191,10 @@
       "vendor": "Bager-Kop",
       "category": "machinery",
       "description": "Excavation of foundation pit",
-      "details": { "machine": "CAT 320 excavator + 2 trucks", "hours": "6 days" },
+      "details": {
+        "machine": "CAT 320 excavator + 2 trucks",
+        "hours": "6 days"
+      },
       "attachments": []
     },
     {
@@ -148,7 +205,10 @@
       "vendor": "Beton-Grad DOO",
       "category": "materials",
       "description": "Foundation concrete C30/37",
-      "details": { "supplier": "Beton-Grad DOO Skopje", "quantity": "64 m³" },
+      "details": {
+        "supplier": "Beton-Grad DOO Skopje",
+        "quantity": "64 m³"
+      },
       "attachments": []
     },
     {
@@ -159,7 +219,10 @@
       "vendor": "Metal Steel Group",
       "category": "materials",
       "description": "Rebar B500B for foundations and columns",
-      "details": { "supplier": "Metal Steel Group", "quantity": "11.2 t" },
+      "details": {
+        "supplier": "Metal Steel Group",
+        "quantity": "11.2 t"
+      },
       "attachments": []
     },
     {
@@ -170,7 +233,10 @@
       "vendor": "Gradba-Tim",
       "category": "labor",
       "description": "Formwork and concrete crew — foundations",
-      "details": { "crew": "Gradba-Tim (8 workers)", "period": "10 Nov – 5 Dec 2025" },
+      "details": {
+        "crew": "Gradba-Tim (8 workers)",
+        "period": "10 Nov – 5 Dec 2025"
+      },
       "attachments": []
     },
     {
@@ -181,7 +247,10 @@
       "vendor": "KranSkop",
       "category": "machinery",
       "description": "Tower crane assembly + January rent",
-      "details": { "machine": "Potain MC 85", "hours": "monthly rent" },
+      "details": {
+        "machine": "Potain MC 85",
+        "hours": "monthly rent"
+      },
       "attachments": []
     },
     {
@@ -192,7 +261,10 @@
       "vendor": "Beton-Grad DOO",
       "category": "materials",
       "description": "Concrete — ground floor slab and columns",
-      "details": { "supplier": "Beton-Grad DOO Skopje", "quantity": "43 m³" },
+      "details": {
+        "supplier": "Beton-Grad DOO Skopje",
+        "quantity": "43 m³"
+      },
       "attachments": []
     },
     {
@@ -203,7 +275,10 @@
       "vendor": "Gradba-Tim",
       "category": "labor",
       "description": "Structure crew — ground floor",
-      "details": { "crew": "Gradba-Tim (9 workers)", "period": "February 2026" },
+      "details": {
+        "crew": "Gradba-Tim (9 workers)",
+        "period": "February 2026"
+      },
       "attachments": []
     },
     {
@@ -214,7 +289,10 @@
       "vendor": "Metal Steel Group",
       "category": "materials",
       "description": "Rebar — floors 1 and 2",
-      "details": { "supplier": "Metal Steel Group", "quantity": "10.4 t" },
+      "details": {
+        "supplier": "Metal Steel Group",
+        "quantity": "10.4 t"
+      },
       "attachments": []
     },
     {
@@ -225,7 +303,9 @@
       "vendor": "Trans-Mak",
       "category": "transport",
       "description": "Block and mortar delivery, 3 trips",
-      "details": { "route": "Veles depot → site" },
+      "details": {
+        "route": "Veles depot → site"
+      },
       "attachments": []
     },
     {
@@ -236,7 +316,10 @@
       "vendor": "Gradba-Tim",
       "category": "labor",
       "description": "Structure crew — first floor",
-      "details": { "crew": "Gradba-Tim (9 workers)", "period": "March–April 2026" },
+      "details": {
+        "crew": "Gradba-Tim (9 workers)",
+        "period": "March–April 2026"
+      },
       "attachments": []
     },
     {
@@ -247,14 +330,18 @@
       "vendor": "Beton-Grad DOO",
       "category": "materials",
       "description": "Concrete M400 pumped — second floor slab",
-      "details": { "supplier": "Beton-Grad DOO Skopje", "quantity": "46 m³" },
+      "details": {
+        "supplier": "Beton-Grad DOO Skopje",
+        "quantity": "46 m³"
+      },
       "attachments": [
         {
           "file": "files/7c9e6679-7425-40de-944b-e07fc1f90ae7.svg",
           "originalName": "Faktura-2026-0517-Beton-M400.svg",
           "mime": "image/svg+xml",
           "size": 1415,
-          "uploaded": "2026-05-13T07:41:00Z"
+          "uploaded": "2026-05-13T07:41:00Z",
+          "extractedText": "BETON-GRAD DOO Skopje\nul. Industriska 14, Skopje · MK4080012345678\n\nFAKTURA br. 2026-0517\nDatum: 12.05.2026 · Valuta: MKD\n\nBeton M400, pumpan — 46 m³ × 6.500 MKD ... 299.000,00\nTransport mikser 4 turi ... 18.500,00\n\nVKUPNO za plakjanje: 317.500,00 MKD\n\nSample document — generated for demo data."
         }
       ]
     },
@@ -266,7 +353,10 @@
       "vendor": "KranSkop",
       "category": "machinery",
       "description": "Tower crane rent — May",
-      "details": { "machine": "Potain MC 85", "hours": "monthly rent" },
+      "details": {
+        "machine": "Potain MC 85",
+        "hours": "monthly rent"
+      },
       "attachments": []
     },
     {
@@ -277,14 +367,18 @@
       "vendor": "Alumil Systems",
       "category": "materials",
       "description": "Windows for floors 1–3, incl. delivery",
-      "details": { "supplier": "Alumil Systems GmbH", "quantity": "48 units" },
+      "details": {
+        "supplier": "Alumil Systems GmbH",
+        "quantity": "48 units"
+      },
       "attachments": [
         {
           "file": "files/550e8400-e29b-41d4-a716-446655440000.svg",
           "originalName": "Invoice-INV-2026-1184-Alumil-windows.svg",
           "mime": "image/svg+xml",
           "size": 1444,
-          "uploaded": "2026-06-19T10:02:00Z"
+          "uploaded": "2026-06-19T10:02:00Z",
+          "extractedText": "ALUMIL Systems GmbH\nAluminium & glazing systems · EU-VAT DE811223344\n\nINVOICE No. INV-2026-1184\nDate: 2026-06-18 · Currency: EUR\n\nWindow units, 3-pane PVC-Alu — floors 1–3 (48 pcs) ... 21,340.00\nDelivery & on-site crane ... 1,260.00\n\nTOTAL DUE: € 22,600.00\n\nSample document — generated for demo data."
         }
       ]
     },
@@ -305,7 +399,8 @@
           "originalName": "Uplatnica-zdravstveno-osiguruvanje-2026-07-02.jpeg",
           "mime": "image/jpeg",
           "size": 3246966,
-          "uploaded": "2026-07-30T00:40:00Z"
+          "uploaded": "2026-07-30T00:40:00Z",
+          "extractedText": "Комерцијална банка — УПЛАТНИЦА (образец ПП10)\n\nУПЛАТУВАЧ\nНазив и седиште на уплатувач: ЏЕВАТ ИБРАИМИ\nБанка на уплатувач: Комерцијална банка а.д. Скопје\nДаночен број или ЕМБГ и повикување на број: 80710-03862491\nЦел на дознака: Уплата на тековна трансакциска сметка\n\nПРИМАЧ\nНазив и седиште на примач: ЏЕВАТ ИБРАИМИ\nБанка на примач: Комерцијална банка а.д. Скопје\nТрансакциска сметка: 300000710386245-1\nИЗНОС: МКД 2.700,00\nШифра: 289\nНачин: 0\n\nДатум на уплата: 02.07.2026\nМесто на уплата: ТЕТОВО\nПотпис: (потпишано)\n\nФискален печат: 4668 3610 1 0154 Бр.К.Л.031/8\n02.07.26 12:14 0610 -001-"
         }
       ]
     },
@@ -317,7 +412,10 @@
       "vendor": "Gradba-Tim",
       "category": "labor",
       "description": "Structure crew — second floor",
-      "details": { "crew": "Gradba-Tim (9 workers)", "period": "June 2026" },
+      "details": {
+        "crew": "Gradba-Tim (9 workers)",
+        "period": "June 2026"
+      },
       "attachments": []
     },
     {
@@ -328,7 +426,10 @@
       "vendor": "Tondach Skopje",
       "category": "materials",
       "description": "Ceramic blocks — third floor walls",
-      "details": { "supplier": "Tondach Skopje", "quantity": "14 palettes" },
+      "details": {
+        "supplier": "Tondach Skopje",
+        "quantity": "14 palettes"
+      },
       "attachments": []
     },
     {
