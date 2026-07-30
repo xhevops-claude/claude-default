@@ -20,9 +20,13 @@
   let data = null;
   let categoriesById = {};
 
-  // Expenses view: period scope + grouping, all cursors UTC.
+  // Expenses view: period scope + grouping + free-text search, cursors UTC.
   let scope = 'all'; // all | daily | weekly | monthly | annual
   let grouping = 'none'; // none | month | week
+  let searchQuery = '';
+  // Expenses whose only match for the current query is inside a
+  // document's extracted text — flagged in the list so the hit makes sense.
+  let textMatchIds = new Set();
   const today = new Date();
   const cursor = {
     day: new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())),
@@ -193,6 +197,7 @@
     }
     recordRows.push(['Date', fmtDayLong(dateOf(e))]);
     recordRows.push(['Category', `${icon} ${catName}`]);
+    if (e.allowDuplicate) recordRows.push(['Duplicate', 'Confirmed intentional duplicate']);
     if (cat && Array.isArray(cat.fields) && e.details) {
       for (const f of cat.fields) {
         if (e.details[f.key] !== undefined && e.details[f.key] !== '') {
@@ -233,6 +238,7 @@
           <div class="exp-main">
             <div class="exp-vendor">${escapeHTML(e.vendor)}</div>
             <div class="exp-sub">${escapeHTML(catName)}${e.description ? ' · ' + escapeHTML(e.description) : ''}</div>
+            ${textMatchIds.has(e.id) ? '<div class="exp-hit">📎 matches document text</div>' : ''}
           </div>
           <div class="exp-right">
             <div class="exp-amt">${escapeHTML(fmtMoney(e.amount, e.currency))}</div>
@@ -378,6 +384,38 @@
     `).join('')}</div>`;
   }
 
+  // Free-text search across everything we know about an expense,
+  // including the verbatim document text of its attachments. Every
+  // whitespace-separated term must match somewhere.
+  function searchHaystacks(e) {
+    const cat = categoriesById[e.category];
+    const core = [
+      e.vendor, e.description, cat ? cat.name : e.category,
+      e.date, String(e.amount), e.currency,
+      ...Object.values(e.details || {}),
+      ...(e.attachments || []).map((a) => a.originalName),
+    ].join('\n').toLowerCase();
+    const docs = (e.attachments || []).map((a) => a.extractedText || '').join('\n').toLowerCase();
+    return { core, docs };
+  }
+
+  function applySearch(expenses) {
+    textMatchIds = new Set();
+    const terms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return expenses;
+    return expenses.filter((e) => {
+      const { core, docs } = searchHaystacks(e);
+      let docOnly = false;
+      for (const t of terms) {
+        const inCore = core.includes(t);
+        if (!inCore && !docs.includes(t)) return false;
+        if (!inCore) docOnly = true;
+      }
+      if (docOnly) textMatchIds.add(e.id);
+      return true;
+    });
+  }
+
   function renderExpensesView() {
     const range = scopeRange();
     const nav = $('exp-period-nav');
@@ -388,9 +426,9 @@
       $('period-next').disabled = neighborPeriodKey(1) === null;
     }
 
-    const filtered = range
+    const filtered = applySearch(range
       ? data.expenses.filter((e) => e.date >= range.from && e.date < range.to)
-      : data.expenses.slice();
+      : data.expenses.slice());
 
     const sums = sumUp(filtered);
     $('exp-totals').innerHTML = `
@@ -690,6 +728,15 @@
     grouping = btn.dataset.group;
     $('group-pills').querySelectorAll('.pill').forEach((b) => b.classList.toggle('active', b === btn));
     renderExpensesView();
+  });
+
+  let searchTimer = 0;
+  $('exp-search').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchQuery = e.target.value.trim();
+      renderExpensesView();
+    }, 150);
   });
 
   $('period-prev').addEventListener('click', () => movePeriod(-1));

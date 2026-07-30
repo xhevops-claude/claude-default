@@ -381,6 +381,31 @@ body {
 
 .exp-controls { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
 
+#exp-search {
+  appearance: none;
+  width: 100%;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--page);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 14px;
+}
+
+#exp-search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#exp-search::placeholder { color: var(--muted); }
+
+.exp-hit {
+  font-size: 12px;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
 /* Pills scroll horizontally on narrow screens instead of cramping. */
 .pill-row {
   display: flex;

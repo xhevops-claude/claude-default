@@ -118,7 +118,16 @@ The Expenses app is a read-only construction-cost ledger whose writes happen thr
 - `apps/expenses/files/<guid>.<ext>` — attachment originals; metadata keeps `originalName` (used as label and download name) and `size` (must match the file on disk).
 - `apps/expenses/data/expenses.json` is **generated** by `scripts/build-expenses-data.mjs` (run automatically by `pages.yml` on deploy and by `npm run dev` via `predev`). It is gitignored — never edit or commit it. CI runs the script with `--check` to block malformed data.
 
-Adding an expense from an uploaded document: store the file under a GUID in `files/`, transcribe **all readable text verbatim** (original script — e.g. Macedonian Cyrillic) into the attachment's `extractedText` field for future content search, write the per-expense JSON, then land it on `main` via the normal PR + green CI flow. The user confirms extracted details before anything is committed.
+Adding an expense from an uploaded document: store the file under a GUID in `files/`, transcribe **all readable text verbatim** (original script — e.g. Macedonian Cyrillic) into the attachment's `extractedText` field for future content search, compute the file's `sha256` (`sha256sum <file>`) into the attachment metadata, write the per-expense JSON, then land it on `main` via the normal PR + green CI flow. The user confirms extracted details before anything is committed.
+
+### Duplicate check (mandatory before writing any expense)
+
+Do this with `grep` only — never read expense files in bulk; the check must cost the same at 10,000 expenses as at 20:
+
+1. **Exact re-upload:** `grep -rl "<sha256-of-new-file>" apps/expenses/data/expenses/` — a hit means this exact document is already attached to an expense.
+2. **Same invoice, different photo:** `grep -rl '"amount": <amount>' apps/expenses/data/expenses/<yyyy>/` then narrow the (few) hits by currency/date/vendor, and compare invoice/reference numbers against the new document's text.
+
+On any hit, show the user the matching expense (vendor, date, amount, file) and ask whether this is really a second, intentional entry. Only after they explicitly confirm, write the new expense with `"allowDuplicate": true` — the build script fails CI on duplicate `sha256` or duplicate date+amount+currency+vendor without that flag, so an unconfirmed duplicate cannot merge.
 
 ## Conventions worth preserving
 
