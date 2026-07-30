@@ -53,6 +53,7 @@ function validCurrency(cur) {
 }
 
 const expenses = [];
+const records = []; // { exp, rel } for cross-file duplicate checks
 const seenIds = new Map(); // id -> file that declared it
 
 function checkExpense(exp, rel, year, month) {
@@ -101,6 +102,44 @@ function checkExpense(exp, rel, year, month) {
       if (a.extractedText !== undefined && typeof a.extractedText !== 'string') {
         fail(rel, `attachment ${a.file} extractedText must be a string`);
       }
+      // Content hash powers cheap exact-duplicate detection (grep for
+      // the hash) — required on every attachment.
+      if (typeof a.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(a.sha256)) {
+        fail(rel, `attachment ${a.file} needs a "sha256" (64 lowercase hex chars)`);
+      }
+    }
+  }
+  if (exp.allowDuplicate !== undefined && exp.allowDuplicate !== true) {
+    fail(rel, 'allowDuplicate, when present, must be exactly true');
+  }
+}
+
+// A duplicate signal blocks the build unless the LATER expense carries
+// "allowDuplicate": true — set only after the owner explicitly confirms
+// the bill really is a second, intentional entry.
+function checkDuplicates(records) {
+  // A colliding pair is fine when EITHER side carries the confirmation
+  // flag — directory order must not decide which file is "the copy".
+  const byHash = new Map(); // attachment sha256 -> { rel, allow }
+  const byKey = new Map(); // date|amount|currency|vendor -> { rel, allow }
+  for (const { exp, rel } of records) {
+    const allow = exp.allowDuplicate === true;
+    for (const a of exp.attachments || []) {
+      if (!a.sha256) continue;
+      const first = byHash.get(a.sha256);
+      if (first && !allow && !first.allow) {
+        fail(rel, `attachment ${a.file} has the same sha256 as an attachment in ${first.rel} — same document uploaded twice; if intentional, set "allowDuplicate": true after the owner confirms`);
+      } else if (!first) {
+        byHash.set(a.sha256, { rel, allow });
+      }
+    }
+    const key = [exp.date, exp.amount, exp.currency,
+      String(exp.vendor || '').toLowerCase().replace(/\s+/g, ' ').trim()].join('|');
+    const first = byKey.get(key);
+    if (first && !allow && !first.allow) {
+      fail(rel, `possible duplicate of ${first.rel} (same date + amount + currency + vendor); if intentional, set "allowDuplicate": true after the owner confirms`);
+    } else if (!first) {
+      byKey.set(key, { rel, allow });
     }
   }
 }
@@ -125,6 +164,7 @@ if (existsSync(EXPENSES_DIR)) {
         const exp = readJSON(join(EXPENSES_DIR, year, month, name), rel);
         if (!exp) continue;
         checkExpense(exp, rel, year, month);
+        records.push({ exp, rel });
         expenses.push(exp);
       }
     }
@@ -132,6 +172,8 @@ if (existsSync(EXPENSES_DIR)) {
 } else {
   fail('data/expenses', 'directory does not exist');
 }
+
+checkDuplicates(records);
 
 if (errors.length) {
   console.error(`Expenses data validation FAILED (${errors.length} problem${errors.length === 1 ? '' : 's'}):`);
