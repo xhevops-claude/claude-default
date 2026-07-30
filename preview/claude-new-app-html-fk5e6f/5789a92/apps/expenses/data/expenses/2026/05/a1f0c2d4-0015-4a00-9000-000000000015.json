@@ -1,0 +1,23 @@
+{
+  "id": "a1f0c2d4-0015-4a00-9000-000000000015",
+  "date": "2026-05-12",
+  "amount": 317500,
+  "currency": "MKD",
+  "vendor": "Beton-Grad DOO",
+  "category": "materials",
+  "description": "Concrete M400 pumped — second floor slab",
+  "details": {
+    "supplier": "Beton-Grad DOO Skopje",
+    "quantity": "46 m³"
+  },
+  "attachments": [
+    {
+      "file": "files/7c9e6679-7425-40de-944b-e07fc1f90ae7.svg",
+      "originalName": "Faktura-2026-0517-Beton-M400.svg",
+      "mime": "image/svg+xml",
+      "size": 1415,
+      "uploaded": "2026-05-13T07:41:00Z",
+      "extractedText": "BETON-GRAD DOO Skopje\nul. Industriska 14, Skopje · MK4080012345678\n\nFAKTURA br. 2026-0517\nDatum: 12.05.2026 · Valuta: MKD\n\nBeton M400, pumpan — 46 m³ × 6.500 MKD ... 299.000,00\nTransport mikser 4 turi ... 18.500,00\n\nVKUPNO za plakjanje: 317.500,00 MKD\n\nSample document — generated for demo data."
+    }
+  ]
+}
