@@ -92,6 +92,14 @@
       url: 'apps/expenses/',
     },
     {
+      slug: 'buildtrack',
+      name: 'BuildTrack',
+      meta: 'Tracker',
+      tagline: 'Log build costs from your pocket.',
+      icon: '🧱',
+      url: 'apps/buildtrack/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',
