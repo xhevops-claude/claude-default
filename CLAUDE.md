@@ -108,6 +108,18 @@ Two scheduled workflows publish open data to `gh-pages` under `/cdn/`, **decoupl
 
 Both workflows share a `concurrency: pages-deploy` group with `pages.yml` to serialize `gh-pages` writes.
 
+## Expenses ledger (apps/expenses/)
+
+The Expenses app is a read-only construction-cost ledger whose writes happen through Claude Code sessions. Source of truth is committed per-expense files, aggregated at deploy time:
+
+- `apps/expenses/data/meta.json` — project name, `baseCurrency`, `fixedRates` (MKD pegged at 61.5 per EUR).
+- `apps/expenses/data/categories.json` — category registry; each category declares its own `fields`, so new expense types need data changes only.
+- `apps/expenses/data/expenses/<yyyy>/<mm>/<id>.json` — one expense per file, folder derived from the expense's ISO UTC `date`. Filename must equal the expense `id` (a GUID).
+- `apps/expenses/files/<guid>.<ext>` — attachment originals; metadata keeps `originalName` (used as label and download name) and `size` (must match the file on disk).
+- `apps/expenses/data/expenses.json` is **generated** by `scripts/build-expenses-data.mjs` (run automatically by `pages.yml` on deploy and by `npm run dev` via `predev`). It is gitignored — never edit or commit it. CI runs the script with `--check` to block malformed data.
+
+Adding an expense from an uploaded document: store the file under a GUID in `files/`, transcribe **all readable text verbatim** (original script — e.g. Macedonian Cyrillic) into the attachment's `extractedText` field for future content search, write the per-expense JSON, then land it on `main` via the normal PR + green CI flow. The user confirms extracted details before anything is committed.
+
 ## Conventions worth preserving
 
 - `escapeHTML` in `app.js` is used for any user-supplied or registry-supplied string interpolated into innerHTML. Anything that ends up in `cardHtml`/`cardInner` MUST go through it.
