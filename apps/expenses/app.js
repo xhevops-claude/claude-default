@@ -302,38 +302,75 @@
     }
   }
 
-  function movePeriod(dir) {
+  // Periods with no expenses are hidden, so prev/next jump straight to
+  // the nearest period that has data instead of stepping through gaps.
+  function currentPeriodKey() {
     switch (reportType) {
-      case 'daily': cursor.day = addDays(cursor.day, dir); break;
-      case 'weekly': cursor.day = addDays(cursor.day, dir * 7); break;
-      case 'monthly': {
-        const m = cursor.month + dir;
-        cursor.year += Math.floor(m / 12);
-        cursor.month = ((m % 12) + 12) % 12;
-        break;
+      case 'daily': return isoDate(cursor.day);
+      case 'weekly': return isoDate(mondayOf(cursor.day));
+      case 'monthly': return `${cursor.year}-${String(cursor.month + 1).padStart(2, '0')}`;
+      default: return String(cursor.year);
+    }
+  }
+
+  function periodKeysWithData() {
+    const keys = new Set();
+    for (const e of data.expenses) {
+      switch (reportType) {
+        case 'daily': keys.add(e.date); break;
+        case 'weekly': keys.add(isoDate(mondayOf(dateOf(e)))); break;
+        case 'monthly': keys.add(e.date.slice(0, 7)); break;
+        default: keys.add(e.date.slice(0, 4));
       }
-      default: cursor.year += dir;
+    }
+    return Array.from(keys).sort();
+  }
+
+  function neighborPeriodKey(dir) {
+    const keys = periodKeysWithData();
+    const cur = currentPeriodKey();
+    if (dir > 0) return keys.find((k) => k > cur) || null;
+    let prev = null;
+    for (const k of keys) { if (k < cur) prev = k; else break; }
+    return prev;
+  }
+
+  function movePeriod(dir) {
+    const key = neighborPeriodKey(dir);
+    if (!key) return;
+    switch (reportType) {
+      case 'daily':
+      case 'weekly':
+        cursor.day = new Date(key + 'T00:00:00Z');
+        break;
+      case 'monthly':
+        cursor.year = Number(key.slice(0, 4));
+        cursor.month = Number(key.slice(5, 7)) - 1;
+        break;
+      default:
+        cursor.year = Number(key);
     }
     renderReport();
   }
 
   function periodRowsHtml(rows) {
-    // rows: { name, expenses, onclickAttr }
-    return `<div class="period-rows">${rows.map((r) => {
-      const has = r.expenses.length > 0;
-      return `
-        <button type="button" class="period-row${has ? '' : ' empty-period'}" ${has ? r.attr : 'disabled'}>
-          <span class="p-name">${escapeHTML(r.name)}</span>
-          <span class="p-count">${has ? r.expenses.length + ' exp.' : ''}</span>
-          <span class="p-sums">${has ? sumsInlineHtml(sumUp(r.expenses)) : '<span class="sum">—</span>'}</span>
-        </button>
-      `;
-    }).join('')}</div>`;
+    // rows: { name, expenses, attr } — empty periods are not rendered.
+    const withData = rows.filter((r) => r.expenses.length > 0);
+    if (!withData.length) return '';
+    return `<div class="period-rows">${withData.map((r) => `
+      <button type="button" class="period-row" ${r.attr}>
+        <span class="p-name">${escapeHTML(r.name)}</span>
+        <span class="p-count">${r.expenses.length} exp.</span>
+        <span class="p-sums">${sumsInlineHtml(sumUp(r.expenses))}</span>
+      </button>
+    `).join('')}</div>`;
   }
 
   function renderReport() {
     const range = reportRange();
     $('period-label').textContent = range.label;
+    $('period-prev').disabled = neighborPeriodKey(-1) === null;
+    $('period-next').disabled = neighborPeriodKey(1) === null;
 
     const inPeriod = data.expenses.filter((e) => inRange(e, range.from, range.to));
     const body = $('report-body');

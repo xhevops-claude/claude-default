@@ -397,6 +397,10 @@ body {
 
 .period-nav button:hover { border-color: var(--muted); }
 
+.period-nav button:disabled { opacity: 0.35; cursor: default; }
+
+.period-nav button:disabled:hover { border-color: var(--hairline); }
+
 #period-label { font-size: 16px; font-weight: 600; }
 
 .report-totals {
@@ -429,10 +433,6 @@ body {
 .period-row:last-child { border-bottom: none; }
 
 .period-row:hover { background: var(--accent-soft); }
-
-.period-row.empty-period { color: var(--muted); cursor: default; }
-
-.period-row.empty-period:hover { background: none; }
 
 .period-row .p-name { flex: none; min-width: 86px; font-weight: 550; }
 
