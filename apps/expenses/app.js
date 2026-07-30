@@ -847,14 +847,6 @@
     if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
   });
 
-  $('quit').addEventListener('click', () => {
-    if (window.self !== window.top) {
-      try { window.parent.postMessage({ type: 'close-game' }, '*'); } catch (_) {}
-    } else {
-      location.href = '../../';
-    }
-  });
-
   function hideSplash() {
     const wait = Math.max(0, MIN_SPLASH_MS - (performance.now() - splashStart));
     setTimeout(() => {
