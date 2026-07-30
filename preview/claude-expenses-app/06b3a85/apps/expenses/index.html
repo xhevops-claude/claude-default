@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="light dark">
+  <title>Expenses</title>
+  <script>
+    if (window.self !== window.top) document.documentElement.classList.add('embedded');
+  </script>
+  <style>
+    /* Critical inline CSS so the loading screen paints on the very
+       first frame, before styles.css resolves. Do not move this out. */
+    html, body { margin: 0; padding: 0; background: #211f1c; color: #f2efe8;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    #app-loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #211f1c; color: #f2efe8;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 22px;
+      transition: opacity 0.4s ease;
+    }
+    #app-loading.hidden { opacity: 0; pointer-events: none; }
+    #app-loading .ld-icon { font-size: 84px; line-height: 1; }
+    #app-loading .ld-name { font-size: 15px; letter-spacing: 0.24em; text-transform: uppercase; color: #b8b2a4; }
+    #app-loading .ld-bar {
+      position: relative; width: 180px; height: 3px;
+      background: rgba(255, 255, 255, 0.14); overflow: hidden;
+    }
+    #app-loading .ld-bar::after {
+      content: ""; position: absolute; top: 0; left: -40%;
+      width: 40%; height: 100%; background: #f5a623;
+      animation: ld-bar 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    }
+    @keyframes ld-bar { 0% { left: -40%; } 100% { left: 100%; } }
+  </style>
+  <link rel="stylesheet" href="styles.css?v=06b3a85">
+</head>
+<body>
+  <div id="app-loading">
+    <span class="ld-icon" aria-hidden="true">🏗️</span>
+    <span class="ld-name">Expenses</span>
+    <div class="ld-bar" aria-label="Loading"></div>
+  </div>
+
+  <div class="app">
+    <header class="topbar">
+      <h1><span class="logo" aria-hidden="true">🏗️</span> Expenses</h1>
+      <span class="project" id="project-name"></span>
+      <button id="quit" type="button" aria-label="Quit">✕ Quit</button>
+    </header>
+
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
+      <button class="tab active" data-view="overview" role="tab" aria-selected="true">Overview</button>
+      <button class="tab" data-view="expenses" role="tab" aria-selected="false">Expenses</button>
+      <button class="tab" data-view="reports" role="tab" aria-selected="false">Reports</button>
+    </nav>
+
+    <main>
+      <div class="banner" id="banner" role="status" aria-live="polite" hidden></div>
+
+      <section id="view-overview" class="view active">
+        <div class="card totals-card">
+          <h2>Total spent</h2>
+          <div id="grand-totals" class="totals"></div>
+        </div>
+        <div class="card">
+          <h2>By category</h2>
+          <div id="category-breakdown" class="cat-list"></div>
+        </div>
+        <div class="card">
+          <h2>Latest expenses</h2>
+          <div id="recent-list" class="expense-list"></div>
+        </div>
+      </section>
+
+      <section id="view-expenses" class="view">
+        <div class="card">
+          <div class="list-head">
+            <h2>All expenses</h2>
+            <span class="count" id="expense-count"></span>
+          </div>
+          <div id="expense-list" class="expense-list"></div>
+        </div>
+      </section>
+
+      <section id="view-reports" class="view">
+        <div class="card">
+          <div class="report-controls">
+            <div class="report-types" id="report-types">
+              <button class="rtype active" data-rtype="daily">Daily</button>
+              <button class="rtype" data-rtype="weekly">Weekly</button>
+              <button class="rtype" data-rtype="monthly">Monthly</button>
+              <button class="rtype" data-rtype="annual">Annual</button>
+              <button class="rtype" data-rtype="year-months">Year ÷ months</button>
+              <button class="rtype" data-rtype="year-weeks">Year ÷ weeks</button>
+            </div>
+            <div class="period-nav">
+              <button id="period-prev" type="button" aria-label="Previous period">‹</button>
+              <span id="period-label"></span>
+              <button id="period-next" type="button" aria-label="Next period">›</button>
+            </div>
+          </div>
+          <div id="report-body"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span id="foot-note"></span>
+    </footer>
+  </div>
+
+  <div id="lightbox" hidden>
+    <div class="lb-backdrop"></div>
+    <div class="lb-panel" role="dialog" aria-modal="true" aria-label="Attachment preview">
+      <div class="lb-bar">
+        <span class="lb-name" id="lb-name"></span>
+        <a class="lb-btn" id="lb-download" href="#" download>⬇ Download</a>
+        <button class="lb-btn" id="lb-close" type="button" aria-label="Close preview">✕</button>
+      </div>
+      <div class="lb-body" id="lb-body"></div>
+    </div>
+  </div>
+
+  <noscript>This app needs JavaScript to load the ledger.</noscript>
+  <script src="app.js?v=06b3a85"></script>
+</body>
+</html>
