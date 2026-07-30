@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="840" viewBox="0 0 640 840" font-family="Georgia, serif">
+  <rect width="640" height="840" fill="#fdfcf8"/>
+  <rect x="0" y="0" width="640" height="110" fill="#2b3a55"/>
+  <text x="40" y="52" fill="#fff" font-size="26" font-weight="bold">BETON-GRAD DOO Skopje</text>
+  <text x="40" y="82" fill="#c9d3e6" font-size="14">ul. Industriska 14, Skopje · MK4080012345678</text>
+  <text x="40" y="170" fill="#2b3a55" font-size="22" font-weight="bold">FAKTURA br. 2026-0517</text>
+  <text x="40" y="200" fill="#555" font-size="14">Datum: 12.05.2026 · Valuta: MKD</text>
+  <line x1="40" y1="230" x2="600" y2="230" stroke="#ccc"/>
+  <text x="40" y="270" fill="#333" font-size="15">Beton M400, pumpan — 46 m³ × 6.500 MKD</text>
+  <text x="600" y="270" fill="#333" font-size="15" text-anchor="end">299.000,00</text>
+  <text x="40" y="300" fill="#333" font-size="15">Transport mikser 4 turi</text>
+  <text x="600" y="300" fill="#333" font-size="15" text-anchor="end">18.500,00</text>
+  <line x1="40" y1="330" x2="600" y2="330" stroke="#ccc"/>
+  <text x="40" y="370" fill="#2b3a55" font-size="18" font-weight="bold">VKUPNO za plakjanje</text>
+  <text x="600" y="370" fill="#2b3a55" font-size="18" font-weight="bold" text-anchor="end">317.500,00 MKD</text>
+  <text x="40" y="780" fill="#999" font-size="12">Sample document — generated for demo data.</text>
+</svg>

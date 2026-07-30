@@ -84,6 +84,14 @@
       url: 'apps/usage/',
     },
     {
+      slug: 'expenses',
+      name: 'Expenses',
+      meta: 'Ledger',
+      tagline: 'Construction costs, posted by Claude.',
+      icon: '🏗️',
+      url: 'apps/expenses/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',
