@@ -1,0 +1,23 @@
+{
+  "id": "a1f0c2d4-0002-4a00-9000-000000000002",
+  "date": "2025-09-22",
+  "amount": 184200,
+  "currency": "MKD",
+  "vendor": "Opstina Centar",
+  "category": "permits",
+  "description": "Building permit fee",
+  "details": {
+    "authority": "Opstina Centar — urbanizam",
+    "reference": "09-4471/2"
+  },
+  "attachments": [
+    {
+      "file": "files/9b2f8c3a-1e6d-4f5b-8a7c-2d4e6f8a0b1c.svg",
+      "originalName": "Potvrda-uplata-odobrenie-za-gradba.svg",
+      "mime": "image/svg+xml",
+      "size": 1179,
+      "uploaded": "2025-09-23T09:14:00Z",
+      "extractedText": "OPSTINA CENTAR — SKOPJE\nSektor za urbanizam i gradezni raboti\n\nPOTVRDA ZA UPLATA\nBr. 09-4471/2 · Datum: 22.09.2025\n\nNadomest za odobrenie za gradenje —\nstanbena zgrada P+4, KP 1123/7\n\nIznos: 184.200,00 MKD\nUplateno na trezorska smetka 100-0000000630-95\n\nSample document — generated for demo data."
+    }
+  ]
+}
