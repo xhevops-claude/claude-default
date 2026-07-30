@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#1ec97e">
   <title>Expenses</title>
   <script>
     if (window.self !== window.top) document.documentElement.classList.add('embedded');
@@ -12,126 +13,141 @@
   <style>
     /* Critical inline CSS so the loading screen paints on the very
        first frame, before styles.css resolves. Do not move this out. */
-    html, body { margin: 0; padding: 0; background: #211f1c; color: #f2efe8;
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    html, body { margin: 0; padding: 0; background: #f4f6f9; color: #0d1520;
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif; }
     #app-loading {
       position: fixed; inset: 0; z-index: 9999;
-      background: #211f1c; color: #f2efe8;
+      background: #ffffff; color: #0d1520;
       display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 22px;
+      align-items: center; justify-content: center; gap: 14px;
       transition: opacity 0.4s ease;
     }
     #app-loading.hidden { opacity: 0; pointer-events: none; }
-    #app-loading .ld-icon { font-size: 84px; line-height: 1; }
-    #app-loading .ld-name { font-size: 15px; letter-spacing: 0.24em; text-transform: uppercase; color: #b8b2a4; }
-    #app-loading .ld-bar {
-      position: relative; width: 180px; height: 3px;
-      background: rgba(255, 255, 255, 0.14); overflow: hidden;
+    #app-loading .ld-icon { font-size: 56px; line-height: 1; }
+    #app-loading .ld-name { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; }
+    #app-loading .ld-sub { font-size: 14px; color: #94a3b8; }
+    #app-loading .ld-spinner {
+      width: 28px; height: 28px; border-radius: 50%; margin-top: 10px;
+      border: 3px solid #e2e8f0; border-top-color: #1ec97e;
+      animation: ld-spin 0.7s linear infinite;
     }
-    #app-loading .ld-bar::after {
-      content: ""; position: absolute; top: 0; left: -40%;
-      width: 40%; height: 100%; background: #f5a623;
-      animation: ld-bar 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-    }
-    @keyframes ld-bar { 0% { left: -40%; } 100% { left: 100%; } }
+    @keyframes ld-spin { to { transform: rotate(360deg); } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=ee35dc1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=12e9e61">
 </head>
 <body>
   <div id="app-loading">
     <span class="ld-icon" aria-hidden="true">🏗️</span>
     <span class="ld-name">Expenses</span>
-    <div class="ld-bar" aria-label="Loading"></div>
+    <span class="ld-sub">Construction ledger</span>
+    <div class="ld-spinner" aria-label="Loading"></div>
   </div>
 
-  <div class="app">
-    <header class="topbar">
-      <h1><span class="logo" aria-hidden="true">🏗️</span> Expenses</h1>
-      <span class="project" id="project-name"></span>
-      <button id="quit" type="button" aria-label="Quit">✕ Quit</button>
+  <div id="app">
+    <header id="top-header">
+      <span class="hdr-title" id="project-name">Expenses</span>
+      <button id="quit" class="hdr-btn" type="button" aria-label="Quit">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </header>
 
-    <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
-      <button class="tab active" data-view="overview" role="tab" aria-selected="true">Overview</button>
-      <button class="tab" data-view="expenses" role="tab" aria-selected="false">Expenses</button>
-      <button class="tab" data-view="reports" role="tab" aria-selected="false">Reports</button>
-    </nav>
-
-    <main>
+    <main id="main-content">
       <div class="banner" id="banner" role="status" aria-live="polite" hidden></div>
 
       <section id="view-overview" class="view active">
-        <div class="card totals-card">
-          <h2>Total spent</h2>
-          <div id="grand-totals" class="totals"></div>
+        <div class="hero-card">
+          <div class="hero-label">Total spent</div>
+          <div class="hero-amount" id="hero-total">—</div>
+          <div class="hero-sub" id="hero-sub"></div>
+          <div class="hero-row">
+            <div class="hero-stat">
+              <div class="hero-stat-label">This month</div>
+              <div class="hero-stat-value" id="hero-month">—</div>
+            </div>
+            <div class="hero-divider"></div>
+            <div class="hero-stat">
+              <div class="hero-stat-label">Entries</div>
+              <div class="hero-stat-value" id="hero-count">—</div>
+            </div>
+          </div>
         </div>
-        <div class="card">
-          <h2>By category</h2>
-          <div id="category-breakdown" class="cat-list"></div>
-        </div>
-        <div class="card">
-          <h2>Latest expenses</h2>
-          <div id="recent-list" class="expense-list"></div>
-        </div>
+        <div class="section-head"><span class="section-label">By category</span></div>
+        <div id="category-breakdown" class="category-pills"></div>
+        <div class="section-head"><span class="section-label">Recent expenses</span></div>
+        <div id="recent-list" class="card-list-wrap"></div>
+        <p class="foot-note" id="foot-note"></p>
       </section>
 
       <section id="view-expenses" class="view">
-        <div class="card">
-          <div class="exp-controls">
-            <input type="search" id="exp-search" placeholder="Search vendors, notes, document text…" autocomplete="off">
-            <div class="pill-row" id="scope-pills" role="group" aria-label="Period filter">
-              <button class="pill active" data-scope="all">All</button>
-              <button class="pill" data-scope="daily">Day</button>
-              <button class="pill" data-scope="weekly">Week</button>
-              <button class="pill" data-scope="monthly">Month</button>
-              <button class="pill" data-scope="annual">Year</button>
-            </div>
-            <div class="period-nav" id="exp-period-nav" hidden>
-              <button id="period-prev" type="button" aria-label="Previous period">‹</button>
-              <span id="period-label"></span>
-              <button id="period-next" type="button" aria-label="Next period">›</button>
-            </div>
-            <div class="pill-row pill-row-sub" id="group-pills" role="group" aria-label="Grouping">
-              <button class="pill active" data-group="none">List</button>
-              <button class="pill" data-group="month">By month</button>
-              <button class="pill" data-group="week">By week</button>
-            </div>
+        <div class="search-wrap">
+          <div class="search-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="search" id="exp-search" class="search-input" placeholder="Search vendors, notes, document text…" autocomplete="off">
           </div>
-          <div class="report-totals" id="exp-totals"></div>
-          <div id="expense-list"></div>
         </div>
+        <div class="pill-row" id="scope-pills" role="group" aria-label="Period filter">
+          <button class="pill active" data-scope="all">All</button>
+          <button class="pill" data-scope="daily">Day</button>
+          <button class="pill" data-scope="weekly">Week</button>
+          <button class="pill" data-scope="monthly">Month</button>
+          <button class="pill" data-scope="annual">Year</button>
+        </div>
+        <div class="period-nav" id="exp-period-nav" hidden>
+          <button id="period-prev" class="nav-round" type="button" aria-label="Previous period">‹</button>
+          <span id="period-label"></span>
+          <button id="period-next" class="nav-round" type="button" aria-label="Next period">›</button>
+        </div>
+        <div class="pill-row pill-row-sub" id="group-pills" role="group" aria-label="Grouping">
+          <button class="pill active" data-group="none">List</button>
+          <button class="pill" data-group="month">By month</button>
+          <button class="pill" data-group="week">By week</button>
+        </div>
+        <div class="summary-bar" id="exp-totals"></div>
+        <div id="expense-list" class="card-list-wrap"></div>
       </section>
 
       <section id="view-reports" class="view">
-        <div class="card">
-          <div class="period-nav period-nav-center">
-            <button id="year-prev" type="button" aria-label="Previous year">‹</button>
-            <span id="year-label"></span>
-            <button id="year-next" type="button" aria-label="Next year">›</button>
-          </div>
-          <div class="kpis" id="kpis"></div>
+        <div class="period-nav period-nav-center">
+          <button id="year-prev" class="nav-round" type="button" aria-label="Previous year">‹</button>
+          <span id="year-label"></span>
+          <button id="year-next" class="nav-round" type="button" aria-label="Next year">›</button>
         </div>
-        <div class="card">
-          <h2>Monthly spend</h2>
+        <div class="kpis" id="kpis"></div>
+        <div class="section-head"><span class="section-label">Monthly spend</span></div>
+        <div class="chart-card">
           <p class="chart-note">EUR equivalent, MKD converted at the fixed rate</p>
           <div id="chart-monthly" class="chart-block"></div>
           <div id="legend-monthly" class="viz-legend"></div>
         </div>
-        <div class="card">
-          <h2>By category</h2>
+        <div class="section-head"><span class="section-label">By category</span></div>
+        <div class="chart-card">
           <p class="chart-note">EUR equivalent, largest first</p>
           <div id="chart-category" class="chart-block"></div>
         </div>
-        <div class="card">
-          <h2>Currency split</h2>
+        <div class="section-head"><span class="section-label">Currency split</span></div>
+        <div class="chart-card">
           <div id="chart-currency" class="chart-block"></div>
         </div>
       </section>
     </main>
 
-    <footer class="foot">
-      <span id="foot-note"></span>
-    </footer>
+    <nav id="bottom-nav" role="tablist" aria-label="Views">
+      <button class="nav-btn tab active" id="tab-overview" data-view="overview" role="tab" aria-selected="true">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span class="nav-label">Overview</span>
+      </button>
+      <button class="nav-btn tab" data-view="expenses" role="tab" aria-selected="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span class="nav-label">Expenses</span>
+      </button>
+      <button class="nav-btn tab" data-view="reports" role="tab" aria-selected="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span class="nav-label">Reports</span>
+      </button>
+    </nav>
   </div>
 
   <div id="lightbox" hidden>
@@ -153,6 +169,6 @@
   <div class="viz-tip" id="viz-tip" hidden></div>
 
   <noscript>This app needs JavaScript to load the ledger.</noscript>
-  <script src="app.js?v=ee35dc1"></script>
+  <script src="app.js?v=12e9e61"></script>
 </body>
 </html>

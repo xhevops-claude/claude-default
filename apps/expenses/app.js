@@ -264,9 +264,18 @@
     return expenses.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   }
 
-  // ---- Overview ----
+  // ---- Overview: gradient hero + category pills + recent ----
   function renderOverview() {
-    $('grand-totals').innerHTML = totalsHtml(sumUp(data.expenses));
+    const sums = sumUp(data.expenses);
+    $('hero-total').textContent = sums.eur !== null ? fmtMoney(sums.eur, 'EUR') : '—';
+    $('hero-sub').textContent = currencyOrder(sums.byCurrency)
+      .map((c) => fmtMoney(sums.byCurrency[c], c)).join('  ·  ');
+
+    const now = new Date();
+    const mKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const monthSums = sumUp(data.expenses.filter((e) => e.date.startsWith(mKey)));
+    $('hero-month').textContent = monthSums.eur ? `≈ ${fmtEURCompact(monthSums.eur)}` : '€0';
+    $('hero-count').textContent = String(data.expenses.length);
 
     const cats = data.categories.map((c) => {
       const items = data.expenses.filter((e) => e.category === c.id);
@@ -275,13 +284,12 @@
     cats.sort((a, b) => (sumUp(b.items).eur || 0) - (sumUp(a.items).eur || 0));
 
     $('category-breakdown').innerHTML = cats.length ? cats.map(({ cat, items }) => `
-      <div class="cat-row">
-        <span class="cat-icon" aria-hidden="true">${escapeHTML(cat.icon)}</span>
+      <div class="cat-pill">
+        <span class="cat-pill-icon" aria-hidden="true">${escapeHTML(cat.icon)}</span>
         <div>
-          <div class="cat-name">${escapeHTML(cat.name)}</div>
-          <div class="cat-count">${items.length} expense${items.length === 1 ? '' : 's'}</div>
+          <div class="cat-pill-name">${escapeHTML(cat.name)} · ${items.length}</div>
+          <div class="cat-pill-amt">≈ ${escapeHTML(fmtEURCompact(sumUp(items).eur || 0))}</div>
         </div>
-        <div class="cat-sums">${sumsInlineHtml(sumUp(items))}</div>
       </div>
     `).join('') : '<div class="empty">Nothing yet.</div>';
 
@@ -697,7 +705,7 @@
     });
   }
 
-  $('tabs').addEventListener('click', (e) => {
+  $('bottom-nav').addEventListener('click', (e) => {
     const tab = e.target.closest('.tab');
     if (!tab) return;
     setView(tab.dataset.view);
