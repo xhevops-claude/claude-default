@@ -1,0 +1,14 @@
+{
+  "id": "a1f0c2d4-0007-4a00-9000-000000000007",
+  "date": "2025-11-24",
+  "amount": 7150,
+  "currency": "EUR",
+  "vendor": "Metal Steel Group",
+  "category": "materials",
+  "description": "Rebar B500B for foundations and columns",
+  "details": {
+    "supplier": "Metal Steel Group",
+    "quantity": "11.2 t"
+  },
+  "attachments": []
+}
