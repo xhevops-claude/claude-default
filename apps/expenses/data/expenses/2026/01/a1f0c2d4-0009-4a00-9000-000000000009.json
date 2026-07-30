@@ -1,0 +1,14 @@
+{
+  "id": "a1f0c2d4-0009-4a00-9000-000000000009",
+  "date": "2026-01-19",
+  "amount": 2100,
+  "currency": "EUR",
+  "vendor": "KranSkop",
+  "category": "machinery",
+  "description": "Tower crane assembly + January rent",
+  "details": {
+    "machine": "Potain MC 85",
+    "hours": "monthly rent"
+  },
+  "attachments": []
+}

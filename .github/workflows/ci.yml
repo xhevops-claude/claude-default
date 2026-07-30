@@ -38,6 +38,9 @@ jobs:
           done
           exit $status
 
+      - name: Validate expenses data
+        run: node scripts/build-expenses-data.mjs --check
+
       - name: Lint HTML
         run: npm run lint:html
 
