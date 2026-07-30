@@ -414,6 +414,10 @@ body {
 
 .period-rows { display: flex; flex-direction: column; }
 
+.p-group { border-bottom: 1px solid var(--hairline); }
+
+.p-group:last-child { border-bottom: none; }
+
 .period-row {
   display: flex;
   align-items: baseline;
@@ -426,13 +430,26 @@ body {
   color: var(--ink);
   text-align: left;
   padding: 9px 2px;
-  border-bottom: 1px solid var(--hairline);
   cursor: pointer;
 }
 
-.period-row:last-child { border-bottom: none; }
-
 .period-row:hover { background: var(--accent-soft); }
+
+.p-chev {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.p-group.open .p-chev { transform: rotate(90deg); }
+
+.p-panel {
+  display: none;
+  padding: 0 2px 12px 24px;
+}
+
+.p-group.open .p-panel { display: block; }
 
 .period-row .p-name { flex: none; min-width: 86px; font-weight: 550; }
 

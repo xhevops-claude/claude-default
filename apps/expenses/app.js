@@ -354,15 +354,22 @@
   }
 
   function periodRowsHtml(rows) {
-    // rows: { name, expenses, attr } — empty periods are not rendered.
+    // rows: { name, expenses } — empty periods are not rendered. Each row
+    // is an independent accordion, so several can stay open at once.
     const withData = rows.filter((r) => r.expenses.length > 0);
     if (!withData.length) return '';
     return `<div class="period-rows">${withData.map((r) => `
-      <button type="button" class="period-row" ${r.attr}>
-        <span class="p-name">${escapeHTML(r.name)}</span>
-        <span class="p-count">${r.expenses.length} exp.</span>
-        <span class="p-sums">${sumsInlineHtml(sumUp(r.expenses))}</span>
-      </button>
+      <div class="p-group">
+        <button type="button" class="period-row" aria-expanded="false">
+          <span class="p-chev" aria-hidden="true">▸</span>
+          <span class="p-name">${escapeHTML(r.name)}</span>
+          <span class="p-count">${r.expenses.length} exp.</span>
+          <span class="p-sums">${sumsInlineHtml(sumUp(r.expenses))}</span>
+        </button>
+        <div class="p-panel">
+          <div class="expense-list">${expenseListHtml(oldestFirst(r.expenses))}</div>
+        </div>
+      </div>
     `).join('')}</div>`;
   }
 
@@ -385,7 +392,6 @@
         rows.push({
           name: monthName(cursor.year, m),
           expenses: inPeriod.filter((e) => inRange(e, from, to)),
-          attr: `data-goto="monthly" data-year="${cursor.year}" data-month="${m}"`,
         });
       }
       body.innerHTML = totals + periodRowsHtml(rows);
@@ -407,7 +413,6 @@
         rows.push({
           name: `W${w} · ${fmtDate(isoDate(mon))}`,
           expenses: byWeek[w] || [],
-          attr: `data-goto="weekly" data-day="${isoDate(mon)}"`,
         });
       }
       body.innerHTML = totals + periodRowsHtml(rows);
@@ -450,18 +455,14 @@
   $('period-prev').addEventListener('click', () => movePeriod(-1));
   $('period-next').addEventListener('click', () => movePeriod(1));
 
-  // Drill-down from year÷months / year÷weeks rows into that period.
+  // Year÷months / year÷weeks rows toggle their expense accordion;
+  // any number of periods can be open at the same time.
   $('report-body').addEventListener('click', (e) => {
-    const row = e.target.closest('.period-row[data-goto]');
+    const row = e.target.closest('.period-row');
     if (!row) return;
-    reportType = row.dataset.goto;
-    if (row.dataset.day) cursor.day = new Date(row.dataset.day + 'T00:00:00Z');
-    if (row.dataset.year) cursor.year = Number(row.dataset.year);
-    if (row.dataset.month) cursor.month = Number(row.dataset.month);
-    document.querySelectorAll('.rtype').forEach((b) => {
-      b.classList.toggle('active', b.dataset.rtype === reportType);
-    });
-    renderReport();
+    const group = row.parentElement;
+    const open = group.classList.toggle('open');
+    row.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 
   // Expand / collapse expense rows (skip clicks on attachment links).
