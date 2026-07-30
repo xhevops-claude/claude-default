@@ -866,7 +866,11 @@
 
   async function load() {
     try {
-      const res = await fetch(DATA_URL, { cache: 'no-store' });
+      // Unique query per load: GitHub Pages' CDN caches by full URL for
+      // ~10 minutes, so without this a freshly merged expense can take
+      // that long to appear even though cache:'no-store' skips the
+      // browser cache.
+      const res = await fetch(DATA_URL + '?t=' + Date.now(), { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       data = await res.json();
       categoriesById = {};
