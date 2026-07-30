@@ -13,6 +13,10 @@
   --accent-soft: rgba(217, 126, 17, 0.12);
   --eur: #2563eb;
   --mkd: #b91c1c;
+  /* Chart series colors (currency identity), validated for the card
+     surfaces in both modes — see reference dataviz palette slots 1–2. */
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
   --radius: 14px;
 }
 
@@ -28,6 +32,8 @@
     --accent-soft: rgba(245, 166, 35, 0.14);
     --eur: #7ba3f7;
     --mkd: #f08c8c;
+    --viz-1: #3987e5;
+    --viz-2: #d95926;
   }
 }
 
@@ -299,9 +305,36 @@ body {
 
 .exp-fields dd { margin: 0; font-size: 13.5px; }
 
-.exp-files { display: flex; flex-direction: column; gap: 6px; }
+.exp-files { display: flex; flex-direction: column; gap: 10px; }
 
-.exp-file-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.exp-file-row { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+
+.exp-file-main { min-width: 0; flex: 1; }
+
+.exp-file-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.exp-text-btn {
+  appearance: none;
+  border: 1px solid var(--hairline);
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.exp-text-btn:hover { border-color: var(--accent); }
 
 .exp-dl {
   flex: none;
@@ -313,6 +346,14 @@ body {
 }
 
 .exp-dl:hover { color: var(--accent); }
+
+.exp-id {
+  margin: 10px 0 2px 50px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 
 .exp-file {
   display: inline-flex;
@@ -334,45 +375,52 @@ body {
 
 .exp-file .fsize { color: var(--muted); font-size: 12px; flex: none; }
 
-.list-head { display: flex; align-items: baseline; gap: 10px; }
-
-.list-head h2 { margin-bottom: 14px; }
-
-.count { font-size: 13px; color: var(--muted); }
-
 .empty { padding: 18px 0; color: var(--muted); font-size: 14px; text-align: center; }
 
-/* ---- Reports ---- */
+/* ---- Expenses view controls ---- */
 
-.report-controls { margin-bottom: 16px; }
+.exp-controls { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
 
-.report-types {
+/* Pills scroll horizontally on narrow screens instead of cramping. */
+.pill-row {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -4px;
+  padding: 0 4px;
 }
 
-.rtype {
+.pill-row::-webkit-scrollbar { display: none; }
+
+.pill {
   appearance: none;
+  flex: none;
   border: 1px solid var(--hairline);
   background: none;
   color: var(--ink2);
   font: inherit;
   font-size: 13px;
   line-height: 1;
-  padding: 8px 12px;
+  padding: 8px 13px;
   border-radius: 999px;
   cursor: pointer;
 }
 
-.rtype:hover { color: var(--ink); }
+.pill:hover { color: var(--ink); }
 
-.rtype.active {
+.pill.active {
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--ink);
   font-weight: 600;
+}
+
+.totals-head {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-bottom: 8px;
 }
 
 .period-nav {
@@ -380,6 +428,10 @@ body {
   align-items: center;
   gap: 10px;
 }
+
+.period-nav-center { justify-content: center; margin-bottom: 14px; }
+
+.period-nav-center #year-label { font-size: 17px; font-weight: 650; min-width: 64px; text-align: center; }
 
 .period-nav button {
   appearance: none;
@@ -467,13 +519,133 @@ body {
 
 .period-row .p-sums .sum-equiv { display: block; font-size: 12px; color: var(--muted); }
 
-.report-section-title {
-  margin: 16px 0 6px;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+/* ---- Reports: KPI tiles + charts ---- */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 560px) {
+  .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.kpi {
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+
+.kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+
+.kpi-value {
+  font-size: clamp(18px, 4.2vw, 21px);
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kpi-sub {
+  font-size: 11.5px;
   color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-note { margin: -8px 0 12px; font-size: 12.5px; color: var(--muted); }
+
+.chart-block svg { display: block; width: 100%; height: auto; }
+
+.viz-grid { stroke: var(--hairline); stroke-width: 1; }
+
+.viz-tick {
+  fill: var(--muted);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--ink2);
+}
+
+.legend-item { display: inline-flex; align-items: center; gap: 7px; }
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+/* Horizontal category bars: single hue, value at the tip. */
+.hbars { display: flex; flex-direction: column; gap: 10px; }
+
+.hbar {
+  display: grid;
+  grid-template-columns: minmax(90px, 150px) 1fr max-content;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hbar-label {
+  font-size: 13px;
+  color: var(--ink2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hbar-track { min-width: 0; }
+
+.hbar-fill {
+  height: 12px;
+  background: var(--viz-1);
+  border-radius: 0 4px 4px 0;
+}
+
+.hbar-value {
+  font-size: 12.5px;
+  color: var(--ink2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Currency split: one stacked horizontal bar, 2px surface gap. */
+.split-bar {
+  display: flex;
+  gap: 2px;
+  height: 16px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.split-seg { min-width: 3px; }
+
+/* Shared chart tooltip. */
+.viz-tip {
+  position: fixed;
+  z-index: 2000;
+  max-width: min(320px, 80vw);
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  padding: 8px 11px;
+  font-size: 12.5px;
+  pointer-events: none;
 }
 
 /* ---- Attachment preview lightbox ---- */
@@ -531,6 +703,29 @@ body {
 }
 
 .lb-btn:hover { color: var(--ink); border-color: var(--muted); }
+
+.lb-toggles { display: flex; gap: 6px; flex: none; }
+
+.lb-toggle.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.lb-text {
+  align-self: stretch;
+  width: 100%;
+  margin: 0;
+  padding: clamp(16px, 4vw, 28px);
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink);
+}
 
 .lb-body {
   flex: 1;
