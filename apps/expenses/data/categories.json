@@ -109,5 +109,20 @@
         "label": "Period covered"
       }
     ]
+  },
+  {
+    "id": "parking",
+    "name": "Parking",
+    "icon": "🅿️",
+    "fields": [
+      {
+        "key": "location",
+        "label": "Location"
+      },
+      {
+        "key": "receipt",
+        "label": "Receipt no."
+      }
+    ]
   }
 ]
