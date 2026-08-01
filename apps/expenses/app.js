@@ -19,6 +19,13 @@
   // ---- State ----
   let data = null;
   let categoriesById = {};
+  // One project at a time; the header picker switches, remembered locally.
+  const PROJECT_KEY = 'expenses-project';
+  let currentProject = null;
+
+  function visibleExpenses() {
+    return data.expenses.filter((e) => e.project === currentProject);
+  }
 
   // Expenses view: period scope + grouping + free-text search, cursors UTC.
   let scope = 'all'; // all | daily | weekly | monthly | annual
@@ -266,19 +273,19 @@
 
   // ---- Overview: gradient hero + category pills + recent ----
   function renderOverview() {
-    const sums = sumUp(data.expenses);
+    const sums = sumUp(visibleExpenses());
     $('hero-total').textContent = sums.eur !== null ? fmtMoney(sums.eur, 'EUR') : '—';
     $('hero-sub').textContent = currencyOrder(sums.byCurrency)
       .map((c) => fmtMoney(sums.byCurrency[c], c)).join('  ·  ');
 
     const now = new Date();
     const mKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-    const monthSums = sumUp(data.expenses.filter((e) => e.date.startsWith(mKey)));
+    const monthSums = sumUp(visibleExpenses().filter((e) => e.date.startsWith(mKey)));
     $('hero-month').textContent = monthSums.eur ? `≈ ${fmtEURCompact(monthSums.eur)}` : '€0';
-    $('hero-count').textContent = String(data.expenses.length);
+    $('hero-count').textContent = String(visibleExpenses().length);
 
     const cats = data.categories.map((c) => {
-      const items = data.expenses.filter((e) => e.category === c.id);
+      const items = visibleExpenses().filter((e) => e.category === c.id);
       return { cat: c, items };
     }).filter((x) => x.items.length);
     cats.sort((a, b) => (sumUp(b.items).eur || 0) - (sumUp(a.items).eur || 0));
@@ -293,7 +300,7 @@
       </div>
     `).join('') : '<div class="empty">Nothing yet.</div>';
 
-    $('recent-list').innerHTML = expenseListHtml(newestFirst(data.expenses).slice(0, 5));
+    $('recent-list').innerHTML = expenseListHtml(newestFirst(visibleExpenses()).slice(0, 5));
   }
 
   // ---- Expenses view: period scope, skip-empty navigation, grouping ----
@@ -337,7 +344,7 @@
 
   function periodKeysWithData() {
     const keys = new Set();
-    for (const e of data.expenses) {
+    for (const e of visibleExpenses()) {
       switch (scope) {
         case 'daily': keys.add(e.date); break;
         case 'weekly': keys.add(isoDate(mondayOf(dateOf(e)))); break;
@@ -435,8 +442,8 @@
     }
 
     const filtered = applySearch(range
-      ? data.expenses.filter((e) => e.date >= range.from && e.date < range.to)
-      : data.expenses.slice());
+      ? visibleExpenses().filter((e) => e.date >= range.from && e.date < range.to)
+      : visibleExpenses());
 
     const sums = sumUp(filtered);
     $('exp-totals').innerHTML = `
@@ -477,7 +484,7 @@
   const VIZ_MKD = 'var(--viz-2)';
 
   function yearsWithData() {
-    return Array.from(new Set(data.expenses.map((e) => e.date.slice(0, 4)))).sort();
+    return Array.from(new Set(visibleExpenses().map((e) => e.date.slice(0, 4)))).sort();
   }
 
   function eurEquiv(e) {
@@ -627,7 +634,7 @@
     $('year-prev').disabled = !years.some((y) => y < yr);
     $('year-next').disabled = !years.some((y) => y > yr);
 
-    const yearExpenses = data.expenses.filter((e) => e.date.startsWith(yr + '-'));
+    const yearExpenses = visibleExpenses().filter((e) => e.date.startsWith(yr + '-'));
 
     // KPI row.
     const sums = sumUp(yearExpenses);
@@ -847,6 +854,73 @@
     if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
   });
 
+  // ---- Project picker ----
+  const picker = $('picker');
+
+  function projectOf(id) {
+    return data.projects.find((p) => p.id === id);
+  }
+
+  // Re-render everything against the current project.
+  function applyProject() {
+    const proj = projectOf(currentProject);
+    $('project-name').textContent = proj ? proj.name : 'Expenses';
+
+    // Snap the reports year to the newest year that has data here.
+    const years = yearsWithData();
+    if (years.length && !years.includes(String(reportYear))) {
+      reportYear = Number(years[years.length - 1]);
+    }
+
+    $('foot-note').textContent =
+      `${visibleExpenses().length} expenses in this project · updated via Claude Code sessions · MKD pegged at ${data.meta.fixedRates.MKD} per EUR`;
+
+    renderOverview();
+    renderExpensesView();
+    renderReports();
+  }
+
+  function openPicker() {
+    $('picker-list').innerHTML = data.projects.map((p) => {
+      const count = data.expenses.filter((e) => e.project === p.id).length;
+      const active = p.id === currentProject;
+      return `
+        <button type="button" class="picker-item${active ? ' active' : ''}" data-project="${escapeHTML(p.id)}">
+          <span class="picker-item-icon" aria-hidden="true">${escapeHTML(p.icon || '📁')}</span>
+          <span class="picker-item-body">
+            <span class="picker-item-name">${escapeHTML(p.name)}</span>
+            <span class="picker-item-meta">${count} expense${count === 1 ? '' : 's'}</span>
+          </span>
+          ${active ? '<span class="picker-item-check" aria-hidden="true">✓</span>' : ''}
+        </button>
+      `;
+    }).join('');
+    picker.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closePicker() {
+    picker.hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  $('hdr-project-btn').addEventListener('click', openPicker);
+  picker.querySelector('.picker-backdrop').addEventListener('click', closePicker);
+
+  $('picker-list').addEventListener('click', (e) => {
+    const item = e.target.closest('.picker-item');
+    if (!item) return;
+    closePicker();
+    if (item.dataset.project === currentProject) return;
+    currentProject = item.dataset.project;
+    try { localStorage.setItem(PROJECT_KEY, currentProject); } catch (_) {}
+    applyProject();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !picker.hidden) closePicker();
+  });
+
   function hideSplash() {
     const wait = Math.max(0, MIN_SPLASH_MS - (performance.now() - splashStart));
     setTimeout(() => {
@@ -868,19 +942,14 @@
       categoriesById = {};
       for (const c of data.categories) categoriesById[c.id] = c;
 
-      // Default the reports year to the newest year that has data.
-      const years = yearsWithData();
-      if (years.length && !years.includes(String(reportYear))) {
-        reportYear = Number(years[years.length - 1]);
-      }
+      // Restore the remembered project, falling back to the first one.
+      let saved = null;
+      try { saved = localStorage.getItem(PROJECT_KEY); } catch (_) {}
+      currentProject = data.projects.some((p) => p.id === saved)
+        ? saved
+        : data.projects[0].id;
 
-      $('project-name').textContent = data.meta.project || '';
-      $('foot-note').textContent =
-        `${data.expenses.length} expenses · updated via Claude Code sessions · MKD pegged at ${data.meta.fixedRates.MKD} per EUR`;
-
-      renderOverview();
-      renderExpensesView();
-      renderReports();
+      applyProject();
     } catch (err) {
       const banner = $('banner');
       banner.hidden = false;
