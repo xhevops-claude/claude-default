@@ -48,7 +48,10 @@
 
   <div id="app">
     <header id="top-header">
-      <span class="hdr-title" id="project-name">Expenses</span>
+      <button id="hdr-project-btn" class="hdr-project-btn" type="button" aria-haspopup="dialog">
+        <span class="hdr-title" id="project-name">Expenses</span>
+        <svg class="hdr-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
     </header>
 
     <main id="main-content">
@@ -145,6 +148,15 @@
         <span class="nav-label">Reports</span>
       </button>
     </nav>
+  </div>
+
+  <div id="picker" hidden>
+    <div class="picker-backdrop"></div>
+    <div class="picker-sheet" role="dialog" aria-modal="true" aria-label="Choose project">
+      <div class="picker-handle" aria-hidden="true"></div>
+      <div class="picker-title">Projects</div>
+      <div class="picker-list" id="picker-list"></div>
+    </div>
   </div>
 
   <div id="lightbox" hidden>

@@ -3,9 +3,10 @@
 // data/expenses.json the frontend consumes.
 //
 // Source of truth (committed):
-//   apps/expenses/data/meta.json                       project + currency rates
-//   apps/expenses/data/categories.json                 category registry
-//   apps/expenses/data/expenses/<yyyy>/<mm>/<id>.json  one expense per file
+//   apps/expenses/data/meta.json                          currency rates
+//   apps/expenses/data/projects.json                      project registry
+//   apps/expenses/data/categories.json                    category registry (shared)
+//   apps/expenses/data/expenses/<project>/<yyyy>/<mm>/<id>.json  one expense per file
 //
 // Output (generated, gitignored — exists only in deploy output):
 //   apps/expenses/data/expenses.json
@@ -38,6 +39,21 @@ function readJSON(path, label) {
 
 const meta = readJSON(join(DATA_DIR, 'meta.json'), 'data/meta.json');
 const categories = readJSON(join(DATA_DIR, 'categories.json'), 'data/categories.json');
+const projects = readJSON(join(DATA_DIR, 'projects.json'), 'data/projects.json');
+
+const projectIds = new Set(Array.isArray(projects) ? projects.map((p) => p.id) : []);
+if (Array.isArray(projects)) {
+  if (!projects.length) fail('data/projects.json', 'at least one project is required');
+  for (const p of projects) {
+    if (!p.id || !/^[a-z0-9][a-z0-9-]*$/.test(p.id)) {
+      fail('data/projects.json', `project id must be a lowercase slug, got ${JSON.stringify(p.id)}`);
+    }
+    if (!p.name) fail('data/projects.json', `project ${p.id} missing name`);
+  }
+  if (projectIds.size !== projects.length) fail('data/projects.json', 'duplicate project ids');
+} else if (projects !== null) {
+  fail('data/projects.json', 'must be an array of projects');
+}
 
 const categoryIds = new Set(Array.isArray(categories) ? categories.map((c) => c.id) : []);
 if (Array.isArray(categories)) {
@@ -133,7 +149,10 @@ function checkDuplicates(records) {
         byHash.set(a.sha256, { rel, allow });
       }
     }
-    const key = [exp.date, exp.amount, exp.currency,
+    // Semantic duplicates are scoped per project (the same vendor and
+    // amount on the same date can legitimately exist in two projects);
+    // the sha256 check above stays global.
+    const key = [exp.project, exp.date, exp.amount, exp.currency,
       String(exp.vendor || '').toLowerCase().replace(/\s+/g, ' ').trim()].join('|');
     const first = byKey.get(key);
     if (first && !allow && !first.allow) {
@@ -145,27 +164,39 @@ function checkDuplicates(records) {
 }
 
 if (existsSync(EXPENSES_DIR)) {
-  for (const year of readdirSync(EXPENSES_DIR).sort()) {
-    if (!/^\d{4}$/.test(year)) {
-      fail(`data/expenses/${year}`, 'not a 4-digit year directory');
+  for (const project of readdirSync(EXPENSES_DIR).sort()) {
+    if (!projectIds.has(project)) {
+      fail(`data/expenses/${project}`, 'directory does not match any project id in projects.json');
       continue;
     }
-    for (const month of readdirSync(join(EXPENSES_DIR, year)).sort()) {
-      if (!/^(0[1-9]|1[0-2])$/.test(month)) {
-        fail(`data/expenses/${year}/${month}`, 'not a 2-digit month directory (01-12)');
+    for (const year of readdirSync(join(EXPENSES_DIR, project)).sort()) {
+      if (!/^\d{4}$/.test(year)) {
+        fail(`data/expenses/${project}/${year}`, 'not a 4-digit year directory');
         continue;
       }
-      for (const name of readdirSync(join(EXPENSES_DIR, year, month)).sort()) {
-        const rel = `data/expenses/${year}/${month}/${name}`;
-        if (!name.endsWith('.json')) {
-          fail(rel, 'unexpected non-JSON file in expenses tree');
+      for (const month of readdirSync(join(EXPENSES_DIR, project, year)).sort()) {
+        if (!/^(0[1-9]|1[0-2])$/.test(month)) {
+          fail(`data/expenses/${project}/${year}/${month}`, 'not a 2-digit month directory (01-12)');
           continue;
         }
-        const exp = readJSON(join(EXPENSES_DIR, year, month, name), rel);
-        if (!exp) continue;
-        checkExpense(exp, rel, year, month);
-        records.push({ exp, rel });
-        expenses.push(exp);
+        for (const name of readdirSync(join(EXPENSES_DIR, project, year, month)).sort()) {
+          const rel = `data/expenses/${project}/${year}/${month}/${name}`;
+          if (!name.endsWith('.json')) {
+            fail(rel, 'unexpected non-JSON file in expenses tree');
+            continue;
+          }
+          const raw = readJSON(join(EXPENSES_DIR, project, year, month, name), rel);
+          if (!raw) continue;
+          if (raw.project !== undefined && raw.project !== project) {
+            fail(rel, `declared project "${raw.project}" does not match folder ${project}/`);
+          }
+          checkExpense(raw, rel, year, month);
+          // The folder is the source of truth for the project id; the
+          // aggregate stamps it onto each expense for the frontend.
+          const exp = { ...raw, project };
+          records.push({ exp, rel });
+          expenses.push(exp);
+        }
       }
     }
   }
@@ -181,12 +212,13 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`Validated ${expenses.length} expenses, ${categoryIds.size} categories.`);
+console.log(`Validated ${expenses.length} expenses across ${projectIds.size} projects, ${categoryIds.size} categories.`);
 if (CHECK_ONLY) process.exit(0);
 
 expenses.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id.localeCompare(b.id)));
 const out = {
   meta: { ...meta, updated: new Date().toISOString() },
+  projects,
   categories,
   expenses,
 };

@@ -79,6 +79,12 @@ Source HTML references local `.js`/`.css` with bare relative paths (`<script src
 
 Don't add `?v=` query strings manually to source HTML — they'd be redundant with the deploy-time rewrite and would also break the `htmlhint` lint rule. CDN-pinned URLs (`https://unpkg.com/foo@1.2.3/...`) already have version tokens in the path and aren't touched by the rewrite. If you introduce a new local asset type (say, a `.wasm` or a `.json` config that has to bypass cache), extend the `sed` alternation in `pages.yml` accordingly.
 
+### Verify the deploy is actually served before sharing any link
+
+The `Deploy` workflow going green only means files landed on the `gh-pages` **branch**. GitHub then runs its own `pages-build-deployment` workflow (1–2 min more) to publish that branch to the CDN — and because each push writes two `gh-pages` commits (preview prune + publish), the first Pages build is usually cancelled and restarted. A link shared before that finishes 404s.
+
+So before posting a preview/production link: poll the `pages-build-deployment` workflow (workflow id `273363858`, via the GitHub MCP actions tools) until the latest run is `completed`/`success` **and** its `head_sha` equals the current `gh-pages` tip (`git fetch origin gh-pages && git rev-parse FETCH_HEAD`), and confirm the tip tree contains the path you're linking (`git ls-tree FETCH_HEAD:<path>`). Only then share the link.
+
 ### Always end with a clickable preview link
 
 After pushing changes, the final line of every reply must be a clickable Markdown link to the deployed preview, in the form `[Preview](https://xhevops-claude.github.io/claude-default/preview/<slug>/<short-sha>/...)`, where `<short-sha>` is the 7-char SHA of the commit you just pushed (`git rev-parse --short=7 HEAD`). No bold, no surrounding `**`, no extra prose on that line — just the link. If the change targets a specific sub-experience, deep-link directly into it (e.g. `.../preview/<slug>/<short-sha>/apps/locator/`). If pushed to `main`, link to the corresponding production path under `https://xhevops-claude.github.io/claude-default/`.
@@ -112,9 +118,10 @@ Both workflows share a `concurrency: pages-deploy` group with `pages.yml` to ser
 
 The Expenses app is a read-only construction-cost ledger whose writes happen through Claude Code sessions. Source of truth is committed per-expense files, aggregated at deploy time:
 
-- `apps/expenses/data/meta.json` — project name, `baseCurrency`, `fixedRates` (MKD pegged at 61.5 per EUR).
-- `apps/expenses/data/categories.json` — category registry; each category declares its own `fields`, so new expense types need data changes only.
-- `apps/expenses/data/expenses/<yyyy>/<mm>/<id>.json` — one expense per file, folder derived from the expense's ISO UTC `date`. Filename must equal the expense `id` (a GUID).
+- `apps/expenses/data/meta.json` — `baseCurrency`, `fixedRates` (MKD pegged at 61.5 per EUR).
+- `apps/expenses/data/projects.json` — project registry (`id` slug, `name`, `icon`); the app shows one project at a time via the header picker.
+- `apps/expenses/data/categories.json` — category registry, **shared across projects**; each category declares its own `fields`, so new expense types need data changes only.
+- `apps/expenses/data/expenses/<project-id>/<yyyy>/<mm>/<id>.json` — one expense per file; the top folder is the project (must match a `projects.json` id), the date folders derive from the expense's ISO UTC `date`. Filename must equal the expense `id` (a GUID). When adding an expense, ask which project it belongs to if it isn't obvious.
 - `apps/expenses/files/<guid>.<ext>` — attachment originals; metadata keeps `originalName` (used as label and download name) and `size` (must match the file on disk).
 - `apps/expenses/data/expenses.json` is **generated** by `scripts/build-expenses-data.mjs` (run automatically by `pages.yml` on deploy and by `npm run dev` via `predev`). It is gitignored — never edit or commit it. CI runs the script with `--check` to block malformed data.
 
@@ -125,7 +132,7 @@ Adding an expense from an uploaded document: store the file under a GUID in `fil
 Do this with `grep` only — never read expense files in bulk; the check must cost the same at 10,000 expenses as at 20:
 
 1. **Exact re-upload:** `grep -rl "<sha256-of-new-file>" apps/expenses/data/expenses/` — a hit means this exact document is already attached to an expense.
-2. **Same invoice, different photo:** `grep -rl '"amount": <amount>' apps/expenses/data/expenses/<yyyy>/` then narrow the (few) hits by currency/date/vendor, and compare invoice/reference numbers against the new document's text.
+2. **Same invoice, different photo:** `grep -rl '"amount": <amount>' apps/expenses/data/expenses/<project-id>/<yyyy>/` then narrow the (few) hits by currency/date/vendor, and compare invoice/reference numbers against the new document's text. (The `sha256` check stays global across projects; the semantic check is per project, matching the validator.)
 
 ### On detection: always prompt, and batch the prompts
 
