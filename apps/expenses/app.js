@@ -399,24 +399,54 @@
     `).join('')}</div>`;
   }
 
+  // ---- Search transliteration fold ----
+  // Query and indexed text both collapse to one canonical Latin form,
+  // so Latin input finds Cyrillic text and vice versa: 'beton' → «Бетон»,
+  // 'xhevat' or 'dzevat' → «ЏЕВАТ», 'klinicki' → «КЛИНИЧКИ».
+  // To support another language or spelling convention later, just add
+  // rows to CYR_MAP (character → canonical) and/or FOLD_DIGRAPHS
+  // (multi-letter spelling → canonical) — nothing else changes.
+  const CYR_MAP = {
+    а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ж: 'z', з: 'z',
+    ѕ: 'dz', и: 'i', ј: 'j', к: 'k', л: 'l', љ: 'lj', м: 'm', н: 'n',
+    њ: 'nj', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f',
+    х: 'h', ц: 'c', ч: 'c', џ: 'dz', ш: 's', ђ: 'd', ћ: 'c', й: 'j',
+    ы: 'y', э: 'e', ю: 'ju', я: 'ja', щ: 'st', ъ: '', ь: '',
+  };
+  const FOLD_DIGRAPHS = [
+    // Macedonian romanizations
+    ['zh', 'z'], ['ch', 'c'], ['sh', 's'], ['gj', 'g'], ['kj', 'k'], ['dz', 'dz'],
+    // Albanian conventions
+    ['xh', 'dz'], ['ll', 'l'], ['rr', 'r'], ['q', 'k'],
+  ];
+
+  function foldSearch(s) {
+    // NFD + strip accents handles diacritics generically (ë, ç, š, ž…)
+    // and also decomposes ѓ→г, ќ→к before the Cyrillic map runs.
+    let t = String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    t = t.replace(/[Ѐ-ӿ]/g, (ch) => (CYR_MAP[ch] !== undefined ? CYR_MAP[ch] : ch));
+    for (const [from, to] of FOLD_DIGRAPHS) t = t.split(from).join(to);
+    return t;
+  }
+
   // Free-text search across everything we know about an expense,
   // including the verbatim document text of its attachments. Every
   // whitespace-separated term must match somewhere.
   function searchHaystacks(e) {
     const cat = categoriesById[e.category];
-    const core = [
+    const core = foldSearch([
       e.vendor, e.description, cat ? cat.name : e.category,
       e.date, String(e.amount), e.currency,
       ...Object.values(e.details || {}),
       ...(e.attachments || []).map((a) => a.originalName),
-    ].join('\n').toLowerCase();
-    const docs = (e.attachments || []).map((a) => a.extractedText || '').join('\n').toLowerCase();
+    ].join('\n'));
+    const docs = foldSearch((e.attachments || []).map((a) => a.extractedText || '').join('\n'));
     return { core, docs };
   }
 
   function applySearch(expenses) {
     textMatchIds = new Set();
-    const terms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    const terms = foldSearch(searchQuery).split(/\s+/).filter(Boolean);
     if (!terms.length) return expenses;
     return expenses.filter((e) => {
       const { core, docs } = searchHaystacks(e);
