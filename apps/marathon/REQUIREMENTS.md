@@ -2,44 +2,41 @@
 
 ## Concept
 
-Marathon is a chronological movie-watching app built around an **Explore pool**
-of sources, modelled after Binge's channel list. A source is a person (actor /
-producer / director), a single movie, or a whole saga. The pool feeds the
-Explore screen, which aggregates every film from every source into one
-chronological, filterable marathon.
+Marathon is a chronological movie-watching app modelled after Binge, driven by
+a **static actor pool**. The pool is curated in code (`ACTORS` in `app.js`) and
+only changes when the owner asks for an update — there is no in-app search.
+Every film by every selected actor merges into one deduplicated list, sorted
+chronologically **oldest first**, so the whole pool can be watched in release
+order.
 
-## Screens (tabs)
+## Screen
 
-1. **People** — search actors, producers and directors (Wikidata). Each result
-   can be added to the Explore pool. Opening a person shows their photo, bio and
-   chronological filmography (with acted / produced / directed tags).
-2. **Movies** — search films, same interaction as People. A film's detail shows
-   poster, plot, facts, cast (clickable through to People) and, when the film
-   belongs to a saga, a one-tap "add saga to pool".
-3. **Explore** — the marathon itself. Every film from every enabled pool source,
-   deduplicated, in chronological release order.
+One screen, Binge-style:
 
-## Explore pool
+- **Actor chip bar** (always visible): one chip per pool actor with photo.
+  Tapping a chip solos that actor (a preset filter — e.g. Leonardo DiCaprio →
+  all of his movies); tapping the soloed chip again restores all actors.
+- **Filters** (collapsible): one switch per actor (with film counts,
+  select/clear all), a "released up to" **date cutoff** (year / month / day
+  sliders), and show-watched + clear-watched.
+- **Toolbar**: sort (oldest first — default — / newest first) and grouping
+  (flat Timeline — default —, by Actor, by Year).
+- **Progress bar**, **Up next** strip (first unwatched film in chronological
+  order, respecting filters), watched checkmarks per film.
+- **Film detail** modal: poster, plot, director, runtime, genres, saga
+  membership, cast with roles and photos, IMDb / Wikipedia / Wikidata links,
+  mark-watched.
 
-- Always visible (a chip bar under the tabs, on every screen).
-- Each pool entry is a *preset search filter* for movies: adding
-  e.g. Leonardo DiCaprio means "all of his movies" become part of Explore.
-- Tapping a chip jumps to Explore soloed on that source; tapping again shows
-  all sources. Chips have a remove (×) control.
-- Pool and each source's resolved movie list persist in localStorage.
+## The static pool
 
-## Explore screen behaviour (inherited from Binge)
-
-- Collapsible **Filters**: one switch per pool source (like Binge channels,
-  with select/clear all), "released up to" year/month/day cutoff sliders, and a
-  show-watched toggle + clear-watched.
-- Toolbar: sort (oldest/newest) and grouping (flat Timeline — default —,
-  by Source, by Year).
-- Watched tracking per film, progress bar, and an "Up next" strip pointing at
-  the first unwatched film in chronological order (respecting filters).
+- `ACTORS` in `app.js` lists Wikidata QIDs (+ fallback display names).
+- Actor names/photos and each filmography (acted, voiced, directed, produced)
+  resolve live from Wikidata at first load and are cached in localStorage,
+  keyed to `POOL_VERSION` — bumping it (done whenever the pool is edited)
+  invalidates the cache. "Refresh data" in the filters re-fetches manually.
 
 ## Data
 
-Live, keyless, client-side only: Wikidata SPARQL (search, facts, cast,
-filmographies, sagas) + Wikipedia (posters, plot summaries). No backend; all
-state in localStorage.
+Live, keyless, client-side only: Wikidata SPARQL (filmographies, film facts,
+cast) + Wikipedia (posters, plot summaries). No backend; all state in
+localStorage. Watched-film state survives pool updates (keyed by film QID).

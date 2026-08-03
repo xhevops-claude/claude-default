@@ -79,7 +79,7 @@
       slug: 'marathon',
       name: 'Marathon',
       meta: 'Movies',
-      tagline: 'Every movie, every saga — in order.',
+      tagline: 'Your actors’ films, in release order.',
       icon: '🎬',
       url: 'apps/marathon/',
     },
