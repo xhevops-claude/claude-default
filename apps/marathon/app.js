@@ -5,20 +5,26 @@
   //  - Wikidata Query Service (SPARQL) for search, film facts, cast, sagas,
   //    people (actors / producers / directors) and their filmographies
   //  - Wikipedia for posters (pageimages) and plot summaries (REST)
+  //
+  // Model: the Explore POOL holds sources — a person, a single film, or a
+  // saga. Each source resolves to a list of films (cached in localStorage);
+  // Explore aggregates every enabled source into one chronological marathon.
   const SPARQL = 'https://query.wikidata.org/sparql';
   const WP_API = 'https://en.wikipedia.org/w/api.php';
   const WP_REST = 'https://en.wikipedia.org/api/rest_v1/page/summary/';
 
   const LS = {
-    list: 'marathon-list',
+    pool: 'marathon-pool',
+    srcCache: 'marathon-srccache',
     watched: 'marathon-watched',
     showWatched: 'marathon-showwatched',
     sort: 'marathon-sort',
     group: 'marathon-group',
     tab: 'marathon-tab',
-    hideCols: 'marathon-hidecols',
+    hideSrcs: 'marathon-hidesrcs',
     cutoff: 'marathon-cutoff',
     filtersOpen: 'marathon-filters-open',
+    oldList: 'marathon-list',          // v1 storage, migrated on boot
   };
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -31,29 +37,55 @@
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
 
   // ---- persisted state ----
-  // list entries: {qid, title, year, ymd, poster, article, colQ, colName, director}
-  // colQ/colName = the "collection" a film was added under: a saga, a person,
-  // or null for one-offs. Grouping and the collections filter both key off it.
-  let list = load(LS.list, []).map((m) => (
-    m.colQ !== undefined ? m : {
-      qid: m.qid, title: m.title, year: m.year, ymd: m.ymd, poster: m.poster,
-      article: m.article, colQ: m.seriesQ || null, colName: m.seriesName || null,
-      director: m.director || null,
-    }));
+  // pool entries: {qid, type:'person'|'film'|'saga'|'auto', name, img, article,
+  //                year?, ymd?, poster?}  (film extras inline)
+  let pool = load(LS.pool, []);
+  // srcCache: source qid -> [{qid,title,year,ymd,poster,article,role}]
+  let srcCache = load(LS.srcCache, {});
   let watched = new Set(load(LS.watched, []));
   let showWatched = load(LS.showWatched, true);
   let sortBy = load(LS.sort, 'old');       // 'old' | 'new'
-  let groupBy = load(LS.group, 'none');    // 'none' | 'saga' | 'year'
-  let tab = load(LS.tab, null) || (list.length ? 'list' : 'discover');
-  let hiddenCols = new Set(load(LS.hideCols, []));   // deselected collection keys
+  let groupBy = load(LS.group, 'none');    // 'none' | 'source' | 'year'
+  if (groupBy === 'saga') groupBy = 'source';
+  let hiddenSrcs = new Set(load(LS.hideSrcs, []));
   const savedCut = load(LS.cutoff, null);
   let cutoff = (savedCut && typeof savedCut.y === 'number') ? savedCut : todayYMD();
   let filtersOpen = load(LS.filtersOpen, false);
 
+  // v1 -> v2 migration: individual films become film sources; collections
+  // (sagas or people) become 'auto' sources that resolve on first fetch.
+  (function migrate() {
+    const old = load(LS.oldList, null);
+    if (!old || !Array.isArray(old) || pool.length) {
+      if (old) try { localStorage.removeItem(LS.oldList); } catch (e) {}
+      return;
+    }
+    const seen = new Set();
+    old.forEach((m) => {
+      if (m.colQ) {
+        if (!seen.has(m.colQ)) {
+          seen.add(m.colQ);
+          pool.push({ qid: m.colQ, type: 'auto', name: m.colName || 'Collection', img: null, article: null });
+        }
+      } else if (!seen.has(m.qid)) {
+        seen.add(m.qid);
+        pool.push({ qid: m.qid, type: 'film', name: m.title, img: null, article: m.article || null,
+          year: m.year || null, ymd: m.ymd || null, poster: m.poster || null });
+      }
+    });
+    save(LS.pool, pool);
+    try { localStorage.removeItem(LS.oldList); } catch (e) {}
+  })();
+
+  let tab = load(LS.tab, null);
+  if (['people', 'movies', 'explore'].indexOf(tab) < 0) tab = pool.length ? 'explore' : 'movies';
+
   // ---- runtime state ----
-  let searchResults = [];
-  let searchSeq = 0;
-  let searchAbort = null;
+  const search = {
+    person: { results: [], seq: 0, abort: null },
+    film: { results: [], seq: 0, abort: null },
+  };
+  const loadingSrcs = new Set();
   const collapsed = new Set();
   const posterCache = {};      // article title -> thumb url ('' = tried, none)
   let detail = null;           // open modal: {kind:'film'|'person', qid, ...}
@@ -61,21 +93,24 @@
 
   // ---- elements ----
   const $ = (id) => document.getElementById(id);
-  const tabsEl = $('tabs'), tabCount = $('tab-count');
-  const viewDiscover = $('view-discover'), viewList = $('view-list');
-  const searchInput = $('search-input'), searchClear = $('search-clear'), searchHint = $('search-hint');
-  const resultsEl = $('results');
-  const discoverStatus = $('discover-status'), discoverMsg = $('discover-msg'), discoverAction = $('discover-action');
+  const tabsEl = $('tabs'), poolCount = $('pool-count'), poolChips = $('pool-chips');
+  const views = { people: $('view-people'), movies: $('view-movies'), explore: $('view-explore') };
+  const ui = {
+    person: { input: $('p-search-input'), clear: $('p-search-clear'), hint: $('p-hint'),
+      results: $('p-results'), status: $('p-status'), msg: $('p-msg'), action: $('p-action') },
+    film: { input: $('m-search-input'), clear: $('m-search-clear'), hint: $('m-hint'),
+      results: $('m-results'), status: $('m-status'), msg: $('m-msg'), action: $('m-action') },
+  };
   const fltEl = $('flt'), fltToggle = $('flt-toggle'), fltBody = $('flt-body'), fltSummary = $('flt-summary');
-  const colSwitches = $('col-switches'), colAllBtn = $('col-all'), colNoneBtn = $('col-none');
+  const srcSwitches = $('src-switches'), srcAllBtn = $('src-all'), srcNoneBtn = $('src-none');
   const fltReset = $('flt-reset'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const fYear = $('f-year'), fMonth = $('f-month'), fDay = $('f-day');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
-  const selSort = $('sel-sort'), selGroup = $('sel-group');
+  const exploreToolbar = $('explore-toolbar'), selSort = $('sel-sort'), selGroup = $('sel-group');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
   const upnextEl = $('upnext'), upnextPoster = $('upnext-poster'), upnextTitle = $('upnext-title'), upnextSub = $('upnext-sub');
   const sectionsEl = $('sections');
-  const listStatus = $('list-status'), listMsg = $('list-msg'), listAction = $('list-action');
+  const xStatus = $('x-status'), xMsg = $('x-msg'), xAction = $('x-action');
   const detailModal = $('detail-modal'), detailCard = $('detail-card'), detailClose = $('detail-close');
   const detailPoster = $('detail-poster'), detailTitle = $('detail-title'), detailSub = $('detail-sub');
   const detailFacts = $('detail-facts'), detailActions = $('detail-actions'), detailPlot = $('detail-plot');
@@ -120,9 +155,13 @@
   // film producer, film director, screenwriter.
   const PERSON_OCCS = 'wd:Q33999 wd:Q10800557 wd:Q2259451 wd:Q10798782 wd:Q2405480 wd:Q3282637 wd:Q2526255 wd:Q28389';
 
-  async function searchAll(term, signal) {
+  // kind: 'film' | 'person' — one EntitySearch, filtered to that kind.
+  async function searchKind(term, kind, signal) {
+    const typeBlock = kind === 'person'
+      ? '  ?item wdt:P31 wd:Q5. VALUES ?occ { ' + PERSON_OCCS + ' }\n  ?item wdt:P106 ?occ.\n'
+      : '  ?item wdt:P31/wdt:P279* wd:Q11424.\n';
     const q =
-      'SELECT ?item ?itemLabel ?kind ?date ?article ?img ?occ ?occLabel WHERE {\n' +
+      'SELECT ?item ?itemLabel ?date ?article ?img ?occ ?occLabel WHERE {\n' +
       '  SERVICE wikibase:mwapi {\n' +
       '    bd:serviceParam wikibase:endpoint "www.wikidata.org";\n' +
       '                    wikibase:api "EntitySearch";\n' +
@@ -132,10 +171,7 @@
       '    ?item wikibase:apiOutputItem mwapi:item.\n' +
       '    ?num wikibase:apiOrdinal true.\n' +
       '  }\n' +
-      '  { ?item wdt:P31/wdt:P279* wd:Q11424. BIND("film" AS ?kind) }\n' +
-      '  UNION\n' +
-      '  { ?item wdt:P31 wd:Q5. VALUES ?occ { ' + PERSON_OCCS + ' }\n' +
-      '    ?item wdt:P106 ?occ. BIND("person" AS ?kind) }\n' +
+      typeBlock +
       '  OPTIONAL { ?item wdt:P577 ?date. }\n' +
       '  OPTIONAL { ?item wdt:P18 ?img. }\n' +
       '  OPTIONAL { ?article schema:about ?item; schema:isPartOf <https://en.wikipedia.org/>. }\n' +
@@ -146,7 +182,6 @@
     rows.forEach((r) => {
       const qid = qidOf(r.item && r.item.value);
       if (!qid) return;
-      const kind = r.kind && r.kind.value;
       if (!map.has(qid)) {
         map.set(qid, {
           kind: kind, qid: qid,
@@ -342,73 +377,128 @@
   }
   function todayYMD() { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; }
   function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+  const SRC_ICON = { person: '👤', film: '🎬', saga: '🎞', auto: '🎞' };
 
   // ---------------------------------------------------------------------------
-  // My list
+  // Pool (sources)
   // ---------------------------------------------------------------------------
-  function inList(qid) { return list.some((m) => m.qid === qid); }
-  function persistList() { save(LS.list, list); tabCount.textContent = String(list.length); }
-  function addMovie(m) {
-    if (inList(m.qid)) return;
-    list.push({
-      qid: m.qid, title: m.title, year: m.year || null, ymd: m.ymd || null,
-      poster: m.poster || null, article: m.article || null,
-      colQ: m.colQ || m.seriesQ || null, colName: m.colName || m.seriesName || null,
-      director: m.director || null,
-    });
-    persistList();
-    if (!m.colQ && (!m.seriesQ || !m.ymd)) backfill(m.qid);
-    renderList();
+  function inPool(qid) { return pool.some((s) => s.qid === qid); }
+  function persistPool() { save(LS.pool, pool); poolCount.textContent = String(pool.length); }
+  function persistCache() { save(LS.srcCache, srcCache); }
+
+  function addPersonSource(p) {
+    if (inPool(p.qid)) return;
+    pool.push({ qid: p.qid, type: 'person', name: p.title || p.name, img: p.poster || p.img || null, article: p.article || null });
+    persistPool();
+    ensureSources();
+    renderPool();
   }
-  function removeMovie(qid) {
-    list = list.filter((m) => m.qid !== qid);
-    persistList();
-    renderList();
+  function addFilmSource(m) {
+    if (inPool(m.qid)) return;
+    pool.push({ qid: m.qid, type: 'film', name: m.title, img: null, article: m.article || null,
+      year: m.year || null, ymd: m.ymd || null, poster: m.poster || null });
+    persistPool();
+    backfillFilm(m.qid);
+    renderPool();
   }
-  // Fill saga/date/poster for entries added straight from search results.
-  async function backfill(qid) {
-    if (!list.some((x) => x.qid === qid)) return;
+  function addSagaSource(seriesQ, name) {
+    if (inPool(seriesQ)) return;
+    pool.push({ qid: seriesQ, type: 'saga', name: name || 'Saga', img: null, article: null });
+    persistPool();
+    ensureSources();
+    renderPool();
+  }
+  function removeSource(qid) {
+    pool = pool.filter((s) => s.qid !== qid);
+    delete srcCache[qid];
+    hiddenSrcs.delete(qid);
+    persistPool(); persistCache(); save(LS.hideSrcs, Array.from(hiddenSrcs));
+    renderPool();
+    renderAll();
+  }
+  // Fill date/poster for film sources added straight from search results.
+  async function backfillFilm(qid) {
+    const src = pool.find((s) => s.qid === qid && s.type === 'film');
+    if (!src) return;
     try {
-      const f = await fetchFilmFacts(qid);
-      const cur = list.find((x) => x.qid === qid);
-      if (!cur) return;
-      if (f.seriesQ && !cur.colQ) { cur.colQ = f.seriesQ; cur.colName = f.seriesName; }
-      if (f.ymd && !cur.ymd) { cur.ymd = f.ymd; cur.year = f.year; }
-      if (f.directors.length && !cur.director) cur.director = f.directors[0];
-      if (!cur.article && f.article) cur.article = f.article;
-      if (!cur.poster && cur.article) {
+      if (!src.ymd || !src.article) {
+        const f = await fetchFilmFacts(qid);
+        const cur = pool.find((s) => s.qid === qid);
+        if (!cur) return;
+        if (f.ymd && !cur.ymd) { cur.ymd = f.ymd; cur.year = f.year; }
+        if (f.article && !cur.article) cur.article = f.article;
+      }
+      const cur = pool.find((s) => s.qid === qid);
+      if (cur && !cur.poster && cur.article) {
         await fetchPosters([cur.article]);
         cur.poster = posterCache[cur.article] || null;
       }
-      persistList();
-      renderList();
+      persistPool();
+      renderAll();
     } catch (e) { /* stays sparse; still usable */ }
   }
 
-  // ---- collections / cutoff / filtering ----
-  function colKey(m) { return m.colQ || 'solo'; }
-  function collections() {
+  // Resolve movies for every source that has none cached yet.
+  function ensureSources() {
+    pool.forEach((src) => {
+      if (src.type === 'film') return;
+      if (srcCache[src.qid] || loadingSrcs.has(src.qid)) return;
+      loadingSrcs.add(src.qid);
+      resolveSource(src).then((films) => {
+        loadingSrcs.delete(src.qid);
+        if (films) { srcCache[src.qid] = films; persistCache(); }
+        renderAll();
+      });
+    });
+  }
+  async function resolveSource(src) {
+    try {
+      let films = null;
+      if (src.type === 'person') films = await fetchFilmography(src.qid);
+      else if (src.type === 'saga') films = await fetchSaga(src.qid);
+      else { // 'auto' (migrated): saga first, else filmography
+        films = await fetchSaga(src.qid);
+        if (!films.length) films = await fetchFilmography(src.qid);
+      }
+      await fetchPosters(films.map((f) => f.article));
+      films.forEach((f) => { if (f.article) f.poster = posterCache[f.article] || null; });
+      return films;
+    } catch (e) { return null; }
+  }
+  function sourceFilms(src) {
+    if (src.type === 'film') {
+      return [{ qid: src.qid, title: src.name, year: src.year || null, ymd: src.ymd || null,
+        poster: src.poster || null, article: src.article || null, role: '' }];
+    }
+    return srcCache[src.qid] || null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Explore aggregation
+  // ---------------------------------------------------------------------------
+  function exploreMovies() {
     const map = new Map();
-    list.forEach((m) => {
-      const k = colKey(m);
-      if (!map.has(k)) map.set(k, { key: k, name: m.colName || 'One-offs', count: 0 });
-      map.get(k).count++;
+    pool.forEach((src) => {
+      if (hiddenSrcs.has(src.qid)) return;
+      const films = sourceFilms(src);
+      if (!films) return;
+      films.forEach((f) => {
+        if (!map.has(f.qid)) map.set(f.qid, {
+          qid: f.qid, title: f.title, year: f.year, ymd: f.ymd,
+          poster: f.poster, article: f.article, role: f.role || '', srcs: [src],
+        });
+        else map.get(f.qid).srcs.push(src);
+      });
     });
-    const cols = Array.from(map.values());
-    cols.sort((a, b) => {
-      if (a.key === 'solo') return 1;
-      if (b.key === 'solo') return -1;
-      return a.name < b.name ? -1 : 1;
-    });
-    return cols;
+    return Array.from(map.values());
   }
   function cutoffInt() {
     const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
     return cutoff.y * 10000 + cutoff.m * 100 + d;
   }
-  function filteredList() {
+  function filteredMovies() {
     const cut = cutoffInt();
-    return list.filter((m) => !hiddenCols.has(colKey(m)) && (m.ymd == null || m.ymd <= cut));
+    return exploreMovies().filter((m) => m.ymd == null || m.ymd <= cut);
   }
   function sortMovies(arr) {
     const a = arr.slice();
@@ -420,19 +510,18 @@
     });
     return a;
   }
-  function nextUnwatched() {
+  function nextUnwatched(arr) {
     const dir = sortBy;
     sortBy = 'old';
-    const order = sortMovies(filteredList());
+    const order = sortMovies(arr);
     sortBy = dir;
     return order.find((m) => !watched.has(m.qid)) || null;
   }
-
   function buildGroups(arr) {
     const map = new Map();
     arr.forEach((m) => {
       let key, title;
-      if (groupBy === 'saga') { key = colKey(m); title = m.colName || 'One-offs'; }
+      if (groupBy === 'source') { const s = m.srcs[0]; key = s.qid; title = s.name; }
       else { const y = m.year || 0; key = 'y:' + y; title = y ? String(y) : 'Undated'; }
       if (!map.has(key)) map.set(key, { key: key, title: title, first: m.ymd || 99999999, movies: [] });
       const g = map.get(key);
@@ -441,63 +530,87 @@
     });
     const groups = Array.from(map.values());
     const dir = sortBy === 'new' ? -1 : 1;
-    groups.sort((a, b) => {
-      if (a.key === 'solo') return 1;
-      if (b.key === 'solo') return -1;
-      return (a.first - b.first) * dir;
-    });
+    groups.sort((a, b) => (a.first - b.first) * dir);
     return groups;
   }
 
   // ---------------------------------------------------------------------------
-  // Render — tabs
+  // Render
   // ---------------------------------------------------------------------------
   function render() {
     Array.prototype.forEach.call(tabsEl.querySelectorAll('.seg-btn'), (b) => {
       b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab));
     });
-    tabCount.textContent = String(list.length);
-    viewDiscover.hidden = tab !== 'discover';
-    viewList.hidden = tab !== 'list';
-    if (tab === 'discover') renderDiscover(); else renderList();
+    poolCount.textContent = String(pool.length);
+    Object.keys(views).forEach((k) => { views[k].hidden = k !== tab; });
+    renderPool();
+    if (tab === 'explore') renderExplore();
+    else renderSearch(tab === 'people' ? 'person' : 'film');
+  }
+  function renderAll() { renderPool(); if (tab === 'explore') renderExplore(); }
+
+  function showStatus(u, icon, msg, actionLabel, actionFn) {
+    u.status.hidden = false;
+    u.status.querySelector('.status-icon').textContent = icon;
+    u.msg.textContent = msg;
+    if (actionLabel) { u.action.hidden = false; u.action.textContent = actionLabel; u.action.onclick = actionFn || null; }
+    else { u.action.hidden = true; u.action.onclick = null; }
   }
 
-  function showStatus(panel, msgEl, actionEl, icon, msg, actionLabel, actionFn) {
-    panel.hidden = false;
-    panel.querySelector('.status-icon').textContent = icon;
-    msgEl.textContent = msg;
-    if (actionLabel) { actionEl.hidden = false; actionEl.textContent = actionLabel; actionEl.onclick = actionFn || null; }
-    else { actionEl.hidden = true; actionEl.onclick = null; }
-  }
-
-  // ---- Discover ----
-  function renderDiscover() {
-    const term = searchInput.value.trim();
-    searchClear.hidden = !term;
-    if (!term) {
-      resultsEl.innerHTML = '';
-      searchHint.hidden = false;
-      discoverStatus.hidden = true;
+  // ---- pool bar ----
+  function renderPool() {
+    poolCount.textContent = String(pool.length);
+    if (!pool.length) {
+      poolChips.innerHTML = '<span class="pool-empty">Empty — add people or movies and they become your marathon sources.</span>';
       return;
     }
-    searchHint.hidden = true;
-    if (!searchResults.length) return; // status panel handles empty/loading
-    discoverStatus.hidden = true;
-    resultsEl.innerHTML = searchResults.map((m) => {
-      if (m.kind === 'person') {
-        return '<div class="rcard person" data-person="' + escapeHTML(m.qid) + '">'
+    const solo = pool.length > 1 && pool.filter((s) => !hiddenSrcs.has(s.qid)).length === 1
+      ? pool.find((s) => !hiddenSrcs.has(s.qid)).qid : null;
+    poolChips.innerHTML = pool.map((s) => {
+      const off = hiddenSrcs.has(s.qid);
+      const img = s.type === 'person' ? s.img : s.poster;
+      return '<span class="pool-chip' + (off ? ' off' : '') + (solo === s.qid ? ' solo' : '') + '" data-src="' + escapeHTML(s.qid) + '">'
+        + '<span class="chip-ava' + (s.type === 'person' ? ' round' : '') + '">'
+        + (img ? '<img src="' + escapeHTML(img) + '" alt="" loading="lazy" />' : SRC_ICON[s.type] || '🎬')
+        + '</span>'
+        + '<span class="chip-name">' + escapeHTML(s.name) + '</span>'
+        + '<button class="chip-x" type="button" data-rm="' + escapeHTML(s.qid) + '" aria-label="Remove from pool">×</button>'
+        + '</span>';
+    }).join('');
+  }
+
+  // ---- search screens ----
+  function renderSearch(kind) {
+    const u = ui[kind];
+    const st = search[kind];
+    const term = u.input.value.trim();
+    u.clear.hidden = !term;
+    if (!term) {
+      u.results.innerHTML = '';
+      u.hint.hidden = false;
+      u.status.hidden = true;
+      return;
+    }
+    u.hint.hidden = true;
+    if (!st.results.length) return; // status panel handles empty/loading
+    u.status.hidden = true;
+    u.results.innerHTML = st.results.map((m) => {
+      const added = inPool(m.qid);
+      if (kind === 'person') {
+        return '<div class="rcard person" data-open="' + escapeHTML(m.qid) + '">'
           + '<div class="rposter round">' + posterHTML(m.poster, m.title, 'rposter-img', '👤') + '</div>'
           + '<div class="rmeta"><div class="rtitle">' + escapeHTML(m.title) + '</div>'
           + '<div class="rsub">' + escapeHTML(m.occText || 'Filmography') + '</div></div>'
+          + '<button class="radd' + (added ? ' added' : '') + '" type="button" data-add="' + escapeHTML(m.qid) + '"'
+          + ' aria-label="' + (added ? 'In the pool' : 'Add to Explore pool') + '">' + (added ? '✓' : '＋') + '</button>'
           + '</div>';
       }
-      const added = inList(m.qid);
-      return '<div class="rcard" data-qid="' + escapeHTML(m.qid) + '">'
+      return '<div class="rcard" data-open="' + escapeHTML(m.qid) + '">'
         + '<div class="rposter">' + posterHTML(m.poster, m.title, 'rposter-img') + '</div>'
         + '<div class="rmeta"><div class="rtitle">' + escapeHTML(m.title) + '</div>'
         + '<div class="rsub">' + (m.year || '—') + '</div></div>'
         + '<button class="radd' + (added ? ' added' : '') + '" type="button" data-add="' + escapeHTML(m.qid) + '"'
-        + ' aria-label="' + (added ? 'In your marathon' : 'Add to marathon') + '">' + (added ? '✓' : '＋') + '</button>'
+        + ' aria-label="' + (added ? 'In the pool' : 'Add to Explore pool') + '">' + (added ? '✓' : '＋') + '</button>'
         + '</div>';
     }).join('');
   }
@@ -507,69 +620,74 @@
     return function () { clearTimeout(t); t = setTimeout(fn, ms); };
   };
 
-  async function runSearch() {
-    const term = searchInput.value.trim();
-    searchResults = [];
-    renderDiscover();
+  async function runSearch(kind) {
+    const u = ui[kind], st = search[kind];
+    const term = u.input.value.trim();
+    st.results = [];
+    renderSearch(kind);
     if (!term) return;
-    const seq = ++searchSeq;
-    if (searchAbort) searchAbort.abort();
-    searchAbort = new AbortController();
-    showStatus(discoverStatus, discoverMsg, discoverAction, '🔎', 'Searching films and film people…', null);
-    resultsEl.innerHTML = '';
+    const seq = ++st.seq;
+    if (st.abort) st.abort.abort();
+    st.abort = new AbortController();
+    showStatus(u, '🔎', kind === 'person' ? 'Searching film people…' : 'Searching every film ever made…', null);
+    u.results.innerHTML = '';
     let found;
     try {
-      found = await searchAll(term, searchAbort.signal);
+      found = await searchKind(term, kind, st.abort.signal);
     } catch (e) {
       if (e && e.name === 'AbortError') return;
-      if (seq !== searchSeq) return;
-      showStatus(discoverStatus, discoverMsg, discoverAction, '📡',
-        'Couldn’t reach the movie database. Check your connection and retry.', 'Retry', runSearch);
+      if (seq !== st.seq) return;
+      showStatus(u, '📡', 'Couldn’t reach the database. Check your connection and retry.', 'Retry', () => runSearch(kind));
       return;
     }
-    if (seq !== searchSeq) return;
+    if (seq !== st.seq) return;
     if (!found.length) {
-      showStatus(discoverStatus, discoverMsg, discoverAction, '🕵️',
-        'Nothing matched “' + term + '”. Try the original title or full name.', null);
+      showStatus(u, '🕵️', 'Nothing matched “' + term + '”. Try the original title or full name.', null);
       return;
     }
-    searchResults = found;
-    renderDiscover();
-    await fetchPosters(found.filter((m) => m.kind === 'film').map((m) => m.article));
-    if (seq !== searchSeq) return;
-    searchResults.forEach((m) => {
-      if (m.kind === 'film' && m.article && !m.poster) m.poster = posterCache[m.article] || null;
-    });
-    renderDiscover();
+    st.results = found;
+    renderSearch(kind);
+    if (kind === 'film') {
+      await fetchPosters(found.map((m) => m.article));
+      if (seq !== st.seq) return;
+      st.results.forEach((m) => {
+        if (m.article && !m.poster) m.poster = posterCache[m.article] || null;
+      });
+      renderSearch(kind);
+    }
   }
 
-  // ---- Filters (collections + date cutoff) ----
+  // ---- filters ----
   function renderFilters() {
-    // Collections switches — rebuild only when the set changes, else sync.
-    const cols = collections();
-    const rows = colSwitches.querySelectorAll('.col-switch');
-    const sig = cols.map((c) => c.key + ':' + c.count).join('|');
-    if (colSwitches.dataset.sig !== sig || rows.length !== cols.length) {
-      colSwitches.dataset.sig = sig;
-      colSwitches.innerHTML = '';
-      cols.forEach((c) => {
+    const rows = srcSwitches.querySelectorAll('.col-switch');
+    const sig = pool.map((s) => s.qid).join('|');
+    if (srcSwitches.dataset.sig !== sig || rows.length !== pool.length) {
+      srcSwitches.dataset.sig = sig;
+      srcSwitches.innerHTML = '';
+      pool.forEach((s) => {
         const row = document.createElement('label');
         row.className = 'switch col-switch';
         row.innerHTML =
-          '<input type="checkbox" class="switch-input"' + (hiddenCols.has(c.key) ? '' : ' checked') + ' />'
+          '<input type="checkbox" class="switch-input"' + (hiddenSrcs.has(s.qid) ? '' : ' checked') + ' />'
           + '<span class="switch-track" aria-hidden="true"></span>'
-          + '<span class="switch-text">' + escapeHTML(c.name)
-          + ' <span class="col-n">' + c.count + '</span></span>';
-        row.querySelector('input').addEventListener('change', () => toggleCol(c.key));
-        colSwitches.appendChild(row);
+          + '<span class="switch-text">' + escapeHTML(s.name)
+          + ' <span class="col-n" data-n="' + escapeHTML(s.qid) + '"></span></span>';
+        row.querySelector('input').addEventListener('change', () => toggleSrc(s.qid));
+        srcSwitches.appendChild(row);
       });
     } else {
-      cols.forEach((c, i) => { rows[i].querySelector('input').checked = !hiddenCols.has(c.key); });
+      pool.forEach((s, i) => { rows[i].querySelector('input').checked = !hiddenSrcs.has(s.qid); });
     }
+    pool.forEach((s) => {
+      const n = srcSwitches.querySelector('[data-n="' + s.qid + '"]');
+      if (!n) return;
+      const films = sourceFilms(s);
+      n.textContent = films ? String(films.length) : (loadingSrcs.has(s.qid) ? '…' : '?');
+    });
 
     // Date sliders.
     const years = [];
-    list.forEach((m) => { if (m.year && years.indexOf(m.year) < 0) years.push(m.year); });
+    exploreMovies().forEach((m) => { if (m.year && years.indexOf(m.year) < 0) years.push(m.year); });
     years.sort((a, b) => a - b);
     const curY = new Date().getFullYear();
     const minY = years.length ? years[0] : curY;
@@ -587,55 +705,55 @@
     fDay.value = String(cutoff.d);
     dyValue.textContent = String(cutoff.d);
 
-    const shown = cols.filter((c) => !hiddenCols.has(c.key)).length;
+    const shown = pool.filter((s) => !hiddenSrcs.has(s.qid)).length;
     const t = todayYMD();
     const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
     const upto = isToday ? 'today' : cutoff.d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y;
-    fltSummary.textContent = shown + '/' + cols.length + ' collections · up to ' + upto;
+    fltSummary.textContent = shown + '/' + pool.length + ' sources · up to ' + upto;
     fltBody.hidden = !filtersOpen;
     fltToggle.setAttribute('aria-expanded', String(filtersOpen));
     fltToggle.classList.toggle('open', filtersOpen);
     showWatchedChk.checked = showWatched;
   }
-  function toggleCol(key) {
-    if (hiddenCols.has(key)) hiddenCols.delete(key); else hiddenCols.add(key);
-    save(LS.hideCols, Array.from(hiddenCols));
-    renderList();
+  function toggleSrc(qid) {
+    if (hiddenSrcs.has(qid)) hiddenSrcs.delete(qid); else hiddenSrcs.add(qid);
+    save(LS.hideSrcs, Array.from(hiddenSrcs));
+    renderPool();
+    renderExplore();
   }
-  function commitCutoff() { save(LS.cutoff, cutoff); renderList(); }
+  function commitCutoff() { save(LS.cutoff, cutoff); renderExplore(); }
 
-  // ---- My Marathon ----
-  function renderList() {
-    if (tab !== 'list') return;
-    tabCount.textContent = String(list.length);
-    if (!list.length) {
-      fltEl.hidden = true; $('list-toolbar').hidden = true; progressEl.hidden = true; upnextEl.hidden = true;
+  // ---- Explore ----
+  function renderExplore() {
+    if (tab !== 'explore') return;
+    if (!pool.length) {
+      fltEl.hidden = true; exploreToolbar.hidden = true; progressEl.hidden = true; upnextEl.hidden = true;
       sectionsEl.innerHTML = '';
-      showStatus(listStatus, listMsg, listAction, '🍿',
-        'Your marathon is empty. Find a movie, an actor or a producer — and add their films.', 'Discover', () => {
-          tab = 'discover'; save(LS.tab, tab); render(); searchInput.focus();
+      showStatus({ status: xStatus, msg: xMsg, action: xAction }, '🍿',
+        'The pool is empty. Add people or movies — they become the sources of your marathon.', 'Search movies', () => {
+          tab = 'movies'; save(LS.tab, tab); render(); ui.film.input.focus();
         });
       return;
     }
-    listStatus.hidden = true;
+    xStatus.hidden = true;
     fltEl.hidden = false;
-    $('list-toolbar').hidden = false;
+    exploreToolbar.hidden = false;
     selSort.value = sortBy; selGroup.value = groupBy;
     renderFilters();
 
-    const flt = filteredList();
+    const flt = filteredMovies();
     const total = flt.length;
     const done = flt.filter((m) => watched.has(m.qid)).length;
     progressEl.hidden = false;
     progressFill.style.width = total ? (done / total * 100) + '%' : '0%';
     progressText.textContent = done + ' / ' + total + ' watched';
 
-    const next = nextUnwatched();
+    const next = nextUnwatched(flt);
     if (next) {
       upnextEl.hidden = false;
       upnextPoster.innerHTML = posterHTML(next.poster, next.title, 'upnext-img');
       upnextTitle.textContent = next.title;
-      upnextSub.textContent = [next.year, next.colName].filter(Boolean).join(' · ') || '—';
+      upnextSub.textContent = [next.year, next.srcs.map((s) => s.name).join(', ')].filter(Boolean).join(' · ') || '—';
       upnextEl.dataset.qid = next.qid;
     } else {
       upnextEl.hidden = true;
@@ -643,14 +761,20 @@
 
     if (!total) {
       sectionsEl.innerHTML = '';
-      showStatus(listStatus, listMsg, listAction, '🔍',
-        'Nothing matches the filters — released after the cutoff or collection switched off.', 'Reset filters', () => {
-          cutoff = todayYMD(); save(LS.cutoff, cutoff);
-          hiddenCols = new Set(); save(LS.hideCols, []);
-          renderList();
-        });
+      if (loadingSrcs.size) {
+        showStatus({ status: xStatus, msg: xMsg, action: xAction }, '⏳',
+          'Fetching films for ' + loadingSrcs.size + ' source' + (loadingSrcs.size === 1 ? '' : 's') + '…', null);
+      } else {
+        showStatus({ status: xStatus, msg: xMsg, action: xAction }, '🔍',
+          'Nothing matches the filters — sources switched off or released after the cutoff.', 'Reset filters', () => {
+            cutoff = todayYMD(); save(LS.cutoff, cutoff);
+            hiddenSrcs = new Set(); save(LS.hideSrcs, []);
+            renderPool(); renderExplore();
+          });
+      }
       return;
     }
+    xStatus.hidden = true;
 
     const ordered = sortMovies(flt);
     if (groupBy === 'none') {
@@ -689,8 +813,8 @@
     const isNext = next && next.qid === m.qid;
     const bits = [];
     if (m.year) bits.push(String(m.year));
-    if (m.director) bits.push(escapeHTML(m.director));
-    if (groupBy !== 'saga' && m.colName) bits.push(escapeHTML(m.colName));
+    if (m.role) bits.push(escapeHTML(m.role));
+    if (groupBy !== 'source') bits.push(escapeHTML(m.srcs.map((s) => s.name).join(', ')));
     return '<div class="mcard' + (isW ? ' watched' : '') + (isNext ? ' next' : '') + '" data-qid="' + escapeHTML(m.qid) + '">'
       + '<div class="mposter">' + posterHTML(m.poster, m.title, 'mposter-img')
       + (isNext ? '<span class="next-badge">Up next</span>' : '') + '</div>'
@@ -698,7 +822,6 @@
       + '<div class="msub">' + bits.join(' · ') + '</div></div>'
       + '<div class="mact">'
       + '<button class="vcheck" type="button" data-act="toggle" data-qid="' + escapeHTML(m.qid) + '" aria-label="Toggle watched">✓</button>'
-      + '<button class="mremove" type="button" data-act="remove" data-qid="' + escapeHTML(m.qid) + '" aria-label="Remove">✕</button>'
       + '</div></div>';
   }
 
@@ -729,27 +852,25 @@
       qid: seed.qid, title: seed.title, year: seed.year || null, ymd: seed.ymd || null,
       poster: seed.poster || null, article: seed.article || null,
       seriesQ: seed.seriesQ || null, seriesName: seed.seriesName || null,
-      colQ: seed.colQ || null, colName: seed.colName || null,
-      director: seed.director || null,
     };
     openModal();
     resetModal();
     detailPoster.innerHTML = posterHTML(detail.poster, detail.title, 'detail-img');
     detailTitle.textContent = detail.title;
-    detailSub.textContent = [detail.year, detail.seriesName || detail.colName].filter(Boolean).join(' · ') || '';
+    detailSub.textContent = detail.year ? String(detail.year) : '';
     detailPlot.textContent = 'Loading details…';
     renderDetailActions();
     hydrateDetail(detail.qid);
   }
 
   function renderDetailActions() {
-    if (!detail || detail.kind !== 'film') return;
-    const added = inList(detail.qid);
+    if (!detail) return;
+    const added = inPool(detail.qid);
     const isW = watched.has(detail.qid);
     let html = added
-      ? '<button class="btn small" type="button" data-dact="remove">✓ In marathon · remove</button>'
-      : '<button class="btn primary small" type="button" data-dact="add">＋ Add to marathon</button>';
-    if (added) {
+      ? '<button class="btn small" type="button" data-dact="remove">✓ In pool · remove</button>'
+      : '<button class="btn primary small" type="button" data-dact="add">＋ Add to Explore pool</button>';
+    if (detail.kind === 'film') {
       html += '<button class="btn small' + (isW ? ' ghost' : '') + '" type="button" data-dact="watch">'
         + (isW ? 'Unmark watched' : '✓ Mark watched') + '</button>';
     }
@@ -765,7 +886,6 @@
     if (facts) {
       if (facts.ymd && !detail.ymd) { detail.ymd = facts.ymd; detail.year = facts.year; }
       if (facts.seriesQ) { detail.seriesQ = facts.seriesQ; detail.seriesName = facts.seriesName; }
-      if (facts.directors.length) detail.director = facts.directors[0];
       if (facts.article && !detail.article) detail.article = facts.article;
     }
 
@@ -792,9 +912,12 @@
     detailPlot.textContent = (summary && summary.extract) || 'No summary available.';
 
     if (detail.seriesQ) {
+      const sagaIn = inPool(detail.seriesQ);
       detailSaga.hidden = false;
       detailSaga.innerHTML = '<span class="saga-name">🎞 Part of <b>' + escapeHTML(detail.seriesName || 'a saga') + '</b></span>'
-        + '<button class="btn primary small" type="button" data-dact="saga">＋ Add whole saga</button>';
+        + (sagaIn
+          ? '<span class="filmo-done">✓ Saga in pool</span>'
+          : '<button class="btn primary small" type="button" data-dact="saga">＋ Add saga to pool</button>');
     }
 
     if (cast.length) {
@@ -818,34 +941,8 @@
     renderDetailActions();
   }
 
-  async function addSaga() {
-    if (!detail || !detail.seriesQ) return;
-    const seriesQ = detail.seriesQ, seriesName = detail.seriesName;
-    const btn = detailSaga.querySelector('[data-dact="saga"]');
-    if (btn) { btn.disabled = true; btn.textContent = 'Adding saga…'; }
-    let films;
-    try { films = await fetchSaga(seriesQ); }
-    catch (e) {
-      if (btn) { btn.disabled = false; btn.textContent = 'Retry adding saga'; }
-      return;
-    }
-    await fetchPosters(films.map((f) => f.article));
-    films.forEach((f) => {
-      if (inList(f.qid)) return;
-      list.push({
-        qid: f.qid, title: f.title, year: f.year, ymd: f.ymd,
-        poster: (f.article && posterCache[f.article]) || null, article: f.article,
-        colQ: seriesQ, colName: seriesName, director: null,
-      });
-    });
-    persistList();
-    if (btn) { btn.textContent = '✓ Saga added (' + films.length + ' films)'; }
-    renderDetailActions();
-    renderList();
-  }
-
   // ---------------------------------------------------------------------------
-  // Detail modal — people (actors / producers / directors)
+  // Detail modal — people
   // ---------------------------------------------------------------------------
   function openPerson(seed) {
     detail = {
@@ -860,13 +957,14 @@
     detailTitle.textContent = detail.title;
     detailSub.textContent = detail.occText;
     detailPlot.textContent = 'Loading filmography…';
+    renderDetailActions();
     hydratePerson(detail.qid);
   }
 
   async function hydratePerson(qid) {
     const mine = qid;
     const [films, summary] = await Promise.all([
-      fetchFilmography(qid).catch(() => null),
+      (srcCache[qid] ? Promise.resolve(srcCache[qid]) : fetchFilmography(qid).catch(() => null)),
       fetchSummary(detail.article),
     ]);
     if (!detail || detail.qid !== mine || detail.kind !== 'person') return;
@@ -900,62 +998,20 @@
   function renderFilmo() {
     if (!detail || detail.kind !== 'person' || !detail.films) return;
     const films = detail.films;
-    const left = films.filter((f) => !inList(f.qid)).length;
     detailFilmo.hidden = false;
     detailFilmo.innerHTML =
       '<div class="filmo-head">'
       + '<span class="filmo-title-h">Filmography · ' + films.length + ' films</span>'
-      + (left
-        ? '<button class="btn primary small" type="button" data-dact="filmo-all">＋ Add all (' + left + ')</button>'
-        : '<span class="filmo-done">✓ All in marathon</span>')
       + '</div>'
       + '<div class="filmo-rows">'
       + films.map((f) => {
-        const added = inList(f.qid);
         return '<div class="filmo-row" data-fqid="' + escapeHTML(f.qid) + '">'
           + '<span class="filmo-year">' + (f.year || '—') + '</span>'
           + '<span class="filmo-name">' + escapeHTML(f.title) + '</span>'
           + (f.role ? '<span class="filmo-role">' + escapeHTML(f.role) + '</span>' : '')
-          + '<button class="radd' + (added ? ' added' : '') + '" type="button" data-fadd="' + escapeHTML(f.qid) + '"'
-          + ' aria-label="' + (added ? 'In your marathon' : 'Add to marathon') + '">' + (added ? '✓' : '＋') + '</button>'
           + '</div>';
       }).join('')
       + '</div>';
-  }
-
-  async function addPersonFilm(qid) {
-    if (!detail || detail.kind !== 'person' || !detail.films) return;
-    const f = detail.films.find((x) => x.qid === qid);
-    if (!f) return;
-    if (inList(qid)) { removeMovie(qid); renderFilmo(); return; }
-    if (f.article && posterCache[f.article] === undefined) await fetchPosters([f.article]);
-    addMovie({
-      qid: f.qid, title: f.title, year: f.year, ymd: f.ymd, article: f.article,
-      poster: (f.article && posterCache[f.article]) || null,
-      colQ: detail.qid, colName: detail.title,
-    });
-    renderFilmo();
-  }
-
-  async function addAllPersonFilms() {
-    if (!detail || detail.kind !== 'person' || !detail.films) return;
-    const person = detail.qid, personName = detail.title;
-    const films = detail.films;
-    const btn = detailFilmo.querySelector('[data-dact="filmo-all"]');
-    if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
-    await fetchPosters(films.map((f) => f.article));
-    if (!detail || detail.qid !== person) return;
-    films.forEach((f) => {
-      if (inList(f.qid)) return;
-      list.push({
-        qid: f.qid, title: f.title, year: f.year, ymd: f.ymd,
-        poster: (f.article && posterCache[f.article]) || null, article: f.article,
-        colQ: person, colName: personName, director: null,
-      });
-    });
-    persistList();
-    renderFilmo();
-    renderList();
   }
 
   // ---------------------------------------------------------------------------
@@ -966,28 +1022,47 @@
     tab = b.getAttribute('data-tab'); save(LS.tab, tab); render();
   });
 
-  searchInput.addEventListener('input', debounce(runSearch, 450));
-  searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
-  searchClear.addEventListener('click', () => { searchInput.value = ''; searchSeq++; searchResults = []; renderDiscover(); searchInput.focus(); });
+  // Pool chips: × removes; chip tap solos that source in Explore (tap again to unsolo).
+  poolChips.addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-rm]');
+    if (rm) { removeSource(rm.getAttribute('data-rm')); return; }
+    const chip = e.target.closest('[data-src]');
+    if (!chip) return;
+    const qid = chip.getAttribute('data-src');
+    const enabled = pool.filter((s) => !hiddenSrcs.has(s.qid));
+    if (enabled.length === 1 && enabled[0].qid === qid) hiddenSrcs = new Set();
+    else hiddenSrcs = new Set(pool.filter((s) => s.qid !== qid).map((s) => s.qid));
+    save(LS.hideSrcs, Array.from(hiddenSrcs));
+    tab = 'explore'; save(LS.tab, tab);
+    render();
+  });
 
-  resultsEl.addEventListener('click', (e) => {
-    const add = e.target.closest('[data-add]');
-    if (add) {
-      const m = searchResults.find((x) => x.qid === add.getAttribute('data-add'));
-      if (m) { if (inList(m.qid)) removeMovie(m.qid); else addMovie(m); renderDiscover(); }
-      return;
-    }
-    const pcard = e.target.closest('[data-person]');
-    if (pcard) {
-      const p = searchResults.find((x) => x.qid === pcard.getAttribute('data-person'));
-      if (p) openPerson(p);
-      return;
-    }
-    const card = e.target.closest('.rcard');
-    if (card) {
-      const m = searchResults.find((x) => x.qid === card.getAttribute('data-qid'));
-      if (m) openDetail(m);
-    }
+  ['person', 'film'].forEach((kind) => {
+    const u = ui[kind];
+    u.input.addEventListener('input', debounce(() => runSearch(kind), 450));
+    u.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(kind); });
+    u.clear.addEventListener('click', () => {
+      u.input.value = ''; search[kind].seq++; search[kind].results = [];
+      renderSearch(kind); u.input.focus();
+    });
+    u.results.addEventListener('click', (e) => {
+      const add = e.target.closest('[data-add]');
+      if (add) {
+        const m = search[kind].results.find((x) => x.qid === add.getAttribute('data-add'));
+        if (m) {
+          if (inPool(m.qid)) removeSource(m.qid);
+          else if (kind === 'person') addPersonSource(m);
+          else addFilmSource(m);
+          renderSearch(kind);
+        }
+        return;
+      }
+      const card = e.target.closest('[data-open]');
+      if (card) {
+        const m = search[kind].results.find((x) => x.qid === card.getAttribute('data-open'));
+        if (m) { if (kind === 'person') openPerson(m); else openDetail(m); }
+      }
+    });
   });
 
   fltToggle.addEventListener('click', () => {
@@ -996,15 +1071,15 @@
     fltToggle.setAttribute('aria-expanded', String(filtersOpen));
     fltToggle.classList.toggle('open', filtersOpen);
   });
-  colAllBtn.addEventListener('click', () => { hiddenCols = new Set(); save(LS.hideCols, []); renderList(); });
-  colNoneBtn.addEventListener('click', () => {
-    hiddenCols = new Set(collections().map((c) => c.key));
-    save(LS.hideCols, Array.from(hiddenCols));
-    renderList();
+  srcAllBtn.addEventListener('click', () => { hiddenSrcs = new Set(); save(LS.hideSrcs, []); renderPool(); renderExplore(); });
+  srcNoneBtn.addEventListener('click', () => {
+    hiddenSrcs = new Set(pool.map((s) => s.qid));
+    save(LS.hideSrcs, Array.from(hiddenSrcs));
+    renderPool(); renderExplore();
   });
-  fltReset.addEventListener('click', () => { cutoff = todayYMD(); save(LS.cutoff, cutoff); renderList(); });
-  clearWatchedBtn.addEventListener('click', () => { if (watched.size) { watched = new Set(); save(LS.watched, []); renderList(); } });
-  showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; save(LS.showWatched, showWatched); renderList(); });
+  fltReset.addEventListener('click', () => { cutoff = todayYMD(); save(LS.cutoff, cutoff); renderExplore(); });
+  clearWatchedBtn.addEventListener('click', () => { if (watched.size) { watched = new Set(); save(LS.watched, []); renderExplore(); } });
+  showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; save(LS.showWatched, showWatched); renderExplore(); });
 
   fYear.addEventListener('input', () => {
     cutoff.y = yearRange[Number(fYear.value)] || cutoff.y;
@@ -1021,11 +1096,11 @@
     dyValue.textContent = String(cutoff.d); commitCutoff();
   });
 
-  selSort.addEventListener('change', () => { sortBy = selSort.value; save(LS.sort, sortBy); renderList(); });
-  selGroup.addEventListener('change', () => { groupBy = selGroup.value; collapsed.clear(); save(LS.group, groupBy); renderList(); });
+  selSort.addEventListener('change', () => { sortBy = selSort.value; save(LS.sort, sortBy); renderExplore(); });
+  selGroup.addEventListener('change', () => { groupBy = selGroup.value; collapsed.clear(); save(LS.group, groupBy); renderExplore(); });
 
   upnextEl.addEventListener('click', () => {
-    const m = list.find((x) => x.qid === upnextEl.dataset.qid);
+    const m = exploreMovies().find((x) => x.qid === upnextEl.dataset.qid);
     if (m) openDetail(m);
   });
 
@@ -1033,33 +1108,32 @@
     const mark = e.target.closest('[data-markkey]');
     if (mark) {
       const key = mark.getAttribute('data-markkey');
-      const g = buildGroups(sortMovies(filteredList())).find((x) => x.key === key);
+      const g = buildGroups(sortMovies(filteredMovies())).find((x) => x.key === key);
       if (!g) return;
       const allW = g.movies.every((m) => watched.has(m.qid));
       g.movies.forEach((m) => { if (allW) watched.delete(m.qid); else watched.add(m.qid); });
       save(LS.watched, Array.from(watched));
-      renderList();
+      renderExplore();
       return;
     }
     const tog = e.target.closest('.section-toggle');
     if (tog) {
       const k = tog.getAttribute('data-key');
       if (collapsed.has(k)) collapsed.delete(k); else collapsed.add(k);
-      renderList();
+      renderExplore();
       return;
     }
-    const act = e.target.closest('[data-act]');
+    const act = e.target.closest('[data-act="toggle"]');
     if (act) {
       const qid = act.getAttribute('data-qid');
-      if (act.getAttribute('data-act') === 'remove') { removeMovie(qid); return; }
       if (watched.has(qid)) watched.delete(qid); else watched.add(qid);
       save(LS.watched, Array.from(watched));
-      renderList();
+      renderExplore();
       return;
     }
     const card = e.target.closest('.mcard');
     if (card) {
-      const m = list.find((x) => x.qid === card.getAttribute('data-qid'));
+      const m = exploreMovies().find((x) => x.qid === card.getAttribute('data-qid'));
       if (m) openDetail(m);
     }
   });
@@ -1067,22 +1141,29 @@
   detailActions.addEventListener('click', (e) => {
     const b = e.target.closest('[data-dact]'); if (!b || !detail) return;
     const act = b.getAttribute('data-dact');
-    if (act === 'add') { addMovie(detail); renderDetailActions(); renderDiscover(); }
-    else if (act === 'remove') { removeMovie(detail.qid); renderDetailActions(); renderDiscover(); }
-    else if (act === 'watch') {
+    if (act === 'add') {
+      if (detail.kind === 'person') addPersonSource(detail);
+      else addFilmSource(detail);
+      renderDetailActions();
+      if (tab !== 'explore') renderSearch(tab === 'people' ? 'person' : 'film');
+    } else if (act === 'remove') {
+      removeSource(detail.qid);
+      renderDetailActions();
+      if (tab !== 'explore') renderSearch(tab === 'people' ? 'person' : 'film');
+    } else if (act === 'watch') {
       if (watched.has(detail.qid)) watched.delete(detail.qid); else watched.add(detail.qid);
       save(LS.watched, Array.from(watched));
-      renderDetailActions(); renderList();
+      renderDetailActions();
+      if (tab === 'explore') renderExplore();
     }
   });
   detailSaga.addEventListener('click', (e) => {
-    if (e.target.closest('[data-dact="saga"]')) addSaga();
+    if (!e.target.closest('[data-dact="saga"]') || !detail || !detail.seriesQ) return;
+    addSagaSource(detail.seriesQ, detail.seriesName);
+    detailSaga.querySelector('[data-dact="saga"]').outerHTML = '<span class="filmo-done">✓ Saga in pool</span>';
   });
   detailFilmo.addEventListener('click', (e) => {
-    if (e.target.closest('[data-dact="filmo-all"]')) { addAllPersonFilms(); return; }
     if (e.target.closest('[data-dact="filmo-retry"]')) { hydratePerson(detail.qid); return; }
-    const add = e.target.closest('[data-fadd]');
-    if (add) { addPersonFilm(add.getAttribute('data-fadd')); return; }
     const row = e.target.closest('.filmo-row');
     if (row && detail && detail.films) {
       const f = detail.films.find((x) => x.qid === row.getAttribute('data-fqid'));
@@ -1112,17 +1193,18 @@
   // Boot
   // ---------------------------------------------------------------------------
   render();
-  // Refresh posters for list entries that never got one (e.g. added offline).
-  (async function refreshListPosters() {
-    const missing = list.filter((m) => !m.poster && m.article);
+  ensureSources();
+  // Refresh posters for film sources that never got one (e.g. added offline).
+  (async function refreshFilmPosters() {
+    const missing = pool.filter((s) => s.type === 'film' && !s.poster && s.article);
     if (!missing.length) return;
-    await fetchPosters(missing.map((m) => m.article));
+    await fetchPosters(missing.map((s) => s.article));
     let changed = false;
-    missing.forEach((m) => {
-      const p = posterCache[m.article];
-      if (p) { m.poster = p; changed = true; }
+    missing.forEach((s) => {
+      const p = posterCache[s.article];
+      if (p) { s.poster = p; changed = true; }
     });
-    if (changed) { persistList(); renderList(); }
+    if (changed) { persistPool(); renderAll(); }
   })();
 
   (function hideLoading() {

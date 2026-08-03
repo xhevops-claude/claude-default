@@ -43,35 +43,58 @@
       <span class="mh-logo" aria-hidden="true">🎬</span>
       <div class="mh-titles">
         <h1>Marathon</h1>
-        <p>Every movie, every saga — in order.</p>
+        <p>Build a pool. Watch it in order.</p>
       </div>
     </header>
 
     <!-- Tabs -->
-    <div class="seg tabs" id="tabs" role="tablist" aria-label="View">
-      <button type="button" class="seg-btn" data-tab="discover" role="tab">🔍 Discover</button>
-      <button type="button" class="seg-btn" data-tab="list" role="tab">My Marathon <span class="tab-n" id="tab-count">0</span></button>
+    <div class="seg tabs" id="tabs" role="tablist" aria-label="Screen">
+      <button type="button" class="seg-btn" data-tab="people" role="tab">👤 People</button>
+      <button type="button" class="seg-btn" data-tab="movies" role="tab">🎬 Movies</button>
+      <button type="button" class="seg-btn" data-tab="explore" role="tab">🍿 Explore <span class="tab-n" id="pool-count">0</span></button>
     </div>
 
-    <!-- Discover -->
-    <section id="view-discover" hidden>
+    <!-- Explore pool — always visible -->
+    <section class="pool" aria-label="Explore pool">
+      <span class="pool-label">Explore pool</span>
+      <div class="pool-chips" id="pool-chips"></div>
+    </section>
+
+    <!-- People search -->
+    <section id="view-people" hidden>
       <div class="search-row">
-        <input type="search" id="search-input" class="search-input" placeholder="Search a movie, actor or producer…"
-          autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search movies and people" />
-        <button id="search-clear" type="button" class="search-clear" aria-label="Clear search" hidden>×</button>
+        <input type="search" id="p-search-input" class="search-input" placeholder="Search an actor, producer or director…"
+          autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search people" />
+        <button id="p-search-clear" type="button" class="search-clear" aria-label="Clear search" hidden>×</button>
       </div>
-      <p class="search-hint" id="search-hint">Powered by Wikidata + Wikipedia — films, actors, producers and directors, with cast and posters for practically everything ever made.</p>
-      <div class="results-grid" id="results"></div>
-      <section class="status-panel" id="discover-status" hidden>
-        <div class="status-icon" aria-hidden="true">🎬</div>
-        <div class="status-msg" id="discover-msg">—</div>
-        <button id="discover-action" type="button" class="btn primary" hidden></button>
+      <p class="search-hint" id="p-hint">Add a person to the Explore pool and every film they acted in, produced or directed joins your marathon.</p>
+      <div class="results-grid" id="p-results"></div>
+      <section class="status-panel" id="p-status" hidden>
+        <div class="status-icon" aria-hidden="true">👤</div>
+        <div class="status-msg" id="p-msg">—</div>
+        <button id="p-action" type="button" class="btn primary" hidden></button>
       </section>
     </section>
 
-    <!-- My Marathon -->
-    <section id="view-list" hidden>
-      <!-- Filters (collapsible): collections + date cutoff + show-watched -->
+    <!-- Movies search -->
+    <section id="view-movies" hidden>
+      <div class="search-row">
+        <input type="search" id="m-search-input" class="search-input" placeholder="Search any movie…"
+          autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search movies" />
+        <button id="m-search-clear" type="button" class="search-clear" aria-label="Clear search" hidden>×</button>
+      </div>
+      <p class="search-hint" id="m-hint">Add single films — or open one and pull in its whole saga. Everything lands in the Explore pool.</p>
+      <div class="results-grid" id="m-results"></div>
+      <section class="status-panel" id="m-status" hidden>
+        <div class="status-icon" aria-hidden="true">🎬</div>
+        <div class="status-msg" id="m-msg">—</div>
+        <button id="m-action" type="button" class="btn primary" hidden></button>
+      </section>
+    </section>
+
+    <!-- Explore -->
+    <section id="view-explore" hidden>
+      <!-- Filters (collapsible): pool sources + date cutoff + show-watched -->
       <section class="filters" id="flt" hidden>
         <button class="filters-head" id="flt-toggle" type="button" aria-expanded="false" aria-controls="flt-body">
           <span class="filters-chev" aria-hidden="true">▸</span>
@@ -82,13 +105,13 @@
         <div class="filters-body" id="flt-body" hidden>
           <div class="fgroup">
             <div class="fgroup-head">
-              <span class="fgroup-label">Collections</span>
+              <span class="fgroup-label">Sources</span>
               <span class="fgroup-actions">
-                <button id="col-all" type="button" class="linkbtn">Select all</button>
-                <button id="col-none" type="button" class="linkbtn">Clear all</button>
+                <button id="src-all" type="button" class="linkbtn">Select all</button>
+                <button id="src-none" type="button" class="linkbtn">Clear all</button>
               </span>
             </div>
-            <div class="col-switches" id="col-switches"></div>
+            <div class="col-switches" id="src-switches"></div>
           </div>
 
           <div class="fgroup">
@@ -123,7 +146,7 @@
         </div>
       </section>
 
-      <div class="toolbar" id="list-toolbar">
+      <div class="toolbar" id="explore-toolbar" hidden>
         <div class="tb-item">
           <label class="tb-label" for="sel-sort">Sort</label>
           <select id="sel-sort" class="tb-select">
@@ -135,7 +158,7 @@
           <label class="tb-label" for="sel-group">Group</label>
           <select id="sel-group" class="tb-select">
             <option value="none">Timeline</option>
-            <option value="saga">Collection</option>
+            <option value="source">Source</option>
             <option value="year">Year</option>
           </select>
         </div>
@@ -158,10 +181,10 @@
 
       <section class="sections" id="sections" aria-label="Movies"></section>
 
-      <section class="status-panel" id="list-status" hidden>
+      <section class="status-panel" id="x-status" hidden>
         <div class="status-icon" aria-hidden="true">🍿</div>
-        <div class="status-msg" id="list-msg">—</div>
-        <button id="list-action" type="button" class="btn primary" hidden></button>
+        <div class="status-msg" id="x-msg">—</div>
+        <button id="x-action" type="button" class="btn primary" hidden></button>
       </section>
     </section>
 
@@ -170,8 +193,8 @@
     </div>
   </main>
 
-  <!-- Movie detail -->
-  <div class="detail-modal" id="detail-modal" hidden role="dialog" aria-label="Movie details">
+  <!-- Detail (film or person) -->
+  <div class="detail-modal" id="detail-modal" hidden role="dialog" aria-label="Details">
     <div class="detail-card" id="detail-card">
       <button id="detail-close" type="button" class="detail-x" aria-label="Close">×</button>
       <div class="detail-hero">
