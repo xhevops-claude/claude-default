@@ -76,6 +76,14 @@
       url: 'apps/binge/',
     },
     {
+      slug: 'marathon',
+      name: 'Marathon',
+      meta: 'Movies',
+      tagline: 'Your actors’ films, in release order.',
+      icon: '🎬',
+      url: 'apps/marathon/',
+    },
+    {
       slug: 'usage',
       name: 'Usage',
       meta: 'Status',
