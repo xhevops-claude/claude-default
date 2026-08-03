@@ -47,6 +47,14 @@ jobs:
             echo "is_preview=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Build expenses data aggregate
+        # apps/expenses ships per-expense JSON files under
+        # data/expenses/<yyyy>/<mm>/; the frontend consumes a single
+        # generated data/expenses.json which is gitignored and exists
+        # only in the deploy output. Validation failures abort the
+        # deploy rather than publishing a broken ledger.
+        run: node scripts/build-expenses-data.mjs
+
       - name: Cache-bust local assets in deployed HTML
         # GitHub Pages serves `.js`/`.css` with `Cache-Control:
         # max-age=600`, so without a version token Chrome happily
@@ -110,7 +118,7 @@ jobs:
           publish_branch: gh-pages
           destination_dir: ${{ steps.target.outputs.dir }}
           keep_files: true
-          exclude_assets: '.github,node_modules,data-sources,.gitignore,package.json,package-lock.json,.htmlhintrc,.stylelintrc.json,README.md,ghp'
+          exclude_assets: '.github,node_modules,data-sources,scripts,.gitignore,package.json,package-lock.json,.htmlhintrc,.stylelintrc.json,README.md,ghp'
           commit_message: 'deploy(${{ steps.target.outputs.label }}): ${{ github.event.head_commit.message || github.ref_name }}'
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'

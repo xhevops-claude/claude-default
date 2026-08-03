@@ -5,7 +5,8 @@
 
   const LS = {
     selected: 'binge-selected',
-    watched: 'binge-watched',
+    watched: 'binge-watched',            // legacy: array of video ids (migrated on load)
+    watchedTo: 'binge-watchedto',        // { slug: yyyymmdd } — watched up to this date, inclusive
     showWatched: 'binge-showwatched',
     cutoff: 'binge-cutoff',
     view: 'binge-view',
@@ -25,7 +26,7 @@
 
   // ---- persisted state ----
   let selected = new Set();                       // channel slugs shown (default: all)
-  let watched = new Set(load(LS.watched, []));
+  let watchedTo = load(LS.watchedTo, {});         // slug -> yyyymmdd cursor
   let showWatched = load(LS.showWatched, true);
   const savedCut = load(LS.cutoff, null);
   let cutoff = (savedCut && typeof savedCut.y === 'number') ? savedCut : todayYMD();
@@ -185,11 +186,11 @@
     let started = after == null;
     for (const v of order) {
       if (!started) { if (v.id === after) started = true; continue; }
-      if (!watched.has(v.id) && !unavailable.has(v.id)) return v;
+      if (!isWatched(v) && !unavailable.has(v.id)) return v;
     }
     for (const v of order) {
       if (v.id === after) break;
-      if (!watched.has(v.id) && !unavailable.has(v.id)) return v;
+      if (!isWatched(v) && !unavailable.has(v.id)) return v;
     }
     return null;
   }
@@ -215,7 +216,7 @@
 
     const list = sortVids(baseVideos());
     const total = list.length;
-    const watchedCount = list.filter((v) => watched.has(v.id)).length;
+    const watchedCount = list.filter(isWatched).length;
     const remaining = total - watchedCount;
 
     progressEl.hidden = false;
@@ -270,14 +271,23 @@
         row.innerHTML =
           '<input type="checkbox" class="switch-input"' + (selected.has(c.slug) ? ' checked' : '') + ' />'
           + '<span class="switch-track" aria-hidden="true"></span>'
-          + '<span class="switch-text">' + escapeHTML(c.name || c.slug)
-          + ' <span class="chan-n">' + (c.count || 0) + '</span></span>';
+          + '<span class="switch-text"><span class="chan-name">' + escapeHTML(c.name || c.slug) + '</span>'
+          + '<span class="chan-upto">' + escapeHTML(cursorLabel(c.slug)) + '</span>'
+          + '<span class="chan-n">' + (c.count || 0) + '</span></span>';
         row.querySelector('input').addEventListener('change', () => toggleChannel(c.slug));
         chanSwitches.appendChild(row);
       });
     } else {
-      available.forEach((c, i) => { inputs[i].checked = selected.has(c.slug); });
+      const uptos = chanSwitches.querySelectorAll('.chan-switch .chan-upto');
+      available.forEach((c, i) => {
+        inputs[i].checked = selected.has(c.slug);
+        uptos[i].textContent = cursorLabel(c.slug);
+      });
     }
+  }
+  function cursorLabel(slug) {
+    const cur = cursorOf(slug);
+    return cur ? 'up to ' + fmtYMDInt(cur) : '';
   }
   // Pure state flip — all channel data is preloaded, so rapid toggling can't
   // race an in-flight fetch.
@@ -363,14 +373,14 @@
   function renderSections(list) {
     let groups = buildGroups(list);
     if (!showWatched) {
-      groups = groups.filter((g) => g.vids.some((v) => !watched.has(v.id) || v.id === currentId));
+      groups = groups.filter((g) => g.vids.some((v) => !isWatched(v) || v.id === currentId));
     }
     updateCollapseAllLabel(groups);
 
     const html = groups.map((g) => {
       const open = !collapsed.has(g.key);
-      const w = g.vids.filter((v) => watched.has(v.id)).length;
-      const shown = showWatched ? g.vids : g.vids.filter((v) => !watched.has(v.id) || v.id === currentId);
+      const w = g.vids.filter(isWatched).length;
+      const shown = showWatched ? g.vids : g.vids.filter((v) => !isWatched(v) || v.id === currentId);
       const body = open
         ? '<div class="vids ' + view + '">' + shown.map(cardHTML).join('') + '</div>'
         : '';
@@ -389,7 +399,7 @@
   }
 
   function cardHTML(v) {
-    const isW = watched.has(v.id);
+    const isW = isWatched(v);
     const isP = v.id === currentId;
     const cls = 'vcard' + (isW ? ' watched' : '') + (isP ? ' playing' : '');
     const thumb = 'https://i.ytimg.com/vi/' + v.id + '/mqdefault.jpg';
@@ -438,21 +448,56 @@
   });
 
   // ---------------------------------------------------------------------------
-  // Watched
+  // Watched — per-channel date cursor. A video is watched when its date is on
+  // or before its channel's cursor; marking a video watched advances the
+  // cursor to that date (never backwards), unmarking pulls the cursor to the
+  // channel's latest date strictly before it.
   // ---------------------------------------------------------------------------
+  function cursorOf(slug) { return watchedTo[slug] || 0; }
+  function isWatched(v) { return videoYMD(v) <= cursorOf(v.slug); }
+  function setCursor(slug, ymd) {
+    if (ymd > 0) watchedTo[slug] = ymd; else delete watchedTo[slug];
+    save(LS.watchedTo, watchedTo);
+  }
+  // Latest date in the channel strictly before `ymd` (0 if none) — the cursor
+  // value that unmarks everything from `ymd` onwards.
+  function prevDateBefore(slug, ymd) {
+    let prev = 0;
+    const cd = channelData[slug];
+    if (cd) cd.videos.forEach((v) => { const y = videoYMD(v); if (y < ymd && y > prev) prev = y; });
+    return prev;
+  }
+  function fmtYMDInt(ymd) {
+    const y = Math.floor(ymd / 10000), m = Math.floor(ymd / 100) % 100, d = ymd % 100;
+    return d + ' ' + MONTHS[m - 1] + ' ' + y;
+  }
   function toggleWatched(id) {
-    if (watched.has(id)) watched.delete(id); else watched.add(id);
-    save(LS.watched, Array.from(watched));
+    const v = findVideo(id);
+    if (!v) return;
+    if (isWatched(v)) setCursor(v.slug, prevDateBefore(v.slug, videoYMD(v)));
+    else setCursor(v.slug, Math.max(cursorOf(v.slug), videoYMD(v)));
     render();
   }
-  function markWatched(id) { if (id) { watched.add(id); save(LS.watched, Array.from(watched)); } }
+  function markWatched(id) {
+    const v = id && findVideo(id);
+    if (v) setCursor(v.slug, Math.max(cursorOf(v.slug), videoYMD(v)));
+  }
   function markSectionWatched(key) {
     const groups = buildGroups(sortVids(baseVideos()));
     const g = groups.find((x) => x.key === key);
     if (!g) return;
-    const allW = g.vids.every((v) => watched.has(v.id));
-    g.vids.forEach((v) => { if (allW) watched.delete(v.id); else watched.add(v.id); });
-    save(LS.watched, Array.from(watched));
+    const allW = g.vids.every(isWatched);
+    const perChan = new Map();   // slug -> {min, max} ymd within this section
+    g.vids.forEach((v) => {
+      const y = videoYMD(v);
+      const r = perChan.get(v.slug) || { min: y, max: y };
+      r.min = Math.min(r.min, y); r.max = Math.max(r.max, y);
+      perChan.set(v.slug, r);
+    });
+    perChan.forEach((r, slug) => {
+      if (allW) { if (cursorOf(slug) >= r.min) setCursor(slug, prevDateBefore(slug, r.min)); }
+      else setCursor(slug, Math.max(cursorOf(slug), r.max));
+    });
     render();
   }
 
@@ -548,7 +593,9 @@
   chanNoneBtn.addEventListener('click', clearAllChannels);
   filtersReset.addEventListener('click', resetCutoff);
   showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; save(LS.showWatched, showWatched); render(); });
-  clearWatchedBtn.addEventListener('click', () => { if (watched.size) { watched = new Set(); save(LS.watched, []); render(); } });
+  clearWatchedBtn.addEventListener('click', () => {
+    if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }
+  });
 
   fYear.addEventListener('input', () => {
     cutoff.y = yearRange[Number(fYear.value)] || cutoff.y;
@@ -585,9 +632,9 @@
 
   // ---------------------------------------------------------------------------
   // Cross-device sync — no backend. A committed db.json is the shared
-  // baseline; localStorage layers on top. `watched` unions (never loses a
-  // mark); per-device prefs fill only when this device hasn't set them.
-  // Cutoff stays local (defaults to today).
+  // baseline; localStorage layers on top. Watched cursors merge by taking the
+  // later date per channel (never loses progress); per-device prefs fill only
+  // when this device hasn't set them. Cutoff stays local (defaults to today).
   // ---------------------------------------------------------------------------
   const SYNC_FILL = [LS.selected, LS.showWatched, LS.view, LS.sort, LS.group, LS.filtersOpen];
 
@@ -600,18 +647,46 @@
   }
   function mergeDB(db) {
     if (!db || typeof db !== 'object') return;
+    const baseC = (db[LS.watchedTo] && typeof db[LS.watchedTo] === 'object') ? db[LS.watchedTo] : {};
+    const localC = load(LS.watchedTo, {});
+    const merged = Object.assign({}, localC);
+    Object.keys(baseC).forEach((slug) => {
+      const y = Number(baseC[slug]) || 0;
+      if (y > (merged[slug] || 0)) merged[slug] = y;
+    });
+    save(LS.watchedTo, merged);
+    // Legacy per-video id lists still union; migrateLegacy() converts them to
+    // cursors once channel data is loaded.
     const baseW = Array.isArray(db[LS.watched]) ? db[LS.watched] : [];
     const localW = load(LS.watched, []);
-    save(LS.watched, Array.from(new Set(baseW.concat(localW))));   // union
+    const unionW = Array.from(new Set(baseW.concat(localW)));
+    if (unionW.length) save(LS.watched, unionW);
     SYNC_FILL.forEach((k) => {
       if (localStorage.getItem(k) == null && db[k] !== undefined) {
         try { localStorage.setItem(k, JSON.stringify(db[k])); } catch (e) {}
       }
     });
   }
+  // Fold any legacy watched-id list into the per-channel cursors: each
+  // channel's cursor becomes its latest watched video's date. Requires
+  // channel data (id -> date), so runs after loadAll(). Idempotent.
+  function migrateLegacy() {
+    const ids = load(LS.watched, []);
+    if (!Array.isArray(ids) || !ids.length) return;
+    const idset = new Set(ids);
+    for (const slug in channelData) {
+      let max = cursorOf(slug);
+      channelData[slug].videos.forEach((v) => {
+        if (idset.has(v.id)) { const y = videoYMD(v); if (y > max) max = y; }
+      });
+      if (max > 0) watchedTo[slug] = max;
+    }
+    save(LS.watchedTo, watchedTo);
+    try { localStorage.removeItem(LS.watched); } catch (e) {}
+  }
   // Re-read runtime state from (possibly just-merged) localStorage.
   function reloadState() {
-    watched = new Set(load(LS.watched, []));
+    watchedTo = load(LS.watchedTo, {});
     showWatched = load(LS.showWatched, true);
     const sc = load(LS.cutoff, null);
     cutoff = (sc && typeof sc.y === 'number') ? sc : todayYMD();
@@ -649,8 +724,9 @@
     try { obj = JSON.parse(syncPaste.value); } catch (e) { syncNoteMsg('That doesn’t look like valid sync data.'); return; }
     mergeDB(obj);
     reloadState();
+    migrateLegacy();
     render();
-    syncNoteMsg('Merged. Watched list and settings updated on this device.');
+    syncNoteMsg('Merged. Watched progress and settings updated on this device.');
   }
   syncOpenBtn.addEventListener('click', () => { syncNoteMsg(''); syncPaste.value = ''; syncModal.hidden = false; });
   syncClose.addEventListener('click', () => { syncModal.hidden = true; });
@@ -667,6 +743,7 @@
     mergeDB(db);
     reloadState();
     await loadAll();
+    migrateLegacy();
     render();
   })();
 
