@@ -111,6 +111,21 @@
     ]
   },
   {
+    "id": "meals",
+    "name": "Meals & Hospitality",
+    "icon": "🍽️",
+    "fields": [
+      {
+        "key": "venue",
+        "label": "Venue"
+      },
+      {
+        "key": "receipt",
+        "label": "Receipt no."
+      }
+    ]
+  },
+  {
     "id": "parking",
     "name": "Parking",
     "icon": "🅿️",
