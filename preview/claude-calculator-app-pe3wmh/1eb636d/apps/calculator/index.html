@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Calculator</title>
+  <script>
+    if (window.self !== window.top) document.documentElement.classList.add('embedded');
+  </script>
+  <style>
+    /* Critical inline CSS so the splash paints on the very first frame,
+       before styles.css resolves. The sub-experience ships its own
+       palette; the shell does not theme it. */
+    html, body { margin: 0; padding: 0; background: #0b0d14; color: #eef1f7;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; }
+    #app-loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(120% 90% at 50% 20%, #171a2b 0%, #0b0d14 62%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 22px;
+      transition: opacity 0.45s ease;
+    }
+    #app-loading.hidden { opacity: 0; pointer-events: none; }
+    #app-loading .gl-icon {
+      font-size: 78px; line-height: 1;
+      filter: drop-shadow(0 0 18px rgba(99, 102, 241, 0.55));
+      animation: gl-tick 1.8s ease-in-out infinite;
+    }
+    @keyframes gl-tick {
+      0%, 100% { transform: translateY(0) rotate(-3deg); }
+      50% { transform: translateY(-8px) rotate(3deg); }
+    }
+    #app-loading .gl-word {
+      font-weight: 800; letter-spacing: 0.42em; font-size: 12px;
+      text-transform: uppercase; color: #a5b0d6; padding-left: 0.42em;
+    }
+    #app-loading .gl-bar {
+      position: relative; width: 180px; height: 3px;
+      background: rgba(165, 176, 214, 0.16); overflow: hidden; border-radius: 2px;
+    }
+    #app-loading .gl-bar::after {
+      content: ""; position: absolute; top: 0; left: -40%;
+      width: 40%; height: 100%;
+      background: linear-gradient(90deg, #6366f1, #22d3ee);
+      animation: gl-run 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    }
+    @keyframes gl-run { 0% { left: -40%; } 100% { left: 100%; } }
+  </style>
+  <link rel="stylesheet" href="styles.css?v=1eb636d" />
+</head>
+<body>
+  <div id="app-loading">
+    <span class="gl-icon" aria-hidden="true">🧮</span>
+    <span class="gl-word">Warming up</span>
+    <div class="gl-bar" aria-label="Loading"></div>
+  </div>
+
+  <main class="calc">
+    <header class="calc-head">
+      <span class="calc-logo" aria-hidden="true">🧮</span>
+      <div class="calc-titles">
+        <h1>Calculator</h1>
+        <p>Tap it out. Or just type.</p>
+      </div>
+      <button id="tape-toggle" type="button" class="icon-btn" aria-expanded="false" aria-controls="tape" title="History tape">
+        <span aria-hidden="true">🧾</span>
+        <span class="sr-only">History tape</span>
+      </button>
+    </header>
+
+    <section class="screen" aria-label="Display">
+      <div class="screen-expr" id="expr">&nbsp;</div>
+      <output class="screen-value" id="value" for="keys" aria-live="polite">0</output>
+    </section>
+
+    <section class="keys" id="keys" aria-label="Keypad">
+      <button type="button" class="key fn" data-key="clear" id="clear-key">AC</button>
+      <button type="button" class="key fn" data-key="negate" aria-label="Toggle sign">±</button>
+      <button type="button" class="key fn" data-key="percent" aria-label="Percent">%</button>
+      <button type="button" class="key op" data-key="/" aria-label="Divide">÷</button>
+
+      <button type="button" class="key num" data-key="7">7</button>
+      <button type="button" class="key num" data-key="8">8</button>
+      <button type="button" class="key num" data-key="9">9</button>
+      <button type="button" class="key op" data-key="*" aria-label="Multiply">×</button>
+
+      <button type="button" class="key num" data-key="4">4</button>
+      <button type="button" class="key num" data-key="5">5</button>
+      <button type="button" class="key num" data-key="6">6</button>
+      <button type="button" class="key op" data-key="-" aria-label="Subtract">−</button>
+
+      <button type="button" class="key num" data-key="1">1</button>
+      <button type="button" class="key num" data-key="2">2</button>
+      <button type="button" class="key num" data-key="3">3</button>
+      <button type="button" class="key op" data-key="+" aria-label="Add">+</button>
+
+      <button type="button" class="key num" data-key="back" aria-label="Backspace">⌫</button>
+      <button type="button" class="key num" data-key="0">0</button>
+      <button type="button" class="key num" data-key="." aria-label="Decimal point">.</button>
+      <button type="button" class="key eq" data-key="=" aria-label="Equals">=</button>
+    </section>
+
+    <!-- History tape — slides in over the keypad. -->
+    <aside class="tape" id="tape" hidden aria-label="History">
+      <div class="tape-head">
+        <h2>Tape</h2>
+        <button type="button" class="text-btn" id="tape-clear">Clear</button>
+        <button type="button" class="icon-btn" id="tape-close" aria-label="Close history">✕</button>
+      </div>
+      <ul class="tape-list" id="tape-list"></ul>
+      <p class="tape-empty" id="tape-empty">Nothing yet. Every “=” lands here.</p>
+    </aside>
+
+    <div class="hud">
+      <button id="quit" type="button" class="btn ghost">Quit</button>
+    </div>
+  </main>
+
+  <script src="app.js?v=1eb636d"></script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+/* Calculator — self-contained palette. The shell does not theme
+   sub-experiences; this ships its own look. */
+
+:root {
+  --bg: #0b0d14;
+  --bg-2: #12162a;
+  --ink: #eef1f7;
+  --muted: #8e99bd;
+  --line: rgba(165, 176, 214, 0.14);
+  --panel: rgba(19, 23, 42, 0.86);
+  --key: #1a1f36;
+  --key-hi: #232a49;
+  --fn: #2b3153;
+  --accent: #6366f1;
+  --accent-2: #22d3ee;
+  --danger: #f87171;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+body { touch-action: manipulation; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+.calc {
+  position: relative;
+  min-height: 100%;
+  display: flex; flex-direction: column;
+  gap: 14px;
+  width: min(460px, 100%);
+  margin: 0 auto;
+  padding: clamp(14px, 3.5vw, 26px) clamp(14px, 4vw, 22px) 88px;
+  background:
+    radial-gradient(120% 70% at 50% -10%, #1b2145 0%, transparent 58%),
+    radial-gradient(120% 80% at 50% 118%, #0f2233 0%, transparent 56%),
+    var(--bg);
+}
+
+/* ---------- header ---------- */
+
+.calc-head {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.calc-logo { font-size: 30px; line-height: 1; }
+
+.calc-titles { flex: 1; min-width: 0; }
+
+.calc-titles h1 {
+  margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -0.01em;
+}
+
+.calc-titles p {
+  margin: 2px 0 0; font-size: 12px; color: var(--muted);
+}
+
+.icon-btn {
+  flex: none;
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.icon-btn:hover { background: var(--key-hi); }
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn[aria-expanded="true"] { border-color: var(--accent); }
+
+.text-btn {
+  margin-left: auto;
+  font: inherit; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted);
+  background: none; border: 0; padding: 8px;
+  cursor: pointer;
+}
+
+.text-btn:hover { color: var(--danger); }
+
+/* ---------- display ---------- */
+
+.screen {
+  position: relative;
+  display: flex; flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: clamp(120px, 22vh, 170px);
+  padding: 18px 18px 16px;
+  background: linear-gradient(180deg, rgba(35, 42, 73, 0.55), rgba(19, 23, 42, 0.9));
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.screen::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(90% 60% at 80% 0%, rgba(99, 102, 241, 0.18), transparent 70%);
+  pointer-events: none;
+}
+
+.screen-expr {
+  font-size: 14px; color: var(--muted);
+  text-align: right;
+  min-height: 18px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.screen-value {
+  display: block;
+  font-size: 54px; font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  /* No font-size transition: fitValue() measures scrollWidth right after
+     setting the size, and an in-flight transition makes that read stale. */
+  transition: color 0.2s ease;
+}
+
+.screen.error .screen-value { color: var(--danger); font-size: 26px; }
+
+/* ---------- keypad ---------- */
+
+.keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(8px, 2.2vw, 12px);
+}
+
+.key {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  min-height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  font: inherit;
+  font-size: clamp(20px, 5.4vw, 26px);
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--key);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.08s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.key:hover { background: var(--key-hi); }
+
+.key:active,
+.key.pressed {
+  transform: scale(0.94);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45);
+}
+
+.key.fn {
+  background: var(--fn);
+  font-size: clamp(17px, 4.4vw, 21px);
+  color: #dfe4f5;
+}
+
+.key.op {
+  background: linear-gradient(180deg, #2f3766, #242b52);
+  color: #cdd5ff;
+  font-size: clamp(23px, 6vw, 29px);
+}
+
+.key.op.armed {
+  background: linear-gradient(180deg, var(--accent), #4f46e5);
+  color: #fff;
+}
+
+.key.eq {
+  background: linear-gradient(180deg, var(--accent), #4338ca);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
+}
+
+.key:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+/* ---------- history tape ---------- */
+
+.tape {
+  position: fixed;
+  inset: auto 0 0;
+  width: min(460px, 100%);
+  margin: 0 auto;
+  max-height: 72vh;
+  display: flex; flex-direction: column;
+  padding: 14px 16px calc(78px + env(safe-area-inset-bottom, 0px));
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+  animation: tape-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* `display: flex` above would otherwise beat the UA's [hidden] rule and
+   leave the closed panel invisible but still swallowing taps. */
+.tape[hidden] { display: none; }
+
+@keyframes tape-in {
+  from { transform: translateY(18px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.tape-head {
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tape-head h2 {
+  margin: 0; font-size: 13px; font-weight: 800;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tape-head .icon-btn { width: 32px; height: 32px; font-size: 13px; }
+
+.tape-list {
+  list-style: none;
+  margin: 0; padding: 6px 0 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tape-list li { border-bottom: 1px solid var(--line); }
+
+.tape-entry {
+  display: block; width: 100%;
+  padding: 11px 4px;
+  font: inherit;
+  text-align: right;
+  color: var(--ink);
+  background: none; border: 0;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.tape-entry:hover { background: rgba(99, 102, 241, 0.12); }
+
+.tape-entry .t-expr {
+  display: block; font-size: 12px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.tape-entry .t-res {
+  display: block; font-size: 20px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tape-empty {
+  margin: 22px 0; text-align: center;
+  font-size: 13px; color: var(--muted);
+}
+
+/* ---------- hud ---------- */
+
+.hud {
+  position: fixed; left: 0; right: 0;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex; justify-content: center;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.btn {
+  pointer-events: auto;
+  font: inherit; font-size: 13px; font-weight: 700;
+  color: var(--ink);
+  padding: 9px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.15s ease;
+}
+
+.btn:hover { border-color: var(--accent); }
+.btn:active { transform: scale(0.96); }
+
+.btn.ghost { color: var(--muted); }
+
+@media (min-width: 520px) {
+  .key { aspect-ratio: 5 / 4; }
+}
+
+@media (max-height: 620px) {
+  .screen { min-height: 96px; }
+  .screen-value { font-size: 42px; }
+  .key { min-height: 44px; aspect-ratio: 3 / 2; }
+}
