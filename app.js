@@ -108,6 +108,14 @@
       url: 'apps/buildtrack/',
     },
     {
+      slug: 'calculator',
+      name: 'Calculator',
+      meta: 'Utility',
+      tagline: 'Tap it out. Or just type.',
+      icon: '🧮',
+      url: 'apps/calculator/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',
