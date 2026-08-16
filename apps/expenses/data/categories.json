@@ -139,5 +139,24 @@
         "label": "Receipt no."
       }
     ]
+  },
+  {
+    "id": "medical",
+    "name": "Medical supplies",
+    "icon": "🩺",
+    "fields": [
+      {
+        "key": "supplier",
+        "label": "Supplier"
+      },
+      {
+        "key": "quantity",
+        "label": "Quantity"
+      },
+      {
+        "key": "invoice",
+        "label": "Invoice no."
+      }
+    ]
   }
 ]
