@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Пазарче — безплатни обяви</title>
+  <script>
+    if (window.self !== window.top) document.documentElement.classList.add('embedded');
+  </script>
+  <style>
+    /* Critical inline CSS: paint the splash on the first frame. */
+    html, body { margin: 0; padding: 0; background: #f4f5f0; color: #1b2420;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+      touch-action: manipulation; }
+    #app-loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(120% 90% at 50% 16%, #10231b 0%, #071310 64%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 22px; transition: opacity 0.45s ease;
+    }
+    #app-loading.hidden { opacity: 0; pointer-events: none; }
+    #app-loading .gl-icon { font-size: 80px; line-height: 1; filter: drop-shadow(0 0 18px rgba(20, 184, 166, 0.55)); }
+    #app-loading .gl-word { font-weight: 800; letter-spacing: 0.4em; font-size: 13px;
+      text-transform: uppercase; color: #7ee8d3; padding-left: 0.4em; }
+    #app-loading .gl-bar { position: relative; width: 184px; height: 3px;
+      background: rgba(126, 232, 211, 0.16); overflow: hidden; border-radius: 2px; }
+    #app-loading .gl-bar::after { content: ""; position: absolute; top: 0; left: -40%;
+      width: 40%; height: 100%; background: linear-gradient(90deg, #14b8a6, #fbbf24);
+      animation: gl-run 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+    @keyframes gl-run { 0% { left: -40%; } 100% { left: 100%; } }
+  </style>
+  <link rel="stylesheet" href="styles.css?v=1681538" />
+</head>
+<body>
+  <div id="app-loading">
+    <span class="gl-icon" aria-hidden="true">🛒</span>
+    <span class="gl-word">Пазарче</span>
+    <div class="gl-bar" aria-label="Зареждане"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">🛒</span>
+        <div class="brand-text">
+          <h1>Пазарче</h1>
+          <p>Вашите онлайн безплатни обяви</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="favs-btn" type="button" class="btn ghost" aria-pressed="false">
+          <span aria-hidden="true">♥</span><span class="btn-label">Любими</span>
+          <span id="favs-count" class="pill-count" hidden>0</span>
+        </button>
+        <button id="post-btn" type="button" class="btn primary">+ Нова обява</button>
+        <button id="quit" type="button" class="btn ghost quit" aria-label="Изход">✕</button>
+      </div>
+    </div>
+    <div class="searchbar">
+      <span class="search-icon" aria-hidden="true">🔍</span>
+      <input id="search" type="search" placeholder="Търси в обявите — напр. апартамент, голф, котенца…"
+        autocomplete="off" aria-label="Търсене в обявите" />
+      <button id="search-clear" type="button" class="search-clear" aria-label="Изчисти търсенето" hidden>✕</button>
+    </div>
+    <nav class="cats" id="cats" aria-label="Категории"></nav>
+  </header>
+
+  <main class="page">
+    <div class="toolbar">
+      <p class="result-count" id="result-count">0 обяви</p>
+      <label class="sort">
+        <span>Подреди:</span>
+        <select id="sort" aria-label="Подреждане на обявите">
+          <option value="new">Най-нови</option>
+          <option value="cheap">Най-евтини</option>
+          <option value="expensive">Най-скъпи</option>
+        </select>
+      </label>
+    </div>
+
+    <ul class="grid" id="grid"></ul>
+
+    <div class="empty" id="empty" hidden>
+      <span class="empty-icon" aria-hidden="true">🕳️</span>
+      <p class="empty-title">Нищо не открихме</p>
+      <p class="empty-sub">Опитай друга дума или смени категорията.</p>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <p>Пазарче е демо — модерна преработка на pazarche.net. Обявите са примерни; твоите се пазят само на това устройство.</p>
+  </footer>
+
+  <!-- Listing detail -->
+  <div class="modal" id="detail-modal" hidden>
+    <div class="modal-backdrop" data-close="detail"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <button type="button" class="modal-x" data-close="detail" aria-label="Затвори">✕</button>
+      <div class="detail-art" id="detail-art"><span id="detail-emoji" aria-hidden="true"></span></div>
+      <div class="detail-body">
+        <div class="detail-head">
+          <h2 id="detail-title"></h2>
+          <p class="detail-price" id="detail-price"></p>
+        </div>
+        <p class="detail-meta" id="detail-meta"></p>
+        <p class="detail-desc" id="detail-desc"></p>
+        <div class="seller">
+          <div class="seller-info">
+            <span class="seller-avatar" id="seller-avatar" aria-hidden="true"></span>
+            <div>
+              <p class="seller-name" id="seller-name"></p>
+              <p class="seller-note">Частно лице</p>
+            </div>
+          </div>
+          <button type="button" class="btn primary" id="phone-btn">📞 Покажи телефон</button>
+        </div>
+        <div class="detail-actions">
+          <button type="button" class="btn ghost" id="detail-fav">♡ Запази в любими</button>
+          <button type="button" class="btn danger" id="detail-delete" hidden>🗑 Изтрий обявата</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post an ad -->
+  <div class="modal" id="post-modal" hidden>
+    <div class="modal-backdrop" data-close="post"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="post-title">
+      <button type="button" class="modal-x" data-close="post" aria-label="Затвори">✕</button>
+      <form id="post-form" class="post-form" novalidate>
+        <h2 id="post-title">Нова обява</h2>
+        <p class="form-sub">Безплатно, без регистрация. Обявата се вижда само на това устройство.</p>
+
+        <label class="field">
+          <span>Заглавие</span>
+          <input id="f-title" name="title" type="text" maxlength="80" required
+            placeholder="Напр. Планинско колело Cross, 29 цола" />
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Категория</span>
+            <select id="f-cat" name="cat" required></select>
+          </label>
+          <label class="field">
+            <span>Град</span>
+            <input id="f-city" name="city" type="text" maxlength="40" required placeholder="Напр. Пловдив" />
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Цена (лв.)</span>
+            <input id="f-price" name="price" type="number" min="0" step="0.01" inputmode="decimal"
+              placeholder="Празно = по договаряне" />
+          </label>
+          <label class="field">
+            <span>Телефон</span>
+            <input id="f-phone" name="phone" type="tel" maxlength="20" placeholder="088 800 0000" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Описание</span>
+          <textarea id="f-desc" name="desc" rows="4" maxlength="600" required
+            placeholder="Състояние, размери, причина за продажба…"></textarea>
+        </label>
+
+        <p class="form-error" id="form-error" hidden></p>
+        <div class="form-actions">
+          <button type="button" class="btn ghost" data-close="post">Откажи</button>
+          <button type="submit" class="btn primary">Публикувай обявата</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="app.js?v=1681538"></script>
+</body>
+</html>
