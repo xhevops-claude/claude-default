@@ -63,9 +63,12 @@
   let detailId = null;
 
   function load(key, fallback) {
+    // GitHub Pages serves every app on this origin, so foreign/stale writes to
+    // these keys are possible — reject any shape that doesn't match the fallback.
     try {
       const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
+      const parsed = raw ? JSON.parse(raw) : fallback;
+      return Array.isArray(fallback) && !Array.isArray(parsed) ? fallback : parsed;
     } catch (e) { return fallback; }
   }
   function save(key, value) {
