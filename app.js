@@ -108,6 +108,14 @@
       url: 'apps/buildtrack/',
     },
     {
+      slug: 'pazarche',
+      name: 'Pazarche',
+      meta: 'Market',
+      tagline: 'Free classifieds, reimagined.',
+      icon: '🛒',
+      url: 'apps/pazarche/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',

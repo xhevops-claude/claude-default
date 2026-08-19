@@ -321,6 +321,7 @@ body {
 .card[data-tile="tic-tac-toe"]   { --g1: var(--tile-tic-tac-toe); }
 .card[data-tile="memory"]        { --g1: var(--tile-memory); }
 .card[data-tile="locator"]       { --g1: var(--tile-locator); }
+.card[data-tile="pazarche"]      { --g1: var(--tile-pazarche); }
 .card[data-tile="directions"]    { --g1: var(--tile-directions); }
 
 .card-icon {
