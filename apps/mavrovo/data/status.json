@@ -1,0 +1,35 @@
+{
+  "updated": "2026-08-24",
+  "notices": [
+    {
+      "id": "fishing-season-2026",
+      "level": "info",
+      "from": "2026-02-01",
+      "until": "2026-10-31",
+      "text": {
+        "mk": "Риболовната сезона на Мавровското Езеро е отворена до 31 октомври. Дневна дозвола: 300 денари, онлајн или во инфо-пунктот во Маврови Анови.",
+        "en": "Fishing season on Mavrovo Lake is open until October 31. Day permit: 300 MKD, online or at the Mavrovi Anovi info point."
+      }
+    },
+    {
+      "id": "korab-ascent-2026",
+      "level": "info",
+      "from": "2026-08-24",
+      "until": "2026-09-08",
+      "text": {
+        "mk": "Масовното искачување на Голем Кораб се одржува околу 8 септември — терминот со придружба е наједноставната прилика за граничната рута. Следете ги објавите на ПСД „Кораб“ за точниот датум.",
+        "en": "The Korab mass ascent takes place around September 8 — the escorted date is the one straightforward window for the border route. Watch the Korab club's announcements for the exact date."
+      }
+    },
+    {
+      "id": "lake-level-2026",
+      "level": "info",
+      "from": "2026-08-01",
+      "until": "2026-09-30",
+      "text": {
+        "mk": "Кон крајот на летото нивото на езерото може да биде пониско — колку се гледа црквата „Свети Никола“ зависи од нивото на водата.",
+        "en": "Late-summer lake levels can run low — how much of St. Nicholas church is visible varies with the water level."
+      }
+    }
+  ]
+}

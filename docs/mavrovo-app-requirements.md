@@ -1,10 +1,14 @@
 # Mavrovo National Park app — initial requirements & analysis
 
-**Status:** requirements phase — app code not started. The shell already carries a locked
-"coming soon" Mavrovo tile (featured on the Home slide via `home: true`, also listed under
-Apps); implementation flips it live by adding `url: 'apps/mavrovo/'` and dropping
-`comingSoon`. Implementation should start on a clean branch (`claude/mavrovo-app` per the
-repo's branch-naming convention).
+**Status:** v1 SHIPPED — `apps/mavrovo/` is live (tile featured on Home and listed under
+Apps). v1 implements the Today dashboard (two-elevation Open-Meteo weather with offline
+cache, inline NOAA sun times, notices, events), the map (existing north-macedonia PMTiles +
+OSM-extracted park boundary/POIs/trails), 7 trails (4 with real OSM-derived geometry + GPX:
+strezimir-korab, lake-loop, galicnik-medenica, korab-falls; the rest link the official park
+GPX), the Places encyclopedia (15 POIs), Practical info, the zero-fetch SOS sheet, and full
+MK/EN i18n. Known v1 gaps: trail `time` strings are single-language; no elevation profiles
+(needs the v2 terrain pipeline); duf-waterfall/anovi-galicnik/sheremetnica-medenica lack
+GPX (OSM coverage insufficient — honestly declined rather than fabricated).
 **Proposed registry entry:** `apps/mavrovo/` — see [§7](#7-architecture--repo-integration).
 **Researched:** 2026-08-24 (web research + fact-check pass; all time-sensitive facts carry a
 "verify before publishing" note where warranted — see [§10](#10-fact-sheet-appendix)).

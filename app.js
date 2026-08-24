@@ -81,7 +81,7 @@
       meta: 'Park',
       tagline: 'The park, in your pocket — trails, snow, lake.',
       icon: '🏔️',
-      comingSoon: true,
+      url: 'apps/mavrovo/',
       home: true,
     },
   ];
