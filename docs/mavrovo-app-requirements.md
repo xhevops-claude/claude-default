@@ -51,6 +51,8 @@ phone-sized front door.
    (Open-Meteo), the repo's own PMTiles CDN. No backend, no accounts, no build step.
 4. **Field-usable.** Big tap targets, one-hand reach, works in glare, safety info reachable
    from every screen and embedded in the page itself (no fetch needed once loaded).
+5. **Standalone-first.** `apps/mavrovo/` is a complete site on its own URL — the shell
+   tile is just one door in. Embedding may only add behavior, never be required.
 
 ---
 
@@ -234,6 +236,26 @@ conservation sources; tourism-site mentions are outdated boilerplate.
 ---
 
 ## 7. Architecture & repo integration
+
+### Standalone-first (explicit requirement)
+
+The app must be fully usable at its own URL (`…/apps/mavrovo/`) with zero shell
+involvement — shareable, bookmarkable, opened cold — while still being registered as a
+tile in the shell's `apps` array. Concretely:
+
+- **Embedding only adds, never enables.** The `embedded` class (set when
+  `window.self !== window.top`) hides standalone-only chrome and swaps quit behavior
+  (postMessage to the shell vs `location.href = '../../'`); no feature may depend on the
+  shell being present.
+- **Own front door.** Its own `<title>`, meta description, favicon and share/social tags —
+  standalone visitors land directly, so the page presents itself and never assumes arcade
+  context.
+- **Own chrome when standalone.** A small header/back affordance visible only outside the
+  shell (hidden via `.embedded`), same pattern the existing sub-apps use.
+- **History discipline.** Internal navigation (tabs, POI sheets, language switch) must not
+  push history entries while embedded — an iframe shares the parent's session history, and
+  stray entries would break the shell's `popstate` close flow. Use `replaceState` /
+  in-memory state when embedded; standalone may push state (so Back closes a sheet).
 
 ### Fit with the shell (from repo analysis)
 
