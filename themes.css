@@ -74,6 +74,7 @@
   --tile-expenses: #f5a623;     /* safety amber */
   --tile-buildtrack: #1ec97e;   /* BuildTrack green */
   --tile-directions: #38bdf8;   /* sky-400 */
+  --tile-mavrovo: #2e7d5b;      /* pine green / park */
 }
 
 /* Hide the in-game back link when the page is rendered inside the

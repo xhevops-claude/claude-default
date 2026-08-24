@@ -52,14 +52,6 @@
       url: 'apps/locator/',
     },
     {
-      slug: 'terrain',
-      name: 'Terrain',
-      meta: 'App',
-      tagline: 'Turn a coordinate file into a 3D mesh.',
-      icon: '⛰️',
-      url: 'apps/terrain/',
-    },
-    {
       slug: 'timemachine',
       name: 'Time Machine',
       meta: 'Video',
@@ -82,6 +74,29 @@
       tagline: 'Your actors’ films, in release order.',
       icon: '🎬',
       url: 'apps/marathon/',
+    },
+    {
+      slug: 'mavrovo',
+      name: 'Mavrovo',
+      meta: 'Park',
+      tagline: 'The park, in your pocket — trails, snow, lake.',
+      icon: '🏔️',
+      comingSoon: true,
+      home: true,
+    },
+  ];
+
+  // Utilities live on the Tools page. Their directories stay under
+  // apps/<slug>/ — the array only decides which grid renders the tile,
+  // while `url` keeps deep links and the iframe src working unchanged.
+  const tools = [
+    {
+      slug: 'terrain',
+      name: 'Terrain',
+      meta: 'App',
+      tagline: 'Turn a coordinate file into a 3D mesh.',
+      icon: '⛰️',
+      url: 'apps/terrain/',
     },
     {
       slug: 'usage',
@@ -117,12 +132,16 @@
     },
   ];
 
-  // Same morph + deep-link plumbing serves both grids; we look up by
+  // Same morph + deep-link plumbing serves every grid; we look up by
   // url across the union so games/<slug> and apps/<slug> both work.
-  const tiles = games.concat(apps);
+  // Entries flagged `home: true` are additionally featured on the
+  // Home slide's grid.
+  const tiles = games.concat(apps, tools);
 
   const grid = document.getElementById('grid');
   const appsGrid = document.getElementById('apps-grid');
+  const toolsGrid = document.getElementById('tools-grid');
+  const homeGrid = document.getElementById('home-grid');
   const overlay = document.getElementById('game-overlay');
   const wrap = document.getElementById('frame-wrap');
   const frame = document.getElementById('game-frame');
@@ -132,6 +151,7 @@
   const skinTagline = document.getElementById('skin-tagline');
   const pageMeta = document.getElementById('page-meta');
   const appsMeta = document.getElementById('apps-meta');
+  const toolsMeta = document.getElementById('tools-meta');
   const footMeta = document.getElementById('foot-meta');
 
   // Match the CSS transitions on .frame-wrap.
@@ -191,6 +211,8 @@
   function render() {
     renderTiles(grid, games, pageMeta);
     renderTiles(appsGrid, apps, appsMeta);
+    renderTiles(toolsGrid, tools, toolsMeta);
+    renderTiles(homeGrid, tiles.filter((t) => t.home), null);
     if (footMeta) {
       const totalReady = tiles.filter((t) => !t.comingSoon).length;
       footMeta.textContent = `${totalReady} apps & games`;
@@ -345,6 +367,8 @@
 
   if (grid) grid.addEventListener('click', onGridClick);
   if (appsGrid) appsGrid.addEventListener('click', onGridClick);
+  if (toolsGrid) toolsGrid.addEventListener('click', onGridClick);
+  if (homeGrid) homeGrid.addEventListener('click', onGridClick);
 
   window.addEventListener('popstate', () => {
     if (overlay.dataset.state === 'open') {

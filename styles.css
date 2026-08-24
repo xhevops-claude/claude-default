@@ -56,11 +56,6 @@ body {
 }
 
 /* ==========================================================================
-   Pager — three horizontal slides (Tools / Apps / Games). Native
-   horizontal scroll with mandatory snap; the user lands on Games by
-   default (set in JS) and can swipe across to the other sections.
-   ========================================================================== */
-/* ==========================================================================
    Pager — transform-driven barrel carousel. Each slide is absolutely
    positioned over the pager; JS renders them at their visually-nearest
    copy of a continuous logical position (modulo N), so the carousel
@@ -116,57 +111,29 @@ body {
   white-space: nowrap;
 }
 
-/* Empty-state placeholder for the Tools / Apps slides until they
-   have real content. Centered, flat, matches the card aesthetic. */
-.empty {
-  flex: 1;
-  min-height: 0;
+/* Hero block on the Home slide — flat, centered, with a stronger
+   title since it's the landing screen. The Home slide also carries a
+   Featured grid below, so the hero yields its flex to the grid and
+   keeps only its natural height. */
+.hero {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 14px;
-  padding: 24px 16px 64px;
+  padding: 12px 16px 28px;
   text-align: center;
-  color: var(--muted);
 }
 
-.empty-icon {
-  font-size: clamp(56px, 14vw, 96px);
-  line-height: 1;
-  opacity: 0.5;
-  filter: saturate(0.4);
-}
-
-.empty-title {
-  margin: 0;
-  font-size: 13px;
+.home-label {
+  flex-shrink: 0;
+  margin: 0 0 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--ink);
-}
-
-.empty-text {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-/* Hero block on the Home slide — same flat aesthetic as the empty
-   states but with a stronger title since it's the landing screen. */
-.hero {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 24px 16px 64px;
-  text-align: center;
+  color: var(--muted);
 }
 
 .hero-icon {
@@ -320,7 +287,17 @@ body {
 .card[data-tile="snake"]         { --g1: var(--tile-snake); }
 .card[data-tile="tic-tac-toe"]   { --g1: var(--tile-tic-tac-toe); }
 .card[data-tile="memory"]        { --g1: var(--tile-memory); }
+.card[data-tile="crusaders"]     { --g1: var(--tile-crusaders); }
+.card[data-tile="crusaders3d"]   { --g1: var(--tile-crusaders3d); }
 .card[data-tile="locator"]       { --g1: var(--tile-locator); }
+.card[data-tile="terrain"]       { --g1: var(--tile-terrain); }
+.card[data-tile="timemachine"]   { --g1: var(--tile-timemachine); }
+.card[data-tile="binge"]         { --g1: var(--tile-binge); }
+.card[data-tile="marathon"]      { --g1: var(--tile-marathon); }
+.card[data-tile="usage"]         { --g1: var(--tile-usage); }
+.card[data-tile="expenses"]      { --g1: var(--tile-expenses); }
+.card[data-tile="buildtrack"]    { --g1: var(--tile-buildtrack); }
+.card[data-tile="mavrovo"]       { --g1: var(--tile-mavrovo); }
 .card[data-tile="directions"]    { --g1: var(--tile-directions); }
 
 .card-icon {

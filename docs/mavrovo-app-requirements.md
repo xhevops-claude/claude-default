@@ -1,7 +1,10 @@
 # Mavrovo National Park app — initial requirements & analysis
 
-**Status:** requirements phase — no code yet. Implementation should start on a clean branch
-(`claude/mavrovo-app` per the repo's branch-naming convention).
+**Status:** requirements phase — app code not started. The shell already carries a locked
+"coming soon" Mavrovo tile (featured on the Home slide via `home: true`, also listed under
+Apps); implementation flips it live by adding `url: 'apps/mavrovo/'` and dropping
+`comingSoon`. Implementation should start on a clean branch (`claude/mavrovo-app` per the
+repo's branch-naming convention).
 **Proposed registry entry:** `apps/mavrovo/` — see [§7](#7-architecture--repo-integration).
 **Researched:** 2026-08-24 (web research + fact-check pass; all time-sensitive facts carry a
 "verify before publishing" note where warranted — see [§10](#10-fact-sheet-appendix)).
@@ -262,13 +265,16 @@ tile in the shell's `apps` array. Concretely:
 - **Self-contained** `apps/mavrovo/` (own `index.html`, `styles.css`, `app.js`); no shared
   imports; no build step; CDN libs only as version-pinned unpkg URLs
   (`maplibre-gl@4.7.1`, `pmtiles@3.2.1` — same pins as Locator).
-- **Registry entry** in shell `app.js` `apps` array:
-  `{ slug: 'mavrovo', name: 'Mavrovo', meta: 'Park', tagline: 'The park, in your pocket — trails, snow, lake.', icon: '🏔️', url: 'apps/mavrovo/' }`
-  (trailing slash required — deep-link matching is exact-string).
-- **Tile color needs BOTH files**: `--tile-mavrovo` in `themes.css` (suggest a pine green,
-  e.g. `#2e7d5b`) **and** `.card[data-tile="mavrovo"] { --g1: var(--tile-mavrovo); }` in
-  `styles.css` — the mapping block there is stale (nine newer tiles never got mapped and
-  silently fall back to a generic surface; worth a drive-by fix in the implementation PR).
+- **Registry entry — already in place** (as a locked tile) in the shell `app.js` `apps`
+  array: `{ slug: 'mavrovo', name: 'Mavrovo', meta: 'Park', tagline: 'The park, in your
+  pocket — trails, snow, lake.', icon: '🏔️', comingSoon: true, home: true }`. The
+  `home: true` flag features it on the Home slide (user request). To go live: add
+  `url: 'apps/mavrovo/'` (trailing slash required — deep-link matching is exact-string)
+  and remove `comingSoon`.
+- **Tile color — already in place** in both files: `--tile-mavrovo: #2e7d5b` (pine green)
+  in `themes.css` plus the `.card[data-tile="mavrovo"]` mapping in `styles.css`. (The
+  once-stale mapping block is fixed — all tiles are mapped now, and CLAUDE.md documents
+  the two-file rule.)
 - **Mandatory patterns:** inline splash before external CSS with **3000 ms** minimum
   (note: locator/snake drifted to 1000 ms against CLAUDE.md — copy the expenses/terrain
   value, not locator's), `embedded` class, quit via `postMessage({type:'close-game'})`,

@@ -36,7 +36,7 @@ The repo is a "shell" home page (`index.html`, `styles.css`, `app.js`, `theme.js
 
 ### Tile registry → grid → iframe morph
 
-`app.js` declares two arrays at the top: `games` and `apps`. Each entry needs `{ slug, name, meta, tagline, icon, url }` (or `comingSoon: true` and no `url`). The arrays drive the rendered grid tiles, the iframe loader, and deep-link resolution. Adding a tile = create `games/<slug>/` (or `apps/<slug>/`) and append one entry to the relevant array.
+`app.js` declares three arrays at the top: `games`, `apps`, and `tools` — one per grid page (Games / Apps / Tools). Each entry needs `{ slug, name, meta, tagline, icon, url }` (or `comingSoon: true` and no `url`); an optional `home: true` additionally features the tile on the Home slide's Featured grid. The arrays drive the rendered grid tiles, the iframe loader, and deep-link resolution. The array only decides which page renders the tile — the directory stays `games/<slug>/` or `apps/<slug>/` and `url` is what deep links match (utilities on the Tools page keep `apps/<slug>/` urls). Adding a tile = create `games/<slug>/` (or `apps/<slug>/`) and append one entry to the relevant array.
 
 When a tile is tapped, `openGame` positions `#frame-wrap` over the tapped card's bounding rect with `transform: translate(...) scale(...)`, then transitions to fullscreen. A `.frame-skin` layer paints the card art on top of the loading iframe and crossfades out — `ZOOM_MS` (550ms) is the wrap's size animation, and the skin/frame crossfade is intentionally faster (220ms in CSS) so the morph reads as the card *becoming* the experience. `closeGame` runs the same animation in reverse. If you change the timing in CSS, mirror it in `ZOOM_MS`.
 
@@ -147,5 +147,5 @@ Only a bill the user explicitly confirmed gets `"allowDuplicate": true`. The bui
 
 - `escapeHTML` in `app.js` is used for any user-supplied or registry-supplied string interpolated into innerHTML. Anything that ends up in `cardHtml`/`cardInner` MUST go through it.
 - Prefer adding `comingSoon: true` (with no `url`) over removing entries — the shell renders these as locked tiles with a shake animation on tap.
-- Tile colors come from CSS variables `--tile-<slug>` defined in `themes.css` — these are constant across themes so each card keeps its identity. Add a `--tile-<newslug>` when adding a tile.
+- Tile colors need **two** edits: a `--tile-<slug>` variable in `themes.css` (constant across themes so each card keeps its identity) AND a `.card[data-tile="<slug>"] { --g1: var(--tile-<slug>); }` mapping in `styles.css` — the variable alone does nothing and the card silently falls back to a flat surface.
 - Don't introduce a build tool, package, or framework just to add one feature. The "no build step" property is what makes preview deploys, deep links, and the static CDN model work.
