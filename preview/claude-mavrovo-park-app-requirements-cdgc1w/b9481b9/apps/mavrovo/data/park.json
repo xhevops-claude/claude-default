@@ -1,0 +1,109 @@
+{
+  "facts": [
+    {
+      "label": { "mk": "Површина", "en": "Area" },
+      "value": {
+        "mk": "околу 73 088 ха — најголемиот национален парк во Северна Македонија",
+        "en": "about 73,088 ha — the largest national park in North Macedonia"
+      }
+    },
+    {
+      "label": { "mk": "Прогласен", "en": "Established" },
+      "value": {
+        "mk": "19 април 1949 година",
+        "en": "April 19, 1949"
+      }
+    },
+    {
+      "label": { "mk": "Височина", "en": "Elevation" },
+      "value": {
+        "mk": "од долината на Радика до Голем Кораб (2 764 м) — највисокиот врв во земјата",
+        "en": "from the Radika valley up to Golem Korab (2,764 m), the country's highest peak"
+      }
+    },
+    {
+      "label": { "mk": "Жив свет", "en": "Wildlife" },
+      "value": {
+        "mk": "по податоци на паркот: 129 вида птици, 50 цицачи, 24 влекачи, 11 водоземци и 8 риби",
+        "en": "by the park's own count: 129 bird species, 50 mammals, 24 reptiles, 11 amphibians and 8 fish"
+      }
+    },
+    {
+      "label": { "mk": "Балкански рис", "en": "Balkan lynx" },
+      "value": {
+        "mk": "критично загрозен (20–39 возрасни единки), а Маврово е неговото главно живеалиште — рисот е симбол на паркот, но не очекувајте да го сретнете",
+        "en": "critically endangered (20–39 mature individuals), with Mavrovo as its core area — the lynx is the park's symbol, not something to expect to see"
+      }
+    }
+  ],
+  "fees": [
+    {
+      "label": { "mk": "Влезница за паркот", "en": "Park entry fee" },
+      "value": {
+        "mk": "100 денари по лице на ден — онлајн или во инфо-пунктот во Маврови Анови",
+        "en": "100 MKD per person per day — online or at the Mavrovi Anovi info point"
+      },
+      "lastVerified": "2026-08"
+    },
+    {
+      "label": { "mk": "Риболовна дозвола", "en": "Fishing permit" },
+      "value": {
+        "mk": "300 денари на ден; сезоната во 2026 трае од 1 февруари до 31 октомври",
+        "en": "300 MKD per day; the 2026 season runs February 1 – October 31"
+      },
+      "lastVerified": "2026-08"
+    }
+  ],
+  "contacts": [
+    {
+      "label": { "mk": "Итни служби", "en": "Emergency" },
+      "phone": "112",
+      "email": null,
+      "url": null
+    },
+    {
+      "label": { "mk": "Планинарска спасувачка служба (ПСС)", "en": "Mountain Rescue Service (PSS)" },
+      "phone": "13-112",
+      "email": null,
+      "url": "https://pss.org.mk"
+    },
+    {
+      "label": { "mk": "Инфо-пункт на паркот (Маврови Анови)", "en": "Park info point (Mavrovi Anovi)" },
+      "phone": "+389 42 489 425",
+      "email": "infopoint@npmavrovo.org.mk",
+      "url": "https://npmavrovo.org.mk"
+    }
+  ],
+  "gettingThere": {
+    "car": {
+      "mk": "Од Скопје по автопатот кон Гостивар, па по патот А2 (Е65) кон Кичево преку превојот Стража — вкупно околу час и половина. Од 15 ноември до 15 март задолжителна е зимска опрема (зимски гуми или синџири во возилото).",
+      "en": "From Skopje take the motorway to Gostivar, then the A2 (E65) towards Kičevo over the Straža pass — about 1.5 hours in all. From November 15 to March 15 winter equipment is required by law (winter tyres, or chains carried)."
+    },
+    "bus": {
+      "mk": "Постои автобуска линија Скопје–Маврови Анови, но редот на возење се менува — проверете на автобуската станица пред поаѓање. Посигурна варијанта: чест автобус Скопје–Гостивар, па такси до паркот.",
+      "en": "A Skopje–Mavrovi Anovi bus service exists, but timetables shift — check at the bus station before you travel. The reliable fallback: frequent Skopje–Gostivar buses, then a taxi into the park."
+    }
+  },
+  "money": {
+    "mk": "Банкомати во и околу паркот речиси нема — подигнете готовина уште во Скопје или Гостивар. Со картичка обично може да се плати само во поголемите хотели; насекаде другаде се плаќа во готово.",
+    "en": "ATMs in and around the park are very scarce — withdraw cash in Skopje or Gostivar before you arrive. Cards are usually accepted only at the larger hotels; everywhere else, cash rules."
+  },
+  "links": [
+    {
+      "label": { "mk": "НП Маврово — официјална страница и билети", "en": "Mavrovo NP — official site and tickets" },
+      "url": "https://npmavrovo.org.mk"
+    },
+    {
+      "label": { "mk": "Ски-центар „Заре Лазаревски“", "en": "Zare Lazarevski ski centre" },
+      "url": "https://resortmavrovo.com"
+    },
+    {
+      "label": { "mk": "АМСМ — состојба на патиштата", "en": "AMSM — road conditions" },
+      "url": "https://amsm.mk"
+    },
+    {
+      "label": { "mk": "Планинарска спасувачка служба (ПСС)", "en": "Mountain Rescue Service (PSS)" },
+      "url": "https://pss.org.mk"
+    }
+  ]
+}
