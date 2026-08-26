@@ -115,6 +115,34 @@
     return obj[lang] || obj.en || obj.mk || '';
   }
 
+  // ---------------- Photos (self-hosted Commons copies on the CDN) ----------------
+  const PHOTOS_BASE = 'https://xhevops-claude.github.io/claude-default/cdn/photos/mavrovo/';
+  const POI_PHOTO = {
+    'mavrovo-lake': 'lake',
+    'st-nicholas-church': 'hero',
+    'duf-waterfall': 'duf',
+    'bigorski-monastery': 'bigorski',
+    'galicnik': 'galicnik',
+    'golem-korab': 'korab',
+    'mavrovi-anovi': 'gate',
+  };
+  const TRAIL_PHOTO = {
+    'strezimir-korab': 'korab-ascent',
+    'duf-waterfall': 'duf',
+    'lake-loop': 'lake',
+    'galicnik-medenica': 'galicnik',
+    'anovi-galicnik': 'galicnik',
+    'korab-falls': 'korab',
+  };
+  function photoUrl(slug) { return PHOTOS_BASE + slug + '.jpg'; }
+  // Photos degrade silently: a failed load removes the <img> so the
+  // emoji/illustrated art underneath shows instead (offline-first).
+  function bindImgFallbacks(host) {
+    host.querySelectorAll('img[data-ph]').forEach((img) => {
+      img.addEventListener('error', () => { img.remove(); }, { once: true });
+    });
+  }
+
   function locale() { return lang === 'mk' ? 'mk-MK' : 'en-GB'; }
 
   function fmtNum(n, digits) {
@@ -217,6 +245,7 @@
     ['trails', 'data/trails.json'],
     ['events', 'data/events.json'],
     ['status', 'data/status.json'],
+    ['credits', PHOTOS_BASE + 'credits.json'],
   ];
 
   function loadCore() {
@@ -272,6 +301,7 @@
 
   // ---------------- Rendering: dynamic sections ----------------
   function renderDynamic() {
+    applyHero();
     renderTodayHead();
     renderNotices();
     renderWeather();
@@ -283,6 +313,24 @@
     if (openPlaceId) renderPlaceDetail(openPlaceId); else renderPlaceGrid();
     renderInfo();
     renderMapPill();
+  }
+
+  // ---- Today: hero photo (season-aware, falls back to the SVG scenery) ----
+  function heroSlug() {
+    const m = new Date().getMonth() + 1;
+    if (m === 12 || m <= 3) return 'hero-winter';
+    if (m === 10 || m === 11) return 'lake-autumn';
+    return 'hero';
+  }
+  let heroSet = false;
+  function applyHero() {
+    if (heroSet) return;
+    heroSet = true;
+    const img = $('hero-img');
+    if (!img) return;
+    img.addEventListener('load', () => { img.hidden = false; img.classList.add('loaded'); }, { once: true });
+    img.addEventListener('error', () => { img.remove(); }, { once: true });
+    img.src = photoUrl(heroSlug());
   }
 
   // ---- Today: date + season ----
@@ -340,6 +388,7 @@
         escapeHTML(t('common.updated')) + ' ' + escapeHTML(fmtDate(data.status.updated)) + '</p>';
     }
     host.innerHTML = html;
+    bindImgFallbacks(host);
   }
 
   function fmtDate(iso) {
@@ -545,7 +594,14 @@
 
   // ---- Today: ski card (winter only) ----
   function renderSki() {
-    $('card-ski').hidden = currentSeason() !== 'winter';
+    const show = currentSeason() === 'winter';
+    $('card-ski').hidden = !show;
+    const b = $('ski-banner');
+    if (b && show && !b.getAttribute('src')) {
+      b.addEventListener('load', () => { b.hidden = false; }, { once: true });
+      b.addEventListener('error', () => { b.remove(); }, { once: true });
+      b.src = photoUrl('ski');
+    }
   }
 
   // ---- Today: upcoming events ----
@@ -588,6 +644,7 @@
     html += '<button type="button" class="chip chip-kids" data-kids="1" aria-pressed="' +
       (filters.kids ? 'true' : 'false') + '">👧 ' + escapeHTML(t('trails.filter.kids')) + '</button>';
     host.innerHTML = html;
+    bindImgFallbacks(host);
     host.querySelectorAll('[data-diff]').forEach((btn) => {
       btn.addEventListener('click', () => {
         filters.diff = btn.dataset.diff;
@@ -635,14 +692,20 @@
     }
     host.innerHTML = list.map((tr) => {
       const kid = tr.kidFriendly ? '<span class="trail-badges"><span class="trail-badge" aria-hidden="true">👧</span></span>' : '';
+      const ph = TRAIL_PHOTO[tr.id];
+      const lead = ph
+        ? '<span class="trail-thumb" aria-hidden="true"><span class="trail-thumb-icon">🥾</span>' +
+          '<img data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl(ph) + '"></span>'
+        : '<span class="trail-card-icon" aria-hidden="true">🥾</span>';
       return '<button type="button" class="trail-card" data-trail="' + escapeHTML(tr.id) + '">' +
-        '<div class="trail-card-top"><span class="trail-card-name">' +
-        '<span class="trail-card-icon" aria-hidden="true">🥾 </span>' + escapeHTML(pick(tr.name)) + kid + '</span>' +
+        '<div class="trail-card-top">' + lead + '<span class="trail-card-name">' +
+        escapeHTML(pick(tr.name)) + kid + '</span>' +
         diffPillHTML(tr.difficulty) + '</div>' +
         '<div class="stat-chips">' + trailStatChips(tr) + '</div>' +
         '<div class="trail-card-season">🗓 ' + escapeHTML(pick(tr.season)) + '</div>' +
         '</button>';
     }).join('');
+    bindImgFallbacks(host);
     host.querySelectorAll('[data-trail]').forEach((btn) => {
       btn.addEventListener('click', () => renderTrailDetail(btn.dataset.trail));
     });
@@ -663,6 +726,9 @@
 
     let html = '<button type="button" class="detail-back" data-back="1">‹ ' +
       escapeHTML(t('common.back')) + '</button>' +
+      (TRAIL_PHOTO[id]
+        ? '<div class="detail-banner"><img data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl(TRAIL_PHOTO[id]) + '"></div>'
+        : '') +
       '<div class="trail-detail-head">' +
       '<h2 class="trail-detail-name">' + escapeHTML(pick(tr.name)) + '</h2>' +
       '<div class="trail-detail-meta">' + diffPillHTML(tr.difficulty) + trailStatChips(tr) +
@@ -706,6 +772,7 @@
     }
 
     host.innerHTML = html;
+    bindImgFallbacks(host);
     host.querySelector('[data-back]').addEventListener('click', () => {
       renderTrailList();
       $('panel-trails').scrollTop = 0;
@@ -730,12 +797,21 @@
     const host = $('place-grid');
     if (failed.pois) { host.innerHTML = sectionErrorHTML(); return; }
     if (!data.pois) { host.innerHTML = ''; return; }
-    host.innerHTML = (data.pois.pois || []).map((p) =>
-      '<button type="button" class="place-card" data-place="' + escapeHTML(p.id) + '">' +
-      '<span class="place-card-icon" aria-hidden="true">' + escapeHTML(p.icon || '📍') + '</span>' +
-      '<span class="place-card-name">' + escapeHTML(pick(p.name)) + '</span>' +
-      '<span class="place-card-type">' + escapeHTML(t('poi.type.' + p.type)) + '</span>' +
-      '</button>').join('');
+    host.innerHTML = (data.pois.pois || []).map((p) => {
+      const ph = POI_PHOTO[p.id];
+      const art = ph
+        ? '<span class="place-art" aria-hidden="true">' +
+          '<span class="place-card-icon">' + escapeHTML(p.icon || '📍') + '</span>' +
+          '<img class="place-photo" data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl(ph) + '">' +
+          '</span>'
+        : '<span class="place-card-icon" aria-hidden="true">' + escapeHTML(p.icon || '📍') + '</span>';
+      return '<button type="button" class="place-card' + (ph ? ' has-photo' : '') + '" data-place="' + escapeHTML(p.id) + '">' +
+        art +
+        '<span class="place-card-body"><span class="place-card-name">' + escapeHTML(pick(p.name)) + '</span>' +
+        '<span class="place-card-type">' + escapeHTML(t('poi.type.' + p.type)) + '</span></span>' +
+        '</button>';
+    }).join('');
+    bindImgFallbacks(host);
     host.querySelectorAll('[data-place]').forEach((btn) => {
       btn.addEventListener('click', () => renderPlaceDetail(btn.dataset.place));
     });
@@ -751,7 +827,7 @@
 
     let html = '<button type="button" class="detail-back" data-back="1">‹ ' +
       escapeHTML(t('common.back')) + '</button>' +
-      '<div class="place-detail-head">' +
+      (POI_PHOTO[id] ? '<div class="detail-banner"><img data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl(POI_PHOTO[id]) + '"></div>' : '') + '<div class="place-detail-head">' +
       '<span class="place-detail-icon" aria-hidden="true">' + escapeHTML(p.icon || '📍') + '</span>' +
       '<div><h2 class="place-detail-name">' + escapeHTML(pick(p.name)) + '</h2>' +
       '<div class="place-detail-type">' + escapeHTML(t('poi.type.' + p.type)) +
@@ -776,6 +852,7 @@
       escapeHTML(t('common.showOnMap')) + '</button></div>';
 
     host.innerHTML = html;
+    bindImgFallbacks(host);
     host.querySelector('[data-back]').addEventListener('click', () => {
       renderPlaceGrid();
       $('panel-places').scrollTop = 0;
@@ -795,7 +872,8 @@
     const park = data.park;
 
     if (park && park.gettingThere) {
-      html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.gettingThere')) + '</h2>' +
+      html += '<section class="card"><img class="card-banner" data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl('gate') + '">' +
+        '<h2 class="card-title">' + escapeHTML(t('info.gettingThere')) + '</h2>' +
         '<div class="getting-block"><div class="getting-title">🚗 ' + escapeHTML(t('info.byCar')) + '</div>' +
         '<p class="getting-body">' + escapeHTML(pick(park.gettingThere.car)) + '</p></div>' +
         '<div class="getting-block"><div class="getting-title">🚌 ' + escapeHTML(t('info.byBus')) + '</div>' +
@@ -865,11 +943,26 @@
         '</section>';
     }
 
+    const credits = data.credits && data.credits.photos;
+    html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.photos')) + '</h2>' +
+      '<p class="about-body">' + escapeHTML(t('info.photosFallback')) + '</p>' +
+      (credits && credits.length
+        ? credits.map((ph) => {
+            const src = ph.source ? safeUrl(ph.source) : '';
+            return '<div class="info-row"><div class="info-row-label">' + escapeHTML(ph.slug || ph.file || '') + '</div>' +
+              '<div class="info-row-value">' + escapeHTML((ph.author || '?') + ' · ' + (ph.license || '')) +
+              (src ? ' · <a href="' + escapeHTML(src) + '" target="_blank" rel="noopener">Commons ↗</a>' : '') +
+              '</div></div>';
+          }).join('')
+        : '') +
+      '</section>';
+
     html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.about')) + '</h2>' +
       '<p class="about-body">' + escapeHTML(t('info.aboutBody')) + '</p>' +
       '<p class="disclaimer">' + escapeHTML(t('info.disclaimer')) + '</p></section>';
 
     host.innerHTML = html;
+    bindImgFallbacks(host);
   }
 
   // ---------------- Map ----------------
