@@ -5,12 +5,12 @@
 
 :root,
 :root[data-theme="light"] {
-  --bg: #f5efdf;
-  --surface: #fdfaf0;
-  --surface-2: #ede4ce;
-  --ink: #26372c;
-  --muted: #6d7c6b;
-  --line: #e2d8bf;
+  --bg: #ffffff;
+  --surface: #f7f7f2;
+  --surface-2: #edece3;
+  --ink: #1c211b;
+  --muted: #5f6a5e;
+  --line: #dcdbd1;
   --accent: #2e6b4a;
   --accent-deep: #285d40;
   --accent-soft: rgba(46, 107, 74, 0.11);
@@ -72,6 +72,11 @@
   --diff-alpine: #9d7bde;
   --tabbar-h: 62px;
   --display: "Fraunces", Georgia, "Times New Roman", serif;
+  /* NPS-style chrome bands: constant near-black in both themes. */
+  --band: #1c1c1a;
+  --band-line: #373731;
+  --band-ink: #ffffff;
+  --band-muted: rgba(255, 255, 255, 0.72);
 }
 
 * { box-sizing: border-box; }
@@ -90,10 +95,11 @@ body {
   height: 100dvh;
   display: grid;
   /* minmax(0) keeps the header's min-content width from forcing the
-     whole grid wider than a narrow phone viewport. */
+     whole grid wider than a narrow phone viewport. NPS-style: the
+     section nav is a dark band under the masthead on every size. */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto 1fr auto;
-  grid-template-areas: "header" "main" "tabbar";
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas: "header" "tabbar" "main";
   overflow: hidden;
   overscroll-behavior: none;
   font-size: 15px;
@@ -126,12 +132,13 @@ h1, h2, h3, p, ul { margin: 0; }
   min-width: 0;
   padding: 10px 14px;
   padding-top: calc(10px + env(safe-area-inset-top));
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
+  background: var(--band);
+  color: var(--band-ink);
+  border-bottom: 1px solid var(--band-line);
 }
 
 .back-link {
-  color: var(--muted);
+  color: var(--band-muted);
   font-size: 14px;
   font-weight: 600;
   padding: 8px 10px 8px 4px;
@@ -140,20 +147,19 @@ h1, h2, h3, p, ul { margin: 0; }
   align-items: center;
   border-radius: 10px;
 }
-.back-link:hover { color: var(--ink); text-decoration: none; }
+.back-link:hover { color: var(--band-ink); text-decoration: none; }
 
 html.embedded .standalone-only { display: none !important; }
 html:not(.embedded) .embedded-only { display: none !important; }
 
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.brand-icon { line-height: 0; color: var(--accent-deep); }
-:root[data-theme="dark"] .brand-icon { color: var(--accent); }
+.brand-icon { line-height: 0; color: var(--band-ink); }
 .brand-icon svg { width: 34px; height: 34px; display: block; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 .brand-name { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 0.01em; }
 .brand-sub {
   font-size: 10.5px;
-  color: var(--muted);
+  color: var(--band-muted);
   text-transform: uppercase;
   letter-spacing: 0.18em;
   white-space: nowrap;
@@ -165,8 +171,8 @@ html:not(.embedded) .embedded-only { display: none !important; }
 
 .lang-switch {
   display: flex;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -176,7 +182,7 @@ html:not(.embedded) .embedded-only { display: none !important; }
   padding: 0 10px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--band-muted);
 }
 .lang-switch button[aria-pressed="true"] {
   background: var(--accent-deep);
@@ -191,9 +197,12 @@ html:not(.embedded) .embedded-only { display: none !important; }
   justify-content: center;
   border-radius: 12px;
   font-size: 17px;
-  color: var(--muted);
+  color: var(--band-muted);
 }
-.icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+.icon-btn:hover { background: rgba(255, 255, 255, 0.12); color: var(--band-ink); }
+/* Sheet close buttons sit on light surfaces, not the band. */
+.poi-sheet .icon-btn, .sos-sheet .icon-btn { color: var(--muted); }
+.poi-sheet .icon-btn:hover, .sos-sheet .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
 
 /* ---------------- Layout / panels ---------------- */
 
@@ -1044,7 +1053,7 @@ main {
 #sos-btn {
   position: fixed;
   right: 14px;
-  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 14px);
+  bottom: calc(16px + env(safe-area-inset-bottom));
   z-index: 40;
   min-width: 56px;
   min-height: 56px;
@@ -1134,28 +1143,29 @@ main {
 .tabbar {
   grid-area: tabbar;
   display: flex;
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--band);
+  border-bottom: 1px solid var(--band-line);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 8px;
 }
+.tabbar::-webkit-scrollbar { display: none; }
 
 .tab {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-height: var(--tabbar-h);
-  color: var(--muted);
-  border-top: 2px solid transparent;
+  gap: 7px;
+  min-height: 48px;
+  padding: 0 14px;
+  color: var(--band-muted);
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
 }
-.tab-icon { line-height: 0; opacity: 0.75; }
-.tab-icon svg { width: 22px; height: 22px; display: block; }
-.tab-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; }
-.tab[aria-selected="true"] { color: var(--accent); border-top-color: var(--accent); }
-:root[data-theme="light"] .tab[aria-selected="true"] { color: var(--accent-deep); border-top-color: var(--accent-deep); }
-.tab[aria-selected="true"] .tab-icon { opacity: 1; }
+.tab-icon { display: none; }
+.tab-label { font-size: 13.5px; font-weight: 600; letter-spacing: 0.02em; }
+.tab[aria-selected="true"] { color: var(--band-ink); border-bottom-color: var(--warn); }
 
 /* ---------------- Focus ---------------- */
 
@@ -1167,37 +1177,8 @@ button:focus-visible, a:focus-visible {
 /* ---------------- Wider screens ---------------- */
 
 @media (min-width: 768px) {
-  /* Website chrome: masthead on top, a horizontal section nav under it
-     (like any park site), content below. */
-  body {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto 1fr;
-    grid-template-areas: "header" "tabbar" "main";
-  }
-
-  .tabbar {
-    flex-direction: row;
-    justify-content: center;
-    gap: 6px;
-    border-top: 0;
-    border-bottom: 1px solid var(--line);
-    padding: 0 16px;
-    background: var(--bg);
-  }
-  .tab {
-    flex: 0 0 auto;
-    flex-direction: row;
-    gap: 8px;
-    min-height: 52px;
-    padding: 0 16px;
-    border-top: 0;
-    border-bottom: 2.5px solid transparent;
-    font-size: 14px;
-  }
-  .tab .tab-label { font-size: 13.5px; letter-spacing: 0.02em; }
-  .tab[aria-selected="true"] { border-bottom-color: var(--accent-deep); background: none; }
-  :root[data-theme="dark"] .tab[aria-selected="true"] { border-bottom-color: var(--accent); }
-  .tab-icon svg { width: 19px; height: 19px; }
+  .tabbar { justify-content: center; }
+  .tab { min-height: 52px; padding: 0 18px; }
 
   .hero { height: clamp(320px, 46vh, 500px); }
   .hero-title { left: max(18px, calc(50% - 362px)); }
@@ -1215,4 +1196,13 @@ button:focus-visible, a:focus-visible {
 @media (min-width: 1024px) {
   .panel-inner { max-width: 860px; }
   .place-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Home front-page extras */
+.welcome-body { font-size: 15px; max-width: 40em; }
+.highlights-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.highlights-grid .place-card { aspect-ratio: 1 / 1.05; }
+.highlights-grid .place-card-name { font-size: 13px; line-height: 1.25; }
+@media (min-width: 768px) {
+  .highlights-grid .place-card { aspect-ratio: 4 / 3; }
 }

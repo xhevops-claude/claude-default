@@ -20,8 +20,8 @@
     "en": "Toggle theme"
   },
   "nav.today": {
-    "mk": "Денес",
-    "en": "Today"
+    "mk": "Почетна",
+    "en": "Home"
   },
   "nav.map": {
     "mk": "Карта",
@@ -36,8 +36,8 @@
     "en": "Places"
   },
   "nav.info": {
-    "mk": "Инфо",
-    "en": "Info"
+    "mk": "Посета",
+    "en": "Plan visit"
   },
   "common.back": {
     "mk": "Назад",
@@ -386,5 +386,21 @@
   "info.photosFallback": {
     "mk": "Фотографиите се дело на придонесувачите на Викимедија Комонс, објавени под слободни лиценци (CC BY / CC BY-SA).",
     "en": "Photographs are the work of Wikimedia Commons contributors, published under free licenses (CC BY / CC BY-SA)."
+  },
+  "nav.infoLong": {
+    "mk": "Планирајте ја посетата",
+    "en": "Plan your visit"
+  },
+  "home.welcomeTitle": {
+    "mk": "Добредојдовте во Маврово",
+    "en": "Welcome to Mavrovo"
+  },
+  "home.welcomeBody": {
+    "mk": "Најголемиот национален парк во Северна Македонија, прогласен во 1949 година: Мавровското Езеро со потопената црква, врвот Кораб (2.764 м), кањонот на Радика и мијачките села на Бистра. Дом на балканскиот рис.",
+    "en": "North Macedonia’s largest national park, proclaimed in 1949: Lake Mavrovo with its sunken church, Mount Korab (2,764 m), the Radika canyon and the Mijak villages of Bistra. Home of the Balkan lynx."
+  },
+  "home.highlights": {
+    "mk": "Популарни дестинации",
+    "en": "Popular destinations"
   }
 }

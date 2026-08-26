@@ -302,6 +302,7 @@
   // ---------------- Rendering: dynamic sections ----------------
   function renderDynamic() {
     applyHero();
+    renderHomeHighlights();
     renderTodayHead();
     renderNotices();
     renderWeather();
@@ -313,6 +314,33 @@
     if (openPlaceId) renderPlaceDetail(openPlaceId); else renderPlaceGrid();
     renderInfo();
     renderMapPill();
+  }
+
+  // ---- Home: popular-destinations teasers (park-website front page) ----
+  const HIGHLIGHT_POIS = ['duf-waterfall', 'galicnik', 'bigorski-monastery'];
+  function renderHomeHighlights() {
+    const host = $('home-highlights');
+    if (!host) return;
+    if (!data.pois) { host.innerHTML = ''; return; }
+    host.innerHTML = HIGHLIGHT_POIS.map((id) => {
+      const p = getPoi(id);
+      if (!p) return '';
+      const ph = POI_PHOTO[id];
+      return '<button type="button" class="place-card' + (ph ? ' has-photo' : '') + '" data-hl="' + escapeHTML(id) + '">' +
+        '<span class="place-art" aria-hidden="true">' +
+        '<span class="place-card-icon">' + escapeHTML(p.icon || '📍') + '</span>' +
+        (ph ? '<img class="place-photo" data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl(ph) + '">' : '') +
+        '</span>' +
+        '<span class="place-card-body"><span class="place-card-name">' + escapeHTML(pick(p.name)) + '</span></span>' +
+        '</button>';
+    }).join('');
+    bindImgFallbacks(host);
+    host.querySelectorAll('[data-hl]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        switchTab('places');
+        renderPlaceDetail(btn.dataset.hl);
+      });
+    });
   }
 
   // ---- Today: hero photo (season-aware, falls back to the SVG scenery) ----
