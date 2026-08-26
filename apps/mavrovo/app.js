@@ -48,6 +48,14 @@
     alpine: '#9d7bde',
   };
 
+  // Tiny inline SVG glyphs for JS-rendered chrome (no emoji clutter).
+  const SVG_WARN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;margin-top:2px"><path d="M12 3.6 L21.6 20 H2.4 Z"></path><path d="M12 9.6v4.6"></path><circle cx="12" cy="17" r="0.5" fill="currentColor"></circle></svg>';
+  const SUN_ICONS = {
+    sunrise: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16M8.2 13.4a4 4 0 0 1 7.6 0"></path><path d="M12 4.6v3.2M5.6 8.4l1.8 1.6M18.4 8.4l-1.8 1.6"></path><path d="M10 2.8l2-2.1 2 2.1" transform="translate(0 3)"></path></svg>',
+    sunset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16M8.2 13.4a4 4 0 0 1 7.6 0"></path><path d="M12 3.4v3.4M5.6 8.4l1.8 1.6M18.4 8.4l-1.8 1.6"></path></svg>',
+    daylight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"></path></svg>',
+  };
+
   const OSM_KIND_ICONS = { spring: '💧', drinking_water: '🚰', shelter: '⛺' };
 
   const TABS = ['today', 'map', 'trails', 'places', 'info'];
@@ -132,7 +140,7 @@
   }
 
   function sectionErrorHTML() {
-    return '<div class="error-strip"><span aria-hidden="true">⚠️</span><span>' +
+    return '<div class="error-strip">' + SVG_WARN + '<span>' +
       escapeHTML(t('common.sectionError')) + '</span></div>';
   }
 
@@ -325,7 +333,6 @@
     active.forEach((n) => {
       const warn = n.level === 'warn';
       html += '<div class="notice' + (warn ? ' notice-warn' : '') + '">' +
-        '<span class="notice-emoji" aria-hidden="true">' + (warn ? '⚠️' : 'ℹ️') + '</span>' +
         '<span>' + escapeHTML(pick(n.text)) + '</span></div>';
     });
     if (active.length && data.status.updated) {
@@ -524,15 +531,15 @@
         fmtNum(mins % 60) + ' ' + t('unit.min');
     }
     host.innerHTML =
-      sunCellHTML('🌅', t('today.sunrise'), fmtClock(sun.sunrise)) +
-      sunCellHTML('🌇', t('today.sunset'), fmtClock(sun.sunset)) +
-      sunCellHTML('☀️', t('today.daylight'), daylight);
+      sunCellHTML(SUN_ICONS.sunrise, t('today.sunrise'), fmtClock(sun.sunrise)) +
+      sunCellHTML(SUN_ICONS.sunset, t('today.sunset'), fmtClock(sun.sunset)) +
+      sunCellHTML(SUN_ICONS.daylight, t('today.daylight'), daylight);
   }
 
-  function sunCellHTML(emoji, label, value) {
+  function sunCellHTML(iconSvg, label, value) {
     return '<div class="sun-cell">' +
       '<div class="sun-cell-label">' + escapeHTML(label) + '</div>' +
-      '<div class="sun-cell-icon" aria-hidden="true">' + emoji + '</div>' +
+      '<div class="sun-cell-icon" aria-hidden="true">' + iconSvg + '</div>' +
       '<div class="sun-cell-value">' + escapeHTML(value) + '</div></div>';
   }
 
@@ -666,7 +673,7 @@
     if (tr.warnings && tr.warnings.length) {
       html += '<div class="detail-section"><div class="detail-section-title">' +
         escapeHTML(t('trails.warnings')) + '</div><div class="warn-block">' +
-        tr.warnings.map((w) => '<div class="warn-item"><span aria-hidden="true">⚠️</span><span>' +
+        tr.warnings.map((w) => '<div class="warn-item">' + SVG_WARN + '<span>' +
           escapeHTML(pick(w)) + '</span></div>').join('') +
         '</div></div>';
     }
@@ -755,7 +762,7 @@
     if (p.practical) {
       html += '<div class="detail-section"><div class="detail-section-title">' +
         escapeHTML(t('places.practical')) + '</div>' +
-        '<div class="info-strip"><span aria-hidden="true">ℹ️</span><span>' +
+        '<div class="info-strip"><span>' +
         escapeHTML(pick(p.practical)) + '</span></div></div>';
     }
     if (p.seasonal) {
@@ -914,16 +921,16 @@
   // Map palette — alpine pine/lake, both themes.
   const MAP_THEMES = {
     dark: {
-      bg: '#0f1512', land: '#151d18', landuse: '#19241d', park: '#17281e',
-      water: '#123340', waterLabel: '#64a9c4', road: '#2c3a33', roadMid: '#39493f',
-      roadHi: '#4c5f52', roadTop: '#5d7263', rail: '#2b3831', boundary: '#3a4a40',
-      building: '#1e2a24', label: '#cfe0d4', labelStrong: '#e8efe9', labelDim: '#8fa396',
+      bg: '#10201f', land: '#152825', landuse: '#1a2f2b', park: '#1b3a2c',
+      water: '#16404c', waterLabel: '#7db7c9', road: '#31463f', roadMid: '#3f584d',
+      roadHi: '#55705f', roadTop: '#6d8a75', rail: '#2e443c', boundary: '#41584c',
+      building: '#20342e', label: '#d8e4d2', labelStrong: '#efe7d2', labelDim: '#93a695',
     },
     light: {
-      bg: '#f4f6f2', land: '#e9ecdf', landuse: '#dfe6d2', park: '#cfe3c2',
-      water: '#a9cede', waterLabel: '#2f6f96', road: '#ffffff', roadMid: '#ffffff',
-      roadHi: '#ffe9b0', roadTop: '#ffc36b', rail: '#a8aca0', boundary: '#97a08e',
-      building: '#dcd9c8', label: '#1c241f', labelStrong: '#0e1611', labelDim: '#5c6a60',
+      bg: '#f5efdf', land: '#ece5cf', landuse: '#e2dec4', park: '#cfe0b7',
+      water: '#a5c9cd', waterLabel: '#3d7086', road: '#fffdf4', roadMid: '#fffdf4',
+      roadHi: '#f7dfa4', roadTop: '#eeb964', rail: '#b3ab93', boundary: '#a09a7f',
+      building: '#e0d8bd', label: '#26372c', labelStrong: '#182a20', labelDim: '#6d7c6b',
     },
   };
 
@@ -1124,12 +1131,12 @@
       mapInstance.addSource('park-boundary', { type: 'geojson', data: geo.boundary });
       mapInstance.addLayer({
         id: 'park-boundary-fill', type: 'fill', source: 'park-boundary',
-        paint: { 'fill-color': '#4fae83', 'fill-opacity': 0.05 },
+        paint: { 'fill-color': '#5fae7f', 'fill-opacity': 0.05 },
       });
       mapInstance.addLayer({
         id: 'park-boundary-line', type: 'line', source: 'park-boundary',
         paint: {
-          'line-color': '#4fae83', 'line-width': 1.6,
+          'line-color': '#5fae7f', 'line-width': 1.6,
           'line-dasharray': [3, 2], 'line-opacity': 0.8,
         },
       });
@@ -1226,11 +1233,11 @@
     mapInstance.addSource('me-accuracy', { type: 'geojson', data: EMPTY_FC });
     mapInstance.addLayer({
       id: 'me-accuracy-fill', type: 'fill', source: 'me-accuracy',
-      paint: { 'fill-color': '#4fae83', 'fill-opacity': 0.08 },
+      paint: { 'fill-color': '#5fae7f', 'fill-opacity': 0.08 },
     });
     mapInstance.addLayer({
       id: 'me-accuracy-line', type: 'line', source: 'me-accuracy',
-      paint: { 'line-color': '#4fae83', 'line-width': 1.5, 'line-opacity': 0.5 },
+      paint: { 'line-color': '#5fae7f', 'line-width': 1.5, 'line-opacity': 0.5 },
     });
     if (lastFix) {
       mapInstance.getSource('me-accuracy').setData(

@@ -1,42 +1,65 @@
-/* Mavrovo — calm alpine palette, phone-first.
-   Tokens live on :root[data-theme=…]; the boot script guarantees the
-   attribute is set before first paint. */
+/* Mavrovo — "park poster" identity, phone-first. Warm cream paper and
+   forest/amber by day; deep blue-spruce dusk (never server-black) by
+   night. Tokens live on :root[data-theme=…]; the boot script guarantees
+   the attribute is set before first paint. */
 
 :root,
 :root[data-theme="dark"] {
-  --bg: #0f1512;
-  --surface: #17201b;
-  --surface-2: #1d2822;
-  --ink: #e8efe9;
-  --muted: #93a398;
-  --line: #24302a;
-  --accent: #4fae83;
-  --accent-deep: #2e7d5b;
-  --accent-soft: rgba(79, 174, 131, 0.14);
-  --warn: #d9a94a;
-  --warn-soft: rgba(217, 169, 74, 0.12);
-  --danger: #e0564a;
-  --danger-soft: rgba(224, 86, 74, 0.14);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-  --backdrop: rgba(4, 8, 6, 0.6);
+  --bg: #10201f;
+  --surface: #182b29;
+  --surface-2: #203633;
+  --ink: #efe7d2;
+  --muted: #9fb2a2;
+  --line: #2a423d;
+  --accent: #85c79a;
+  --accent-deep: #2f6b4c;
+  --accent-soft: rgba(133, 199, 154, 0.13);
+  --warn: #e6b366;
+  --warn-soft: rgba(230, 179, 102, 0.12);
+  --danger: #e4685c;
+  --danger-soft: rgba(228, 104, 92, 0.15);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --backdrop: rgba(5, 12, 10, 0.62);
+  /* Scenery (masthead SVG): dusk over the ridges. */
+  --sc-sky1: #27505c;
+  --sc-sky2: #12262a;
+  --sc-sun: #e8c07a;
+  --sc-r1: #2f524a;
+  --sc-r2: #24443d;
+  --sc-r3: #1a332e;
+  --sc-r4: #132622;
+  --sc-lake: #1c3f46;
+  --sc-snow: #d9e2d3;
 }
 
 :root[data-theme="light"] {
-  --bg: #f4f6f2;
-  --surface: #ffffff;
-  --surface-2: #eaeee8;
-  --ink: #1c241f;
-  --muted: #5c6a60;
-  --line: #dde3dc;
-  --accent: #2e7d5b;
-  --accent-deep: #2e7d5b;
-  --accent-soft: rgba(46, 125, 91, 0.12);
-  --warn: #a87b1d;
-  --warn-soft: rgba(217, 169, 74, 0.16);
-  --danger: #c43d32;
-  --danger-soft: rgba(224, 86, 74, 0.1);
-  --shadow: 0 10px 30px rgba(30, 45, 36, 0.16);
-  --backdrop: rgba(28, 36, 31, 0.45);
+  --bg: #f5efdf;
+  --surface: #fdfaf0;
+  --surface-2: #ede4ce;
+  --ink: #26372c;
+  --muted: #6d7c6b;
+  --line: #e2d8bf;
+  --accent: #2e6b4a;
+  --accent-deep: #285d40;
+  --accent-soft: rgba(46, 107, 74, 0.11);
+  --warn: #a4711c;
+  --warn-soft: rgba(196, 141, 44, 0.14);
+  --danger: #bb4433;
+  --danger-soft: rgba(187, 68, 51, 0.1);
+  --shadow: 0 12px 28px rgba(94, 74, 36, 0.14);
+  --card-shadow: 0 1px 2px rgba(94, 74, 36, 0.08), 0 6px 18px rgba(94, 74, 36, 0.06);
+  --backdrop: rgba(43, 54, 44, 0.45);
+  /* Scenery: morning haze, WPA-poster greens. */
+  --sc-sky1: #f6d9a0;
+  --sc-sky2: #f5efdf;
+  --sc-sun: #eda54f;
+  --sc-r1: #a3bf9a;
+  --sc-r2: #7a9d79;
+  --sc-r3: #527e5e;
+  --sc-r4: #386347;
+  --sc-lake: #a9cbc6;
+  --sc-snow: #fdfaf0;
 }
 
 /* Trail difficulty — constant across themes so lines keep identity. */
@@ -46,6 +69,7 @@
   --diff-hard: #e0564a;
   --diff-alpine: #9d7bde;
   --tabbar-h: 62px;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
 }
 
 * { box-sizing: border-box; }
@@ -100,7 +124,7 @@ h1, h2, h3, p, ul { margin: 0; }
   min-width: 0;
   padding: 10px 14px;
   padding-top: calc(10px + env(safe-area-inset-top));
-  background: var(--surface);
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
 
@@ -120,9 +144,11 @@ html.embedded .standalone-only { display: none !important; }
 html:not(.embedded) .embedded-only { display: none !important; }
 
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.brand-icon { font-size: 26px; line-height: 1; }
+.brand-icon { line-height: 0; color: var(--accent-deep); }
+:root[data-theme="dark"] .brand-icon { color: var(--accent); }
+.brand-icon svg { width: 34px; height: 34px; display: block; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
-.brand-name { font-weight: 800; font-size: 17px; letter-spacing: 0.02em; }
+.brand-name { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 0.01em; }
 .brand-sub {
   font-size: 10.5px;
   color: var(--muted);
@@ -191,9 +217,10 @@ main {
 }
 
 .panel-title {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-family: var(--display);
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: 0;
   margin-bottom: 14px;
 }
 
@@ -204,6 +231,7 @@ main {
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 16px;
+  box-shadow: var(--card-shadow);
 }
 
 .card-title {
@@ -328,6 +356,11 @@ main {
 
 /* ---------------- Today ---------------- */
 
+/* Scenery masthead — layered ridgelines drawn inline in index.html,
+   colored by the --sc-* theme tokens. */
+.scenery { line-height: 0; }
+.scenery svg { width: 100%; height: 150px; display: block; }
+
 .today-head {
   display: flex;
   align-items: center;
@@ -338,9 +371,10 @@ main {
 }
 
 .today-date {
-  font-size: 21px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0;
   text-transform: capitalize;
 }
 
@@ -363,16 +397,17 @@ main {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
-  border-radius: 12px;
+  background: var(--accent-soft);
+  border: 0;
+  border-left: 4px solid var(--accent-deep);
+  border-radius: 0 12px 12px 0;
   padding: 11px 14px;
   font-size: 13.5px;
   margin-bottom: 10px;
 }
+:root[data-theme="dark"] .notice { border-left-color: var(--accent); }
 .notice-warn { border-left-color: var(--warn); background: var(--warn-soft); }
-.notice-emoji { flex: 0 0 auto; }
+:root[data-theme="dark"] .notice-warn { border-left-color: var(--warn); }
 .notices-stamp {
   font-size: 11.5px;
   color: var(--muted);
@@ -390,9 +425,10 @@ main {
 .wx-now { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .wx-now-icon { font-size: 38px; line-height: 1; }
 .wx-now-temp {
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-family: var(--display);
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 .wx-now-meta { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
@@ -441,7 +477,8 @@ main {
   text-align: center;
 }
 .sun-cell-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.sun-cell-icon { font-size: 20px; margin: 3px 0; }
+.sun-cell-icon { margin: 5px 0 3px; line-height: 0; color: var(--warn); }
+.sun-cell-icon svg { width: 22px; height: 22px; display: inline-block; }
 .sun-cell-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .ski-facts { font-weight: 600; margin-bottom: 6px; }
@@ -482,7 +519,8 @@ main {
   padding: 24px;
   background: var(--bg);
 }
-.map-fallback-icon { font-size: 56px; }
+.map-fallback-icon { color: var(--muted); line-height: 0; }
+.map-fallback-icon svg { width: 56px; height: 56px; }
 .map-fallback h2 { font-size: 19px; }
 .map-fallback p { color: var(--muted); max-width: 340px; font-size: 14px; margin-bottom: 8px; }
 
@@ -619,13 +657,13 @@ main {
   gap: 10px;
   margin-bottom: 8px;
 }
-.trail-card-name { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
+.trail-card-name { font-family: var(--display); font-size: 17.5px; font-weight: 700; letter-spacing: 0; }
 .trail-card-season { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
 .trail-badges { display: inline-flex; gap: 6px; margin-left: 8px; vertical-align: 1px; }
 .trail-badge { font-size: 12px; }
 
 .trail-detail-head { margin-bottom: 12px; }
-.trail-detail-name { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 8px; }
+.trail-detail-name { font-family: var(--display); font-size: 25px; font-weight: 700; letter-spacing: 0; margin-bottom: 8px; }
 .trail-detail-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
 .detail-section { margin-top: 16px; }
@@ -676,7 +714,7 @@ main {
 .place-card:hover { border-color: var(--accent); }
 .place-card:active { transform: scale(0.98); }
 .place-card-icon { font-size: 28px; line-height: 1; }
-.place-card-name { font-weight: 700; font-size: 14.5px; line-height: 1.3; }
+.place-card-name { font-family: var(--display); font-weight: 700; font-size: 15.5px; line-height: 1.3; }
 .place-card-type {
   font-size: 11px;
   color: var(--muted);
@@ -686,7 +724,7 @@ main {
 
 .place-detail-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
 .place-detail-icon { font-size: 42px; line-height: 1; }
-.place-detail-name { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+.place-detail-name { font-family: var(--display); font-size: 25px; font-weight: 700; letter-spacing: 0; }
 .place-detail-type { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 2px; }
 
 .info-strip {
@@ -817,7 +855,7 @@ main {
 }
 
 .sos-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.sos-title { font-size: 20px; font-weight: 800; }
+.sos-title { font-family: var(--display); font-size: 22px; font-weight: 700; }
 
 .sos-calls { display: grid; gap: 8px; margin-bottom: 16px; }
 .sos-call {
@@ -883,11 +921,12 @@ main {
   color: var(--muted);
   border-top: 2px solid transparent;
 }
-.tab-icon { font-size: 20px; line-height: 1.2; filter: grayscale(1); opacity: 0.75; }
+.tab-icon { line-height: 0; opacity: 0.75; }
+.tab-icon svg { width: 22px; height: 22px; display: block; }
 .tab-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; }
 .tab[aria-selected="true"] { color: var(--accent); border-top-color: var(--accent); }
-:root[data-theme="light"] .tab[aria-selected="true"] { color: var(--accent-deep); }
-.tab[aria-selected="true"] .tab-icon { filter: none; opacity: 1; }
+:root[data-theme="light"] .tab[aria-selected="true"] { color: var(--accent-deep); border-top-color: var(--accent-deep); }
+.tab[aria-selected="true"] .tab-icon { opacity: 1; }
 
 /* ---------------- Focus ---------------- */
 
@@ -922,7 +961,9 @@ button:focus-visible, a:focus-visible {
     border-radius: 12px;
   }
   .tab[aria-selected="true"] { border-left-color: var(--accent); background: var(--accent-soft); }
-  .tab-icon { font-size: 22px; }
+  .tab-icon svg { width: 24px; height: 24px; }
+
+  .scenery svg { height: 190px; }
 
   #sos-btn { bottom: 22px; right: 22px; }
 
