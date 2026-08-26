@@ -1014,10 +1014,10 @@
   // Map palette — alpine pine/lake, both themes.
   const MAP_THEMES = {
     dark: {
-      bg: '#10201f', land: '#152825', landuse: '#1a2f2b', park: '#1b3a2c',
-      water: '#16404c', waterLabel: '#7db7c9', road: '#31463f', roadMid: '#3f584d',
-      roadHi: '#55705f', roadTop: '#6d8a75', rail: '#2e443c', boundary: '#41584c',
-      building: '#20342e', label: '#d8e4d2', labelStrong: '#efe7d2', labelDim: '#93a695',
+      bg: '#1d1f17', land: '#232619', landuse: '#292d20', park: '#2c3a24',
+      water: '#37474a', waterLabel: '#9db6ba', road: '#3d4232', roadMid: '#4a5140',
+      roadHi: '#5d654f', roadTop: '#767d61', rail: '#3a3f30', boundary: '#4c5340',
+      building: '#2b2f24', label: '#d9d3c0', labelStrong: '#ece5d3', labelDim: '#a09e8b',
     },
     light: {
       bg: '#f5efdf', land: '#ece5cf', landuse: '#e2dec4', park: '#cfe0b7',

@@ -4,35 +4,6 @@
    the attribute is set before first paint. */
 
 :root,
-:root[data-theme="dark"] {
-  --bg: #10201f;
-  --surface: #182b29;
-  --surface-2: #203633;
-  --ink: #efe7d2;
-  --muted: #9fb2a2;
-  --line: #2a423d;
-  --accent: #85c79a;
-  --accent-deep: #2f6b4c;
-  --accent-soft: rgba(133, 199, 154, 0.13);
-  --warn: #e6b366;
-  --warn-soft: rgba(230, 179, 102, 0.12);
-  --danger: #e4685c;
-  --danger-soft: rgba(228, 104, 92, 0.15);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --backdrop: rgba(5, 12, 10, 0.62);
-  /* Scenery (masthead SVG): dusk over the ridges. */
-  --sc-sky1: #27505c;
-  --sc-sky2: #12262a;
-  --sc-sun: #e8c07a;
-  --sc-r1: #2f524a;
-  --sc-r2: #24443d;
-  --sc-r3: #1a332e;
-  --sc-r4: #132622;
-  --sc-lake: #1c3f46;
-  --sc-snow: #d9e2d3;
-}
-
 :root[data-theme="light"] {
   --bg: #f5efdf;
   --surface: #fdfaf0;
@@ -60,6 +31,37 @@
   --sc-r4: #386347;
   --sc-lake: #a9cbc6;
   --sc-snow: #fdfaf0;
+}
+
+/* Opt-in night mode — an evening in a wooden lodge: warm browns and
+   olives, cream ink, muted sage. Earth tones only. */
+:root[data-theme="dark"] {
+  --bg: #1d1f17;
+  --surface: #262920;
+  --surface-2: #30342a;
+  --ink: #ece5d3;
+  --muted: #a5a390;
+  --line: #3a3e31;
+  --accent: #93b08b;
+  --accent-deep: #47663f;
+  --accent-soft: rgba(147, 176, 139, 0.12);
+  --warn: #d3a35c;
+  --warn-soft: rgba(211, 163, 92, 0.12);
+  --danger: #cf6b54;
+  --danger-soft: rgba(207, 107, 84, 0.14);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --backdrop: rgba(12, 13, 9, 0.62);
+  /* Scenery: last light over wooded ridges. */
+  --sc-sky1: #3a4136;
+  --sc-sky2: #20231a;
+  --sc-sun: #dfc38b;
+  --sc-r1: #3f4835;
+  --sc-r2: #343b2b;
+  --sc-r3: #2a3023;
+  --sc-r4: #21261b;
+  --sc-lake: #2f3a34;
+  --sc-snow: #d6d2c0;
 }
 
 /* Trail difficulty — constant across themes so lines keep identity. */
