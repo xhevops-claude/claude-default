@@ -1,0 +1,75 @@
+name: Fetch photos
+
+# Downloads freely-licensed Wikimedia Commons photographs listed in
+# `data-sources/photos-mavrovo.json` and publishes them (plus a
+# credits.json with author/license attribution pulled from the Commons
+# API) to the live site under /cdn/photos/mavrovo/ on gh-pages —
+# same decoupled-CDN model as the maps data. Apps reference the
+# published copies; nothing is hotlinked from Wikimedia at runtime.
+#
+# Each entry: { "slug": "hero-lake-church", "title": "File:….jpg",
+#               "width": 1800 }   (width optional, default 1600)
+
+on:
+  push:
+    paths:
+      - 'data-sources/photos-mavrovo.json'
+      - '.github/workflows/photos-fetch.yml'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you running this manually?'
+        required: false
+        default: 'manual refresh'
+
+permissions:
+  contents: write   # peaceiris/actions-gh-pages pushes to gh-pages
+
+# Don't fight the deploy/data workflows over gh-pages writes.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  photos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Read the currently-published credits from the branch itself so
+      # unchanged photos are skipped without any HTTP propagation race.
+      - name: Fetch gh-pages branch
+        run: |
+          git fetch --depth=1 origin gh-pages 2>/dev/null \
+            && echo "gh-pages fetched" \
+            || echo "gh-pages does not exist yet (first run); proceeding."
+
+      - name: Download Commons photos + build credits
+        id: fetch
+        run: |
+          set -euo pipefail
+          git show origin/gh-pages:cdn/photos/mavrovo/credits.json > published-credits.json 2>/dev/null || echo '{}' > published-credits.json
+          python3 .github/workflows/photos-fetch.py
+        env:
+          SOURCE_LIST: data-sources/photos-mavrovo.json
+          OUT_DIR: cdn/photos/mavrovo
+          PUBLISHED_CREDITS: published-credits.json
+
+      - name: Publish /cdn/ to gh-pages
+        if: steps.fetch.outputs.any_changed == '1'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./cdn
+          publish_branch: gh-pages
+          destination_dir: cdn
+          keep_files: true
+          commit_message: 'data: photos ${{ github.event.inputs.reason || github.sha }}'
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Print served URLs
+        if: steps.fetch.outputs.any_changed == '1'
+        run: |
+          echo "::notice title=Photos published::https://xhevops-claude.github.io/claude-default/cdn/photos/mavrovo/credits.json"
