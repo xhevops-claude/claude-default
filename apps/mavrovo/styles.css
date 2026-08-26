@@ -1143,11 +1143,12 @@ main {
 .tabbar {
   grid-area: tabbar;
   display: flex;
+  justify-content: flex-start;
   background: var(--band);
   border-bottom: 1px solid var(--band-line);
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 0 8px;
+  padding: 0 4px;
 }
 .tabbar::-webkit-scrollbar { display: none; }
 
@@ -1158,14 +1159,14 @@ main {
   align-items: center;
   gap: 7px;
   min-height: 48px;
-  padding: 0 14px;
-  color: var(--band-muted);
-  border-bottom: 3px solid transparent;
+  padding: 0 13px;
+  color: var(--band-ink);
   white-space: nowrap;
 }
 .tab-icon { display: none; }
-.tab-label { font-size: 13.5px; font-weight: 600; letter-spacing: 0.02em; }
-.tab[aria-selected="true"] { color: var(--band-ink); border-bottom-color: var(--warn); }
+.tab-label { font-size: 14px; font-weight: 400; letter-spacing: 0.01em; }
+.tab:hover .tab-label { text-decoration: underline; }
+.tab[aria-selected="true"] .tab-label { font-weight: 700; }
 
 /* ---------------- Focus ---------------- */
 
@@ -1177,8 +1178,7 @@ button:focus-visible, a:focus-visible {
 /* ---------------- Wider screens ---------------- */
 
 @media (min-width: 768px) {
-  .tabbar { justify-content: center; }
-  .tab { min-height: 52px; padding: 0 18px; }
+  .tab { min-height: 52px; padding: 0 16px; }
 
   .hero { height: clamp(320px, 46vh, 500px); }
   .hero-title { left: max(18px, calc(50% - 362px)); }
