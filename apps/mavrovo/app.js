@@ -302,6 +302,7 @@
   // ---------------- Rendering: dynamic sections ----------------
   function renderDynamic() {
     applyHero();
+    applyHeroCredit();
     renderHomeHighlights();
     renderTodayHead();
     renderNotices();
@@ -314,6 +315,15 @@
     if (openPlaceId) renderPlaceDetail(openPlaceId); else renderPlaceGrid();
     renderInfo();
     renderMapPill();
+  }
+
+  function applyHeroCredit() {
+    const el = $('hero-credit');
+    if (!el || !data.credits) return;
+    const rec = (data.credits.photos || []).find((x) => x.slug === heroSlug());
+    if (!rec || !rec.author) return;
+    el.textContent = '📷 ' + rec.author + (rec.license ? ' · ' + rec.license : '');
+    el.hidden = false;
   }
 
   // ---- Home: popular-destinations teasers (park-website front page) ----

@@ -36,6 +36,8 @@
 /* Opt-in night mode — an evening in a wooden lodge: warm browns and
    olives, cream ink, muted sage. Earth tones only. */
 :root[data-theme="dark"] {
+  --alert-bg: #55452a;
+  --alert-ink: #f2e6c8;
   --bg: #1d1f17;
   --surface: #262920;
   --surface-2: #30342a;
@@ -73,6 +75,8 @@
   --tabbar-h: 62px;
   --display: "Fraunces", Georgia, "Times New Roman", serif;
   /* NPS-style chrome bands: constant near-black in both themes. */
+  --alert-bg: #f5d778;
+  --alert-ink: #2b2416;
   --band: #1c1c1a;
   --band-line: #373731;
   --band-ink: #ffffff;
@@ -98,8 +102,8 @@ body {
      whole grid wider than a narrow phone viewport. NPS-style: the
      section nav is a dark band under the masthead on every size. */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto 1fr;
-  grid-template-areas: "header" "tabbar" "main";
+  grid-template-rows: auto auto auto 1fr;
+  grid-template-areas: "header" "banner" "tabbar" "main";
   overflow: hidden;
   overscroll-behavior: none;
   font-size: 15px;
@@ -130,8 +134,8 @@ h1, h2, h3, p, ul { margin: 0; }
   align-items: center;
   gap: 12px;
   min-width: 0;
-  padding: 10px 14px;
-  padding-top: calc(10px + env(safe-area-inset-top));
+  padding: 4px 14px;
+  padding-top: calc(4px + env(safe-area-inset-top));
   background: var(--band);
   color: var(--band-ink);
   border-bottom: 1px solid var(--band-line);
@@ -152,16 +156,16 @@ h1, h2, h3, p, ul { margin: 0; }
 html.embedded .standalone-only { display: none !important; }
 html:not(.embedded) .embedded-only { display: none !important; }
 
-.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .brand-icon { line-height: 0; color: var(--band-ink); }
-.brand-icon svg { width: 34px; height: 34px; display: block; }
+.brand-icon svg { width: 26px; height: 26px; display: block; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
-.brand-name { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 0.01em; }
 .brand-sub {
   font-size: 10.5px;
+  font-weight: 600;
   color: var(--band-muted);
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -203,6 +207,58 @@ html:not(.embedded) .embedded-only { display: none !important; }
 /* Sheet close buttons sit on light surfaces, not the band. */
 .poi-sheet .icon-btn, .sos-sheet .icon-btn { color: var(--muted); }
 .poi-sheet .icon-btn:hover, .sos-sheet .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+/* ---------------- Park banner (NPS park-title band) ---------------- */
+
+.park-banner {
+  grid-area: banner;
+  background: var(--band);
+  color: var(--band-ink);
+  border-bottom: 1px solid var(--band-line);
+}
+.park-banner-inner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 10px 16px 12px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.park-kicker {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--band-muted);
+}
+.park-name {
+  font-family: var(--display);
+  font-size: clamp(30px, 7vw, 44px);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--band-ink);
+}
+.park-quick { display: flex; gap: 2px; flex-wrap: wrap; }
+.quick-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 58px;
+  min-height: 48px;
+  padding: 5px 7px;
+  color: var(--band-muted);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border-radius: 8px;
+}
+.quick-link svg { width: 20px; height: 20px; }
+.quick-link:hover { color: var(--band-ink); background: rgba(255, 255, 255, 0.1); }
 
 /* ---------------- Layout / panels ---------------- */
 
@@ -387,66 +443,34 @@ main {
   transition: opacity 0.7s ease;
 }
 .hero-img.loaded { opacity: 1; }
-.hero-scrim {
+.hero-credit {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(10, 16, 12, 0.22), rgba(10, 16, 12, 0) 38%, rgba(8, 14, 10, 0.58) 100%);
+  right: 8px;
+  bottom: 8px;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 9px;
+  border-radius: 6px;
+  max-width: 70%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.hero-title {
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 14px;
-  color: #fdfaf0;
-  text-shadow: 0 1px 16px rgba(0, 0, 0, 0.55);
-}
-.hero-kicker {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  opacity: 0.9;
-}
-.hero-name {
-  font-family: var(--display);
-  font-size: clamp(36px, 9vw, 54px);
-  font-weight: 700;
-  line-height: 1.02;
-}
-.hero-tag {
-  font-size: 14px;
-  line-height: 1.45;
-  max-width: 34em;
-  margin-top: 6px;
-  opacity: 0.95;
-}
-.hero-ctas { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
-.hero-cta {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 9px 18px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 14px;
-  background: #fdfaf0;
-  color: #26372c;
-}
-.hero-cta:active { transform: scale(0.98); }
-.hero-cta-ghost {
-  background: rgba(253, 250, 240, 0.16);
-  color: #fdfaf0;
-  border: 1px solid rgba(253, 250, 240, 0.65);
-}
+.welcome-ctas { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 
 /* NPS-style alerts strip: one amber banner, expandable, instead of a
    stack of notice cards. */
 .alerts {
-  border-left: 4px solid var(--warn);
-  background: var(--warn-soft);
-  border-radius: 0 10px 10px 0;
-  margin: 16px 0 4px;
+  background: var(--alert-bg);
+  color: var(--alert-ink);
+  border-radius: 0;
+  margin: 0;
 }
+.alerts-body { max-width: 760px; margin: 0 auto; }
+.alerts .alerts-head { max-width: 760px; margin: 0 auto; }
+.alerts-row { border-top: 1px solid rgba(0, 0, 0, 0.14); }
+.alerts-stamp { color: inherit; opacity: 0.7; }
 .alerts-head {
   display: flex;
   align-items: center;
@@ -490,18 +514,19 @@ main {
 
 /* Site footer — every page of a real park site has one. */
 .site-footer {
-  border-top: 1px solid var(--line);
+  background: var(--band);
   margin-top: 34px;
-  padding: 18px 0 8px;
+  padding: 22px 16px calc(26px + env(safe-area-inset-bottom));
   font-size: 12.5px;
-  color: var(--muted);
+  color: var(--band-muted);
   line-height: 1.7;
 }
+.site-footer-inner { max-width: 760px; margin: 0 auto; }
 .site-footer .foot-name {
   font-family: var(--display);
   font-size: 17px;
   font-weight: 700;
-  color: var(--ink);
+  color: var(--band-ink);
   margin-bottom: 4px;
 }
 
