@@ -1,0 +1,293 @@
+{
+  "trails": [
+    {
+      "id": "duf-waterfall",
+      "name": {
+        "mk": "До водопадот Дуф",
+        "en": "Duf Waterfall Trail"
+      },
+      "distanceKm": 5,
+      "ascentM": 250,
+      "time": "1.5–2 h",
+      "difficulty": "easy",
+      "kidFriendly": true,
+      "season": {
+        "mk": "Целогодишно; најубаво од пролет до есен",
+        "en": "Year-round; best spring to autumn"
+      },
+      "start": {
+        "coords": [
+          20.5997,
+          41.6103
+        ],
+        "name": {
+          "mk": "Ростуше",
+          "en": "Rostuše"
+        }
+      },
+      "description": {
+        "mk": "Обележана патека од горниот крај на Ростуше низ сенчестата клисура, со дрвени мостчиња преку потокот, до водопадот Дуф — околу 2,5 км и четириесетина минути во една насока. Најдобрата лесна прошетка во паркот, погодна и за деца.",
+        "en": "A marked path climbs from the upper edge of Rostuše through a shady gorge, crossing wooden footbridges over the stream to the Duf waterfall — about 2.5 km and forty minutes each way. The park's best easy walk, fine for kids."
+      },
+      "warnings": [
+        {
+          "mk": "По дожд мостчињата и камењата се лизгави.",
+          "en": "Footbridges and rocks get slippery after rain."
+        }
+      ],
+      "hasGeometry": false,
+      "gpx": null,
+      "officialGpxUrl": "https://npmavrovo.mk/gpx"
+    },
+    {
+      "id": "lake-loop",
+      "name": {
+        "mk": "Околу Мавровското Езеро",
+        "en": "Mavrovo Lake Circuit"
+      },
+      "distanceKm": 32,
+      "ascentM": 300,
+      "time": "6–7 h on foot / ~2.5 h by bike",
+      "difficulty": "easy",
+      "kidFriendly": true,
+      "season": {
+        "mk": "Целогодишно; зиме внимавајте на снег и мраз",
+        "en": "Year-round; watch for snow and ice in winter"
+      },
+      "start": {
+        "coords": [
+          20.7347,
+          41.6989
+        ],
+        "name": {
+          "mk": "Маврови Анови (кај браната)",
+          "en": "Mavrovi Anovi (by the dam)"
+        }
+      },
+      "description": {
+        "mk": "Асфалтен круг околу езерото — рамен, семеен и најдобар со велосипед, со постојани погледи кон водата и Бистра. Лесно се дели на делници: на пример, од село Маврово до браната и назад.",
+        "en": "An asphalt loop around the lake — flat, family-friendly and best by bike, with the water and Bistra in view the whole way. Easy to do in sections, say Mavrovo village to the dam and back."
+      },
+      "warnings": [
+        {
+          "mk": "Делови од кругот одат по пат со сообраќај — движете се внимателно.",
+          "en": "Parts of the loop follow roads with traffic — take care."
+        }
+      ],
+      "hasGeometry": true,
+      "gpx": "gpx/lake-loop.gpx",
+      "officialGpxUrl": "https://npmavrovo.mk/gpx"
+    },
+    {
+      "id": "galicnik-medenica",
+      "name": {
+        "mk": "Галичник → Меденица",
+        "en": "Galičnik → Medenica"
+      },
+      "distanceKm": 10,
+      "ascentM": 550,
+      "time": "4–5 h",
+      "difficulty": "moderate",
+      "kidFriendly": false,
+      "season": {
+        "mk": "Јуни – октомври",
+        "en": "June – October"
+      },
+      "start": {
+        "coords": [
+          20.6589,
+          41.5939
+        ],
+        "name": {
+          "mk": "Галичник",
+          "en": "Galičnik"
+        }
+      },
+      "description": {
+        "mk": "Класиката на Бистра: обележана патека од Галичник по отворени пасишта до врвот Меденица (2 163 м), околу 10 км повратно. Ништо техничко, но цело време сте над шумата — погледите се широки, а времето се менува брзо.",
+        "en": "The Bistra classic: a marked route from Galičnik across open pasture to the summit of Medenica (2,163 m), about 10 km round trip. Nothing technical, but you're above the trees the whole way — big views, fast-changing weather."
+      },
+      "warnings": [
+        {
+          "mk": "Над шумската граница нема засолниште — не тргнувајте при најавено невреме и понесете доволно вода.",
+          "en": "There is no shelter above the treeline — don't set out with storms forecast, and carry plenty of water."
+        }
+      ],
+      "hasGeometry": true,
+      "gpx": "gpx/galicnik-medenica.gpx",
+      "officialGpxUrl": "https://npmavrovo.mk/gpx"
+    },
+    {
+      "id": "anovi-galicnik",
+      "name": {
+        "mk": "Маврови Анови → Галичник (старата патека)",
+        "en": "Mavrovi Anovi → Galičnik (historic path)"
+      },
+      "distanceKm": 16,
+      "ascentM": 750,
+      "time": "5–6 h",
+      "difficulty": "moderate",
+      "kidFriendly": false,
+      "season": {
+        "mk": "Јуни – октомври",
+        "en": "June – October"
+      },
+      "start": {
+        "coords": [
+          20.7347,
+          41.6989
+        ],
+        "name": {
+          "mk": "Маврови Анови",
+          "en": "Mavrovi Anovi"
+        }
+      },
+      "description": {
+        "mk": "Историската врска меѓу езерото и Галичник — патеката по која некогаш се одело на Галичката свадба. Долг, но постојано убав ден преку падините на Бистра, со пристигнување право на галичкиот плоштад-амфитеатар.",
+        "en": "The historic link between the lake and Galičnik — the path people once walked to reach the Wedding. A long but steadily beautiful day across Bistra's flanks, arriving straight onto Galičnik's amphitheatre square."
+      },
+      "warnings": [
+        {
+          "mk": "Еднонасочна тура — однапред договорете превоз од Галичник или планирајте го враќањето.",
+          "en": "A one-way route — arrange a pickup in Galičnik or plan your return in advance."
+        },
+        {
+          "mk": "Прашајте во инфо-пунктот за моменталната состојба на маркацијата.",
+          "en": "Ask at the park info point about the current state of the waymarking."
+        }
+      ],
+      "hasGeometry": false,
+      "gpx": null,
+      "officialGpxUrl": "https://npmavrovo.mk/gpx"
+    },
+    {
+      "id": "sheremetnica-medenica",
+      "name": {
+        "mk": "Шереметница → Меденица (сртна варијанта)",
+        "en": "Sheremetnica → Medenica (ridge variant)"
+      },
+      "distanceKm": 8,
+      "ascentM": 550,
+      "time": "3–4 h",
+      "difficulty": "moderate",
+      "kidFriendly": false,
+      "season": {
+        "mk": "Јуни – октомври",
+        "en": "June – October"
+      },
+      "start": {
+        "coords": [
+          20.68,
+          41.65
+        ],
+        "name": {
+          "mk": "Шереметница (бачило на Бистра)",
+          "en": "Sheremetnica (Bistra pastures)"
+        }
+      },
+      "description": {
+        "mk": "Помирната варијанта кон Меденица — од пасиштата кај Шереметница, по срт со отворени погледи на двете страни. Добар избор ако галичката патека веќе сте ја оделе или сакате потивок ден.",
+        "en": "The quieter way up Medenica — from the Sheremetnica pastures, along a ridge with open views to both sides. A good choice if you've already done the Galičnik route or simply want a calmer day."
+      },
+      "warnings": [
+        {
+          "mk": "Маркацијата е поретка отколку на галичката патека — движете се внимателно и следете ја трасата.",
+          "en": "Waymarking is sparser than on the Galičnik route — navigate with care."
+        }
+      ],
+      "hasGeometry": false,
+      "gpx": null,
+      "officialGpxUrl": "https://npmavrovo.mk/gpx"
+    },
+    {
+      "id": "strezimir-korab",
+      "name": {
+        "mk": "Стрезимир → Голем Кораб",
+        "en": "Strezimir → Golem Korab"
+      },
+      "distanceKm": 18,
+      "ascentM": 1400,
+      "time": "8–10 h",
+      "difficulty": "alpine",
+      "kidFriendly": false,
+      "season": {
+        "mk": "Лето и рана есен",
+        "en": "Summer and early autumn"
+      },
+      "start": {
+        "coords": [
+          20.605,
+          41.756
+        ],
+        "name": {
+          "mk": "Стрезимир (горна Радика)",
+          "en": "Strezimir (upper Radika)"
+        }
+      },
+      "description": {
+        "mk": "Големиот ден во паркот: од Стрезимир во горниот тек на Радика, низ граничната зона, до врвот од 2 764 м — покривот и на Северна Македонија и на Албанија. Алпска тура по должина, искачување и изложеност на времето.",
+        "en": "The park's big day out: from Strezimir in the upper Radika, through the border zone, to the 2,764 m summit — the roof of both North Macedonia and Albania. Alpine in length, ascent and exposure to the weather."
+      },
+      "warnings": [
+        {
+          "mk": "Гранична зона: правилата варираат — потврдете кај граничната полиција или во инфо-пунктот на паркот и носете пасош.",
+          "en": "Border zone: rules vary — confirm with the border police or the park info point, and carry a passport."
+        },
+        {
+          "mk": "Наједноставниот термин е масовното искачување околу 8 септември, со организирана придружба.",
+          "en": "The one straightforward window is the escorted mass ascent around September 8."
+        },
+        {
+          "mk": "Долг алпски ден — тргнете рано и гледајте ја прогнозата за врвот, не само за долината.",
+          "en": "A long alpine day — start early, and check the summit forecast, not just the valley's."
+        }
+      ],
+      "hasGeometry": true,
+      "gpx": "gpx/strezimir-korab.gpx",
+      "officialGpxUrl": "https://npmavrovo.mk/gpx"
+    },
+    {
+      "id": "korab-falls",
+      "name": {
+        "mk": "Нистрово/Жужње → Корабски Водопад",
+        "en": "Nistrovo/Žužnje → Korab Falls"
+      },
+      "distanceKm": 20,
+      "ascentM": 1000,
+      "time": "8–10 h",
+      "difficulty": "hard",
+      "kidFriendly": false,
+      "season": {
+        "mk": "Само напролет (крај на мај – почеток на јуни)",
+        "en": "Spring only (late May – early June)"
+      },
+      "start": {
+        "coords": [
+          20.5794,
+          41.7092
+        ],
+        "name": {
+          "mk": "Нистрово",
+          "en": "Nistrovo"
+        }
+      },
+      "description": {
+        "mk": "Долг приод по долината на Длабока Река до водопадот од околу 100–138 м — највисокиот во Северна Македонија и меѓу највисоките на Балканот. Вреди само во краткиот пролетен прозорец, кога топењето на снегот го полни со вода.",
+        "en": "A long approach up the Dlaboka River valley to the roughly 100–138 m fall — the highest in North Macedonia and among the highest in the Balkans. Worth it only in the short spring window, when snowmelt fills it."
+      },
+      "warnings": [
+        {
+          "mk": "Далечен предел без мобилен сигнал и без засолништа — не одете сами.",
+          "en": "Remote country with no phone signal and no shelters — don't go alone."
+        },
+        {
+          "mk": "Напролет потоците од топење се силни — премините преку вода може да бидат опасни.",
+          "en": "Snowmelt streams run high in spring — water crossings can be hazardous."
+        }
+      ],
+      "hasGeometry": true,
+      "gpx": "gpx/korab-falls.gpx",
+      "officialGpxUrl": "https://npmavrovo.mk/gpx"
+    }
+  ]
+}
