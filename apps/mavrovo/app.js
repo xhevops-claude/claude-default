@@ -377,19 +377,25 @@
     }
     const active = (data.status.notices || []).filter((n) =>
       (!n.from || n.from <= today) && (!n.until || n.until >= today));
-    let html = '';
-    active.forEach((n) => {
-      const warn = n.level === 'warn';
-      html += '<div class="notice' + (warn ? ' notice-warn' : '') + '">' +
-        '<span>' + escapeHTML(pick(n.text)) + '</span></div>';
+    if (!active.length) { host.innerHTML = ''; return; }
+    const rows = active.map((n) =>
+      '<div class="alerts-row">' + escapeHTML(pick(n.text)) + '</div>').join('');
+    const stamp = data.status.updated
+      ? '<p class="alerts-stamp">' + escapeHTML(t('common.updated')) + ' ' +
+        escapeHTML(fmtDate(data.status.updated)) + '</p>'
+      : '';
+    host.innerHTML =
+      '<div class="alerts" data-open="' + (alertsOpen ? '1' : '0') + '">' +
+      '<button type="button" class="alerts-head" aria-expanded="' + (alertsOpen ? 'true' : 'false') + '">' +
+      SVG_WARN + '<span>' + escapeHTML(t('today.notices')) + ' (' + active.length + ')</span>' +
+      '<span class="alerts-chevron" aria-hidden="true">⌄</span></button>' +
+      '<div class="alerts-body"' + (alertsOpen ? '' : ' hidden') + '>' + rows + stamp + '</div></div>';
+    host.querySelector('.alerts-head').addEventListener('click', () => {
+      alertsOpen = !alertsOpen;
+      renderNotices();
     });
-    if (active.length && data.status.updated) {
-      html += '<p class="notices-stamp">' + escapeHTML(t('today.notices')) + ' · ' +
-        escapeHTML(t('common.updated')) + ' ' + escapeHTML(fmtDate(data.status.updated)) + '</p>';
-    }
-    host.innerHTML = html;
-    bindImgFallbacks(host);
   }
+  let alertsOpen = false;
 
   function fmtDate(iso) {
     try {
@@ -696,14 +702,18 @@
       const lead = ph
         ? '<span class="trail-thumb" aria-hidden="true"><span class="trail-thumb-icon">🥾</span>' +
           '<img data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl(ph) + '"></span>'
-        : '<span class="trail-card-icon" aria-hidden="true">🥾</span>';
+        : '<span class="trail-thumb" aria-hidden="true"><span class="trail-thumb-icon">🥾</span></span>';
+      const meta = fmtNum(tr.distanceKm, tr.distanceKm % 1 ? 1 : 0) + ' ' + t('unit.km') +
+        ' · ↗ ' + fmtNum(tr.ascentM) + ' ' + t('unit.m') + ' · ' + tr.time +
+        (tr.hasGeometry ? ' · GPX' : '');
       return '<button type="button" class="trail-card" data-trail="' + escapeHTML(tr.id) + '">' +
-        '<div class="trail-card-top">' + lead + '<span class="trail-card-name">' +
-        escapeHTML(pick(tr.name)) + kid + '</span>' +
-        diffPillHTML(tr.difficulty) + '</div>' +
-        '<div class="stat-chips">' + trailStatChips(tr) + '</div>' +
-        '<div class="trail-card-season">🗓 ' + escapeHTML(pick(tr.season)) + '</div>' +
-        '</button>';
+        lead +
+        '<span class="trail-row-main">' +
+        '<span class="trail-card-name">' + escapeHTML(pick(tr.name)) + kid + '</span>' +
+        '<span class="trail-row-meta">' + escapeHTML(meta) + '</span>' +
+        '<span class="trail-row-sub"><span class="diff-text diff-' + escapeHTML(tr.difficulty) + '">' +
+        escapeHTML(t('difficulty.' + tr.difficulty)) + '</span> · ' + escapeHTML(pick(tr.season)) + '</span>' +
+        '</span></button>';
     }).join('');
     bindImgFallbacks(host);
     host.querySelectorAll('[data-trail]').forEach((btn) => {
@@ -799,16 +809,14 @@
     if (!data.pois) { host.innerHTML = ''; return; }
     host.innerHTML = (data.pois.pois || []).map((p) => {
       const ph = POI_PHOTO[p.id];
-      const art = ph
-        ? '<span class="place-art" aria-hidden="true">' +
-          '<span class="place-card-icon">' + escapeHTML(p.icon || '📍') + '</span>' +
-          '<img class="place-photo" data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl(ph) + '">' +
-          '</span>'
-        : '<span class="place-card-icon" aria-hidden="true">' + escapeHTML(p.icon || '📍') + '</span>';
+      const art = '<span class="place-art" aria-hidden="true">' +
+        '<span class="place-card-icon">' + escapeHTML(p.icon || '📍') + '</span>' +
+        (ph ? '<img class="place-photo" data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl(ph) + '">' : '') +
+        '</span>';
       return '<button type="button" class="place-card' + (ph ? ' has-photo' : '') + '" data-place="' + escapeHTML(p.id) + '">' +
         art +
-        '<span class="place-card-body"><span class="place-card-name">' + escapeHTML(pick(p.name)) + '</span>' +
-        '<span class="place-card-type">' + escapeHTML(t('poi.type.' + p.type)) + '</span></span>' +
+        '<span class="place-card-body"><span class="place-card-type">' + escapeHTML(t('poi.type.' + p.type)) + '</span>' +
+        '<span class="place-card-name">' + escapeHTML(pick(p.name)) + '</span></span>' +
         '</button>';
     }).join('');
     bindImgFallbacks(host);
@@ -872,8 +880,8 @@
     const park = data.park;
 
     if (park && park.gettingThere) {
-      html += '<section class="card"><img class="card-banner" data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl('gate') + '">' +
-        '<h2 class="card-title">' + escapeHTML(t('info.gettingThere')) + '</h2>' +
+      html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.gettingThere')) + '</h2>' +
+        '<img class="section-photo" data-ph="1" loading="lazy" decoding="async" alt="" src="' + photoUrl('gate') + '">' +
         '<div class="getting-block"><div class="getting-title">🚗 ' + escapeHTML(t('info.byCar')) + '</div>' +
         '<p class="getting-body">' + escapeHTML(pick(park.gettingThere.car)) + '</p></div>' +
         '<div class="getting-block"><div class="getting-title">🚌 ' + escapeHTML(t('info.byBus')) + '</div>' +
@@ -881,7 +889,7 @@
     }
 
     if (park && park.fees && park.fees.length) {
-      html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.fees')) + '</h2>' +
+      html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.fees')) + '</h2>' +
         park.fees.map((f) =>
           '<div class="info-row"><div class="info-row-label">' + escapeHTML(pick(f.label)) + '</div>' +
           '<div class="info-row-value">' + escapeHTML(pick(f.value)) + '</div>' +
@@ -892,13 +900,13 @@
     }
 
     if (park && park.money) {
-      html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.money')) + '</h2>' +
+      html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.money')) + '</h2>' +
         '<div class="info-strip"><span aria-hidden="true">💳</span><span>' +
         escapeHTML(pick(park.money)) + '</span></div></section>';
     }
 
     if (park && park.contacts && park.contacts.length) {
-      html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.contacts')) + '</h2>' +
+      html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.contacts')) + '</h2>' +
         park.contacts.map((c) => {
           let actions = '';
           if (c.phone) {
@@ -915,17 +923,17 @@
     }
 
     if (failed.events) {
-      html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.events')) + '</h2>' +
+      html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.events')) + '</h2>' +
         sectionErrorHTML() + '</section>';
     } else if (data.events && (data.events.events || []).length) {
-      html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.events')) + '</h2>' +
+      html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.events')) + '</h2>' +
         (data.events.events || []).slice().sort((a, b) => a.month - b.month)
           .map((ev) => eventRowHTML(ev, true)).join('') +
         '</section>';
     }
 
     if (park && park.facts && park.facts.length) {
-      html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.facts')) + '</h2>' +
+      html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.facts')) + '</h2>' +
         park.facts.map((f) =>
           '<div class="info-row"><div class="info-row-label">' + escapeHTML(pick(f.label)) + '</div>' +
           '<div class="info-row-value">' + escapeHTML(pick(f.value)) + '</div></div>').join('') +
@@ -933,7 +941,7 @@
     }
 
     if (park && park.links && park.links.length) {
-      html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.links')) + '</h2>' +
+      html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.links')) + '</h2>' +
         park.links.map((l) => {
           const lUrl = safeUrl(l.url);
           if (!lUrl) return '';
@@ -944,7 +952,7 @@
     }
 
     const credits = data.credits && data.credits.photos;
-    html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.photos')) + '</h2>' +
+    html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.photos')) + '</h2>' +
       '<p class="about-body">' + escapeHTML(t('info.photosFallback')) + '</p>' +
       (credits && credits.length
         ? credits.map((ph) => {
@@ -957,7 +965,7 @@
         : '') +
       '</section>';
 
-    html += '<section class="card"><h2 class="card-title">' + escapeHTML(t('info.about')) + '</h2>' +
+    html += '<section class="site-section"><h2 class="site-h">' + escapeHTML(t('info.about')) + '</h2>' +
       '<p class="about-body">' + escapeHTML(t('info.aboutBody')) + '</p>' +
       '<p class="disclaimer">' + escapeHTML(t('info.disclaimer')) + '</p></section>';
 
@@ -1663,6 +1671,9 @@
   function wire() {
     TABS.forEach((tab) => {
       $('tab-' + tab).addEventListener('click', () => switchTab(tab));
+    });
+    document.querySelectorAll('[data-goto]').forEach((btn) => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.goto));
     });
     $('lang-mk').addEventListener('click', () => setLang('mk'));
     $('lang-en').addEventListener('click', () => setLang('en'));

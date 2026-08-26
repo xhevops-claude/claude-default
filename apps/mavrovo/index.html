@@ -141,6 +141,11 @@
       <div class="hero-title">
         <p class="hero-kicker"><span class="l-mk">Национален парк</span><span class="l-en">National park</span></p>
         <p class="hero-name"><span class="l-mk">Маврово</span><span class="l-en">Mavrovo</span></p>
+        <p class="hero-tag"><span class="l-mk">Езеро, врвови и патеки во најголемиот национален парк на Северна Македонија.</span><span class="l-en">A lake, high peaks and trails in North Macedonia&#8217;s largest national park.</span></p>
+        <div class="hero-ctas">
+          <button type="button" class="hero-cta" data-goto="info"><span class="l-mk">Планирајте посета</span><span class="l-en">Plan your visit</span></button>
+          <button type="button" class="hero-cta hero-cta-ghost" data-goto="trails"><span class="l-mk">Патеки</span><span class="l-en">Explore trails</span></button>
+        </div>
       </div>
       </div>
       <div class="panel-inner">
@@ -150,30 +155,35 @@
         </div>
         <div id="today-notices"></div>
         <div class="today-grid">
-          <section class="card card-weather" id="card-weather">
+          <section class="site-section" id="card-weather">
             <div class="card-title-row">
-              <h2 class="card-title" data-i18n="today.weather">Weather</h2>
+              <h2 class="site-h" data-i18n="today.weather">Weather</h2>
               <span class="wx-stamp" id="wx-stamp"></span>
             </div>
             <div id="wx-body"><p class="wx-loading" data-i18n="wx.loading">Loading forecast…</p></div>
             <p class="wx-credit"><a href="https://open-meteo.com/" target="_blank" rel="noopener" data-i18n="wx.credit">Weather data by Open-Meteo.com</a></p>
           </section>
-          <section class="card" id="card-sun">
-            <h2 class="card-title" data-i18n="today.sun">Sun</h2>
+          <section class="site-section" id="card-sun">
+            <h2 class="site-h" data-i18n="today.sun">Sun</h2>
             <div class="sun-row" id="sun-row"></div>
           </section>
-          <section class="card" id="card-ski" hidden>
-            <img class="card-banner" id="ski-banner" alt="" loading="lazy" decoding="async" hidden />
-            <h2 class="card-title" data-i18n="ski.title">Zare Lazarevski ski centre</h2>
+          <section class="site-section" id="card-ski" hidden>
+            <img class="section-photo" id="ski-banner" alt="" loading="lazy" decoding="async" hidden />
+            <h2 class="site-h" data-i18n="ski.title">Zare Lazarevski ski centre</h2>
             <p class="ski-facts" data-i18n="ski.facts">15.5 km of pistes · 13 lifts · 1,255–1,878 m</p>
             <p class="ski-equip" data-i18n="ski.equip">Winter equipment is required by law from November 15 to March 15.</p>
             <a class="btn btn-secondary" href="https://resortmavrovo.com" target="_blank" rel="noopener"><span data-i18n="ski.link">Prices and hours</span> ↗</a>
           </section>
-          <section class="card" id="card-events">
-            <h2 class="card-title" data-i18n="today.events">Coming up</h2>
+          <section class="site-section" id="card-events">
+            <h2 class="site-h" data-i18n="today.events">Coming up</h2>
             <div id="today-events"></div>
           </section>
         </div>
+        <footer class="site-footer">
+          <p class="foot-name"><span class="l-mk">Маврово</span><span class="l-en">Mavrovo</span> · <span class="l-mk">национален парк</span><span class="l-en">national park</span></p>
+          <p><span class="l-mk">Неофицијален посетителски водич. Информации: Инфо-пункт Маврови Анови, +389 42 489 425.</span><span class="l-en">Unofficial visitor guide. Information: park info point, Mavrovi Anovi, +389 42 489 425.</span></p>
+          <p><span class="l-mk">Фотографии: Викимедија Комонс (CC) · Карта: &#169; OpenMapTiles, &#169; OpenStreetMap &#183; Прогноза: Open-Meteo.com</span><span class="l-en">Photos: Wikimedia Commons contributors (CC) &#183; Map: &#169; OpenMapTiles, &#169; OpenStreetMap &#183; Forecast: Open-Meteo.com</span></p>
+        </footer>
       </div>
     </section>
 
@@ -215,6 +225,11 @@
           <div class="card-list" id="trail-list"></div>
         </div>
         <div id="trail-detail" hidden></div>
+              <footer class="site-footer">
+          <p class="foot-name"><span class="l-mk">Маврово</span><span class="l-en">Mavrovo</span> · <span class="l-mk">национален парк</span><span class="l-en">national park</span></p>
+          <p><span class="l-mk">Неофицијален посетителски водич. Информации: Инфо-пункт Маврови Анови, +389 42 489 425.</span><span class="l-en">Unofficial visitor guide. Information: park info point, Mavrovi Anovi, +389 42 489 425.</span></p>
+          <p><span class="l-mk">Фотографии: Викимедија Комонс (CC) · Карта: &#169; OpenMapTiles, &#169; OpenStreetMap &#183; Прогноза: Open-Meteo.com</span><span class="l-en">Photos: Wikimedia Commons contributors (CC) &#183; Map: &#169; OpenMapTiles, &#169; OpenStreetMap &#183; Forecast: Open-Meteo.com</span></p>
+        </footer>
       </div>
     </section>
 
@@ -226,6 +241,11 @@
           <div class="place-grid" id="place-grid"></div>
         </div>
         <div id="place-detail" hidden></div>
+              <footer class="site-footer">
+          <p class="foot-name"><span class="l-mk">Маврово</span><span class="l-en">Mavrovo</span> · <span class="l-mk">национален парк</span><span class="l-en">national park</span></p>
+          <p><span class="l-mk">Неофицијален посетителски водич. Информации: Инфо-пункт Маврови Анови, +389 42 489 425.</span><span class="l-en">Unofficial visitor guide. Information: park info point, Mavrovi Anovi, +389 42 489 425.</span></p>
+          <p><span class="l-mk">Фотографии: Викимедија Комонс (CC) · Карта: &#169; OpenMapTiles, &#169; OpenStreetMap &#183; Прогноза: Open-Meteo.com</span><span class="l-en">Photos: Wikimedia Commons contributors (CC) &#183; Map: &#169; OpenMapTiles, &#169; OpenStreetMap &#183; Forecast: Open-Meteo.com</span></p>
+        </footer>
       </div>
     </section>
 
@@ -234,6 +254,11 @@
       <div class="panel-inner">
         <h1 class="panel-title" data-i18n="nav.info">Info</h1>
         <div id="info-body"></div>
+              <footer class="site-footer">
+          <p class="foot-name"><span class="l-mk">Маврово</span><span class="l-en">Mavrovo</span> · <span class="l-mk">национален парк</span><span class="l-en">national park</span></p>
+          <p><span class="l-mk">Неофицијален посетителски водич. Информации: Инфо-пункт Маврови Анови, +389 42 489 425.</span><span class="l-en">Unofficial visitor guide. Information: park info point, Mavrovi Anovi, +389 42 489 425.</span></p>
+          <p><span class="l-mk">Фотографии: Викимедија Комонс (CC) · Карта: &#169; OpenMapTiles, &#169; OpenStreetMap &#183; Прогноза: Open-Meteo.com</span><span class="l-en">Photos: Wikimedia Commons contributors (CC) &#183; Map: &#169; OpenMapTiles, &#169; OpenStreetMap &#183; Forecast: Open-Meteo.com</span></p>
+        </footer>
       </div>
     </section>
   </main>

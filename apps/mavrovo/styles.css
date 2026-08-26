@@ -404,6 +404,97 @@ main {
   font-weight: 700;
   line-height: 1.02;
 }
+.hero-tag {
+  font-size: 14px;
+  line-height: 1.45;
+  max-width: 34em;
+  margin-top: 6px;
+  opacity: 0.95;
+}
+.hero-ctas { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  background: #fdfaf0;
+  color: #26372c;
+}
+.hero-cta:active { transform: scale(0.98); }
+.hero-cta-ghost {
+  background: rgba(253, 250, 240, 0.16);
+  color: #fdfaf0;
+  border: 1px solid rgba(253, 250, 240, 0.65);
+}
+
+/* NPS-style alerts strip: one amber banner, expandable, instead of a
+   stack of notice cards. */
+.alerts {
+  border-left: 4px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: 0 10px 10px 0;
+  margin: 16px 0 4px;
+}
+.alerts-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  min-height: 48px;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.alerts-head .alerts-chevron { margin-left: auto; color: var(--muted); transition: transform 0.2s ease; }
+.alerts[data-open="1"] .alerts-chevron { transform: rotate(180deg); }
+.alerts-body { padding: 0 14px 6px; }
+.alerts-row {
+  padding: 9px 0 11px;
+  font-size: 13.5px;
+  border-top: 1px solid var(--line);
+}
+.alerts-stamp { font-size: 11.5px; color: var(--muted); padding: 0 0 10px; }
+
+/* Website sections: serif headline over a hairline, content in flow —
+   not dashboard cards. */
+.site-section { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 16px; }
+.site-section:first-of-type { border-top: 0; margin-top: 8px; }
+.site-h {
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.section-photo {
+  display: block;
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  background: var(--surface-2);
+}
+
+/* Site footer — every page of a real park site has one. */
+.site-footer {
+  border-top: 1px solid var(--line);
+  margin-top: 34px;
+  padding: 18px 0 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.site-footer .foot-name {
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
 
 .today-head {
   display: flex;
@@ -435,7 +526,7 @@ main {
 }
 :root[data-theme="light"] .season-chip { color: var(--accent-deep); }
 
-.today-grid { display: grid; gap: 12px; }
+.today-grid { display: block; }
 
 .notice {
   display: flex;
@@ -679,20 +770,37 @@ main {
 
 /* ---------------- Trails ---------------- */
 
-.card-list { display: grid; gap: 10px; }
+/* Trails as a website list: rows on the page with hairline rules,
+   photo thumb, plain-text meta — no chip soup. */
+.card-list { display: block; }
 
 .trail-card {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
   width: 100%;
   text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 15px 16px;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 15px 2px;
+  transition: background 0.15s ease;
 }
-.trail-card:hover { border-color: var(--accent); }
-.trail-card:active { transform: scale(0.99); }
+.trail-card:hover { background: var(--accent-soft); }
+.trail-card:active { transform: scale(0.995); }
+.trail-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.trail-row-meta { font-size: 13.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.trail-row-sub { font-size: 12.5px; color: var(--muted); }
+.diff-text { font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11.5px; }
+.diff-text.diff-easy { color: var(--diff-easy); background: none; }
+.diff-text.diff-moderate { color: var(--diff-moderate); background: none; }
+.diff-text.diff-hard { color: var(--diff-hard); background: none; }
+.diff-text.diff-alpine { color: var(--diff-alpine); background: none; }
+:root[data-theme="light"] .diff-text.diff-moderate { color: #8a6516; }
+:root[data-theme="light"] .diff-text.diff-hard { color: #b03328; }
+:root[data-theme="light"] .diff-text.diff-alpine { color: #6f47b8; }
+:root[data-theme="light"] .diff-text.diff-easy { color: #227a54; }
 
 .trail-card-top {
   display: flex;
@@ -705,9 +813,9 @@ main {
 .trail-thumb {
   position: relative;
   flex: 0 0 auto;
-  width: 54px;
-  height: 54px;
-  border-radius: 12px;
+  width: 86px;
+  height: 66px;
+  border-radius: 10px;
   overflow: hidden;
   background: var(--surface-2);
 }
@@ -790,38 +898,31 @@ main {
   gap: 10px;
 }
 
+/* Destinations mosaic: every tile is an image (or tinted art) with the
+   name set over a bottom gradient — the classic park-site grid. */
 .place-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 16px 14px;
-  min-height: 112px;
-  transition: border-color 0.15s ease, transform 0.15s ease;
-}
-.place-card:hover { border-color: var(--accent); }
-.place-card:active { transform: scale(0.98); }
-.place-card-icon { font-size: 28px; line-height: 1; }
-.place-card-body { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
-.place-card.has-photo { padding: 0; gap: 0; overflow: hidden; }
-.place-art {
   position: relative;
   display: block;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  background: var(--surface-2);
+  text-align: left;
+  aspect-ratio: 4 / 3.1;
+  border-radius: 14px;
+  overflow: hidden;
+  padding: 0;
+  background: linear-gradient(160deg, var(--sc-r2), var(--sc-r4));
+  transition: transform 0.15s ease;
 }
-.place-art .place-card-icon {
+.place-card:hover { transform: scale(1.015); }
+.place-card:active { transform: scale(0.985); }
+.place-card-icon {
   position: absolute;
-  inset: 0;
+  inset: 0 0 26% 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 34px;
+  line-height: 1;
 }
+.place-art { position: absolute; inset: 0; }
 .place-photo {
   position: absolute;
   inset: 0;
@@ -829,7 +930,19 @@ main {
   height: 100%;
   object-fit: cover;
 }
-.place-card.has-photo .place-card-body { padding: 10px 12px 12px; }
+.place-card-body {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 26px 11px 10px;
+  background: linear-gradient(180deg, rgba(12, 16, 11, 0), rgba(12, 16, 11, 0.62) 55%);
+  color: #fdfaf0;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+.place-card .place-card-name { color: #fdfaf0; }
+.place-card .place-card-type { color: rgba(253, 250, 240, 0.85); }
 .place-card-name { font-family: var(--display); font-weight: 700; font-size: 15.5px; line-height: 1.3; }
 .place-card-type {
   font-size: 11px;
@@ -1054,39 +1167,44 @@ button:focus-visible, a:focus-visible {
 /* ---------------- Wider screens ---------------- */
 
 @media (min-width: 768px) {
+  /* Website chrome: masthead on top, a horizontal section nav under it
+     (like any park site), content below. */
   body {
-    grid-template-columns: 96px 1fr;
-    grid-template-rows: auto 1fr;
-    grid-template-areas: "header header" "tabbar main";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "header" "tabbar" "main";
   }
 
   .tabbar {
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 6px;
     border-top: 0;
-    border-right: 1px solid var(--line);
-    padding: 12px 8px;
+    border-bottom: 1px solid var(--line);
+    padding: 0 16px;
+    background: var(--bg);
   }
   .tab {
     flex: 0 0 auto;
-    width: 100%;
-    min-height: 64px;
+    flex-direction: row;
+    gap: 8px;
+    min-height: 52px;
+    padding: 0 16px;
     border-top: 0;
-    border-left: 2px solid transparent;
-    border-radius: 12px;
+    border-bottom: 2.5px solid transparent;
+    font-size: 14px;
   }
-  .tab[aria-selected="true"] { border-left-color: var(--accent); background: var(--accent-soft); }
-  .tab-icon svg { width: 24px; height: 24px; }
+  .tab .tab-label { font-size: 13.5px; letter-spacing: 0.02em; }
+  .tab[aria-selected="true"] { border-bottom-color: var(--accent-deep); background: none; }
+  :root[data-theme="dark"] .tab[aria-selected="true"] { border-bottom-color: var(--accent); }
+  .tab-icon svg { width: 19px; height: 19px; }
 
-  .hero { height: clamp(300px, 42vh, 460px); }
+  .hero { height: clamp(320px, 46vh, 500px); }
+  .hero-title { left: max(18px, calc(50% - 362px)); }
 
   #sos-btn { bottom: 22px; right: 22px; }
 
   .panel-inner { padding: 26px 28px 96px; }
-
-  .today-grid { grid-template-columns: 1fr 1fr; align-items: start; }
-  .card-weather { grid-column: 1 / -1; }
 
   .place-grid { grid-template-columns: repeat(3, 1fr); }
 
