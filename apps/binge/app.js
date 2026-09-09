@@ -24,6 +24,9 @@
     catch (e) { return fallback; }
   }
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  // A stored pref that isn't one of the allowed values falls back to the default.
+  function pick(key, allowed, fallback) { const v = load(key, fallback); return allowed.indexOf(v) >= 0 ? v : fallback; }
+  const VIEWS = ['list', 'grid'], SORTS = ['old', 'new', 'popular'], GROUPS = ['year', 'channel'];
 
   // ---- persisted state ----
   let selected = new Set();                       // channel slugs shown — derived from the active group minus its exclusions
@@ -32,9 +35,9 @@
   let watchedTo = load(LS.watchedTo, {});         // slug -> yyyymmdd cursor
   let showWatched = true;                         // mirrors the active tab's setting
   let cutoff = todayYMD();                        // mirrors the active tab's cutoff
-  let view = load(LS.view, 'list');               // 'list' | 'grid'
-  let sortBy = load(LS.sort, 'new');              // 'old' | 'new' | 'popular'
-  let groupBy = load(LS.group, 'year');           // 'year' | 'channel'
+  let view = pick(LS.view, VIEWS, 'list');
+  let sortBy = pick(LS.sort, SORTS, 'old');
+  let groupBy = pick(LS.group, GROUPS, 'year');
   let filtersOpen = false;                        // panel is tucked away until the funnel is tapped
 
   // ---- runtime state ----
@@ -829,7 +832,8 @@
     const b = e.target.closest('.seg-btn'); if (!b) return;
     if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); save(LS.view, view); }
     else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); save(LS.sort, sortBy); }
-    else { groupBy = b.getAttribute('data-group'); collapsed.clear(); save(LS.group, groupBy); }
+    else if (b.hasAttribute('data-group')) { groupBy = b.getAttribute('data-group'); collapsed.clear(); save(LS.group, groupBy); }
+    else return;   // the funnel button has its own handler
     render();
   });
 
@@ -901,9 +905,9 @@
   // Re-read runtime state from (possibly just-merged) localStorage.
   function reloadState() {
     watchedTo = load(LS.watchedTo, {});
-    view = load(LS.view, 'list');
-    sortBy = load(LS.sort, 'new');
-    groupBy = load(LS.group, 'year');
+    view = pick(LS.view, VIEWS, 'list');
+    sortBy = pick(LS.sort, SORTS, 'old');
+    groupBy = pick(LS.group, GROUPS, 'year');
     activeTab = String(load(LS.tab, 'all'));
     const t = load(LS.tabs, {});
     tabs = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
@@ -964,8 +968,6 @@
   (function hideLoading() {
     const loading = document.getElementById('app-loading');
     if (!loading) return;
-    const navStart = (performance && performance.timeOrigin) || Date.now();
-    const remaining = Math.max(0, 3000 - (Date.now() - navStart));
-    setTimeout(() => { loading.classList.add('hidden'); setTimeout(() => loading.remove(), 500); }, remaining);
+    loading.classList.add('hidden'); setTimeout(() => loading.remove(), 500);
   })();
 })();
