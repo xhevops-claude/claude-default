@@ -97,9 +97,9 @@ html, body {
 .fgroup-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 
 /* Group tabs: one pill per group from groups.json plus an automatic "All".
-   Sits above the filters panel, always visible; horizontally scrollable so
-   a long list stays on one row on phones. */
-.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; margin-bottom: -6px; -webkit-overflow-scrolling: touch; }
+   Sits right under the filters panel, always visible; horizontally
+   scrollable so a long list stays on one row on phones. */
+.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; margin-top: -6px; -webkit-overflow-scrolling: touch; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { flex: none; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer; white-space: nowrap; transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
 .tab[aria-selected="true"] { background: var(--red); border-color: transparent; color: #fff; }

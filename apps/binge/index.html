@@ -70,9 +70,6 @@
       </div>
     </section>
 
-    <!-- Group tabs: always visible; the active tab owns the filters below -->
-    <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
-
     <!-- Filters (collapsible): channels + date cutoff + show-watched -->
     <section class="filters" id="filters" hidden>
       <button class="filters-head" id="filters-toggle" type="button" aria-expanded="true" aria-controls="filters-body">
@@ -125,6 +122,9 @@
         </div>
       </div>
     </section>
+
+    <!-- Group tabs: always visible, right under the filters; the active tab owns the filters above -->
+    <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
 
     <!-- Toolbar: View / Sort / Group -->
     <section class="toolbar" id="toolbar" hidden>
