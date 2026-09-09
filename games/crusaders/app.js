@@ -1384,11 +1384,7 @@
   (function hideLoadingWhenReady() {
     const loading = document.getElementById('game-loading');
     if (!loading) return;
-    const navStart = (performance && performance.timeOrigin) || Date.now();
-    const remaining = Math.max(0, 3000 - (Date.now() - navStart));
-    setTimeout(() => {
-      loading.classList.add('hidden');
-      setTimeout(() => loading.remove(), 500);
-    }, remaining);
+    loading.classList.add('hidden');
+    setTimeout(() => loading.remove(), 500);
   })();
 })();

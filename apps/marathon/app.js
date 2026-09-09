@@ -766,8 +766,6 @@
   (function hideLoading() {
     const loading2 = document.getElementById('app-loading');
     if (!loading2) return;
-    const navStart = (performance && performance.timeOrigin) || Date.now();
-    const remaining = Math.max(0, 3000 - (Date.now() - navStart));
-    setTimeout(() => { loading2.classList.add('hidden'); setTimeout(() => loading2.remove(), 500); }, remaining);
+    loading2.classList.add('hidden'); setTimeout(() => loading2.remove(), 500);
   })();
 })();

@@ -186,17 +186,11 @@
   newRound();
   showMenu('ready');
 
-  // Hide the inline loading screen once ready and at least 3s have
-  // elapsed since the document started loading.
+  // Hide the inline loading screen as soon as the game is ready.
   (function hideLoadingWhenReady() {
     const loading = document.getElementById('game-loading');
     if (!loading) return;
-    const navStart = (performance && performance.timeOrigin) || Date.now();
-    const elapsed = Date.now() - navStart;
-    const remaining = Math.max(0, 1000 - elapsed);
-    setTimeout(() => {
-      loading.classList.add('hidden');
-      setTimeout(() => loading.remove(), 500);
-    }, remaining);
+    loading.classList.add('hidden');
+    setTimeout(() => loading.remove(), 500);
   })();
 })();

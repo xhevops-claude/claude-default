@@ -52,7 +52,7 @@ The IIFE labelled `pager()` in `app.js` is a transform-driven barrel carousel �
 
 ### Loading screens (mandatory pattern)
 
-Every sub-experience's `index.html` ships a `#game-loading` (or `#app-loading`) element painted by an inline `<style>` block in `<head>`, BEFORE any external `<link rel="stylesheet">`. This guarantees a black/branded splash on the very first frame, before `styles.css` resolves. The sub-experience's `app.js` removes it once ready AND at least 3 seconds have elapsed. Don't move this CSS to `styles.css` — the whole point is that it paints before that file loads.
+Every sub-experience's `index.html` ships a `#game-loading` (or `#app-loading`) element painted by an inline `<style>` block in `<head>`, BEFORE any external `<link rel="stylesheet">`. This guarantees a black/branded splash on the very first frame, before `styles.css` resolves. The sub-experience's `app.js` removes it as soon as the experience is ready — there is no artificial minimum display time (an earlier "hold for 3 s" rule was removed to make apps load faster). Don't move this CSS to `styles.css` — the whole point is that it paints before that file loads.
 
 ### Theme system
 
