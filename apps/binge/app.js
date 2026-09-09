@@ -13,6 +13,8 @@
     sort: 'binge-sort',
     group: 'binge-group',
     filtersOpen: 'binge-filters-open',
+    tab: 'binge-tab',                    // active group id ('all' or a groups.json id)
+    tabs: 'binge-tabs',                  // { groupId: { off:[slug], cutoff:{y,m,d}, showWatched } } — per-tab filters
   };
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -25,18 +27,20 @@
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
 
   // ---- persisted state ----
-  let selected = new Set();                       // channel slugs shown (default: all)
+  let selected = new Set();                       // channel slugs shown — derived from the active group minus its exclusions
+  let activeTab = load(LS.tab, 'all');            // active group id
+  let tabs = load(LS.tabs, {});                   // groupId -> { off, cutoff, showWatched } — each tab owns its filters
   let watchedTo = load(LS.watchedTo, {});         // slug -> yyyymmdd cursor
-  let showWatched = load(LS.showWatched, true);
-  const savedCut = load(LS.cutoff, null);
-  let cutoff = (savedCut && typeof savedCut.y === 'number') ? savedCut : todayYMD();
+  let showWatched = true;                         // mirrors the active tab's setting
+  let cutoff = todayYMD();                        // mirrors the active tab's cutoff
   let view = load(LS.view, 'list');               // 'list' | 'grid'
-  let sortBy = load(LS.sort, 'old');              // 'old' | 'new' | 'popular'
+  let sortBy = load(LS.sort, 'new');              // 'old' | 'new' | 'popular'
   let groupBy = load(LS.group, 'year');           // 'year' | 'channel'
   let filtersOpen = load(LS.filtersOpen, true);
 
   // ---- runtime state ----
   let available = [];        // [{slug,name,count,url}]
+  let groups = [];           // [{id,name,channels:[slug]}] from groups.json (a slug may sit in several)
   let channelData = {};      // slug -> {name, videos:[...]}
   let currentId = null;
   const unavailable = new Set();
@@ -50,9 +54,10 @@
   const nowTitle = $('now-title'), nowBy = $('now-by'), ytLink = $('yt-link');
   const watchedNextBtn = $('watched-next'), skipBtn = $('skip'), closePlayerBtn = $('close-player');
   const filtersEl = $('filters'), filtersToggle = $('filters-toggle'), filtersBody = $('filters-body'), filtersSummary = $('filters-summary');
+  const groupTabs = $('group-tabs'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
   const filtersReset = $('filters-reset'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
-  const toolbar = $('toolbar'), segView = $('seg-view'), selSort = $('sel-sort'), selGroup = $('sel-group');
+  const toolbar = $('toolbar');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
   const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
   const sectionsEl = $('sections');
@@ -168,6 +173,66 @@
   async function loadAll() {
     await Promise.all(available.map((c) => loadChannel(c.slug)));
   }
+  async function loadGroups() {
+    try {
+      const res = await fetch('groups.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('groups ' + res.status);
+      groups = ((await res.json()).groups || [])
+        .filter((g) => g && g.id && g.name && Array.isArray(g.channels))
+        .map((g) => ({ id: String(g.id), name: String(g.name), channels: g.channels.map(String) }));
+    } catch (e) { groups = []; }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Groups — a tab per group from groups.json plus a synthetic "All". The
+  // active tab decides which channels are in play; within a tab every channel
+  // starts on and the ones you switch off are remembered per tab, so
+  // "Steve" always means all of Steve unless you've trimmed it.
+  // ---------------------------------------------------------------------------
+  function allGroups() {
+    const out = [{ id: 'all', name: 'All', channels: available.map((c) => c.slug) }];
+    groups.forEach((g) => {
+      const chans = g.channels.filter((s) => available.some((c) => c.slug === s));
+      if (chans.length) out.push({ id: g.id, name: g.name, channels: chans });
+    });
+    return out;
+  }
+  function currentGroup() {
+    const all = allGroups();
+    return all.find((g) => g.id === activeTab) || all[0];
+  }
+  function tabState(id) { const t = tabs[id]; return (t && typeof t === 'object') ? t : {}; }
+  function setTabPref(id, key, val) {
+    tabs[id] = Object.assign({}, tabState(id));
+    if (val == null) delete tabs[id][key]; else tabs[id][key] = val;
+    if (!Object.keys(tabs[id]).length) delete tabs[id];
+    save(LS.tabs, tabs);
+  }
+  function offSet(id) { const off = tabState(id).off; return new Set(Array.isArray(off) ? off : []); }
+  function setOff(id, slugs) { setTabPref(id, 'off', slugs.length ? slugs : null); }
+  function tabCutoff(id) {
+    const c = tabState(id).cutoff;
+    if (c && typeof c.y === 'number') return { y: c.y, m: c.m || 1, d: c.d || 1 };
+    // Tabs without their own cutoff yet inherit the pre-groups global one.
+    const legacy = load(LS.cutoff, null);
+    return (legacy && typeof legacy.y === 'number') ? { y: legacy.y, m: legacy.m || 1, d: legacy.d || 1 } : todayYMD();
+  }
+  function tabShowWatched(id) {
+    const s = tabState(id).showWatched;
+    return typeof s === 'boolean' ? s : load(LS.showWatched, true);
+  }
+  // Pull the active tab's filters into the runtime vars the renderer reads.
+  function recomputeSelected() {
+    const g = currentGroup();
+    activeTab = g.id;
+    const off = offSet(g.id);
+    selected = new Set(g.channels.filter((s) => !off.has(s)));
+    cutoff = tabCutoff(g.id);
+    showWatched = tabShowWatched(g.id);
+    showWatchedChk.checked = showWatched;
+  }
+  function saveCutoff() { setTabPref(activeTab, 'cutoff', { y: cutoff.y, m: cutoff.m, d: cutoff.d }); }
+  function saveShowWatched() { setTabPref(activeTab, 'showWatched', showWatched); }
 
   // ---------------------------------------------------------------------------
   // Dates / formatting
@@ -252,6 +317,12 @@
   // Ordered, filtered list that drives playback (ignores show-watched).
   function playbackList() { return sortVids(baseVideos()); }
 
+  // Earliest dated upload among the selected channels (0 if nothing is dated).
+  function firstUploadYMD() {
+    let first = 0;
+    baseVideosRaw().forEach((v) => { const y = videoYMD(v); if (y && (!first || y < first)) first = y; });
+    return first;
+  }
   function availableYears() {
     const set = new Set();
     baseVideosRaw().forEach((v) => { const y = vidDate(v).y; if (y) set.add(y); });
@@ -277,13 +348,13 @@
   // ---------------------------------------------------------------------------
   function render() {
     if (!available.length) {
-      filtersEl.hidden = true; toolbar.hidden = true; hideResults();
+      groupTabs.hidden = true; filtersEl.hidden = true; toolbar.hidden = true; hideResults();
       showStatus('🍿', 'No channel data yet. The scraper publishes to the CDN daily. Check back soon.', null);
       return;
     }
 
-    filtersEl.hidden = false; toolbar.hidden = false;
-    renderChannels(); renderFilters(); renderToolbar();
+    groupTabs.hidden = false; filtersEl.hidden = false; toolbar.hidden = false;
+    renderTabs(); renderChannels(); renderFilters(); renderToolbar();
 
     if (!anySelected()) {
       hideResults();
@@ -308,7 +379,7 @@
     if (!showWatched && remaining === 0) {
       hideResults(true);
       showStatus('🎉', 'All caught up — everything up to this date is watched.', 'Show watched', () => {
-        showWatched = true; showWatchedChk.checked = true; save(LS.showWatched, showWatched); render();
+        showWatched = true; showWatchedChk.checked = true; saveShowWatched(); render();
       });
       return;
     }
@@ -334,15 +405,52 @@
     else { statusAction.hidden = true; statusAction.onclick = null; }
   }
 
+  // ---- group tabs ----
+  // Same build-once/sync-after discipline as the switches: the pills are only
+  // rebuilt when the set of groups changes, otherwise just the selected state.
+  function renderTabs() {
+    const all = allGroups();
+    const key = all.map((g) => g.id + ':' + g.channels.length).join('|');
+    if (groupTabs.dataset.key !== key) {
+      groupTabs.dataset.key = key;
+      groupTabs.innerHTML = all.map((g) =>
+        '<button class="tab" type="button" role="tab" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
+        + escapeHTML(g.name) + '<span class="tab-n"></span></button>'
+      ).join('');
+    }
+    // Each pill carries its own cutoff year, so the per-tab dates read at a glance.
+    Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
+      const id = b.getAttribute('data-tab');
+      b.setAttribute('aria-selected', String(id === activeTab));
+      b.querySelector('.tab-n').textContent = String(tabCutoff(id).y);
+    });
+  }
+  groupTabs.addEventListener('click', (e) => {
+    const b = e.target.closest('.tab'); if (!b) return;
+    selectTab(b.getAttribute('data-tab'));
+  });
+  function selectTab(id) {
+    if (id === activeTab) return;
+    activeTab = id; save(LS.tab, activeTab);
+    recomputeSelected();
+    render();
+    try { groupTabs.querySelector('[aria-selected="true"]').scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) {}
+  }
+
   // ---- channels ----
-  // Build the switch rows once; afterwards only sync the checked state. Not
-  // rebuilding the DOM on every render keeps the control you're tapping stable,
-  // so hammering the switches can't drop or double-fire a toggle.
+  // Build the switch rows once per tab; afterwards only sync the checked
+  // state. Not rebuilding the DOM on every render keeps the control you're
+  // tapping stable, so hammering the switches can't drop or double-fire a
+  // toggle.
   function renderChannels() {
-    const inputs = chanSwitches.querySelectorAll('.chan-switch .switch-input');
-    if (inputs.length !== available.length) {
+    const g = currentGroup();
+    const chans = g.channels.map((s) => available.find((c) => c.slug === s)).filter(Boolean);
+    chanLabel.textContent = g.id === 'all' ? 'All channels' : g.name + ' channels';
+    const key = chans.map((c) => c.slug).join('|');
+    if (chanSwitches.dataset.key !== key) {
+      chanSwitches.dataset.key = key;
       chanSwitches.innerHTML = '';
-      available.forEach((c) => {
+      chans.forEach((c) => {
         const row = document.createElement('label');
         row.className = 'switch chan-switch';
         row.innerHTML =
@@ -355,8 +463,9 @@
         chanSwitches.appendChild(row);
       });
     } else {
+      const inputs = chanSwitches.querySelectorAll('.chan-switch .switch-input');
       const uptos = chanSwitches.querySelectorAll('.chan-switch .chan-upto');
-      available.forEach((c, i) => {
+      chans.forEach((c, i) => {
         inputs[i].checked = selected.has(c.slug);
         uptos[i].textContent = cursorLabel(c.slug);
       });
@@ -369,12 +478,15 @@
   // Pure state flip — all channel data is preloaded, so rapid toggling can't
   // race an in-flight fetch.
   function toggleChannel(slug) {
-    if (selected.has(slug)) selected.delete(slug); else selected.add(slug);
-    save(LS.selected, Array.from(selected));
+    const g = currentGroup();
+    const off = offSet(g.id);
+    if (off.has(slug)) off.delete(slug); else off.add(slug);
+    setOff(g.id, g.channels.filter((s) => off.has(s)));
+    recomputeSelected();
     render();
   }
-  function selectAllChannels() { selected = new Set(available.map((c) => c.slug)); save(LS.selected, Array.from(selected)); render(); }
-  function clearAllChannels() { selected = new Set(); save(LS.selected, Array.from(selected)); render(); }
+  function selectAllChannels() { const g = currentGroup(); setOff(g.id, []); recomputeSelected(); render(); }
+  function clearAllChannels() { const g = currentGroup(); setOff(g.id, g.channels.slice()); recomputeSelected(); render(); }
 
   // ---- filters (date cutoff) ----
   function renderFilters() {
@@ -389,14 +501,21 @@
     yearRange = [];
     for (let y = minY; y <= maxY; y++) yearRange.push(y);
     cutoff.y = Math.min(Math.max(cutoff.y, minY), maxY);
+    cutoff.m = Math.min(Math.max(cutoff.m, 1), 12);
+    cutoff.d = Math.min(Math.max(cutoff.d, 1), daysInMonth(cutoff.y, cutoff.m));
+
+    // Never earlier than the first upload across the tab's channels: a cutoff
+    // before that shows nothing, so the sliders floor at that exact date.
+    const first = firstUploadYMD();
+    if (first && cutoffInt() < first) {
+      cutoff = { y: Math.floor(first / 10000), m: Math.floor(first / 100) % 100 || 1, d: first % 100 || 1 };
+      saveCutoff();
+    }
+
     yearSlider.set(yearRange.length, yearRange.indexOf(cutoff.y));
     yrValue.textContent = String(cutoff.y);
-
-    cutoff.m = Math.min(Math.max(cutoff.m, 1), 12);
     monthSlider.set(12, cutoff.m - 1);
     moValue.textContent = MONTHS[cutoff.m - 1];
-
-    cutoff.d = Math.min(Math.max(cutoff.d, 1), daysInMonth(cutoff.y, cutoff.m));
     daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
@@ -406,23 +525,25 @@
     filtersToggle.classList.toggle('open', filtersOpen);
   }
   function filterSummaryText() {
-    const sel = available.filter((c) => selected.has(c.slug)).length;
+    const g = currentGroup();
+    const sel = g.channels.filter((s) => selected.has(s)).length;
     const t = todayYMD();
     const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
     const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
     const upto = isToday ? 'today' : d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y;
-    return sel + '/' + available.length + ' channels · up to ' + upto;
+    return g.name + ' ' + sel + '/' + g.channels.length + ' · up to ' + upto;
   }
-  function resetCutoff() { cutoff = todayYMD(); save(LS.cutoff, cutoff); render(); }
-  function commitCutoff() { save(LS.cutoff, cutoff); render(); }
+  function resetCutoff() { cutoff = todayYMD(); saveCutoff(); render(); }
+  function commitCutoff() { saveCutoff(); render(); }
 
   // ---- toolbar ----
   function renderToolbar() {
-    Array.prototype.forEach.call(segView.querySelectorAll('.seg-btn'), (b) => {
-      b.setAttribute('aria-selected', String(b.getAttribute('data-view') === view));
+    Array.prototype.forEach.call(toolbar.querySelectorAll('.seg-btn'), (b) => {
+      const on = b.hasAttribute('data-view') ? b.getAttribute('data-view') === view
+        : b.hasAttribute('data-sort') ? b.getAttribute('data-sort') === sortBy
+          : b.getAttribute('data-group') === groupBy;
+      b.setAttribute('aria-selected', String(on));
     });
-    selSort.value = sortBy;
-    selGroup.value = groupBy;
   }
 
   // ---- sections ----
@@ -668,7 +789,7 @@
   chanAllBtn.addEventListener('click', selectAllChannels);
   chanNoneBtn.addEventListener('click', clearAllChannels);
   filtersReset.addEventListener('click', resetCutoff);
-  showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; save(LS.showWatched, showWatched); render(); });
+  showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; saveShowWatched(); render(); });
   clearWatchedBtn.addEventListener('click', () => {
     if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }
   });
@@ -703,12 +824,13 @@
     },
   });
 
-  segView.addEventListener('click', (e) => {
+  toolbar.addEventListener('click', (e) => {
     const b = e.target.closest('.seg-btn'); if (!b) return;
-    view = b.getAttribute('data-view'); save(LS.view, view); render();
+    if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); save(LS.view, view); }
+    else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); save(LS.sort, sortBy); }
+    else { groupBy = b.getAttribute('data-group'); collapsed.clear(); save(LS.group, groupBy); }
+    render();
   });
-  selSort.addEventListener('change', () => { sortBy = selSort.value; save(LS.sort, sortBy); render(); });
-  selGroup.addEventListener('change', () => { groupBy = selGroup.value; collapsed.clear(); save(LS.group, groupBy); render(); });
 
   watchedNextBtn.addEventListener('click', () => { markWatched(currentId); advance(); });
   skipBtn.addEventListener('click', advance);
@@ -727,7 +849,7 @@
   // later date per channel (never loses progress); per-device prefs fill only
   // when this device hasn't set them. Cutoff stays local (defaults to today).
   // ---------------------------------------------------------------------------
-  const SYNC_FILL = [LS.selected, LS.showWatched, LS.view, LS.sort, LS.group, LS.filtersOpen];
+  const SYNC_FILL = [LS.selected, LS.showWatched, LS.cutoff, LS.view, LS.sort, LS.group, LS.filtersOpen, LS.tab, LS.tabs];
 
   async function loadDB() {
     try {
@@ -778,20 +900,21 @@
   // Re-read runtime state from (possibly just-merged) localStorage.
   function reloadState() {
     watchedTo = load(LS.watchedTo, {});
-    showWatched = load(LS.showWatched, true);
-    const sc = load(LS.cutoff, null);
-    cutoff = (sc && typeof sc.y === 'number') ? sc : todayYMD();
     view = load(LS.view, 'list');
-    sortBy = load(LS.sort, 'old');
+    sortBy = load(LS.sort, 'new');
     groupBy = load(LS.group, 'year');
     filtersOpen = load(LS.filtersOpen, true);
+    activeTab = String(load(LS.tab, 'all'));
+    const t = load(LS.tabs, {});
+    tabs = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
+    // One-time migration from the pre-groups flat channel selection: the
+    // channels that were switched off become the "All" tab's exclusions.
     const savedSel = load(LS.selected, null);
-    selected = new Set(
-      (savedSel && Array.isArray(savedSel))
-        ? savedSel.filter((s) => available.some((c) => c.slug === s))
-        : available.map((c) => c.slug)
-    );
-    showWatchedChk.checked = showWatched;
+    if (!Array.isArray(tabState('all').off) && Array.isArray(savedSel)) {
+      const off = available.map((c) => c.slug).filter((s) => savedSel.indexOf(s) < 0);
+      if (off.length) setOff('all', off);
+    }
+    recomputeSelected();
   }
 
   function syncNoteMsg(m) { syncNote.textContent = m || ''; }
@@ -830,7 +953,7 @@
   // ---------------------------------------------------------------------------
   (async function boot() {
     loadYouTubeAPI();
-    const [db] = await Promise.all([loadDB(), loadIndex()]);
+    const [db] = await Promise.all([loadDB(), loadIndex(), loadGroups()]);
     mergeDB(db);
     reloadState();
     await loadAll();
