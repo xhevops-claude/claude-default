@@ -317,6 +317,12 @@
   // Ordered, filtered list that drives playback (ignores show-watched).
   function playbackList() { return sortVids(baseVideos()); }
 
+  // Earliest dated upload among the selected channels (0 if nothing is dated).
+  function firstUploadYMD() {
+    let first = 0;
+    baseVideosRaw().forEach((v) => { const y = videoYMD(v); if (y && (!first || y < first)) first = y; });
+    return first;
+  }
   function availableYears() {
     const set = new Set();
     baseVideosRaw().forEach((v) => { const y = vidDate(v).y; if (y) set.add(y); });
@@ -495,14 +501,21 @@
     yearRange = [];
     for (let y = minY; y <= maxY; y++) yearRange.push(y);
     cutoff.y = Math.min(Math.max(cutoff.y, minY), maxY);
+    cutoff.m = Math.min(Math.max(cutoff.m, 1), 12);
+    cutoff.d = Math.min(Math.max(cutoff.d, 1), daysInMonth(cutoff.y, cutoff.m));
+
+    // Never earlier than the first upload across the tab's channels: a cutoff
+    // before that shows nothing, so the sliders floor at that exact date.
+    const first = firstUploadYMD();
+    if (first && cutoffInt() < first) {
+      cutoff = { y: Math.floor(first / 10000), m: Math.floor(first / 100) % 100 || 1, d: first % 100 || 1 };
+      saveCutoff();
+    }
+
     yearSlider.set(yearRange.length, yearRange.indexOf(cutoff.y));
     yrValue.textContent = String(cutoff.y);
-
-    cutoff.m = Math.min(Math.max(cutoff.m, 1), 12);
     monthSlider.set(12, cutoff.m - 1);
     moValue.textContent = MONTHS[cutoff.m - 1];
-
-    cutoff.d = Math.min(Math.max(cutoff.d, 1), daysInMonth(cutoff.y, cutoff.m));
     daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
