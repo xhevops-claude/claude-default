@@ -12,7 +12,6 @@
     view: 'binge-view',
     sort: 'binge-sort',
     group: 'binge-group',
-    filtersOpen: 'binge-filters-open',
     tab: 'binge-tab',                    // active group id ('all' or a groups.json id)
     tabs: 'binge-tabs',                  // { groupId: { off:[slug], cutoff:{y,m,d}, showWatched } } — per-tab filters
   };
@@ -36,7 +35,7 @@
   let view = load(LS.view, 'list');               // 'list' | 'grid'
   let sortBy = load(LS.sort, 'new');              // 'old' | 'new' | 'popular'
   let groupBy = load(LS.group, 'year');           // 'year' | 'channel'
-  let filtersOpen = load(LS.filtersOpen, true);
+  let filtersOpen = false;                        // panel is tucked away until the funnel is tapped
 
   // ---- runtime state ----
   let available = [];        // [{slug,name,count,url}]
@@ -53,7 +52,7 @@
   const veil = $('veil'), veilText = $('veil-text'), veilLink = $('veil-link');
   const nowTitle = $('now-title'), nowBy = $('now-by'), ytLink = $('yt-link');
   const watchedNextBtn = $('watched-next'), skipBtn = $('skip'), closePlayerBtn = $('close-player');
-  const filtersEl = $('filters'), filtersToggle = $('filters-toggle'), filtersBody = $('filters-body'), filtersSummary = $('filters-summary');
+  const filtersEl = $('filters'), filtersToggle = $('filters-toggle');
   const groupTabs = $('group-tabs'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
   const filtersReset = $('filters-reset'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
@@ -348,12 +347,12 @@
   // ---------------------------------------------------------------------------
   function render() {
     if (!available.length) {
-      groupTabs.hidden = true; filtersEl.hidden = true; toolbar.hidden = true; hideResults();
+      groupTabs.hidden = true; toolbar.hidden = true; filtersEl.hidden = true; hideResults();
       showStatus('🍿', 'No channel data yet. The scraper publishes to the CDN daily. Check back soon.', null);
       return;
     }
 
-    groupTabs.hidden = false; filtersEl.hidden = false; toolbar.hidden = false;
+    groupTabs.hidden = false; toolbar.hidden = false;
     renderTabs(); renderChannels(); renderFilters(); renderToolbar();
 
     if (!anySelected()) {
@@ -386,9 +385,9 @@
 
     statusPanel.hidden = true;
     resultsBar.hidden = false;
-    resultsCount.textContent = showWatched
+    resultsCount.textContent = (showWatched
       ? total + (total === 1 ? ' video' : ' videos')
-      : remaining + ' left';
+      : remaining + ' left') + ' · up to ' + cutoffLabel();
     renderSections(list);
   }
 
@@ -519,19 +518,22 @@
     daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
-    filtersSummary.textContent = filterSummaryText();
-    filtersBody.hidden = !filtersOpen;
+    filtersEl.hidden = !filtersOpen;
     filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
-    filtersToggle.classList.toggle('open', filtersOpen);
+    filtersToggle.classList.toggle('on', filtersEngaged());
   }
-  function filterSummaryText() {
+  // True when the active tab strays from "everything, up to today, watched shown".
+  function filtersEngaged() {
     const g = currentGroup();
-    const sel = g.channels.filter((s) => selected.has(s)).length;
+    const t = todayYMD();
+    const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
+    return offSet(g.id).size > 0 || !isToday || !showWatched;
+  }
+  function cutoffLabel() {
     const t = todayYMD();
     const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
     const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    const upto = isToday ? 'today' : d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y;
-    return g.name + ' ' + sel + '/' + g.channels.length + ' · up to ' + upto;
+    return isToday ? 'today' : d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y;
   }
   function resetCutoff() { cutoff = todayYMD(); saveCutoff(); render(); }
   function commitCutoff() { saveCutoff(); render(); }
@@ -781,10 +783,9 @@
   // Wiring
   // ---------------------------------------------------------------------------
   filtersToggle.addEventListener('click', () => {
-    filtersOpen = !filtersOpen; save(LS.filtersOpen, filtersOpen);
-    filtersBody.hidden = !filtersOpen;
+    filtersOpen = !filtersOpen;
+    filtersEl.hidden = !filtersOpen;
     filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
-    filtersToggle.classList.toggle('open', filtersOpen);
   });
   chanAllBtn.addEventListener('click', selectAllChannels);
   chanNoneBtn.addEventListener('click', clearAllChannels);
@@ -849,7 +850,7 @@
   // later date per channel (never loses progress); per-device prefs fill only
   // when this device hasn't set them. Cutoff stays local (defaults to today).
   // ---------------------------------------------------------------------------
-  const SYNC_FILL = [LS.selected, LS.showWatched, LS.cutoff, LS.view, LS.sort, LS.group, LS.filtersOpen, LS.tab, LS.tabs];
+  const SYNC_FILL = [LS.selected, LS.showWatched, LS.cutoff, LS.view, LS.sort, LS.group, LS.tab, LS.tabs];
 
   async function loadDB() {
     try {
@@ -903,7 +904,6 @@
     view = load(LS.view, 'list');
     sortBy = load(LS.sort, 'new');
     groupBy = load(LS.group, 'year');
-    filtersOpen = load(LS.filtersOpen, true);
     activeTab = String(load(LS.tab, 'all'));
     const t = load(LS.tabs, {});
     tabs = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
