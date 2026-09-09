@@ -60,8 +60,85 @@
   const quitBtn = $('quit');
   const syncOpenBtn = $('sync-open'), syncModal = $('sync-modal'), syncClose = $('sync-close');
   const syncCopyBtn = $('sync-copy'), syncPaste = $('sync-paste'), syncApplyBtn = $('sync-apply'), syncNote = $('sync-note');
-  const fYear = $('f-year'), fMonth = $('f-month'), fDay = $('f-day');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
+
+  // ---------------------------------------------------------------------------
+  // Slotted slider — the track is divided into `n` equal slots and the knob is
+  // one slot wide. While dragging the knob follows the pointer freely (and
+  // `onPreview` reports the slot it hovers); on release it snaps to the
+  // nearest slot and `onChange` fires with that index. A tap on the track
+  // grabs the knob under the pointer, so the same gesture covers both.
+  // ---------------------------------------------------------------------------
+  function slotSlider(el, opts) {
+    const knob = el.querySelector('.slot-knob');
+    let n = 1, idx = 0, drag = null;
+
+    function slotW() { return el.clientWidth / n; }
+    function clampPx(px) { return Math.min(Math.max(px, 0), el.clientWidth - slotW()); }
+    function nearest(px) { return Math.min(n - 1, Math.max(0, Math.round(px / slotW()))); }
+    function paint() {
+      el.style.setProperty('--n', String(n));
+      el.style.setProperty('--i', String(idx));
+      el.setAttribute('aria-valuemax', String(n - 1));
+      el.setAttribute('aria-valuenow', String(idx));
+      if (opts.valueText) el.setAttribute('aria-valuetext', opts.valueText(idx));
+    }
+    function commit(i) {
+      knob.style.left = '';
+      if (i === idx) { paint(); return; }
+      idx = i; paint();
+      opts.onChange(idx);
+    }
+
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button != null && e.button !== 0) return;
+      const rect = el.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const kl = idx * slotW(), kw = slotW();
+      // Grab the knob where it was hit; anywhere else, centre it under the finger.
+      const off = (px >= kl && px <= kl + kw) ? px - kl : kw / 2;
+      drag = { id: e.pointerId, left: rect.left, off: off };
+      el.classList.add('dragging');
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+      moveTo(e.clientX);
+      e.preventDefault();
+    });
+    function moveTo(clientX) {
+      const px = clampPx(clientX - drag.left - drag.off);
+      knob.style.left = px + 'px';
+      if (opts.onPreview) opts.onPreview(nearest(px));
+    }
+    el.addEventListener('pointermove', (e) => { if (drag && e.pointerId === drag.id) moveTo(e.clientX); });
+    function release(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      const px = clampPx(e.clientX - drag.left - drag.off);
+      drag = null;
+      el.classList.remove('dragging');
+      commit(nearest(px));
+    }
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+
+    el.addEventListener('keydown', (e) => {
+      let next = null;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') next = idx - 1;
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') next = idx + 1;
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = n - 1;
+      if (next == null) return;
+      e.preventDefault();
+      commit(Math.min(n - 1, Math.max(0, next)));
+    });
+
+    return {
+      set: function (count, index) {
+        n = Math.max(1, count | 0);
+        idx = Math.min(n - 1, Math.max(0, index | 0));
+        if (!drag) knob.style.left = '';
+        paint();
+      },
+    };
+  }
 
   // ---------------------------------------------------------------------------
   // Data loading
@@ -312,16 +389,15 @@
     yearRange = [];
     for (let y = minY; y <= maxY; y++) yearRange.push(y);
     cutoff.y = Math.min(Math.max(cutoff.y, minY), maxY);
-    fYear.max = String(yearRange.length - 1);
-    fYear.value = String(yearRange.indexOf(cutoff.y));
+    yearSlider.set(yearRange.length, yearRange.indexOf(cutoff.y));
     yrValue.textContent = String(cutoff.y);
 
     cutoff.m = Math.min(Math.max(cutoff.m, 1), 12);
-    fMonth.value = String(cutoff.m);
+    monthSlider.set(12, cutoff.m - 1);
     moValue.textContent = MONTHS[cutoff.m - 1];
 
     cutoff.d = Math.min(Math.max(cutoff.d, 1), daysInMonth(cutoff.y, cutoff.m));
-    fDay.value = String(cutoff.d);
+    daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
     filtersSummary.textContent = filterSummaryText();
@@ -597,19 +673,34 @@
     if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }
   });
 
-  fYear.addEventListener('input', () => {
-    cutoff.y = yearRange[Number(fYear.value)] || cutoff.y;
-    cutoff.d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    yrValue.textContent = String(cutoff.y); commitCutoff();
+  // Year: one slot per year between the oldest video and today. Month: 12
+  // slots. Day: one slot per day of the selected month (28–31), so the day
+  // slider re-divides itself whenever the year or month changes.
+  const yearSlider = slotSlider($('f-year'), {
+    valueText: (i) => String(yearRange[i]),
+    onPreview: (i) => { yrValue.textContent = String(yearRange[i] || cutoff.y); },
+    onChange: (i) => {
+      cutoff.y = yearRange[i] || cutoff.y;
+      cutoff.d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
+      commitCutoff();
+    },
   });
-  fMonth.addEventListener('input', () => {
-    cutoff.m = Number(fMonth.value);
-    cutoff.d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    moValue.textContent = MONTHS[cutoff.m - 1]; commitCutoff();
+  const monthSlider = slotSlider($('f-month'), {
+    valueText: (i) => MONTHS[i],
+    onPreview: (i) => { moValue.textContent = MONTHS[i]; },
+    onChange: (i) => {
+      cutoff.m = i + 1;
+      cutoff.d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
+      commitCutoff();
+    },
   });
-  fDay.addEventListener('input', () => {
-    cutoff.d = Math.min(Number(fDay.value), daysInMonth(cutoff.y, cutoff.m));
-    dyValue.textContent = String(cutoff.d); commitCutoff();
+  const daySlider = slotSlider($('f-day'), {
+    valueText: (i) => String(i + 1),
+    onPreview: (i) => { dyValue.textContent = String(i + 1); },
+    onChange: (i) => {
+      cutoff.d = Math.min(i + 1, daysInMonth(cutoff.y, cutoff.m));
+      commitCutoff();
+    },
   });
 
   segView.addEventListener('click', (e) => {
