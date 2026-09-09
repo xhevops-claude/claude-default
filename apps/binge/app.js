@@ -13,6 +13,8 @@
     sort: 'binge-sort',
     group: 'binge-group',
     filtersOpen: 'binge-filters-open',
+    tab: 'binge-tab',                    // active group id ('all' or a groups.json id)
+    tabOff: 'binge-tab-off',             // { groupId: [slug] } — channels switched off within a group
   };
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -25,7 +27,9 @@
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
 
   // ---- persisted state ----
-  let selected = new Set();                       // channel slugs shown (default: all)
+  let selected = new Set();                       // channel slugs shown — derived from the active group minus its exclusions
+  let activeTab = load(LS.tab, 'all');            // active group id
+  let tabOff = load(LS.tabOff, {});               // groupId -> [slug] switched off in that group
   let watchedTo = load(LS.watchedTo, {});         // slug -> yyyymmdd cursor
   let showWatched = load(LS.showWatched, true);
   const savedCut = load(LS.cutoff, null);
@@ -37,6 +41,7 @@
 
   // ---- runtime state ----
   let available = [];        // [{slug,name,count,url}]
+  let groups = [];           // [{id,name,channels:[slug]}] from groups.json (a slug may sit in several)
   let channelData = {};      // slug -> {name, videos:[...]}
   let currentId = null;
   const unavailable = new Set();
@@ -50,6 +55,7 @@
   const nowTitle = $('now-title'), nowBy = $('now-by'), ytLink = $('yt-link');
   const watchedNextBtn = $('watched-next'), skipBtn = $('skip'), closePlayerBtn = $('close-player');
   const filtersEl = $('filters'), filtersToggle = $('filters-toggle'), filtersBody = $('filters-body'), filtersSummary = $('filters-summary');
+  const groupTabs = $('group-tabs'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
   const filtersReset = $('filters-reset'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar'), segView = $('seg-view'), selSort = $('sel-sort'), selGroup = $('sel-group');
@@ -168,6 +174,45 @@
   async function loadAll() {
     await Promise.all(available.map((c) => loadChannel(c.slug)));
   }
+  async function loadGroups() {
+    try {
+      const res = await fetch('groups.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('groups ' + res.status);
+      groups = ((await res.json()).groups || [])
+        .filter((g) => g && g.id && g.name && Array.isArray(g.channels))
+        .map((g) => ({ id: String(g.id), name: String(g.name), channels: g.channels.map(String) }));
+    } catch (e) { groups = []; }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Groups — a tab per group from groups.json plus a synthetic "All". The
+  // active tab decides which channels are in play; within a tab every channel
+  // starts on and the ones you switch off are remembered per tab, so
+  // "Steve" always means all of Steve unless you've trimmed it.
+  // ---------------------------------------------------------------------------
+  function allGroups() {
+    const out = [{ id: 'all', name: 'All', channels: available.map((c) => c.slug) }];
+    groups.forEach((g) => {
+      const chans = g.channels.filter((s) => available.some((c) => c.slug === s));
+      if (chans.length) out.push({ id: g.id, name: g.name, channels: chans });
+    });
+    return out;
+  }
+  function currentGroup() {
+    const all = allGroups();
+    return all.find((g) => g.id === activeTab) || all[0];
+  }
+  function offSet(id) { return new Set(Array.isArray(tabOff[id]) ? tabOff[id] : []); }
+  function recomputeSelected() {
+    const g = currentGroup();
+    activeTab = g.id;
+    const off = offSet(g.id);
+    selected = new Set(g.channels.filter((s) => !off.has(s)));
+  }
+  function setOff(id, slugs) {
+    if (slugs.length) tabOff[id] = slugs; else delete tabOff[id];
+    save(LS.tabOff, tabOff);
+  }
 
   // ---------------------------------------------------------------------------
   // Dates / formatting
@@ -283,7 +328,7 @@
     }
 
     filtersEl.hidden = false; toolbar.hidden = false;
-    renderChannels(); renderFilters(); renderToolbar();
+    renderTabs(); renderChannels(); renderFilters(); renderToolbar();
 
     if (!anySelected()) {
       hideResults();
@@ -334,15 +379,49 @@
     else { statusAction.hidden = true; statusAction.onclick = null; }
   }
 
+  // ---- group tabs ----
+  // Same build-once/sync-after discipline as the switches: the pills are only
+  // rebuilt when the set of groups changes, otherwise just the selected state.
+  function renderTabs() {
+    const all = allGroups();
+    const key = all.map((g) => g.id + ':' + g.channels.length).join('|');
+    if (groupTabs.dataset.key !== key) {
+      groupTabs.dataset.key = key;
+      groupTabs.innerHTML = all.map((g) =>
+        '<button class="tab" type="button" role="tab" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
+        + escapeHTML(g.name) + '<span class="tab-n">' + g.channels.length + '</span></button>'
+      ).join('');
+    }
+    Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === activeTab));
+    });
+  }
+  groupTabs.addEventListener('click', (e) => {
+    const b = e.target.closest('.tab'); if (!b) return;
+    selectTab(b.getAttribute('data-tab'));
+  });
+  function selectTab(id) {
+    if (id === activeTab) return;
+    activeTab = id; save(LS.tab, activeTab);
+    recomputeSelected();
+    render();
+    try { groupTabs.querySelector('[aria-selected="true"]').scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) {}
+  }
+
   // ---- channels ----
-  // Build the switch rows once; afterwards only sync the checked state. Not
-  // rebuilding the DOM on every render keeps the control you're tapping stable,
-  // so hammering the switches can't drop or double-fire a toggle.
+  // Build the switch rows once per tab; afterwards only sync the checked
+  // state. Not rebuilding the DOM on every render keeps the control you're
+  // tapping stable, so hammering the switches can't drop or double-fire a
+  // toggle.
   function renderChannels() {
-    const inputs = chanSwitches.querySelectorAll('.chan-switch .switch-input');
-    if (inputs.length !== available.length) {
+    const g = currentGroup();
+    const chans = g.channels.map((s) => available.find((c) => c.slug === s)).filter(Boolean);
+    chanLabel.textContent = g.id === 'all' ? 'All channels' : g.name + ' channels';
+    const key = chans.map((c) => c.slug).join('|');
+    if (chanSwitches.dataset.key !== key) {
+      chanSwitches.dataset.key = key;
       chanSwitches.innerHTML = '';
-      available.forEach((c) => {
+      chans.forEach((c) => {
         const row = document.createElement('label');
         row.className = 'switch chan-switch';
         row.innerHTML =
@@ -355,8 +434,9 @@
         chanSwitches.appendChild(row);
       });
     } else {
+      const inputs = chanSwitches.querySelectorAll('.chan-switch .switch-input');
       const uptos = chanSwitches.querySelectorAll('.chan-switch .chan-upto');
-      available.forEach((c, i) => {
+      chans.forEach((c, i) => {
         inputs[i].checked = selected.has(c.slug);
         uptos[i].textContent = cursorLabel(c.slug);
       });
@@ -369,12 +449,15 @@
   // Pure state flip — all channel data is preloaded, so rapid toggling can't
   // race an in-flight fetch.
   function toggleChannel(slug) {
-    if (selected.has(slug)) selected.delete(slug); else selected.add(slug);
-    save(LS.selected, Array.from(selected));
+    const g = currentGroup();
+    const off = offSet(g.id);
+    if (off.has(slug)) off.delete(slug); else off.add(slug);
+    setOff(g.id, g.channels.filter((s) => off.has(s)));
+    recomputeSelected();
     render();
   }
-  function selectAllChannels() { selected = new Set(available.map((c) => c.slug)); save(LS.selected, Array.from(selected)); render(); }
-  function clearAllChannels() { selected = new Set(); save(LS.selected, Array.from(selected)); render(); }
+  function selectAllChannels() { const g = currentGroup(); setOff(g.id, []); recomputeSelected(); render(); }
+  function clearAllChannels() { const g = currentGroup(); setOff(g.id, g.channels.slice()); recomputeSelected(); render(); }
 
   // ---- filters (date cutoff) ----
   function renderFilters() {
@@ -406,12 +489,13 @@
     filtersToggle.classList.toggle('open', filtersOpen);
   }
   function filterSummaryText() {
-    const sel = available.filter((c) => selected.has(c.slug)).length;
+    const g = currentGroup();
+    const sel = g.channels.filter((s) => selected.has(s)).length;
     const t = todayYMD();
     const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
     const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
     const upto = isToday ? 'today' : d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y;
-    return sel + '/' + available.length + ' channels · up to ' + upto;
+    return g.name + ' ' + sel + '/' + g.channels.length + ' · up to ' + upto;
   }
   function resetCutoff() { cutoff = todayYMD(); save(LS.cutoff, cutoff); render(); }
   function commitCutoff() { save(LS.cutoff, cutoff); render(); }
@@ -727,7 +811,7 @@
   // later date per channel (never loses progress); per-device prefs fill only
   // when this device hasn't set them. Cutoff stays local (defaults to today).
   // ---------------------------------------------------------------------------
-  const SYNC_FILL = [LS.selected, LS.showWatched, LS.view, LS.sort, LS.group, LS.filtersOpen];
+  const SYNC_FILL = [LS.selected, LS.showWatched, LS.view, LS.sort, LS.group, LS.filtersOpen, LS.tab, LS.tabOff];
 
   async function loadDB() {
     try {
@@ -785,12 +869,17 @@
     sortBy = load(LS.sort, 'old');
     groupBy = load(LS.group, 'year');
     filtersOpen = load(LS.filtersOpen, true);
+    activeTab = String(load(LS.tab, 'all'));
+    const to = load(LS.tabOff, {});
+    tabOff = (to && typeof to === 'object' && !Array.isArray(to)) ? to : {};
+    // One-time migration from the pre-groups flat channel selection: the
+    // channels that were switched off become the "All" tab's exclusions.
     const savedSel = load(LS.selected, null);
-    selected = new Set(
-      (savedSel && Array.isArray(savedSel))
-        ? savedSel.filter((s) => available.some((c) => c.slug === s))
-        : available.map((c) => c.slug)
-    );
+    if (!Array.isArray(tabOff.all) && Array.isArray(savedSel)) {
+      const off = available.map((c) => c.slug).filter((s) => savedSel.indexOf(s) < 0);
+      if (off.length) { tabOff.all = off; save(LS.tabOff, tabOff); }
+    }
+    recomputeSelected();
     showWatchedChk.checked = showWatched;
   }
 
@@ -830,7 +919,7 @@
   // ---------------------------------------------------------------------------
   (async function boot() {
     loadYouTubeAPI();
-    const [db] = await Promise.all([loadDB(), loadIndex()]);
+    const [db] = await Promise.all([loadDB(), loadIndex(), loadGroups()]);
     mergeDB(db);
     reloadState();
     await loadAll();
