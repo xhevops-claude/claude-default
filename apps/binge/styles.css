@@ -96,6 +96,16 @@ html, body {
 .fgroup-actions { display: flex; gap: 6px; }
 .fgroup-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 
+/* Group tabs: one pill per group from groups.json plus an automatic "All".
+   Sits right under the filters panel, always visible; horizontally
+   scrollable so a long list stays on one row on phones. */
+.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; margin-top: -6px; -webkit-overflow-scrolling: touch; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer; white-space: nowrap; transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
+.tab[aria-selected="true"] { background: var(--red); border-color: transparent; color: #fff; }
+.tab:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.tab-n { opacity: 0.7; font-weight: 600; margin-left: 6px; font-variant-numeric: tabular-nums; }
+
 .chan-switches { display: flex; flex-direction: column; gap: 2px; }
 .chan-switch { padding: 8px 2px; }
 .chan-switch .switch-text { flex: 1; display: flex; align-items: baseline; gap: 10px; }
@@ -131,13 +141,13 @@ html, body {
 .slot-slider.dragging .slot-knob { transition: none; box-shadow: 0 0 14px rgba(239, 68, 68, 0.85); }
 
 /* Toolbar */
-.toolbar { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-.tb-item { display: flex; align-items: center; gap: 7px; }
-.tb-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-.tb-select { font: inherit; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+/* Toolbar: three icon-only segmented switches (view · sort · group) on one line. */
+.toolbar { display: flex; gap: 10px; align-items: center; }
 .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
-.seg-btn { font: inherit; font-weight: 700; font-size: 13px; color: var(--muted); background: transparent; border: 0; border-radius: 7px; padding: 6px 14px; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
-.seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--ink); }
+.seg-btn { font: inherit; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 7px; width: 40px; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
+.seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--amber); }
+.ico { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.seg-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
 
 /* Progress + results bar */
 .progress { display: flex; align-items: center; gap: 10px; }
@@ -218,7 +228,6 @@ html, body {
 
 @media (max-width: 480px) {
   .now-actions .btn { flex: 1 1 auto; justify-content: center; }
-  .toolbar { gap: 10px; }
-  .tb-item { flex: 1 1 auto; }
-  .tb-select { flex: 1; }
+  .toolbar { gap: 8px; justify-content: space-between; }
+  .seg-btn { width: 36px; }
 }
