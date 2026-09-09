@@ -144,8 +144,9 @@ html, body {
 /* Toolbar: three icon-only segmented switches (view · sort · group) on one line. */
 .toolbar { display: flex; gap: 10px; align-items: center; }
 .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
-.seg-btn { font: inherit; font-size: 16px; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 7px; width: 40px; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0.55; filter: grayscale(1); transition: background 0.18s ease, color 0.18s ease, opacity 0.18s ease, filter 0.18s ease; }
-.seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--ink); opacity: 1; filter: none; }
+.seg-btn { font: inherit; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 7px; width: 40px; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
+.seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--amber); }
+.ico { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; display: block; }
 .seg-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
 
 /* Progress + results bar */
