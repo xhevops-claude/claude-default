@@ -348,12 +348,12 @@
   // ---------------------------------------------------------------------------
   function render() {
     if (!available.length) {
-      filtersEl.hidden = true; toolbar.hidden = true; hideResults();
+      groupTabs.hidden = true; filtersEl.hidden = true; toolbar.hidden = true; hideResults();
       showStatus('🍿', 'No channel data yet. The scraper publishes to the CDN daily. Check back soon.', null);
       return;
     }
 
-    filtersEl.hidden = false; toolbar.hidden = false;
+    groupTabs.hidden = false; filtersEl.hidden = false; toolbar.hidden = false;
     renderTabs(); renderChannels(); renderFilters(); renderToolbar();
 
     if (!anySelected()) {
