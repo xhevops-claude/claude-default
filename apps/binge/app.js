@@ -34,7 +34,7 @@
   let showWatched = true;                         // mirrors the active tab's setting
   let cutoff = todayYMD();                        // mirrors the active tab's cutoff
   let view = load(LS.view, 'list');               // 'list' | 'grid'
-  let sortBy = load(LS.sort, 'old');              // 'old' | 'new' | 'popular'
+  let sortBy = load(LS.sort, 'new');              // 'old' | 'new' | 'popular'
   let groupBy = load(LS.group, 'year');           // 'year' | 'channel'
   let filtersOpen = load(LS.filtersOpen, true);
 
@@ -901,7 +901,7 @@
   function reloadState() {
     watchedTo = load(LS.watchedTo, {});
     view = load(LS.view, 'list');
-    sortBy = load(LS.sort, 'old');
+    sortBy = load(LS.sort, 'new');
     groupBy = load(LS.group, 'year');
     filtersOpen = load(LS.filtersOpen, true);
     activeTab = String(load(LS.tab, 'all'));
