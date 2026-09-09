@@ -481,13 +481,11 @@
   }
   requestAnimationFrame(frame);
 
-  // Fade the hint, and clear the splash once ready + at least 3s elapsed.
+  // Fade the hint, and clear the splash as soon as the game is ready.
   setTimeout(function () { const h = document.getElementById('hint'); if (h) h.classList.add('gone'); }, 6000);
   (function hideLoadingWhenReady() {
     const loading = document.getElementById('game-loading');
     if (!loading) return;
-    const navStart = (performance && performance.timeOrigin) || Date.now();
-    const remaining = Math.max(0, 3000 - (Date.now() - navStart));
-    setTimeout(function () { loading.classList.add('hidden'); setTimeout(function () { loading.remove(); }, 500); }, remaining);
+    loading.classList.add('hidden'); setTimeout(function () { loading.remove(); }, 500);
   })();
 })();

@@ -49,7 +49,7 @@ The tile gets its colors from the active theme's accents (rotated per `nth-child
 
 ## Game loading screen
 
-Each game's `index.html` includes a critical inline `<style>` block plus a `#game-loading` element so a black + logo + sliding bar paints on the very first frame, before any external stylesheet loads. The game's `app.js` removes it once the game is ready and at least 3 seconds have elapsed.
+Each game's `index.html` includes a critical inline `<style>` block plus a `#game-loading` element so a black + logo + sliding bar paints on the very first frame, before any external stylesheet loads. The game's `app.js` removes it as soon as the game is ready.
 
 ## Open / close animation
 

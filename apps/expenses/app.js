@@ -5,8 +5,6 @@
   // Claude Code sessions that update data/expenses/** + files/ and push;
   // data/expenses.json is the deploy-time aggregate of those files.
   const DATA_URL = 'data/expenses.json';
-  const MIN_SPLASH_MS = 3000;
-  const splashStart = performance.now();
 
   const $ = (id) => document.getElementById(id);
 
@@ -952,12 +950,9 @@
   });
 
   function hideSplash() {
-    const wait = Math.max(0, MIN_SPLASH_MS - (performance.now() - splashStart));
-    setTimeout(() => {
-      const splash = $('app-loading');
-      splash.classList.add('hidden');
-      setTimeout(() => splash.remove(), 500);
-    }, wait);
+    const splash = $('app-loading');
+    splash.classList.add('hidden');
+    setTimeout(() => splash.remove(), 500);
   }
 
   async function load() {
