@@ -29,7 +29,7 @@
       animation: gl-run 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
     @keyframes gl-run { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=a282c25" />
+  <link rel="stylesheet" href="styles.css?v=b08995e" />
 </head>
 <body>
   <div id="app-loading">
@@ -47,6 +47,7 @@
       <symbol id="i-newest" viewBox="0 0 24 24"><path d="M7 4v15M3.5 15.5 7 19l3.5-3.5M13 6h9M13 12h6M13 18h3"/></symbol>
       <symbol id="i-popular" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></symbol>
       <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10.5h17M8 15h.01M12 15h.01M16 15h.01"/></symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3.5 5h17l-6.5 7.5V18l-4 2v-7.5z"/></symbol>
       <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="12.5" rx="2"/><path d="M8 3.5l4 4 4-4"/></symbol>
     </defs>
   </svg>
@@ -83,14 +84,31 @@
       </div>
     </section>
 
-    <!-- Filters (collapsible): channels + date cutoff + show-watched -->
-    <section class="filters" id="filters" hidden>
-      <button class="filters-head" id="filters-toggle" type="button" aria-expanded="true" aria-controls="filters-body">
-        <span class="filters-chev" aria-hidden="true">▸</span>
-        <span class="filters-title">Filters</span>
-        <span class="filters-summary" id="filters-summary"></span>
-      </button>
+    <!-- Group tabs: always visible; the active tab owns the filters -->
+    <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
 
+    <!-- Toolbar: View / Sort / Group -->
+    <section class="toolbar" id="toolbar" hidden>
+      <div class="seg" role="tablist" aria-label="View">
+        <button type="button" class="seg-btn" data-view="list" role="tab" title="List" aria-label="List view"><svg class="ico"><use href="#i-list"/></svg></button>
+        <button type="button" class="seg-btn" data-view="grid" role="tab" title="Grid" aria-label="Grid view"><svg class="ico"><use href="#i-grid"/></svg></button>
+      </div>
+      <div class="seg" role="tablist" aria-label="Sort">
+        <button type="button" class="seg-btn" data-sort="old" role="tab" title="Oldest first" aria-label="Oldest first"><svg class="ico"><use href="#i-oldest"/></svg></button>
+        <button type="button" class="seg-btn" data-sort="new" role="tab" title="Newest first" aria-label="Newest first"><svg class="ico"><use href="#i-newest"/></svg></button>
+        <button type="button" class="seg-btn" data-sort="popular" role="tab" title="Most viewed" aria-label="Most viewed"><svg class="ico"><use href="#i-popular"/></svg></button>
+      </div>
+      <div class="seg" role="tablist" aria-label="Group by">
+        <button type="button" class="seg-btn" data-group="year" role="tab" title="Group by year" aria-label="Group by year"><svg class="ico"><use href="#i-calendar"/></svg></button>
+        <button type="button" class="seg-btn" data-group="channel" role="tab" title="Group by channel" aria-label="Group by channel"><svg class="ico"><use href="#i-tv"/></svg></button>
+      </div>
+      <div class="seg tb-filter">
+        <button id="filters-toggle" type="button" class="seg-btn" aria-expanded="false" aria-controls="filters" title="Filters" aria-label="Filters"><svg class="ico"><use href="#i-filter"/></svg></button>
+      </div>
+    </section>
+
+    <!-- Filters: opened by the funnel button in the toolbar; the active tab owns them -->
+    <section class="filters" id="filters" hidden>
       <div class="filters-body" id="filters-body">
         <div class="fgroup">
           <div class="fgroup-head">
@@ -133,26 +151,6 @@
             <button id="clear-watched" type="button" class="linkbtn">Clear watched</button>
           </span>
         </div>
-      </div>
-    </section>
-
-    <!-- Group tabs: always visible, right under the filters; the active tab owns the filters above -->
-    <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
-
-    <!-- Toolbar: View / Sort / Group -->
-    <section class="toolbar" id="toolbar" hidden>
-      <div class="seg" role="tablist" aria-label="View">
-        <button type="button" class="seg-btn" data-view="list" role="tab" title="List" aria-label="List view"><svg class="ico"><use href="#i-list"/></svg></button>
-        <button type="button" class="seg-btn" data-view="grid" role="tab" title="Grid" aria-label="Grid view"><svg class="ico"><use href="#i-grid"/></svg></button>
-      </div>
-      <div class="seg" role="tablist" aria-label="Sort">
-        <button type="button" class="seg-btn" data-sort="old" role="tab" title="Oldest first" aria-label="Oldest first"><svg class="ico"><use href="#i-oldest"/></svg></button>
-        <button type="button" class="seg-btn" data-sort="new" role="tab" title="Newest first" aria-label="Newest first"><svg class="ico"><use href="#i-newest"/></svg></button>
-        <button type="button" class="seg-btn" data-sort="popular" role="tab" title="Most viewed" aria-label="Most viewed"><svg class="ico"><use href="#i-popular"/></svg></button>
-      </div>
-      <div class="seg" role="tablist" aria-label="Group by">
-        <button type="button" class="seg-btn" data-group="year" role="tab" title="Group by year" aria-label="Group by year"><svg class="ico"><use href="#i-calendar"/></svg></button>
-        <button type="button" class="seg-btn" data-group="channel" role="tab" title="Group by channel" aria-label="Group by channel"><svg class="ico"><use href="#i-tv"/></svg></button>
       </div>
     </section>
 
@@ -200,6 +198,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=a282c25"></script>
+  <script src="app.js?v=b08995e"></script>
 </body>
 </html>

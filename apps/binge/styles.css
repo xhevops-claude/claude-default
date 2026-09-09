@@ -83,13 +83,11 @@ html, body {
 .switch-text { font-size: 14px; }
 
 /* Filters */
-.filters { border-radius: 12px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
-.filters-head { width: 100%; display: flex; align-items: center; gap: 10px; cursor: pointer; font: inherit; color: var(--ink); background: transparent; border: 0; padding: 12px 14px; text-align: left; }
-.filters-chev { color: var(--muted); transition: transform 0.18s ease; flex: none; }
-.filters-head.open .filters-chev { transform: rotate(90deg); }
-.filters-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; flex: none; }
-.filters-summary { flex: 1; text-align: right; color: var(--amber); font-weight: 700; font-size: 13px; }
-.filters-body { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 18px; }
+/* Filters panel: opened by the funnel button in the toolbar, drops in right
+   under it. Holds the active tab's channel switches, date cutoff and
+   show-watched toggle. */
+.filters { border-radius: 12px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; margin-top: -4px; }
+.filters-body { padding: 14px; display: flex; flex-direction: column; gap: 18px; }
 .fgroup { display: flex; flex-direction: column; gap: 8px; }
 .fgroup-head { display: flex; align-items: center; justify-content: space-between; }
 .fgroup-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -140,14 +138,23 @@ html, body {
 }
 .slot-slider.dragging .slot-knob { transition: none; box-shadow: 0 0 14px rgba(239, 68, 68, 0.85); }
 
-/* Toolbar */
-/* Toolbar: three icon-only segmented switches (view · sort · group) on one line. */
-.toolbar { display: flex; gap: 10px; align-items: center; }
-.seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
-.seg-btn { font: inherit; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 7px; width: 40px; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
+/* Toolbar: icon-only segmented switches (view · sort · group · filters) on one line.
+   Every segment takes width in proportion to its buttons, so all eight
+   buttons come out the same size with uniform gaps. */
+.toolbar { display: flex; gap: 8px; align-items: stretch; }
+.seg { display: flex; flex: var(--n, 1) 1 0; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
+.seg[aria-label="View"], .seg[aria-label="Group by"] { --n: 2; }
+.seg[aria-label="Sort"] { --n: 3; }
+.seg-btn { font: inherit; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 7px; flex: 1 1 0; min-width: 0; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
 .seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--amber); }
 .ico { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; display: block; }
 .seg-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+/* Funnel button: a small amber dot means the
+   current tab has filters engaged (exclusions, a cutoff before today, or
+   watched videos hidden). */
+.tb-filter .seg-btn { position: relative; }
+.tb-filter .seg-btn[aria-expanded="true"] { background: var(--panel-2); color: var(--amber); }
+.tb-filter .seg-btn.on::after { content: ""; position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 2px var(--panel); }
 
 /* Progress + results bar */
 .progress { display: flex; align-items: center; gap: 10px; }
@@ -228,6 +235,5 @@ html, body {
 
 @media (max-width: 480px) {
   .now-actions .btn { flex: 1 1 auto; justify-content: center; }
-  .toolbar { gap: 8px; justify-content: space-between; }
-  .seg-btn { width: 36px; }
+  .toolbar { gap: 6px; }
 }

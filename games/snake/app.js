@@ -372,18 +372,11 @@
   // class on the picker buttons and re-formats the score for Nokia).
   applySkin(currentSkin());
 
-  // Hide the inline loading screen once the game is ready and at least
-  // 3s have elapsed since the document started loading. This is the
-  // "loader for at least 3 seconds" requirement from the gallery side.
+  // Hide the inline loading screen as soon as the game is ready.
   (function hideLoadingWhenReady() {
     const loading = document.getElementById('game-loading');
     if (!loading) return;
-    const navStart = (performance && performance.timeOrigin) || Date.now();
-    const elapsed = Date.now() - navStart;
-    const remaining = Math.max(0, 1000 - elapsed);
-    setTimeout(() => {
-      loading.classList.add('hidden');
-      setTimeout(() => loading.remove(), 500);
-    }, remaining);
+    loading.classList.add('hidden');
+    setTimeout(() => loading.remove(), 500);
   })();
 })();

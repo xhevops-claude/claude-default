@@ -274,12 +274,7 @@
   (function hideLoading() {
     const loading = document.getElementById('app-loading');
     if (!loading) return;
-    const navStart = (performance && performance.timeOrigin) || Date.now();
-    const elapsed = Date.now() - navStart;
-    const remaining = Math.max(0, 3000 - elapsed); // mandatory ≥3s splash
-    setTimeout(() => {
-      loading.classList.add('hidden');
-      setTimeout(() => loading.remove(), 500);
-    }, remaining);
+    loading.classList.add('hidden');
+    setTimeout(() => loading.remove(), 500);
   })();
 })();

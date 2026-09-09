@@ -180,20 +180,13 @@ applyLocale();
 }
 
 // ---- Loader fade ----
-// Hold the loader for at least 3 s (the project pattern) before
-// fading; if module + script took longer, the await above already
-// passed and we fade on the next frame.
-const loadStart = performance.now();
-const MIN_LOADER_MS = 3000;
+// Fade the loader as soon as the module + script are ready.
 function hideLoader() {
-  const wait = Math.max(0, MIN_LOADER_MS - (performance.now() - loadStart));
-  setTimeout(() => {
-    loading.classList.add('hidden');
-    // Only fall back to the "upload a file" hint if the auto-load
-    // didn't beat us to it.
-    if (!currentMesh) hint.hidden = false;
-    setTimeout(() => loading.remove(), 600);
-  }, wait);
+  loading.classList.add('hidden');
+  // Only fall back to the "upload a file" hint if the auto-load
+  // didn't beat us to it.
+  if (!currentMesh) hint.hidden = false;
+  setTimeout(() => loading.remove(), 600);
 }
 
 // ---- Settings persistence ----
