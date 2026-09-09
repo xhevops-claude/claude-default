@@ -57,7 +57,7 @@
   const groupTabs = $('group-tabs'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
   const filtersReset = $('filters-reset'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
-  const toolbar = $('toolbar'), segView = $('seg-view'), selSort = $('sel-sort'), selGroup = $('sel-group');
+  const toolbar = $('toolbar');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
   const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
   const sectionsEl = $('sections');
@@ -538,11 +538,12 @@
 
   // ---- toolbar ----
   function renderToolbar() {
-    Array.prototype.forEach.call(segView.querySelectorAll('.seg-btn'), (b) => {
-      b.setAttribute('aria-selected', String(b.getAttribute('data-view') === view));
+    Array.prototype.forEach.call(toolbar.querySelectorAll('.seg-btn'), (b) => {
+      const on = b.hasAttribute('data-view') ? b.getAttribute('data-view') === view
+        : b.hasAttribute('data-sort') ? b.getAttribute('data-sort') === sortBy
+          : b.getAttribute('data-group') === groupBy;
+      b.setAttribute('aria-selected', String(on));
     });
-    selSort.value = sortBy;
-    selGroup.value = groupBy;
   }
 
   // ---- sections ----
@@ -823,12 +824,13 @@
     },
   });
 
-  segView.addEventListener('click', (e) => {
+  toolbar.addEventListener('click', (e) => {
     const b = e.target.closest('.seg-btn'); if (!b) return;
-    view = b.getAttribute('data-view'); save(LS.view, view); render();
+    if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); save(LS.view, view); }
+    else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); save(LS.sort, sortBy); }
+    else { groupBy = b.getAttribute('data-group'); collapsed.clear(); save(LS.group, groupBy); }
+    render();
   });
-  selSort.addEventListener('change', () => { sortBy = selSort.value; save(LS.sort, sortBy); render(); });
-  selGroup.addEventListener('change', () => { groupBy = selGroup.value; collapsed.clear(); save(LS.group, groupBy); render(); });
 
   watchedNextBtn.addEventListener('click', () => { markWatched(currentId); advance(); });
   skipBtn.addEventListener('click', advance);
