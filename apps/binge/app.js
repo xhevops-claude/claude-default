@@ -14,7 +14,7 @@
     group: 'binge-group',
     filtersOpen: 'binge-filters-open',
     tab: 'binge-tab',                    // active group id ('all' or a groups.json id)
-    tabOff: 'binge-tab-off',             // { groupId: [slug] } — channels switched off within a group
+    tabs: 'binge-tabs',                  // { groupId: { off:[slug], cutoff:{y,m,d}, showWatched } } — per-tab filters
   };
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -29,11 +29,10 @@
   // ---- persisted state ----
   let selected = new Set();                       // channel slugs shown — derived from the active group minus its exclusions
   let activeTab = load(LS.tab, 'all');            // active group id
-  let tabOff = load(LS.tabOff, {});               // groupId -> [slug] switched off in that group
+  let tabs = load(LS.tabs, {});                   // groupId -> { off, cutoff, showWatched } — each tab owns its filters
   let watchedTo = load(LS.watchedTo, {});         // slug -> yyyymmdd cursor
-  let showWatched = load(LS.showWatched, true);
-  const savedCut = load(LS.cutoff, null);
-  let cutoff = (savedCut && typeof savedCut.y === 'number') ? savedCut : todayYMD();
+  let showWatched = true;                         // mirrors the active tab's setting
+  let cutoff = todayYMD();                        // mirrors the active tab's cutoff
   let view = load(LS.view, 'list');               // 'list' | 'grid'
   let sortBy = load(LS.sort, 'old');              // 'old' | 'new' | 'popular'
   let groupBy = load(LS.group, 'year');           // 'year' | 'channel'
@@ -202,17 +201,38 @@
     const all = allGroups();
     return all.find((g) => g.id === activeTab) || all[0];
   }
-  function offSet(id) { return new Set(Array.isArray(tabOff[id]) ? tabOff[id] : []); }
+  function tabState(id) { const t = tabs[id]; return (t && typeof t === 'object') ? t : {}; }
+  function setTabPref(id, key, val) {
+    tabs[id] = Object.assign({}, tabState(id));
+    if (val == null) delete tabs[id][key]; else tabs[id][key] = val;
+    if (!Object.keys(tabs[id]).length) delete tabs[id];
+    save(LS.tabs, tabs);
+  }
+  function offSet(id) { const off = tabState(id).off; return new Set(Array.isArray(off) ? off : []); }
+  function setOff(id, slugs) { setTabPref(id, 'off', slugs.length ? slugs : null); }
+  function tabCutoff(id) {
+    const c = tabState(id).cutoff;
+    if (c && typeof c.y === 'number') return { y: c.y, m: c.m || 1, d: c.d || 1 };
+    // Tabs without their own cutoff yet inherit the pre-groups global one.
+    const legacy = load(LS.cutoff, null);
+    return (legacy && typeof legacy.y === 'number') ? { y: legacy.y, m: legacy.m || 1, d: legacy.d || 1 } : todayYMD();
+  }
+  function tabShowWatched(id) {
+    const s = tabState(id).showWatched;
+    return typeof s === 'boolean' ? s : load(LS.showWatched, true);
+  }
+  // Pull the active tab's filters into the runtime vars the renderer reads.
   function recomputeSelected() {
     const g = currentGroup();
     activeTab = g.id;
     const off = offSet(g.id);
     selected = new Set(g.channels.filter((s) => !off.has(s)));
+    cutoff = tabCutoff(g.id);
+    showWatched = tabShowWatched(g.id);
+    showWatchedChk.checked = showWatched;
   }
-  function setOff(id, slugs) {
-    if (slugs.length) tabOff[id] = slugs; else delete tabOff[id];
-    save(LS.tabOff, tabOff);
-  }
+  function saveCutoff() { setTabPref(activeTab, 'cutoff', { y: cutoff.y, m: cutoff.m, d: cutoff.d }); }
+  function saveShowWatched() { setTabPref(activeTab, 'showWatched', showWatched); }
 
   // ---------------------------------------------------------------------------
   // Dates / formatting
@@ -353,7 +373,7 @@
     if (!showWatched && remaining === 0) {
       hideResults(true);
       showStatus('🎉', 'All caught up — everything up to this date is watched.', 'Show watched', () => {
-        showWatched = true; showWatchedChk.checked = true; save(LS.showWatched, showWatched); render();
+        showWatched = true; showWatchedChk.checked = true; saveShowWatched(); render();
       });
       return;
     }
@@ -389,11 +409,14 @@
       groupTabs.dataset.key = key;
       groupTabs.innerHTML = all.map((g) =>
         '<button class="tab" type="button" role="tab" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
-        + escapeHTML(g.name) + '<span class="tab-n">' + g.channels.length + '</span></button>'
+        + escapeHTML(g.name) + '<span class="tab-n"></span></button>'
       ).join('');
     }
+    // Each pill carries its own cutoff year, so the per-tab dates read at a glance.
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
-      b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === activeTab));
+      const id = b.getAttribute('data-tab');
+      b.setAttribute('aria-selected', String(id === activeTab));
+      b.querySelector('.tab-n').textContent = String(tabCutoff(id).y);
     });
   }
   groupTabs.addEventListener('click', (e) => {
@@ -497,8 +520,8 @@
     const upto = isToday ? 'today' : d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y;
     return g.name + ' ' + sel + '/' + g.channels.length + ' · up to ' + upto;
   }
-  function resetCutoff() { cutoff = todayYMD(); save(LS.cutoff, cutoff); render(); }
-  function commitCutoff() { save(LS.cutoff, cutoff); render(); }
+  function resetCutoff() { cutoff = todayYMD(); saveCutoff(); render(); }
+  function commitCutoff() { saveCutoff(); render(); }
 
   // ---- toolbar ----
   function renderToolbar() {
@@ -752,7 +775,7 @@
   chanAllBtn.addEventListener('click', selectAllChannels);
   chanNoneBtn.addEventListener('click', clearAllChannels);
   filtersReset.addEventListener('click', resetCutoff);
-  showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; save(LS.showWatched, showWatched); render(); });
+  showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; saveShowWatched(); render(); });
   clearWatchedBtn.addEventListener('click', () => {
     if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }
   });
@@ -811,7 +834,7 @@
   // later date per channel (never loses progress); per-device prefs fill only
   // when this device hasn't set them. Cutoff stays local (defaults to today).
   // ---------------------------------------------------------------------------
-  const SYNC_FILL = [LS.selected, LS.showWatched, LS.view, LS.sort, LS.group, LS.filtersOpen, LS.tab, LS.tabOff];
+  const SYNC_FILL = [LS.selected, LS.showWatched, LS.cutoff, LS.view, LS.sort, LS.group, LS.filtersOpen, LS.tab, LS.tabs];
 
   async function loadDB() {
     try {
@@ -862,25 +885,21 @@
   // Re-read runtime state from (possibly just-merged) localStorage.
   function reloadState() {
     watchedTo = load(LS.watchedTo, {});
-    showWatched = load(LS.showWatched, true);
-    const sc = load(LS.cutoff, null);
-    cutoff = (sc && typeof sc.y === 'number') ? sc : todayYMD();
     view = load(LS.view, 'list');
     sortBy = load(LS.sort, 'old');
     groupBy = load(LS.group, 'year');
     filtersOpen = load(LS.filtersOpen, true);
     activeTab = String(load(LS.tab, 'all'));
-    const to = load(LS.tabOff, {});
-    tabOff = (to && typeof to === 'object' && !Array.isArray(to)) ? to : {};
+    const t = load(LS.tabs, {});
+    tabs = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
     // One-time migration from the pre-groups flat channel selection: the
     // channels that were switched off become the "All" tab's exclusions.
     const savedSel = load(LS.selected, null);
-    if (!Array.isArray(tabOff.all) && Array.isArray(savedSel)) {
+    if (!Array.isArray(tabState('all').off) && Array.isArray(savedSel)) {
       const off = available.map((c) => c.slug).filter((s) => savedSel.indexOf(s) < 0);
-      if (off.length) { tabOff.all = off; save(LS.tabOff, tabOff); }
+      if (off.length) setOff('all', off);
     }
     recomputeSelected();
-    showWatchedChk.checked = showWatched;
   }
 
   function syncNoteMsg(m) { syncNote.textContent = m || ''; }
