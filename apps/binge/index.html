@@ -80,12 +80,8 @@
     <!-- Group tabs: always visible; the active tab owns the filters -->
     <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
 
-    <!-- Toolbar: View / Sort / Group -->
+    <!-- Toolbar: Sort / Filters — what content is shown -->
     <section class="toolbar" id="toolbar" hidden>
-      <div class="seg" role="tablist" aria-label="View">
-        <button type="button" class="seg-btn" data-view="list" role="tab" title="List" aria-label="List view"><svg class="ico"><use href="#i-list"/></svg></button>
-        <button type="button" class="seg-btn" data-view="grid" role="tab" title="Grid" aria-label="Grid view"><svg class="ico"><use href="#i-grid"/></svg></button>
-      </div>
       <div class="seg" role="tablist" aria-label="Sort">
         <button type="button" class="seg-btn" data-sort="old" role="tab" title="Oldest first" aria-label="Oldest first"><svg class="ico"><use href="#i-oldest"/></svg></button>
         <button type="button" class="seg-btn" data-sort="new" role="tab" title="Newest first" aria-label="Newest first"><svg class="ico"><use href="#i-newest"/></svg></button>
@@ -152,8 +148,12 @@
       <div class="progress-bar"><span id="progress-fill"></span></div>
     </div>
 
-    <!-- Results header: how the list is grouped, and expand/collapse all groups -->
+    <!-- Results header: how the list is shown (list/grid, group by) and expand/collapse all groups -->
     <div class="results-bar" id="results-bar" hidden>
+      <div class="seg" role="tablist" aria-label="View">
+        <button type="button" class="seg-btn" data-view="list" role="tab" title="List" aria-label="List view"><svg class="ico"><use href="#i-list"/></svg></button>
+        <button type="button" class="seg-btn" data-view="grid" role="tab" title="Grid" aria-label="Grid view"><svg class="ico"><use href="#i-grid"/></svg></button>
+      </div>
       <div class="seg" role="tablist" aria-label="Group by">
         <button type="button" class="seg-btn" data-group="year" role="tab" title="Group by year" aria-label="Group by year"><svg class="ico"><use href="#i-calendar"/></svg></button>
         <button type="button" class="seg-btn" data-group="channel" role="tab" title="Group by channel" aria-label="Group by channel"><svg class="ico"><use href="#i-tv"/></svg></button>

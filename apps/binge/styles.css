@@ -132,16 +132,13 @@ html, body {
 }
 .slot-slider.dragging .slot-knob { transition: none; box-shadow: 0 0 14px rgba(239, 68, 68, 0.85); }
 
-/* Toolbar: icon-only segmented switches (view · group · sort · filters) on one line.
-   Every segment takes width in proportion to its buttons, so all six
-   buttons come out the same size with uniform gaps. Each button is capped
-   at --seg-btn-max, so on wide screens the segments stop growing; the
-   leftover width opens up between view (left) and sort + filters (right)
-   via the auto margin on Sort. */
-.toolbar { --seg-btn-max: 68px; display: flex; gap: 8px; align-items: stretch; }
+/* Toolbar: what content is shown — sort on the left, filters on the right.
+   Each segment takes width in proportion to its buttons, so all four come
+   out the same size on narrow screens. Each button is capped at
+   --seg-btn-max, so on wide screens the segments stop growing and the
+   leftover width opens up between the two. */
+.toolbar { --seg-btn-max: 68px; display: flex; gap: 8px; justify-content: space-between; align-items: stretch; }
 .seg { display: flex; flex: var(--n, 1) 1 0; min-width: 0; max-width: calc(var(--n, 1) * var(--seg-btn-max) + 8px); background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
-.seg[aria-label="Sort"] { margin-left: auto; }
-.seg[aria-label="View"] { --n: 2; }
 .seg[aria-label="Sort"] { --n: 3; }
 .seg-btn { font: inherit; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 7px; flex: 1 1 0; min-width: 0; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
 .seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--amber); }
@@ -164,11 +161,13 @@ html, body {
 .progress-text { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .progress-bar { height: 8px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
 .progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--red), var(--amber)); transition: width 0.3s ease; }
-/* Results header: the group-by switch (a view control, not a filter) on the
-   left and expand/collapse all on the right — both act on the groups below. */
-.results-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* Results header: how the list is shown — list/grid and group-by on the
+   left, expand/collapse all on the right. None of these change which
+   videos are listed, only their form. */
+.results-bar { display: flex; align-items: center; gap: 8px; }
 .results-bar .seg { flex: none; max-width: none; }
 .results-bar .seg-btn { flex: 0 0 56px; }
+.results-bar #collapse-all { margin-left: auto; }
 
 /* Sections */
 .sections { display: flex; flex-direction: column; gap: 18px; }
