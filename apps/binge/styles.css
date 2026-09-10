@@ -207,18 +207,19 @@ html, body {
 .vcard.armed.watch .vthumb, .vcard.armed.watch .vmeta,
 .vcard.armed.unwatch .vthumb, .vcard.armed.unwatch .vmeta { opacity: 0.35; }
 .vtap-thumb { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; border: 0; border-radius: inherit; cursor: pointer;
-  background: rgba(52, 211, 153, 0.92); color: #06281c; font: inherit; font-weight: 800; font-size: 15px; animation: vtap-in 0.15s ease-out; }
-/* The watched confirm pair: big labelled buttons in a row anchored to the
-   check's spot — Cancel where the check was, the confirm to its left. The
-   row is bounded by the card (left edge to the check's right edge) so the
-   buttons shrink on narrow cards instead of spilling out. */
-.vtap-pair { position: absolute; z-index: 3; left: 6px; display: flex; justify-content: flex-end; gap: 8px; transform: translateY(-50%); animation: vtap-in 0.15s ease-out; }
-.vtap-yes, .vtap-no { flex: 0 1 auto; min-width: 0; height: 52px; padding: 0 16px; border: 0; border-radius: 12px; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; font: inherit; font-weight: 800; font-size: 15px; line-height: 1;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
-.vtap-yes span, .vtap-no span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.vtap-yes .ico { flex: none; }
-.vtap-no { flex-shrink: 2; }
+  background: rgba(52, 211, 153, 0.92); color: #06281c; font: inherit; font-weight: 600; font-size: 15px; animation: vtap-in 0.15s ease-out; }
+/* The watched confirm row: two equal touch areas — the action (green /
+   blue) on the left, Cancel on the right — icon above label, laid over the
+   card's text area (or the whole section header) so it stays inside. */
+.vtap-row { position: absolute; z-index: 3; display: flex; gap: 6px; animation: vtap-in 0.15s ease-out; }
+.vtap-yes, .vtap-no { flex: 1 1 0; min-width: 0; height: 100%; padding: 6px 8px; border: 0; border-radius: 12px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 600; font-size: 13px; line-height: 1.1; }
+.vtap-ico { display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1; }
+.vtap-ico .ico { width: 22px; height: 22px; stroke-width: 2.4; }
+.vtap-txt { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vtap-yes.watch { background: var(--green); color: #06281c; }
+.vtap-yes.unwatch { background: var(--blue); color: #fff; }
+.vtap-no { background: var(--panel-2); color: var(--ink); border: 1px solid rgba(255, 255, 255, 0.3); }
 .vtap-yes.watch { background: var(--green); color: #06281c; }
 .vtap-yes.unwatch { background: var(--blue); color: #fff; }
 .vtap-yes .ico { width: 22px; height: 22px; stroke-width: 2.6; }

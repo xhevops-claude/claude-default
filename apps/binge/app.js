@@ -696,7 +696,7 @@
       const fn = () => withUndo(() => markSectionWatched(key));
       if (lastPointer === 'touch') {
         const done = mark.classList.contains('done');
-        armCard(head, done ? 'unwatch' : 'watch', fn, { anchor: mark, label: done ? 'Mark all unwatched' : 'Mark all watched' });
+        armCard(head, done ? 'unwatch' : 'watch', fn, { area: head, label: done ? 'Mark all as unwatched' : 'Mark all as watched' });
       } else fn();
       return;
     }
@@ -754,7 +754,7 @@
     const el = armedCard.el; armedCard = null;
     if (!el.isConnected) return;
     el.classList.remove('armed', 'play', 'watch', 'unwatch');
-    Array.prototype.forEach.call(el.querySelectorAll('.vtap-thumb, .vtap-pair'), (t) => t.remove());
+    Array.prototype.forEach.call(el.querySelectorAll('.vtap-thumb, .vtap-row'), (t) => t.remove());
   }
   // Arm a card for TAP_MS (touch only); confirming runs `fn`. In every kind
   // the card dims and its outline turns white, and a tap anywhere else
@@ -774,24 +774,27 @@
       // Two labelled buttons anchored to the check's spot (right edge and
       // vertical centre), growing leftwards: Cancel where the check was,
       // the confirm to its left. The check hides underneath meanwhile.
-      // The pair lives in a row bounded by the card: it ends where the check
-      // ends and may stretch left to the card's edge, so on a narrow grid
-      // card the buttons shrink rather than spill out.
-      const chk = opts.anchor || el.querySelector('.vcheck');
-      const pair = document.createElement('div');
-      pair.className = 'vtap-pair';
-      pair.style.right = (el.clientWidth - (chk.offsetLeft + chk.offsetWidth)) + 'px';
-      pair.style.top = (chk.offsetTop + chk.offsetHeight / 2) + 'px';
-      const mk = (cls, act, html) => {
+      // A row of two equal touch areas — the action on the left, Cancel on
+      // the right, icon above label — laid over the card's text area (or the
+      // whole section header), so the thumbnail stays visible and nothing moves.
+      const area = opts.area || el.querySelector('.vmeta') || el;
+      const row = document.createElement('div');
+      row.className = 'vtap-row';
+      const h = Math.max(60, area.offsetHeight);
+      row.style.left = (area === el ? 0 : area.offsetLeft) + 'px';
+      row.style.width = (area === el ? el.clientWidth : area.offsetWidth) + 'px';
+      row.style.top = ((area === el ? 0 : area.offsetTop) + (area === el ? el.clientHeight : area.offsetHeight) / 2 - h / 2) + 'px';
+      row.style.height = h + 'px';
+      const mk = (cls, act, icon, text) => {
         const b = document.createElement('button');
-        b.type = 'button'; b.className = cls; b.setAttribute('data-act', act); b.innerHTML = html;
-        pair.appendChild(b);
-        return b;
+        b.type = 'button'; b.className = cls; b.setAttribute('data-act', act);
+        b.innerHTML = '<span class="vtap-ico">' + icon + '</span><span class="vtap-txt">' + text + '</span>';
+        row.appendChild(b);
       };
-      const label = opts.label || (kind === 'watch' ? 'Mark watched' : 'Mark unwatched');
-      mk('vtap-yes ' + kind, 'confirm-tap', (kind === 'watch' ? '<svg class="ico"><use href="#i-check"/></svg>' : '\u21BA') + '<span>' + label + '</span>');
-      mk('vtap-no', 'cancel-tap', '\u2715<span>Cancel</span>');
-      el.appendChild(pair);
+      const label = opts.label || (kind === 'watch' ? 'Mark as watched' : 'Mark as unwatched');
+      mk('vtap-yes ' + kind, 'confirm-tap', kind === 'watch' ? '<svg class="ico"><use href="#i-check"/></svg>' : '\u21BA', label);
+      mk('vtap-no', 'cancel-tap', '\u2715', 'Cancel');
+      el.appendChild(row);
     }
     armedCard = { el: el, kind: kind, fn: fn, timer: setTimeout(disarmCard, TAP_MS) };
   }
