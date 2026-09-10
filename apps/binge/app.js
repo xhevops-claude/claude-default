@@ -657,7 +657,7 @@
         + '<button class="section-markall' + (done ? ' done' : '') + '" type="button" data-markkey="' + escapeHTML(g.key) + '" title="Mark section watched">✓</button>'
         + '</div>' + body + '</div>';
     });
-    disarm();
+    disarm(); disarmCard();
     sectionsEl.innerHTML = html.join('');
   }
 
@@ -700,9 +700,42 @@
     }
     const chk = e.target.closest('[data-act="toggle"]');
     if (chk) { e.stopPropagation(); armOrFire(chk, () => withUndo(() => toggleWatched(chk.getAttribute('data-id')))); return; }
+    const cancel = e.target.closest('[data-act="cancel-tap"]');
+    if (cancel) { e.stopPropagation(); disarmCard(); return; }
     const card = e.target.closest('.vcard');
-    if (card) play(card.getAttribute('data-id'));
+    if (!card) return;
+    // A mouse click (or keyboard) plays at once. A finger is easy to land on
+    // a card by accident, so a touch tap only arms the card: "Tap again to
+    // watch", with a cancel, for TAP_MS. The second tap plays.
+    if (lastPointer === 'touch' && !card.classList.contains('armed')) { armCard(card); return; }
+    disarmCard();
+    play(card.getAttribute('data-id'));
   });
+
+  // Input kind of the most recent press inside the list — the click event
+  // itself doesn't carry pointerType in every browser.
+  let lastPointer = 'mouse';
+  sectionsEl.addEventListener('pointerdown', (e) => { lastPointer = e.pointerType || 'mouse'; }, true);
+  sectionsEl.addEventListener('keydown', () => { lastPointer = 'keyboard'; }, true);
+
+  const TAP_MS = 5000;
+  let armedCard = null;   // { el, timer }
+  function disarmCard() {
+    if (!armedCard) return;
+    clearTimeout(armedCard.timer);
+    const el = armedCard.el; armedCard = null;
+    if (!el.isConnected) return;
+    el.classList.remove('armed');
+    const tip = el.querySelector('.vtap'); if (tip) tip.remove();
+  }
+  function armCard(el) {
+    disarmCard();
+    el.classList.add('armed');
+    el.insertAdjacentHTML('beforeend',
+      '<div class="vtap"><span class="vtap-text">Tap again to watch</span>'
+      + '<button type="button" class="vtap-cancel" data-act="cancel-tap" aria-label="Cancel">\u2715</button></div>');
+    armedCard = { el: el, timer: setTimeout(disarmCard, TAP_MS) };
+  }
 
   // Marking watched moves a channel's date cursor (everything before it
   // counts as watched too), so a stray tap is costly. The first tap arms the
