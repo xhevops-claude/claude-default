@@ -106,8 +106,6 @@ Preview folders accumulate on `gh-pages` over time. To remove a stale preview, j
 
 ## Themes
 
-`themes.css` defines variables per `[data-theme="..."]`:
-- `dark` (default), `light`, `space`, `sunset`
-- `mono`, `solarized`, `gameboy` (classic, gradient-free)
+`themes.css` defines variables per `[data-theme="..."]`: `noir` (default), `bone`, `steel`, `jade`, `ember`.
 
 `theme.js` reads `localStorage.getItem('arcade-theme')` and wires the swatch buttons. The choice persists. Games never read this — they're standalone black.
