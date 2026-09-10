@@ -371,7 +371,7 @@
 
     progressEl.hidden = false;
     progressFill.style.width = total ? (watchedCount / total * 100) + '%' : '0%';
-    progressText.textContent = watchedCount + ' / ' + total + ' watched · ' + (total ? Math.round(watchedCount / total * 100) : 0) + '%';
+    progressText.textContent = watchedCount + ' / ' + total;
 
     if (!total) {
       hideResults(true);
