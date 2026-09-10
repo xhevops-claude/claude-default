@@ -541,9 +541,9 @@
   function resetCutoff() { cutoff = todayYMD(); saveCutoff(); render(); }
   function commitCutoff() { saveCutoff(); render(); }
 
-  // ---- toolbar ----
+  // ---- toolbar (view · sort · filters) + results bar (group by) ----
   function renderToolbar() {
-    Array.prototype.forEach.call(toolbar.querySelectorAll('.seg-btn'), (b) => {
+    Array.prototype.forEach.call(document.querySelectorAll('.toolbar .seg-btn, .results-bar .seg-btn'), (b) => {
       const on = b.hasAttribute('data-view') ? b.getAttribute('data-view') === view
         : b.hasAttribute('data-sort') ? b.getAttribute('data-sort') === sortBy
           : b.getAttribute('data-group') === groupBy;
@@ -828,14 +828,16 @@
     },
   });
 
-  toolbar.addEventListener('click', (e) => {
+  function onSegClick(e) {
     const b = e.target.closest('.seg-btn'); if (!b) return;
     if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); save(LS.view, view); }
     else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); save(LS.sort, sortBy); }
     else if (b.hasAttribute('data-group')) { groupBy = b.getAttribute('data-group'); collapsed.clear(); save(LS.group, groupBy); }
     else return;   // the funnel button has its own handler
     render();
-  });
+  }
+  toolbar.addEventListener('click', onSegClick);
+  resultsBar.addEventListener('click', onSegClick);
 
   watchedNextBtn.addEventListener('click', () => { markWatched(currentId); advance(); });
   skipBtn.addEventListener('click', advance);
