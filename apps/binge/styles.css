@@ -159,11 +159,12 @@ html, body {
    so the bar's end is never confused with where the label starts. The track
    has a visible border, so its total length reads even when nearly empty. */
 .progress { display: flex; flex-direction: column; gap: 6px; }
+.progress-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.progress-note { color: var(--muted); font-size: 13px; min-width: 0; }
 .progress-text { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .progress-bar { height: 8px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
 .progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--red), var(--amber)); transition: width 0.3s ease; }
-.results-bar { display: flex; align-items: center; justify-content: space-between; }
-.results-count { color: var(--muted); font-size: 13px; }
+.results-bar { display: flex; align-items: center; justify-content: flex-end; }
 
 /* Sections */
 .sections { display: flex; flex-direction: column; gap: 18px; }

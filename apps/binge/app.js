@@ -372,6 +372,9 @@
     progressEl.hidden = false;
     progressFill.style.width = total ? (watchedCount / total * 100) + '%' : '0%';
     progressText.textContent = watchedCount + ' / ' + total;
+    resultsCount.textContent = (showWatched
+      ? total + (total === 1 ? ' video' : ' videos')
+      : remaining + ' left') + ' · up to ' + cutoffLabel();
 
     if (!total) {
       hideResults(true);
@@ -388,9 +391,6 @@
 
     statusPanel.hidden = true;
     resultsBar.hidden = false;
-    resultsCount.textContent = (showWatched
-      ? total + (total === 1 ? ' video' : ' videos')
-      : remaining + ' left') + ' · up to ' + cutoffLabel();
     renderSections(list);
   }
 
