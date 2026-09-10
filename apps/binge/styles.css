@@ -9,6 +9,7 @@
   --red: #ef4444;
   --amber: #f59e0b;
   --green: #34d399;
+  --blue: #3b82f6;
   --line: rgba(255, 255, 255, 0.09);
 }
 
@@ -202,7 +203,9 @@ html, body {
 .vtap { position: absolute; inset: 0; z-index: 3; display: flex; gap: 6px; padding: 6px; border-radius: inherit; background: rgba(12, 13, 18, 0.9); animation: vtap-in 0.15s ease-out; }
 /* Two fat-finger halves, each the full height of the card. */
 .vtap-go, .vtap-cancel { flex: 1 1 0; min-width: 0; font: inherit; font-weight: 800; font-size: 15px; border: 0; border-radius: 10px; cursor: pointer; }
-.vtap-go { background: var(--amber); color: #1a1200; }
+.vtap-go.play { background: var(--red); color: #fff; }
+.vtap-go.watch { background: var(--green); color: #06281c; }
+.vtap-go.unwatch { background: var(--blue); color: #fff; }
 .vtap-cancel { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); }
 @keyframes vtap-in { from { opacity: 0; } to { opacity: 1; } }
 .vthumb { position: relative; border-radius: 10px; overflow: hidden; background: #000; }
@@ -215,11 +218,13 @@ html, body {
 .v-badge { color: var(--amber); }
 .vcheck { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(12, 13, 18, 0.55); color: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 .vcard.watched .vcheck { background: var(--green); border-color: transparent; color: #06281c; }
-/* Armed (first tap): the check swells into a two-half pill — ✓ confirm on
-   the left, ✕ cancel on the right — growing leftwards from where it was. */
-.vcheck.arm, .vcard.watched .vcheck.arm, .section-markall.arm { width: auto; height: 28px; padding: 0; border-radius: 999px; overflow: hidden; display: inline-flex; background: var(--panel-2); border-color: transparent; color: var(--ink); font-size: 14px; font-weight: 800; white-space: nowrap; }
-.arm-yes, .arm-no { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 100%; }
-.arm-yes { background: var(--amber); color: #1a1200; }
+/* Armed section ✓ (first tap): swells into a two-half pill — the action on
+   the left, Cancel on the right — growing leftwards from where it was, so
+   the spot of the first tap lands in the cancel half. */
+.section-markall.arm { width: auto; height: 34px; padding: 0; border-radius: 999px; overflow: hidden; display: inline-flex; background: var(--panel-2); border-color: transparent; color: var(--ink); font-size: 13px; font-weight: 800; white-space: nowrap; }
+.arm-yes, .arm-no { display: inline-flex; align-items: center; justify-content: center; padding: 0 14px; height: 100%; }
+.arm-yes { background: var(--green); color: #06281c; }
+.arm-yes.unwatch { background: var(--blue); color: #fff; }
 .arm-no { background: var(--panel-2); color: var(--ink); }
 
 /* List layout */

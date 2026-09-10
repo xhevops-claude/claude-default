@@ -699,7 +699,14 @@
       return;
     }
     const chk = e.target.closest('[data-act="toggle"]');
-    if (chk) { e.stopPropagation(); armOrFire(chk, () => withUndo(() => toggleWatched(chk.getAttribute('data-id'))), e.target); return; }
+    if (chk) {
+      e.stopPropagation();
+      const vc = chk.closest('.vcard'), vid = chk.getAttribute('data-id');
+      armCard(vc, vc.classList.contains('watched') ? 'unwatch' : 'watch', () => withUndo(() => toggleWatched(vid)));
+      return;
+    }
+    const confirm = e.target.closest('[data-act="confirm-tap"]');
+    if (confirm) { e.stopPropagation(); const fn = armedCard && armedCard.fn; disarmCard(); if (fn) fn(); return; }
     const cancel = e.target.closest('[data-act="cancel-tap"]');
     if (cancel) { e.stopPropagation(); disarmCard(); return; }
     const card = e.target.closest('.vcard');
@@ -707,7 +714,11 @@
     // A mouse click (or keyboard) plays at once. A finger is easy to land on
     // a card by accident, so a touch tap only arms the card: a veil split in
     // two big halves — left "Watch", right "Cancel" — for TAP_MS.
-    if (lastPointer === 'touch' && !card.classList.contains('armed')) { armCard(card); return; }
+    if (lastPointer === 'touch' && !card.classList.contains('armed')) {
+      const vid = card.getAttribute('data-id');
+      armCard(card, 'play', () => play(vid));
+      return;
+    }
     disarmCard();
     play(card.getAttribute('data-id'));
   });
@@ -719,7 +730,7 @@
   sectionsEl.addEventListener('keydown', () => { lastPointer = 'keyboard'; }, true);
 
   const TAP_MS = 5000;
-  let armedCard = null;   // { el, timer }
+  let armedCard = null;   // { el, timer, fn }
   function disarmCard() {
     if (!armedCard) return;
     clearTimeout(armedCard.timer);
@@ -728,14 +739,18 @@
     el.classList.remove('armed');
     const tip = el.querySelector('.vtap'); if (tip) tip.remove();
   }
-  function armCard(el) {
+  // Veil a card with two full-height halves: the action on the left, Cancel
+  // on the right. `kind` picks the label and colour: play (red), watch
+  // (green) or unwatch (blue). Confirming runs `fn`.
+  const TAP_LABELS = { play: '\u25B6 Watch', watch: '\u2713 Mark watched', unwatch: '\u21BA Mark unwatched' };
+  function armCard(el, kind, fn) {
     disarmCard();
     el.classList.add('armed');
     el.insertAdjacentHTML('beforeend',
       '<div class="vtap">'
-      + '<button type="button" class="vtap-go" data-act="play-tap">\u25B6 Watch</button>'
+      + '<button type="button" class="vtap-go ' + kind + '" data-act="confirm-tap">' + TAP_LABELS[kind] + '</button>'
       + '<button type="button" class="vtap-cancel" data-act="cancel-tap">\u2715 Cancel</button></div>');
-    armedCard = { el: el, timer: setTimeout(disarmCard, TAP_MS) };
+    armedCard = { el: el, fn: fn, timer: setTimeout(disarmCard, TAP_MS) };
   }
 
   // Marking watched moves a channel's date cursor (everything before it
@@ -762,7 +777,9 @@
     }
     disarm();
     el.classList.add('arm');
-    el.innerHTML = '<span class="arm-yes" aria-label="Confirm">\u2713</span><span class="arm-no" aria-label="Cancel">\u2715</span>';
+    const undoing = el.classList.contains('done');
+    el.innerHTML = '<span class="arm-yes' + (undoing ? ' unwatch' : '') + '">' + (undoing ? '\u21BA Mark all unwatched' : '\u2713 Mark all watched') + '</span>'
+      + '<span class="arm-no">\u2715 Cancel</span>';
     armed = { el: el, timer: setTimeout(disarm, ARM_MS) };
   }
   document.addEventListener('click', (e) => { if (armed && !armed.el.contains(e.target)) disarm(); }, true);
