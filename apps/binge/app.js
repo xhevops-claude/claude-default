@@ -754,7 +754,7 @@
     const el = armedCard.el; armedCard = null;
     if (!el.isConnected) return;
     el.classList.remove('armed', 'play', 'watch', 'unwatch');
-    Array.prototype.forEach.call(el.querySelectorAll('.vtap-thumb, .vtap-yes, .vtap-no'), (t) => t.remove());
+    Array.prototype.forEach.call(el.querySelectorAll('.vtap-thumb, .vtap-pair'), (t) => t.remove());
   }
   // Arm a card for TAP_MS (touch only); confirming runs `fn`. In every kind
   // the card dims and its outline turns white, and a tap anywhere else
@@ -774,22 +774,24 @@
       // Two labelled buttons anchored to the check's spot (right edge and
       // vertical centre), growing leftwards: Cancel where the check was,
       // the confirm to its left. The check hides underneath meanwhile.
+      // The pair lives in a row bounded by the card: it ends where the check
+      // ends and may stretch left to the card's edge, so on a narrow grid
+      // card the buttons shrink rather than spill out.
       const chk = opts.anchor || el.querySelector('.vcheck');
-      const right = el.clientWidth - (chk.offsetLeft + chk.offsetWidth);
-      const top = chk.offsetTop + chk.offsetHeight / 2;
+      const pair = document.createElement('div');
+      pair.className = 'vtap-pair';
+      pair.style.right = (el.clientWidth - (chk.offsetLeft + chk.offsetWidth)) + 'px';
+      pair.style.top = (chk.offsetTop + chk.offsetHeight / 2) + 'px';
       const mk = (cls, act, html) => {
         const b = document.createElement('button');
         b.type = 'button'; b.className = cls; b.setAttribute('data-act', act); b.innerHTML = html;
-        b.style.top = top + 'px';
-        el.appendChild(b);
+        pair.appendChild(b);
         return b;
       };
-      const no = mk('vtap-no', 'cancel-tap', '\u2715 Cancel');
-      no.style.right = right + 'px';
       const label = opts.label || (kind === 'watch' ? 'Mark watched' : 'Mark unwatched');
-      const yes = mk('vtap-yes ' + kind, 'confirm-tap',
-        (kind === 'watch' ? '<svg class="ico"><use href="#i-check"/></svg> ' : '\u21BA ') + label);
-      yes.style.right = (right + no.offsetWidth + 8) + 'px';
+      mk('vtap-yes ' + kind, 'confirm-tap', (kind === 'watch' ? '<svg class="ico"><use href="#i-check"/></svg>' : '\u21BA') + '<span>' + label + '</span>');
+      mk('vtap-no', 'cancel-tap', '\u2715<span>Cancel</span>');
+      el.appendChild(pair);
     }
     armedCard = { el: el, kind: kind, fn: fn, timer: setTimeout(disarmCard, TAP_MS) };
   }
