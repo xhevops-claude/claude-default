@@ -654,10 +654,10 @@
         + '<span class="section-title">' + escapeHTML(g.title) + '</span>'
         + '<span class="section-count">' + w + ' / ' + g.vids.length + '</span>'
         + '</button>'
-        + '<button class="section-markall' + (done ? ' done' : '') + '" type="button" data-markkey="' + escapeHTML(g.key) + '" title="Mark section watched">✓</button>'
+        + '<button class="vcheck section-markall' + (done ? ' done' : '') + '" type="button" data-markkey="' + escapeHTML(g.key) + '" data-hint="' + (done ? 'Click to mark all unwatched' : 'Click to mark all watched') + '" aria-label="' + (done ? 'Mark all unwatched' : 'Mark all watched') + '"><svg class="ico"><use href="#i-check"/></svg></button>'
         + '</div>' + body + '</div>';
     });
-    disarm(); disarmCard();
+    disarmCard();
     sectionsEl.innerHTML = html.join('');
   }
 
@@ -689,7 +689,17 @@
 
   sectionsEl.addEventListener('click', (e) => {
     const mark = e.target.closest('[data-markkey]');
-    if (mark) { armOrFire(mark, () => withUndo(() => markSectionWatched(mark.getAttribute('data-markkey'))), e.target); return; }
+    if (mark) {
+      e.stopPropagation();
+      const head = mark.closest('.section-head'), key = mark.getAttribute('data-markkey');
+      if (head.classList.contains('armed')) { disarmCard(); return; }
+      const fn = () => withUndo(() => markSectionWatched(key));
+      if (lastPointer === 'touch') {
+        const done = mark.classList.contains('done');
+        armCard(head, done ? 'unwatch' : 'watch', fn, { anchor: mark, label: done ? 'Mark all unwatched' : 'Mark all watched' });
+      } else fn();
+      return;
+    }
     const tog = e.target.closest('.section-toggle');
     if (tog) {
       const k = tog.getAttribute('data-key');
@@ -753,8 +763,9 @@
   //  - watch / unwatch: the check square turns into the cancel area and a
   //    same-sized green (blue) square appears just left of it as the
   //    confirm. It's an overlay, positioned off the square, so nothing moves.
-  function armCard(el, kind, fn) {
+  function armCard(el, kind, fn, opts) {
     disarmCard();
+    opts = opts || {};
     el.classList.add('armed', kind);
     if (kind === 'play') {
       el.querySelector('.vthumb').insertAdjacentHTML('beforeend',
@@ -763,7 +774,7 @@
       // Two labelled buttons anchored to the check's spot (right edge and
       // vertical centre), growing leftwards: Cancel where the check was,
       // the confirm to its left. The check hides underneath meanwhile.
-      const chk = el.querySelector('.vcheck');
+      const chk = opts.anchor || el.querySelector('.vcheck');
       const right = el.clientWidth - (chk.offsetLeft + chk.offsetWidth);
       const top = chk.offsetTop + chk.offsetHeight / 2;
       const mk = (cls, act, html) => {
@@ -775,8 +786,9 @@
       };
       const no = mk('vtap-no', 'cancel-tap', '\u2715 Cancel');
       no.style.right = right + 'px';
+      const label = opts.label || (kind === 'watch' ? 'Mark watched' : 'Mark unwatched');
       const yes = mk('vtap-yes ' + kind, 'confirm-tap',
-        kind === 'watch' ? '<svg class="ico"><use href="#i-check"/></svg> Mark watched' : '\u21BA Mark unwatched');
+        (kind === 'watch' ? '<svg class="ico"><use href="#i-check"/></svg> ' : '\u21BA ') + label);
       yes.style.right = (right + no.offsetWidth + 8) + 'px';
     }
     armedCard = { el: el, kind: kind, fn: fn, timer: setTimeout(disarmCard, TAP_MS) };
@@ -785,38 +797,6 @@
   document.addEventListener('click', (e) => {
     if (armedCard && !armedCard.el.contains(e.target)) disarmCard();
   }, true);
-
-  // Marking watched moves a channel's date cursor (everything before it
-  // counts as watched too), so a stray tap is costly. The first tap arms the
-  // button ("Tap again"); a second tap within ARM_MS performs the action. Any
-  // other tap, a timeout, or a re-render disarms it.
-  const ARM_MS = 3000;
-  let armed = null;   // { el, timer }
-  function disarm() {
-    if (!armed) return;
-    clearTimeout(armed.timer);
-    const el = armed.el; armed = null;
-    if (el.isConnected) { el.classList.remove('arm'); el.parentElement.classList.remove('arming'); el.textContent = '\u2713'; }
-  }
-  // The armed pill has two halves: ✓ on the left confirms, ✕ on the right
-  // cancels. It grows leftwards from the check, so the spot of the first tap
-  // ends up in the cancel half — an accidental double tap just clears it.
-  function armOrFire(el, fn, target) {
-    if (armed && armed.el === el) {
-      const yes = target && target.closest && target.closest('.arm-yes');
-      disarm();
-      if (yes) fn();
-      return;
-    }
-    disarm();
-    el.classList.add('arm');
-    el.parentElement.classList.add('arming');
-    const undoing = el.classList.contains('done');
-    el.innerHTML = '<span class="arm-yes' + (undoing ? ' unwatch' : '') + '">' + (undoing ? '\u21BA Mark all unwatched' : '\u2713 Mark all watched') + '</span>'
-      + '<span class="arm-no">\u2715 Cancel</span>';
-    armed = { el: el, timer: setTimeout(disarm, ARM_MS) };
-  }
-  document.addEventListener('click', (e) => { if (armed && !armed.el.contains(e.target)) disarm(); }, true);
 
   // Undo: the change is applied at once, and a toast offers to put the
   // watched cursors back exactly as they were for UNDO_MS.

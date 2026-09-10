@@ -185,9 +185,10 @@ html, body {
 .section.open .section-chev { transform: rotate(90deg); }
 .section-title { flex: 1; font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
 .section-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.section-markall { flex: none; cursor: pointer; font: inherit; font-weight: 700; font-size: 13px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--muted); }
-.section-markall:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.22); }
+/* The section's mark-all is the same check square as a video's (.vcheck). */
+.section-markall { flex: none; }
 .section-markall.done { background: var(--green); border-color: transparent; color: #06281c; }
+.section-head.armed .section-toggle { opacity: 0.35; }
 
 /* Video cards */
 .vids { margin-top: 8px; }
@@ -232,24 +233,14 @@ html, body {
 .vcheck .ico { width: 20px; height: 20px; stroke-width: 2.4; }
 .vcheck:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.5); }
 .vcard.watched .vcheck { background: var(--green); border-color: transparent; color: #06281c; }
-.vcard.armed.watch .vcheck, .vcard.armed.unwatch .vcheck { visibility: hidden; }
+.armed.watch .vcheck, .armed.unwatch .vcheck { visibility: hidden; }
 @media (hover: hover) {
   .vcheck::after { content: attr(data-hint); position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%) translateX(6px); z-index: 4;
     background: var(--ink); color: var(--bg); font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 7px; white-space: nowrap; pointer-events: none;
     opacity: 0; transition: opacity 0.15s ease, transform 0.15s ease; }
   .vcheck:hover::after { opacity: 1; transform: translateY(-50%); }
-  .vcard.armed .vcheck::after { display: none; }
+  .armed .vcheck::after { display: none; }
 }
-/* Armed section ✓ (first tap): swells into a two-half pill — the action on
-   the left, Cancel on the right — growing leftwards from where it was, so
-   the spot of the first tap lands in the cancel half. */
-.section-markall.arm { position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 3; width: auto; height: 34px; padding: 0; border-radius: 999px; overflow: hidden; display: inline-flex; background: var(--panel-2); border-color: transparent; color: var(--ink); font-size: 13px; font-weight: 800; white-space: nowrap; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
-/* Keep the header's layout while the pill floats: reserve the ✓'s slot. */
-.section-head.arming { padding-right: 36px; }
-.arm-yes, .arm-no { display: inline-flex; align-items: center; justify-content: center; padding: 0 14px; height: 100%; }
-.arm-yes { background: var(--green); color: #06281c; }
-.arm-yes.unwatch { background: var(--blue); color: #fff; }
-.arm-no { background: var(--panel-2); color: var(--ink); }
 
 /* List layout */
 .vids.list .vcard { display: flex; align-items: center; gap: 12px; padding: 6px; }
