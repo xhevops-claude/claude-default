@@ -796,7 +796,7 @@
       } else {
         // Section header: two equal compact cells tucked at the right edge,
         // centred on the header's height.
-        const h = Math.max(60, el.clientHeight), cell = 120;
+        const h = Math.max(60, el.clientHeight), cell = 148;
         row.style.right = '0px';
         row.style.width = (cell * 2 + 6) + 'px';
         row.style.top = (el.clientHeight / 2 - h / 2) + 'px';
