@@ -80,6 +80,15 @@
     <!-- Group tabs: always visible; the active tab owns the filters -->
     <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
 
+    <!-- Progress: the active bundle's watched count, right under its tab -->
+    <div class="progress" id="progress" hidden>
+      <div class="progress-row">
+        <span class="progress-note" id="results-count">—</span>
+        <span class="progress-text" id="progress-text">—</span>
+      </div>
+      <div class="progress-bar"><span id="progress-fill"></span></div>
+    </div>
+
     <!-- Toolbar: Sort / Filters — what content is shown -->
     <section class="toolbar" id="toolbar" hidden>
       <div class="seg" role="tablist" aria-label="Sort">
@@ -138,15 +147,6 @@
         </div>
       </div>
     </section>
-
-    <!-- Progress -->
-    <div class="progress" id="progress" hidden>
-      <div class="progress-row">
-        <span class="progress-note" id="results-count">—</span>
-        <span class="progress-text" id="progress-text">—</span>
-      </div>
-      <div class="progress-bar"><span id="progress-fill"></span></div>
-    </div>
 
     <!-- Results header: how the list is shown (list/grid, group by) and expand/collapse all groups -->
     <div class="results-bar" id="results-bar" hidden>
