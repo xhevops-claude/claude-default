@@ -136,13 +136,12 @@ html, body {
 
 /* Toolbar: group by (left), sort (middle), filters (right) — the controls
    that change what is listed. Each segment takes width in proportion to
-   its buttons, so all six come out the same size on narrow screens. Each
+   its buttons, so all seven come out the same size on narrow screens. Each
    button is capped at --seg-btn-max, so on wide screens the segments stop
    growing and the leftover width opens up between them. */
 .toolbar { --seg-btn-max: 68px; display: flex; gap: 8px; justify-content: space-between; align-items: stretch; }
 .seg { display: flex; flex: var(--n, 1) 1 0; min-width: 0; max-width: calc(var(--n, 1) * var(--seg-btn-max) + 8px); background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
-.seg[aria-label="Group by"] { --n: 2; }
-.seg[aria-label="Sort"] { --n: 3; }
+.seg[aria-label="Group by"], .seg[aria-label="Sort"] { --n: 3; }
 .seg-btn { font: inherit; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 7px; flex: 1 1 0; min-width: 0; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
 .seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--amber); }
 .ico { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; display: block; }
@@ -236,6 +235,16 @@ html, body {
   color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
 .sync-actions { display: flex; justify-content: flex-end; }
 .sync-note { color: var(--amber); font-size: 13px; min-height: 18px; }
+
+/* Undo toast: a floating strip above the HUD, like a mail client's "Undo"
+   after a delete. Slides up, stays UNDO_MS, then slides away. */
+.toast { position: fixed; z-index: 8; left: 50%; bottom: 68px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px;
+  max-width: calc(100% - 32px); padding: 10px 10px 10px 16px; border-radius: 10px; background: var(--ink); color: var(--bg);
+  font-size: 14px; font-weight: 600; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55); animation: toast-in 0.22s ease-out; }
+.toast-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast-undo { font: inherit; font-weight: 800; color: #b45309; background: transparent; border: 0; border-radius: 7px; padding: 6px 10px; cursor: pointer; }
+.toast-undo:hover { background: rgba(0, 0, 0, 0.08); }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* HUD */
 .hud { position: fixed; z-index: 7; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; padding: 12px; pointer-events: none; }

@@ -26,7 +26,7 @@
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
   // A stored pref that isn't one of the allowed values falls back to the default.
   function pick(key, allowed, fallback) { const v = load(key, fallback); return allowed.indexOf(v) >= 0 ? v : fallback; }
-  const VIEWS = ['list', 'grid'], SORTS = ['old', 'new', 'popular'], GROUPS = ['year', 'channel'];
+  const VIEWS = ['list', 'grid'], SORTS = ['old', 'new', 'popular'], GROUPS = ['year', 'bundle', 'channel'];
 
   // ---- persisted state ----
   let selected = new Set();                       // channel slugs shown — derived from the active group minus its exclusions
@@ -65,6 +65,7 @@
   const sectionsEl = $('sections');
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
   const quitBtn = $('quit');
+  const toastEl = $('toast'), toastMsg = $('toast-msg'), toastUndo = $('toast-undo');
   const syncOpenBtn = $('sync-open'), syncModal = $('sync-modal'), syncClose = $('sync-close');
   const syncCopyBtn = $('sync-copy'), syncPaste = $('sync-paste'), syncApplyBtn = $('sync-apply'), syncNote = $('sync-note');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
@@ -560,6 +561,21 @@
 
   // ---- sections ----
   function buildGroups(list) {
+    // By bundle: one section per groups.json entry, in file order. A channel
+    // that sits in several bundles shows up under each; channels in none
+    // fall into "Other".
+    if (groupBy === 'bundle') {
+      const out = [], seen = new Set();
+      groups.forEach((g) => {
+        const vids = list.filter((v) => g.channels.indexOf(v.slug) >= 0);
+        if (!vids.length) return;
+        out.push({ key: 'b:' + g.id, title: g.name, vids: vids });
+        vids.forEach((v) => seen.add(v.id));
+      });
+      const rest = list.filter((v) => !seen.has(v.id));
+      if (rest.length) out.push({ key: 'b:_other', title: 'Other', vids: rest });
+      return out;
+    }
     const map = new Map();
     list.forEach((v) => {
       let key, title;
@@ -568,15 +584,15 @@
       if (!map.has(key)) map.set(key, { key: key, title: title, vids: [] });
       map.get(key).vids.push(v);
     });
-    let groups = Array.from(map.values());
+    const out = Array.from(map.values());
     if (groupBy === 'year') {
-      groups.sort((a, b) => Number(a.key.slice(2)) - Number(b.key.slice(2)));
-      if (sortBy === 'new' || sortBy === 'popular') groups.reverse();
+      out.sort((a, b) => Number(a.key.slice(2)) - Number(b.key.slice(2)));
+      if (sortBy === 'new' || sortBy === 'popular') out.reverse();
     } else {
       const order = available.map((c) => 'c:' + c.slug);
-      groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+      out.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
     }
-    return groups;
+    return out;
   }
 
   function renderSections(list) {
@@ -636,7 +652,7 @@
 
   sectionsEl.addEventListener('click', (e) => {
     const mark = e.target.closest('[data-markkey]');
-    if (mark) { armOrFire(mark, () => markSectionWatched(mark.getAttribute('data-markkey'))); return; }
+    if (mark) { armOrFire(mark, () => withUndo(() => markSectionWatched(mark.getAttribute('data-markkey')))); return; }
     const tog = e.target.closest('.section-toggle');
     if (tog) {
       const k = tog.getAttribute('data-key');
@@ -645,7 +661,7 @@
       return;
     }
     const chk = e.target.closest('[data-act="toggle"]');
-    if (chk) { e.stopPropagation(); armOrFire(chk, () => toggleWatched(chk.getAttribute('data-id'))); return; }
+    if (chk) { e.stopPropagation(); armOrFire(chk, () => withUndo(() => toggleWatched(chk.getAttribute('data-id')))); return; }
     const card = e.target.closest('.vcard');
     if (card) play(card.getAttribute('data-id'));
   });
@@ -669,6 +685,42 @@
     armed = { el: el, timer: setTimeout(disarm, ARM_MS) };
   }
   document.addEventListener('click', (e) => { if (armed && !armed.el.contains(e.target)) disarm(); }, true);
+
+  // Undo: the change is applied at once, and a toast offers to put the
+  // watched cursors back exactly as they were for UNDO_MS.
+  const UNDO_MS = 5000;
+  let undo = null;   // { before, timer }
+  function hideToast() {
+    if (undo) clearTimeout(undo.timer);
+    undo = null; toastEl.hidden = true;
+  }
+  function withUndo(fn) {
+    const before = JSON.stringify(watchedTo);
+    fn();
+    const after = JSON.stringify(watchedTo);
+    if (after === before) return;
+    hideToast();
+    toastMsg.textContent = watchedDelta(JSON.parse(before), watchedTo);
+    toastEl.hidden = false;
+    undo = { before: before, timer: setTimeout(hideToast, UNDO_MS) };
+  }
+  // "N marked watched" / "N marked unwatched" — counted across the active list.
+  function watchedDelta(prev, next) {
+    let more = 0, less = 0;
+    baseVideos().forEach((v) => {
+      const y = videoYMD(v), was = y <= (prev[v.slug] || 0), now = y <= (next[v.slug] || 0);
+      if (now && !was) more++; else if (was && !now) less++;
+    });
+    const n = more || less, what = more ? 'watched' : 'unwatched';
+    return n + (n === 1 ? ' video' : ' videos') + ' marked ' + what;
+  }
+  toastUndo.addEventListener('click', () => {
+    if (!undo) return;
+    watchedTo = JSON.parse(undo.before);
+    save(LS.watchedTo, watchedTo);
+    hideToast();
+    render();
+  });
 
   collapseAllBtn.addEventListener('click', () => {
     const groups = buildGroups(sortVids(baseVideos()));
