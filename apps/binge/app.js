@@ -696,7 +696,7 @@
       const fn = () => withUndo(() => markSectionWatched(key));
       if (lastPointer === 'touch') {
         const done = mark.classList.contains('done');
-        armCard(head, done ? 'unwatch' : 'watch', fn, { header: true, label: done ? 'Mark all as unwatched' : 'Mark all as watched' });
+        armCard(head, done ? 'unwatch' : 'watch', fn, { header: true, label: done ? 'Mark as unwatched' : 'Mark as watched' });
       } else fn();
       return;
     }
