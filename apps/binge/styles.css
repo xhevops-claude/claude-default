@@ -9,6 +9,7 @@
   --red: #ef4444;
   --amber: #f59e0b;
   --green: #34d399;
+  --blue: #3b82f6;
   --line: rgba(255, 255, 255, 0.09);
 }
 
@@ -93,7 +94,9 @@ html, body {
    strip so a long list stays on one row on phones. Each tab shows its own
    cutoff date under the name. */
 .tabs { display: flex; gap: 6px; padding: 2px 0; margin-top: -6px; }
-.tabs-scroll { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+/* The strip hugs the right edge on wide screens (auto margin); on narrow
+   ones it fills the row and scrolls. */
+.tabs-scroll { display: flex; gap: 6px; min-width: 0; margin-left: auto; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .tabs-scroll::-webkit-scrollbar { display: none; }
 .tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; font-weight: 700; font-size: 14px; line-height: 1.2; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; cursor: pointer; white-space: nowrap; transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
 .tab[aria-selected="true"] { background: var(--red); border-color: transparent; color: #fff; }
@@ -176,15 +179,16 @@ html, body {
 
 /* Sections */
 .sections { display: flex; flex-direction: column; gap: 18px; }
-.section-head { display: flex; align-items: center; gap: 6px; }
+.section-head { position: relative; display: flex; align-items: center; gap: 6px; }
 .section-toggle { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; background: transparent; border: 0; color: var(--ink); font: inherit; cursor: pointer; padding: 4px 2px; text-align: left; }
 .section-chev { color: var(--muted); transition: transform 0.18s ease; flex: none; }
 .section.open .section-chev { transform: rotate(90deg); }
 .section-title { flex: 1; font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
 .section-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.section-markall { flex: none; cursor: pointer; font: inherit; font-weight: 700; font-size: 13px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--muted); }
-.section-markall:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.22); }
+/* The section's mark-all is the same check square as a video's (.vcheck). */
+.section-markall { flex: none; }
 .section-markall.done { background: var(--green); border-color: transparent; color: #06281c; }
+.section-head.armed .section-toggle { opacity: 0.35; }
 
 /* Video cards */
 .vids { margin-top: 8px; }
@@ -194,6 +198,34 @@ html, body {
 .vcard { position: relative; cursor: pointer; border: 1px solid transparent; border-radius: 12px; transition: background 0.15s ease, border-color 0.15s ease; }
 .vcard:hover { background: var(--panel); }
 .vcard.playing { border-color: var(--red); background: var(--panel); }
+/* Touch-armed card: a veil with "Tap again to watch" and a cancel, so a
+   stray finger doesn't open the player. */
+/* Armed (touch): white outline, the card content dimmed, and the confirm
+   target lit — over the thumbnail for play, beside the check for watched. */
+.vcard.armed { border-color: var(--ink); background: var(--panel); }
+.vcard.armed.play .vmeta, .vcard.armed.play .vcheck { opacity: 0.35; }
+.vcard.armed.watch .vthumb, .vcard.armed.watch .vmeta,
+.vcard.armed.unwatch .vthumb, .vcard.armed.unwatch .vmeta { opacity: 0.35; }
+.vtap-row { border-radius: 10px; overflow: hidden; }   /* clips to the thumbnail's corners in grid */
+.vtap-thumb { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; border: 0; border-radius: inherit; cursor: pointer;
+  background: rgba(52, 211, 153, 0.92); color: #06281c; font: inherit; font-weight: 600; font-size: 15px; animation: vtap-in 0.15s ease-out; }
+/* The watched confirm row: two equal touch areas — the action (green /
+   blue) on the left, Cancel on the right — icon above label, laid over the
+   card's text area (or the whole section header) so it stays inside. */
+.vtap-row { position: absolute; z-index: 3; display: flex; gap: 6px; animation: vtap-in 0.15s ease-out; }
+.vtap-yes, .vtap-no { flex: 1 1 0; min-width: 0; height: 100%; padding: 6px 6px; border: 0; border-radius: 12px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 600; font-size: 13px; line-height: 1.1; }
+.vtap-ico { display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1; }
+.vtap-ico .ico { width: 22px; height: 22px; stroke-width: 2.4; }
+.vtap-txt { max-width: 100%; text-align: center; line-height: 1.15; }   /* wraps to a second line on narrow cells */
+.vtap-yes.watch { background: var(--green); color: #06281c; }
+.vtap-yes.unwatch { background: var(--blue); color: #fff; }
+.vtap-no { background: var(--panel-2); color: var(--ink); border: 1px solid rgba(255, 255, 255, 0.3); }
+.vtap-yes.watch { background: var(--green); color: #06281c; }
+.vtap-yes.unwatch { background: var(--blue); color: #fff; }
+.vtap-yes .ico { width: 22px; height: 22px; stroke-width: 2.6; }
+.vtap-no { background: var(--panel-2); color: var(--ink); border: 1px solid rgba(255, 255, 255, 0.35); }
+@keyframes vtap-in { from { opacity: 0; } to { opacity: 1; } }
 .vthumb { position: relative; border-radius: 10px; overflow: hidden; background: #000; }
 .vthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .vcard.watched .vthumb img { opacity: 0.45; }
@@ -202,10 +234,21 @@ html, body {
 .vcard.watched .vtitle { color: var(--muted); }
 .vsub { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .v-badge { color: var(--amber); }
-.vcheck { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(12, 13, 18, 0.55); color: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+/* Check square: a 40px tap/click target with a stroke check. Mouse marks at
+   once (hover shows a hint); on touch it arms the card and hides under the
+   Cancel / Mark watched pair. */
+.vcheck { position: relative; width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(12, 13, 18, 0.6); color: rgba(255, 255, 255, 0.55); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font: inherit; font-weight: 800; font-size: 18px; line-height: 1; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+.vcheck .ico { width: 20px; height: 20px; stroke-width: 2.4; }
+.vcheck:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.5); }
 .vcard.watched .vcheck { background: var(--green); border-color: transparent; color: #06281c; }
-/* Armed (first tap): the check swells into an amber "Tap again" pill. */
-.vcheck.arm, .vcard.watched .vcheck.arm, .section-markall.arm { width: auto; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--amber); border-color: transparent; color: #1a1200; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.armed.watch .vcheck, .armed.unwatch .vcheck { visibility: hidden; }
+@media (hover: hover) {
+  .vcheck::after { content: attr(data-hint); position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%) translateX(6px); z-index: 4;
+    background: var(--ink); color: var(--bg); font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 7px; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity 0.15s ease, transform 0.15s ease; }
+  .vcheck:hover::after { opacity: 1; transform: translateY(-50%); }
+  .armed .vcheck::after { display: none; }
+}
 
 /* List layout */
 .vids.list .vcard { display: flex; align-items: center; gap: 12px; padding: 6px; }

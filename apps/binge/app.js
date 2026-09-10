@@ -654,10 +654,10 @@
         + '<span class="section-title">' + escapeHTML(g.title) + '</span>'
         + '<span class="section-count">' + w + ' / ' + g.vids.length + '</span>'
         + '</button>'
-        + '<button class="section-markall' + (done ? ' done' : '') + '" type="button" data-markkey="' + escapeHTML(g.key) + '" title="Mark section watched">✓</button>'
+        + '<button class="vcheck section-markall' + (done ? ' done' : '') + '" type="button" data-markkey="' + escapeHTML(g.key) + '" data-hint="' + (done ? 'Click to mark all unwatched' : 'Click to mark all watched') + '" aria-label="' + (done ? 'Mark all unwatched' : 'Mark all watched') + '"><svg class="ico"><use href="#i-check"/></svg></button>'
         + '</div>' + body + '</div>';
     });
-    disarm();
+    disarmCard();
     sectionsEl.innerHTML = html.join('');
   }
 
@@ -677,7 +677,7 @@
       + '</div>'
       + '<div class="vmeta"><div class="vtitle">' + escapeHTML(v.title) + '</div>'
       + '<div class="vsub">' + bits.join(' · ') + '</div></div>'
-      + '<button class="vcheck" type="button" data-act="toggle" data-id="' + escapeHTML(v.id) + '" aria-label="Toggle watched">✓</button>'
+      + '<button class="vcheck" type="button" data-act="toggle" data-id="' + escapeHTML(v.id) + '" data-hint="' + (isW ? 'Click to mark unwatched' : 'Click to mark watched') + '" aria-label="' + (isW ? 'Mark unwatched' : 'Mark watched') + '"><svg class="ico"><use href="#i-check"/></svg></button>'
       + '</div>';
   }
 
@@ -689,7 +689,17 @@
 
   sectionsEl.addEventListener('click', (e) => {
     const mark = e.target.closest('[data-markkey]');
-    if (mark) { armOrFire(mark, () => withUndo(() => markSectionWatched(mark.getAttribute('data-markkey')))); return; }
+    if (mark) {
+      e.stopPropagation();
+      const head = mark.closest('.section-head'), key = mark.getAttribute('data-markkey');
+      if (head.classList.contains('armed')) { disarmCard(); return; }
+      const fn = () => withUndo(() => markSectionWatched(key));
+      if (lastPointer === 'touch') {
+        const done = mark.classList.contains('done');
+        armCard(head, done ? 'unwatch' : 'watch', fn, { header: true, label: done ? 'Mark as unwatched' : 'Mark as watched' });
+      } else fn();
+      return;
+    }
     const tog = e.target.closest('.section-toggle');
     if (tog) {
       const k = tog.getAttribute('data-key');
@@ -699,30 +709,116 @@
       return;
     }
     const chk = e.target.closest('[data-act="toggle"]');
-    if (chk) { e.stopPropagation(); armOrFire(chk, () => withUndo(() => toggleWatched(chk.getAttribute('data-id')))); return; }
+    if (chk) {
+      e.stopPropagation();
+      const vc = chk.closest('.vcard'), vid = chk.getAttribute('data-id');
+      // Once armed, the square itself is the cancel area.
+      if (vc.classList.contains('armed')) { disarmCard(); return; }
+      const fn = () => withUndo(() => toggleWatched(vid));
+      // Mouse / keyboard: mark at once (Undo covers slips). Touch: arm first.
+      if (lastPointer === 'touch') armCard(vc, vc.classList.contains('watched') ? 'unwatch' : 'watch', fn);
+      else fn();
+      return;
+    }
+    const confirm = e.target.closest('[data-act="confirm-tap"]');
+    if (confirm) { e.stopPropagation(); const fn = armedCard && armedCard.fn; disarmCard(); if (fn) fn(); return; }
+    const cancel = e.target.closest('[data-act="cancel-tap"]');
+    if (cancel) { e.stopPropagation(); disarmCard(); return; }
     const card = e.target.closest('.vcard');
-    if (card) play(card.getAttribute('data-id'));
+    if (!card) return;
+    // An armed card that wasn't tapped on its confirm target: cancel.
+    if (card.classList.contains('armed')) { disarmCard(); return; }
+    // A mouse click (or keyboard) plays at once. A finger is easy to land on
+    // a card by accident, so a touch tap only arms the card: a green "Tap to
+    // watch" over the thumbnail, the rest dimmed, for TAP_MS. Any tap outside
+    // that target cancels.
+    if (lastPointer === 'touch') {
+      const vid = card.getAttribute('data-id');
+      armCard(card, 'play', () => play(vid));
+      return;
+    }
+    play(card.getAttribute('data-id'));
   });
 
-  // Marking watched moves a channel's date cursor (everything before it
-  // counts as watched too), so a stray tap is costly. The first tap arms the
-  // button ("Tap again"); a second tap within ARM_MS performs the action. Any
-  // other tap, a timeout, or a re-render disarms it.
-  const ARM_MS = 3000;
-  let armed = null;   // { el, timer }
-  function disarm() {
-    if (!armed) return;
-    clearTimeout(armed.timer);
-    const el = armed.el; armed = null;
-    if (el.isConnected) { el.classList.remove('arm'); el.textContent = '\u2713'; }
+  // Input kind of the most recent press inside the list — the click event
+  // itself doesn't carry pointerType in every browser.
+  let lastPointer = 'mouse';
+  sectionsEl.addEventListener('pointerdown', (e) => { lastPointer = e.pointerType || 'mouse'; }, true);
+  sectionsEl.addEventListener('keydown', () => { lastPointer = 'keyboard'; }, true);
+
+  const TAP_MS = 5000;
+  let armedCard = null;   // { el, kind, timer, fn }
+  function disarmCard() {
+    if (!armedCard) return;
+    clearTimeout(armedCard.timer);
+    const el = armedCard.el; armedCard = null;
+    if (!el.isConnected) return;
+    el.classList.remove('armed', 'play', 'watch', 'unwatch');
+    Array.prototype.forEach.call(el.querySelectorAll('.vtap-thumb, .vtap-row'), (t) => t.remove());
   }
-  function armOrFire(el, fn) {
-    if (armed && armed.el === el) { disarm(); fn(); return; }
-    disarm();
-    el.classList.add('arm'); el.textContent = 'Tap again';
-    armed = { el: el, timer: setTimeout(disarm, ARM_MS) };
+  // Arm a card for TAP_MS (touch only); confirming runs `fn`. In every kind
+  // the card dims and its outline turns white, and a tap anywhere else
+  // cancels — there is no cancel button.
+  //  - play: a green "Tap to watch" sits over the thumbnail.
+  //  - watch / unwatch: the check square turns into the cancel area and a
+  //    same-sized green (blue) square appears just left of it as the
+  //    confirm. It's an overlay, positioned off the square, so nothing moves.
+  function armCard(el, kind, fn, opts) {
+    disarmCard();
+    opts = opts || {};
+    el.classList.add('armed', kind);
+    if (kind === 'play') {
+      el.querySelector('.vthumb').insertAdjacentHTML('beforeend',
+        '<button type="button" class="vtap-thumb" data-act="confirm-tap">\u25B6 Tap to watch</button>');
+    } else {
+      // Two labelled buttons anchored to the check's spot (right edge and
+      // vertical centre), growing leftwards: Cancel where the check was,
+      // the confirm to its left. The check hides underneath meanwhile.
+      // A row of two equal touch areas — the action on the left, Cancel on
+      // the right, icon above label — laid over the card's text area (or the
+      // whole section header), so the thumbnail stays visible and nothing moves.
+      const row = document.createElement('div');
+      row.className = 'vtap-row';
+      const thumb = el.querySelector('.vthumb');
+      if (!opts.header && thumb && el.closest('.vids.list')) {
+        // List card: two cells, each exactly the thumbnail's size, hugging
+        // the card's right edge at the thumbnail's level.
+        row.style.top = thumb.offsetTop + 'px';
+        row.style.height = thumb.offsetHeight + 'px';
+        row.style.width = (thumb.offsetWidth * 2 + 6) + 'px';
+        row.style.right = '6px';
+      } else if (!opts.header && thumb) {
+        // Grid card: two equal halves covering the thumbnail itself.
+        row.style.left = thumb.offsetLeft + 'px';
+        row.style.top = thumb.offsetTop + 'px';
+        row.style.width = thumb.offsetWidth + 'px';
+        row.style.height = thumb.offsetHeight + 'px';
+      } else {
+        // Section header: two equal compact cells tucked at the right edge,
+        // centred on the header's height.
+        const h = Math.max(60, el.clientHeight), cell = 148;
+        row.style.right = '0px';
+        row.style.width = (cell * 2 + 6) + 'px';
+        row.style.top = (el.clientHeight / 2 - h / 2) + 'px';
+        row.style.height = h + 'px';
+      }
+      const mk = (cls, act, icon, text) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = cls; b.setAttribute('data-act', act);
+        b.innerHTML = '<span class="vtap-ico">' + icon + '</span><span class="vtap-txt">' + text + '</span>';
+        row.appendChild(b);
+      };
+      const label = opts.label || (kind === 'watch' ? 'Mark as watched' : 'Mark as unwatched');
+      mk('vtap-yes ' + kind, 'confirm-tap', kind === 'watch' ? '<svg class="ico"><use href="#i-check"/></svg>' : '\u21BA', label);
+      mk('vtap-no', 'cancel-tap', '\u2715', 'Cancel');
+      el.appendChild(row);
+    }
+    armedCard = { el: el, kind: kind, fn: fn, timer: setTimeout(disarmCard, TAP_MS) };
   }
-  document.addEventListener('click', (e) => { if (armed && !armed.el.contains(e.target)) disarm(); }, true);
+  // A tap anywhere outside the armed card cancels it.
+  document.addEventListener('click', (e) => {
+    if (armedCard && !armedCard.el.contains(e.target)) disarmCard();
+  }, true);
 
   // Undo: the change is applied at once, and a toast offers to put the
   // watched cursors back exactly as they were for UNDO_MS.
