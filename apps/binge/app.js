@@ -689,7 +689,7 @@
 
   sectionsEl.addEventListener('click', (e) => {
     const mark = e.target.closest('[data-markkey]');
-    if (mark) { armOrFire(mark, () => withUndo(() => markSectionWatched(mark.getAttribute('data-markkey')))); return; }
+    if (mark) { armOrFire(mark, () => withUndo(() => markSectionWatched(mark.getAttribute('data-markkey'))), e.target); return; }
     const tog = e.target.closest('.section-toggle');
     if (tog) {
       const k = tog.getAttribute('data-key');
@@ -699,14 +699,14 @@
       return;
     }
     const chk = e.target.closest('[data-act="toggle"]');
-    if (chk) { e.stopPropagation(); armOrFire(chk, () => withUndo(() => toggleWatched(chk.getAttribute('data-id')))); return; }
+    if (chk) { e.stopPropagation(); armOrFire(chk, () => withUndo(() => toggleWatched(chk.getAttribute('data-id'))), e.target); return; }
     const cancel = e.target.closest('[data-act="cancel-tap"]');
     if (cancel) { e.stopPropagation(); disarmCard(); return; }
     const card = e.target.closest('.vcard');
     if (!card) return;
     // A mouse click (or keyboard) plays at once. A finger is easy to land on
-    // a card by accident, so a touch tap only arms the card: "Tap again to
-    // watch", with a cancel, for TAP_MS. The second tap plays.
+    // a card by accident, so a touch tap only arms the card: a veil split in
+    // two big halves — left "Watch", right "Cancel" — for TAP_MS.
     if (lastPointer === 'touch' && !card.classList.contains('armed')) { armCard(card); return; }
     disarmCard();
     play(card.getAttribute('data-id'));
@@ -732,8 +732,9 @@
     disarmCard();
     el.classList.add('armed');
     el.insertAdjacentHTML('beforeend',
-      '<div class="vtap"><span class="vtap-text">Tap again to watch</span>'
-      + '<button type="button" class="vtap-cancel" data-act="cancel-tap" aria-label="Cancel">\u2715</button></div>');
+      '<div class="vtap">'
+      + '<button type="button" class="vtap-go" data-act="play-tap">\u25B6 Watch</button>'
+      + '<button type="button" class="vtap-cancel" data-act="cancel-tap">\u2715 Cancel</button></div>');
     armedCard = { el: el, timer: setTimeout(disarmCard, TAP_MS) };
   }
 
@@ -749,10 +750,19 @@
     const el = armed.el; armed = null;
     if (el.isConnected) { el.classList.remove('arm'); el.textContent = '\u2713'; }
   }
-  function armOrFire(el, fn) {
-    if (armed && armed.el === el) { disarm(); fn(); return; }
+  // The armed pill has two halves: ✓ on the left confirms, ✕ on the right
+  // cancels. It grows leftwards from the check, so the spot of the first tap
+  // ends up in the cancel half — an accidental double tap just clears it.
+  function armOrFire(el, fn, target) {
+    if (armed && armed.el === el) {
+      const yes = target && target.closest && target.closest('.arm-yes');
+      disarm();
+      if (yes) fn();
+      return;
+    }
     disarm();
-    el.classList.add('arm'); el.textContent = 'Tap again';
+    el.classList.add('arm');
+    el.innerHTML = '<span class="arm-yes" aria-label="Confirm">\u2713</span><span class="arm-no" aria-label="Cancel">\u2715</span>';
     armed = { el: el, timer: setTimeout(disarm, ARM_MS) };
   }
   document.addEventListener('click', (e) => { if (armed && !armed.el.contains(e.target)) disarm(); }, true);
