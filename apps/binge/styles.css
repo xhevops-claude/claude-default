@@ -213,11 +213,11 @@ html, body {
    blue) on the left, Cancel on the right — icon above label, laid over the
    card's text area (or the whole section header) so it stays inside. */
 .vtap-row { position: absolute; z-index: 3; display: flex; gap: 6px; animation: vtap-in 0.15s ease-out; }
-.vtap-yes, .vtap-no { flex: 1 1 0; min-width: 0; height: 100%; padding: 6px 8px; border: 0; border-radius: 12px; cursor: pointer;
+.vtap-yes, .vtap-no { flex: 1 1 0; min-width: 0; height: 100%; padding: 6px 6px; border: 0; border-radius: 12px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 600; font-size: 13px; line-height: 1.1; }
 .vtap-ico { display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1; }
 .vtap-ico .ico { width: 22px; height: 22px; stroke-width: 2.4; }
-.vtap-txt { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vtap-txt { max-width: 100%; text-align: center; line-height: 1.15; }   /* wraps to a second line on narrow cells */
 .vtap-yes.watch { background: var(--green); color: #06281c; }
 .vtap-yes.unwatch { background: var(--blue); color: #fff; }
 .vtap-no { background: var(--panel-2); color: var(--ink); border: 1px solid rgba(255, 255, 255, 0.3); }
