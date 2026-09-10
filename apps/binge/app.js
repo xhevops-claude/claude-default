@@ -777,14 +777,27 @@
       // A row of two equal touch areas — the action on the left, Cancel on
       // the right, icon above label — laid over the card's text area (or the
       // whole section header), so the thumbnail stays visible and nothing moves.
-      const area = opts.area || el.querySelector('.vmeta') || el;
       const row = document.createElement('div');
       row.className = 'vtap-row';
-      const h = Math.max(60, area.offsetHeight);
-      row.style.left = (area === el ? 0 : area.offsetLeft) + 'px';
-      row.style.width = (area === el ? el.clientWidth : area.offsetWidth) + 'px';
-      row.style.top = ((area === el ? 0 : area.offsetTop) + (area === el ? el.clientHeight : area.offsetHeight) / 2 - h / 2) + 'px';
-      row.style.height = h + 'px';
+      const thumb = el.querySelector('.vthumb');
+      if (!opts.area && thumb && el.closest('.vids.list')) {
+        // List card: two squares the size of the thumbnail's height, hugging
+        // the card's right edge at the thumbnail's level.
+        const side = thumb.offsetHeight;
+        row.style.top = thumb.offsetTop + 'px';
+        row.style.height = side + 'px';
+        row.style.width = (side * 2 + 6) + 'px';
+        row.style.right = '6px';
+      } else {
+        // Grid card: two equal halves over the text area under the thumbnail.
+        // Section header: two halves over the whole header.
+        const area = opts.area || el.querySelector('.vmeta') || el;
+        const h = Math.max(60, area.offsetHeight);
+        row.style.left = (area === el ? 0 : area.offsetLeft) + 'px';
+        row.style.width = (area === el ? el.clientWidth : area.offsetWidth) + 'px';
+        row.style.top = ((area === el ? 0 : area.offsetTop) + (area === el ? el.clientHeight : area.offsetHeight) / 2 - h / 2) + 'px';
+        row.style.height = h + 'px';
+      }
       const mk = (cls, act, icon, text) => {
         const b = document.createElement('button');
         b.type = 'button'; b.className = cls; b.setAttribute('data-act', act);
