@@ -35,12 +35,6 @@ html, body {
   display: flex; flex-direction: column; gap: 14px;
 }
 
-/* Header */
-.bg-head { display: flex; align-items: center; gap: 12px; }
-.bg-logo { font-size: 34px; line-height: 1; }
-.bg-titles h1 { margin: 0; font-size: 24px; font-weight: 800; }
-.bg-titles p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
-
 /* Buttons */
 .btn {
   font: inherit; font-weight: 700; font-size: 14px;
