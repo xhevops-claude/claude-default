@@ -712,8 +712,6 @@
     }
     const confirm = e.target.closest('[data-act="confirm-tap"]');
     if (confirm) { e.stopPropagation(); const fn = armedCard && armedCard.fn; disarmCard(); if (fn) fn(); return; }
-    const cancel = e.target.closest('[data-act="cancel-tap"]');
-    if (cancel) { e.stopPropagation(); disarmCard(); return; }
     const card = e.target.closest('.vcard');
     if (!card) return;
     // An armed card that wasn't tapped on its confirm target: cancel.
