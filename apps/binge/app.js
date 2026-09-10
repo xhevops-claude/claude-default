@@ -712,6 +712,8 @@
     }
     const confirm = e.target.closest('[data-act="confirm-tap"]');
     if (confirm) { e.stopPropagation(); const fn = armedCard && armedCard.fn; disarmCard(); if (fn) fn(); return; }
+    const cancel = e.target.closest('[data-act="cancel-tap"]');
+    if (cancel) { e.stopPropagation(); disarmCard(); return; }
     const card = e.target.closest('.vcard');
     if (!card) return;
     // An armed card that wasn't tapped on its confirm target: cancel.
@@ -742,7 +744,7 @@
     const el = armedCard.el; armedCard = null;
     if (!el.isConnected) return;
     el.classList.remove('armed', 'play', 'watch', 'unwatch');
-    Array.prototype.forEach.call(el.querySelectorAll('.vtap-thumb, .vtap-yes'), (t) => t.remove());
+    Array.prototype.forEach.call(el.querySelectorAll('.vtap-thumb, .vtap-yes, .vtap-no'), (t) => t.remove());
   }
   // Arm a card for TAP_MS (touch only); confirming runs `fn`. In every kind
   // the card dims and its outline turns white, and a tap anywhere else
@@ -758,18 +760,24 @@
       el.querySelector('.vthumb').insertAdjacentHTML('beforeend',
         '<button type="button" class="vtap-thumb" data-act="confirm-tap">\u25B6 Tap to watch</button>');
     } else {
+      // Two labelled buttons anchored to the check's spot (right edge and
+      // vertical centre), growing leftwards: Cancel where the check was,
+      // the confirm to its left. The check hides underneath meanwhile.
       const chk = el.querySelector('.vcheck');
-      const yes = document.createElement('button');
-      yes.type = 'button';
-      yes.className = 'vtap-yes ' + kind;
-      yes.setAttribute('data-act', 'confirm-tap');
-      yes.setAttribute('aria-label', kind === 'watch' ? 'Mark watched' : 'Mark unwatched');
-      yes.innerHTML = kind === 'watch' ? '<svg class="ico"><use href="#i-check"/></svg>' : '\u21BA';
-      yes.style.left = (chk.offsetLeft - chk.offsetWidth - 8) + 'px';
-      yes.style.top = chk.offsetTop + 'px';
-      yes.style.width = chk.offsetWidth + 'px';
-      yes.style.height = chk.offsetHeight + 'px';
-      el.appendChild(yes);
+      const right = el.clientWidth - (chk.offsetLeft + chk.offsetWidth);
+      const top = chk.offsetTop + chk.offsetHeight / 2;
+      const mk = (cls, act, html) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = cls; b.setAttribute('data-act', act); b.innerHTML = html;
+        b.style.top = top + 'px';
+        el.appendChild(b);
+        return b;
+      };
+      const no = mk('vtap-no', 'cancel-tap', '\u2715 Cancel');
+      no.style.right = right + 'px';
+      const yes = mk('vtap-yes ' + kind, 'confirm-tap',
+        kind === 'watch' ? '<svg class="ico"><use href="#i-check"/></svg> Mark watched' : '\u21BA Mark unwatched');
+      yes.style.right = (right + no.offsetWidth + 8) + 'px';
     }
     armedCard = { el: el, kind: kind, fn: fn, timer: setTimeout(disarmCard, TAP_MS) };
   }

@@ -207,12 +207,15 @@ html, body {
 .vcard.armed.unwatch .vthumb, .vcard.armed.unwatch .vmeta { opacity: 0.35; }
 .vtap-thumb { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; border: 0; border-radius: inherit; cursor: pointer;
   background: rgba(52, 211, 153, 0.92); color: #06281c; font: inherit; font-weight: 800; font-size: 15px; animation: vtap-in 0.15s ease-out; }
-/* The confirm square for watched: same size as the check, just left of it. */
-.vtap-yes { position: absolute; z-index: 3; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; cursor: pointer;
-  font: inherit; font-weight: 800; font-size: 20px; line-height: 1; animation: vtap-in 0.15s ease-out; }
+/* The watched confirm pair: big labelled buttons anchored to the check's
+   spot, Cancel where the check was and the confirm to its left. */
+.vtap-yes, .vtap-no { position: absolute; z-index: 3; height: 52px; transform: translateY(-50%); padding: 0 18px; border: 0; border-radius: 12px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font: inherit; font-weight: 800; font-size: 15px; line-height: 1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); animation: vtap-in 0.15s ease-out; }
 .vtap-yes.watch { background: var(--green); color: #06281c; }
 .vtap-yes.unwatch { background: var(--blue); color: #fff; }
 .vtap-yes .ico { width: 22px; height: 22px; stroke-width: 2.6; }
+.vtap-no { background: var(--panel-2); color: var(--ink); border: 1px solid rgba(255, 255, 255, 0.35); }
 @keyframes vtap-in { from { opacity: 0; } to { opacity: 1; } }
 .vthumb { position: relative; border-radius: 10px; overflow: hidden; background: #000; }
 .vthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -223,15 +226,13 @@ html, body {
 .vsub { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .v-badge { color: var(--amber); }
 /* Check square: a 40px tap/click target with a stroke check. Mouse marks at
-   once (hover shows a hint); on touch the square becomes the cancel area
-   once armed, showing ✕. */
+   once (hover shows a hint); on touch it arms the card and hides under the
+   Cancel / Mark watched pair. */
 .vcheck { position: relative; width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(12, 13, 18, 0.6); color: rgba(255, 255, 255, 0.55); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font: inherit; font-weight: 800; font-size: 18px; line-height: 1; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
 .vcheck .ico { width: 20px; height: 20px; stroke-width: 2.4; }
 .vcheck:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.5); }
 .vcard.watched .vcheck { background: var(--green); border-color: transparent; color: #06281c; }
-.vcard.armed.watch .vcheck, .vcard.armed.unwatch .vcheck { background: var(--panel-2); border-color: rgba(255, 255, 255, 0.5); color: var(--ink); }
-.vcard.armed.watch .vcheck .ico, .vcard.armed.unwatch .vcheck .ico { display: none; }
-.vcard.armed.watch .vcheck::before, .vcard.armed.unwatch .vcheck::before { content: "\2715"; }
+.vcard.armed.watch .vcheck, .vcard.armed.unwatch .vcheck { visibility: hidden; }
 @media (hover: hover) {
   .vcheck::after { content: attr(data-hint); position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%) translateX(6px); z-index: 4;
     background: var(--ink); color: var(--bg); font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 7px; white-space: nowrap; pointer-events: none;
