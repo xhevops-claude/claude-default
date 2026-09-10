@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Binge</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%BF%3C/text%3E%3C/svg%3E" />
+  <script>
+    if (window.self !== window.top) document.documentElement.classList.add('embedded');
+  </script>
+  <style>
+    /* Critical inline CSS: paint the splash on the first frame. */
+    html, body { margin: 0; padding: 0; background: #0c0d12; color: #f4f5fb;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+      touch-action: manipulation; }
+    #app-loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(120% 90% at 50% 16%, #181b27 0%, #0c0d12 64%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 22px; transition: opacity 0.45s ease;
+    }
+    #app-loading.hidden { opacity: 0; pointer-events: none; }
+    #app-loading .gl-icon { font-size: 80px; line-height: 1; filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.55)); }
+    #app-loading .gl-word { font-weight: 800; letter-spacing: 0.4em; font-size: 13px;
+      text-transform: uppercase; color: #fca5a5; padding-left: 0.4em; }
+    #app-loading .gl-bar { position: relative; width: 184px; height: 3px;
+      background: rgba(252, 165, 165, 0.16); overflow: hidden; border-radius: 2px; }
+    #app-loading .gl-bar::after { content: ""; position: absolute; top: 0; left: -40%;
+      width: 40%; height: 100%; background: linear-gradient(90deg, #ef4444, #f59e0b);
+      animation: gl-run 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+    @keyframes gl-run { 0% { left: -40%; } 100% { left: 100%; } }
+  </style>
+  <link rel="stylesheet" href="styles.css?v=24427cb" />
+</head>
+<body>
+  <div id="app-loading">
+    <span class="gl-icon" aria-hidden="true">🍿</span>
+    <span class="gl-word">Loading</span>
+    <div class="gl-bar" aria-label="Loading"></div>
+  </div>
+
+  <!-- Inline icon set (stroke icons, currentColor) used by the toolbar. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+      <symbol id="i-oldest" viewBox="0 0 24 24"><path d="M7 20V5M3.5 8.5 7 5l3.5 3.5M13 6h9M13 12h6M13 18h3"/></symbol>
+      <symbol id="i-newest" viewBox="0 0 24 24"><path d="M7 4v15M3.5 15.5 7 19l3.5-3.5M13 6h9M13 12h6M13 18h3"/></symbol>
+      <symbol id="i-popular" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10.5h17M8 15h.01M12 15h.01M16 15h.01"/></symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3.5 5h17l-6.5 7.5V18l-4 2v-7.5z"/></symbol>
+      <symbol id="i-bundle" viewBox="0 0 24 24"><path d="M12 3 3 7.5l9 4.5 9-4.5L12 3zM3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></symbol>
+      <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="12.5" rx="2"/><path d="M8 3.5l4 4 4-4"/></symbol>
+    </defs>
+  </svg>
+
+  <main class="binge">
+    <!-- Player -->
+    <section class="player-wrap" id="player-wrap" hidden>
+      <div class="player-frame">
+        <div id="player"></div>
+        <div class="player-veil" id="veil" hidden>
+          <span class="veil-text" id="veil-text">Loading…</span>
+          <a id="veil-link" class="veil-link" href="#" target="_blank" rel="noopener" hidden>Watch on YouTube ↗</a>
+        </div>
+      </div>
+      <div class="now">
+        <div class="now-meta">
+          <div class="now-title" id="now-title">—</div>
+          <div class="now-by" id="now-by">—</div>
+        </div>
+      </div>
+      <div class="now-actions">
+        <button id="watched-next" type="button" class="btn primary">✓ Watched · next</button>
+        <button id="skip" type="button" class="btn ghost">Skip ›</button>
+        <a id="yt-link" class="btn ghost" href="#" target="_blank" rel="noopener">YouTube ↗</a>
+        <button id="close-player" type="button" class="btn ghost">✕ Close</button>
+      </div>
+    </section>
+
+    <!-- Group tabs: always visible; the active tab owns the filters -->
+    <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
+
+    <!-- Toolbar: Group by / Sort / Filters — what content is shown, and how it is arranged -->
+    <section class="toolbar" id="toolbar" hidden>
+      <div class="seg" role="tablist" aria-label="Group by">
+        <button type="button" class="seg-btn" data-group="year" role="tab" title="Group by year" aria-label="Group by year"><svg class="ico"><use href="#i-calendar"/></svg></button>
+        <button type="button" class="seg-btn" data-group="bundle" role="tab" title="Group by bundle" aria-label="Group by channel bundle"><svg class="ico"><use href="#i-bundle"/></svg></button>
+        <button type="button" class="seg-btn" data-group="channel" role="tab" title="Group by channel" aria-label="Group by channel"><svg class="ico"><use href="#i-tv"/></svg></button>
+      </div>
+      <div class="seg" role="tablist" aria-label="Sort">
+        <button type="button" class="seg-btn" data-sort="old" role="tab" title="Oldest first" aria-label="Oldest first"><svg class="ico"><use href="#i-oldest"/></svg></button>
+        <button type="button" class="seg-btn" data-sort="new" role="tab" title="Newest first" aria-label="Newest first"><svg class="ico"><use href="#i-newest"/></svg></button>
+        <button type="button" class="seg-btn" data-sort="popular" role="tab" title="Most viewed" aria-label="Most viewed"><svg class="ico"><use href="#i-popular"/></svg></button>
+      </div>
+      <div class="seg tb-filter">
+        <button id="filters-toggle" type="button" class="seg-btn" aria-expanded="false" aria-controls="filters" title="Filters" aria-label="Filters"><svg class="ico"><use href="#i-filter"/></svg></button>
+      </div>
+    </section>
+
+    <!-- Filters: opened by the funnel button in the toolbar; the active tab owns them -->
+    <section class="filters" id="filters" hidden>
+      <div class="filters-body" id="filters-body">
+        <div class="fgroup">
+          <div class="fgroup-head">
+            <span class="fgroup-label" id="chan-label">Channels</span>
+            <span class="fgroup-actions">
+              <button id="chan-all" type="button" class="linkbtn">Select all</button>
+              <button id="chan-none" type="button" class="linkbtn">Clear all</button>
+            </span>
+          </div>
+          <div class="chan-switches" id="chan-switches"></div>
+        </div>
+
+        <div class="fgroup">
+          <div class="fgroup-head">
+            <span class="fgroup-label">Show up to</span>
+            <span class="fgroup-actions"><button id="filters-reset" type="button" class="linkbtn">Today</button></span>
+          </div>
+          <div class="dslider" id="ds-year">
+            <div class="dslider-row"><span class="dslider-label">Year</span><span class="dslider-value" id="yr-value">—</span></div>
+            <div id="f-year" class="slot-slider" role="slider" tabindex="0" aria-label="Year" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><div class="slot-knob"></div></div>
+          </div>
+          <div class="dslider" id="ds-month">
+            <div class="dslider-row"><span class="dslider-label">Month</span><span class="dslider-value" id="mo-value">—</span></div>
+            <div id="f-month" class="slot-slider" role="slider" tabindex="0" aria-label="Month" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0"><div class="slot-knob"></div></div>
+          </div>
+          <div class="dslider" id="ds-day">
+            <div class="dslider-row"><span class="dslider-label">Day</span><span class="dslider-value" id="dy-value">—</span></div>
+            <div id="f-day" class="slot-slider" role="slider" tabindex="0" aria-label="Day" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0"><div class="slot-knob"></div></div>
+          </div>
+        </div>
+
+        <div class="fgroup-foot">
+          <label class="switch">
+            <input type="checkbox" id="show-watched" class="switch-input" />
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Show already-watched videos</span>
+          </label>
+          <span class="foot-actions">
+            <button id="sync-open" type="button" class="linkbtn">Sync ☁</button>
+            <button id="clear-watched" type="button" class="linkbtn">Clear watched</button>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress: the active bundle's watched count, separates the content controls above from the view controls below -->
+    <div class="progress" id="progress" hidden>
+      <div class="progress-row">
+        <span class="progress-note" id="results-count">—</span>
+        <span class="progress-text" id="progress-text">—</span>
+      </div>
+      <div class="progress-bar"><span id="progress-fill"></span></div>
+    </div>
+
+    <!-- Results header: list/grid view and expand/collapse all groups -->
+    <div class="results-bar" id="results-bar" hidden>
+      <div class="seg" role="tablist" aria-label="View">
+        <button type="button" class="seg-btn" data-view="list" role="tab" title="List" aria-label="List view"><svg class="ico"><use href="#i-list"/></svg></button>
+        <button type="button" class="seg-btn" data-view="grid" role="tab" title="Grid" aria-label="Grid view"><svg class="ico"><use href="#i-grid"/></svg></button>
+      </div>
+      <button id="collapse-all" type="button" class="btn ghost small">Collapse all</button>
+    </div>
+
+    <!-- Grouped sections -->
+    <section class="sections" id="sections" aria-label="Videos"></section>
+
+    <!-- Status / empty -->
+    <section class="status-panel" id="status-panel">
+      <div class="status-icon" aria-hidden="true">🍿</div>
+      <div class="status-msg" id="status-msg">Loading channels…</div>
+      <button id="status-action" type="button" class="btn primary" hidden></button>
+    </section>
+
+    <!-- Undo toast: floats above the HUD for a few seconds after marking watched -->
+    <div class="toast" id="toast" hidden role="status">
+      <span class="toast-msg" id="toast-msg"></span>
+      <button id="toast-undo" type="button" class="toast-undo">Undo</button>
+    </div>
+
+    <div class="hud">
+      <button id="quit" type="button" class="btn ghost">Quit</button>
+    </div>
+  </main>
+
+  <!-- Sync (no backend): copy your data to save it as the shared baseline -->
+  <div class="sync-modal" id="sync-modal" hidden role="dialog" aria-label="Sync data">
+    <div class="sync-card">
+      <div class="sync-head">
+        <span class="sync-title">Sync across devices</span>
+        <button id="sync-close" type="button" class="sync-x" aria-label="Close">×</button>
+      </div>
+      <p class="sync-sub">No account needed. <b>Copy your data</b> and paste it to Claude to save it as the shared baseline — every device loads that on top of its own changes. Or paste someone's data below and <b>Merge</b> to pull it in here.</p>
+      <button id="sync-copy" type="button" class="btn primary">⧉ Copy my data</button>
+      <textarea id="sync-paste" class="sync-ta" placeholder="Paste data here, then Merge…" spellcheck="false"></textarea>
+      <div class="sync-actions">
+        <button id="sync-apply" type="button" class="btn">Merge pasted data</button>
+      </div>
+      <div class="sync-note" id="sync-note" role="status"></div>
+    </div>
+  </div>
+
+  <script src="app.js?v=24427cb"></script>
+</body>
+</html>
