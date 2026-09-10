@@ -788,7 +788,7 @@
     if (!armed) return;
     clearTimeout(armed.timer);
     const el = armed.el; armed = null;
-    if (el.isConnected) { el.classList.remove('arm'); el.textContent = '\u2713'; }
+    if (el.isConnected) { el.classList.remove('arm'); el.parentElement.classList.remove('arming'); el.textContent = '\u2713'; }
   }
   // The armed pill has two halves: ✓ on the left confirms, ✕ on the right
   // cancels. It grows leftwards from the check, so the spot of the first tap
@@ -802,6 +802,7 @@
     }
     disarm();
     el.classList.add('arm');
+    el.parentElement.classList.add('arming');
     const undoing = el.classList.contains('done');
     el.innerHTML = '<span class="arm-yes' + (undoing ? ' unwatch' : '') + '">' + (undoing ? '\u21BA Mark all unwatched' : '\u2713 Mark all watched') + '</span>'
       + '<span class="arm-no">\u2715 Cancel</span>';
