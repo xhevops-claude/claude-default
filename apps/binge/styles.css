@@ -142,6 +142,7 @@ html, body {
 .toolbar { --seg-btn-max: 68px; display: flex; gap: 8px; justify-content: space-between; align-items: stretch; }
 .seg { display: flex; flex: var(--n, 1) 1 0; min-width: 0; max-width: calc(var(--n, 1) * var(--seg-btn-max) + 8px); background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
 .seg[aria-label="Group by"], .seg[aria-label="Sort"] { --n: 3; }
+.toolbar.one-bundle .seg[aria-label="Group by"] { --n: 2; }   /* bundle option hidden off the All tab */
 .seg-btn { font: inherit; line-height: 1; color: var(--muted); background: transparent; border: 0; padding: 0; border-radius: 7px; flex: 1 1 0; min-width: 0; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
 .seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--amber); }
 .ico { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; display: block; }

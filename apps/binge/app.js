@@ -13,7 +13,7 @@
     sort: 'binge-sort',
     group: 'binge-group',
     tab: 'binge-tab',                    // active group id ('all' or a groups.json id)
-    tabs: 'binge-tabs',                  // { groupId: { off:[slug], cutoff:{y,m,d}, showWatched } } — per-tab filters
+    tabs: 'binge-tabs',                  // { groupId: { off, cutoff, showWatched, group, sort, views: { [group]: { view, collapsed } } } }
   };
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -31,11 +31,15 @@
   // ---- persisted state ----
   let selected = new Set();                       // channel slugs shown — derived from the active group minus its exclusions
   let activeTab = load(LS.tab, 'all');            // active group id
-  let tabs = load(LS.tabs, {});                   // groupId -> { off, cutoff, showWatched } — each tab owns its filters
+  // Settings form a tree that mirrors the rows on screen: each tab (row 1)
+  // owns its filters, group-by and sort (row 2); each tab + group-by pair owns
+  // its list/grid view and collapsed sections (row 3). `tabs` holds all of it;
+  // the vars below mirror the active branch for the renderer.
+  let tabs = load(LS.tabs, {});
   let watchedTo = load(LS.watchedTo, {});         // slug -> yyyymmdd cursor
   let showWatched = true;                         // mirrors the active tab's setting
   let cutoff = todayYMD();                        // mirrors the active tab's cutoff
-  let view = pick(LS.view, VIEWS, 'list');
+  let view = pick(LS.view, VIEWS, 'list');        // (legacy globals seed tabs that have no setting yet)
   let sortBy = pick(LS.sort, SORTS, 'old');
   let groupBy = pick(LS.group, GROUPS, 'year');
   let filtersOpen = false;                        // panel is tucked away until the funnel is tapped
@@ -46,7 +50,7 @@
   let channelData = {};      // slug -> {name, videos:[...]}
   let currentId = null;
   const unavailable = new Set();
-  const collapsed = new Set();   // collapsed section keys
+  let collapsed = new Set();     // collapsed section keys for the active tab + group-by
   let yearRange = [];
 
   // ---- elements ----
@@ -224,7 +228,33 @@
     const s = tabState(id).showWatched;
     return typeof s === 'boolean' ? s : load(LS.showWatched, true);
   }
-  // Pull the active tab's filters into the runtime vars the renderer reads.
+  // Row 2, per tab: group-by and sort. Grouping by bundle only makes sense on
+  // All, where several bundles are in play; elsewhere it falls back to year.
+  function tabGroup(id) {
+    const g = tabState(id).group;
+    const v = GROUPS.indexOf(g) >= 0 ? g : pick(LS.group, GROUPS, 'year');
+    return (v === 'bundle' && id !== 'all') ? 'year' : v;
+  }
+  function tabSort(id) { const v = tabState(id).sort; return SORTS.indexOf(v) >= 0 ? v : pick(LS.sort, SORTS, 'old'); }
+  // Row 3, per tab + group-by: list/grid view and collapsed sections.
+  function viewNode(id, group) {
+    const views = tabState(id).views;
+    const n = (views && typeof views === 'object') ? views[group] : null;
+    return (n && typeof n === 'object') ? n : {};
+  }
+  function setViewPref(id, group, key, val) {
+    const views = Object.assign({}, tabState(id).views || {});
+    const node = Object.assign({}, viewNode(id, group));
+    if (val == null) delete node[key]; else node[key] = val;
+    if (Object.keys(node).length) views[group] = node; else delete views[group];
+    setTabPref(id, 'views', Object.keys(views).length ? views : null);
+  }
+  function tabView(id, group) { const v = viewNode(id, group).view; return VIEWS.indexOf(v) >= 0 ? v : pick(LS.view, VIEWS, 'list'); }
+  function tabCollapsed(id, group) { const c = viewNode(id, group).collapsed; return new Set(Array.isArray(c) ? c : []); }
+  function loadViewNode() { view = tabView(activeTab, groupBy); collapsed = tabCollapsed(activeTab, groupBy); }
+  function saveCollapsed() { setViewPref(activeTab, groupBy, 'collapsed', collapsed.size ? Array.from(collapsed) : null); }
+  // Pull the active tab's branch of the settings tree into the runtime vars
+  // the renderer reads.
   function recomputeSelected() {
     const g = currentGroup();
     activeTab = g.id;
@@ -233,6 +263,9 @@
     cutoff = tabCutoff(g.id);
     showWatched = tabShowWatched(g.id);
     showWatchedChk.checked = showWatched;
+    groupBy = tabGroup(g.id);
+    sortBy = tabSort(g.id);
+    loadViewNode();
   }
   function saveCutoff() { setTabPref(activeTab, 'cutoff', { y: cutoff.y, m: cutoff.m, d: cutoff.d }); }
   function saveShowWatched() { setTabPref(activeTab, 'showWatched', showWatched); }
@@ -551,6 +584,10 @@
 
   // ---- toolbar (view · sort · filters) + results bar (group by) ----
   function renderToolbar() {
+    // Bundle grouping is only offered on All; a single bundle has nothing to group.
+    const oneBundle = activeTab !== 'all';
+    toolbar.querySelector('[data-group="bundle"]').hidden = oneBundle;
+    toolbar.classList.toggle('one-bundle', oneBundle);
     Array.prototype.forEach.call(document.querySelectorAll('.toolbar .seg-btn, .results-bar .seg-btn'), (b) => {
       const on = b.hasAttribute('data-view') ? b.getAttribute('data-view') === view
         : b.hasAttribute('data-sort') ? b.getAttribute('data-sort') === sortBy
@@ -657,6 +694,7 @@
     if (tog) {
       const k = tog.getAttribute('data-key');
       if (collapsed.has(k)) collapsed.delete(k); else collapsed.add(k);
+      saveCollapsed();
       render();
       return;
     }
@@ -729,6 +767,7 @@
     const groups = buildGroups(sortVids(baseVideos()));
     if (collapseAllBtn.dataset.allOpen === 'true') groups.forEach((g) => collapsed.add(g.key));
     else groups.forEach((g) => collapsed.delete(g.key));
+    saveCollapsed();
     render();
   });
 
@@ -913,9 +952,9 @@
 
   function onSegClick(e) {
     const b = e.target.closest('.seg-btn'); if (!b) return;
-    if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); save(LS.view, view); }
-    else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); save(LS.sort, sortBy); }
-    else if (b.hasAttribute('data-group')) { groupBy = b.getAttribute('data-group'); save(LS.group, groupBy); }
+    if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); setViewPref(activeTab, groupBy, 'view', view); }
+    else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); setTabPref(activeTab, 'sort', sortBy); }
+    else if (b.hasAttribute('data-group')) { groupBy = b.getAttribute('data-group'); setTabPref(activeTab, 'group', groupBy); loadViewNode(); }
     else return;   // the funnel button has its own handler
     render();
   }
