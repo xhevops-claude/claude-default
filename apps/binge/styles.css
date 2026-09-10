@@ -155,10 +155,13 @@ html, body {
 .tb-filter .seg-btn.on::after { content: ""; position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 2px var(--panel); }
 
 /* Progress + results bar */
-.progress { display: flex; align-items: center; gap: 10px; }
-.progress-bar { flex: 1; height: 6px; border-radius: 6px; background: var(--panel); overflow: hidden; }
-.progress-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--red), var(--amber)); transition: width 0.3s ease; }
-.progress-text { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Watched progress: the text sits on its own line above a full-width track,
+   so the bar's end is never confused with where the label starts. The track
+   has a visible border, so its total length reads even when nearly empty. */
+.progress { display: flex; flex-direction: column; gap: 6px; }
+.progress-text { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.progress-bar { height: 8px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
+.progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--red), var(--amber)); transition: width 0.3s ease; }
 .results-bar { display: flex; align-items: center; justify-content: space-between; }
 .results-count { color: var(--muted); font-size: 13px; }
 
