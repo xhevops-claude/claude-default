@@ -781,12 +781,11 @@
       row.className = 'vtap-row';
       const thumb = el.querySelector('.vthumb');
       if (!opts.area && thumb && el.closest('.vids.list')) {
-        // List card: two squares the size of the thumbnail's height, hugging
+        // List card: two cells, each exactly the thumbnail's size, hugging
         // the card's right edge at the thumbnail's level.
-        const side = thumb.offsetHeight;
         row.style.top = thumb.offsetTop + 'px';
-        row.style.height = side + 'px';
-        row.style.width = (side * 2 + 6) + 'px';
+        row.style.height = thumb.offsetHeight + 'px';
+        row.style.width = (thumb.offsetWidth * 2 + 6) + 'px';
         row.style.right = '6px';
       } else {
         // Grid card: two equal halves over the text area under the thumbnail.
