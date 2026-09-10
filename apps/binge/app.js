@@ -415,16 +415,17 @@
     const key = all.map((g) => g.id + ':' + g.channels.length).join('|');
     if (groupTabs.dataset.key !== key) {
       groupTabs.dataset.key = key;
-      groupTabs.innerHTML = all.map((g) =>
+      const tabHtml = (g) =>
         '<button class="tab" type="button" role="tab" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
-        + escapeHTML(g.name) + '<span class="tab-n"></span></button>'
-      ).join('');
+        + '<span class="tab-name">' + escapeHTML(g.name) + '</span><span class="tab-n"></span></button>';
+      // "All" stays put on the left; the bundles scroll sideways next to it.
+      groupTabs.innerHTML = tabHtml(all[0]) + '<div class="tabs-scroll">' + all.slice(1).map(tabHtml).join('') + '</div>';
     }
-    // Each pill carries its own cutoff year, so the per-tab dates read at a glance.
+    // Each tab carries its own cutoff date under the name, so the per-tab dates read at a glance.
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
       const id = b.getAttribute('data-tab');
       b.setAttribute('aria-selected', String(id === activeTab));
-      b.querySelector('.tab-n').textContent = String(tabCutoff(id).y);
+      b.querySelector('.tab-n').textContent = cutoffText(tabCutoff(id));
     });
   }
   groupTabs.addEventListener('click', (e) => {
@@ -532,11 +533,13 @@
     const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
     return offSet(g.id).size > 0 || !isToday || !showWatched;
   }
-  function cutoffLabel() {
+  function cutoffLabel() { return cutoffText(cutoff); }
+  // A cutoff as text: "today", or yyyy MM dd.
+  function cutoffText(c) {
     const t = todayYMD();
-    const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
-    const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    return isToday ? 'today' : fmtYMD(cutoff.y, cutoff.m, d);
+    const isToday = c.y === t.y && c.m === t.m && c.d === t.d;
+    const d = Math.min(c.d, daysInMonth(c.y, c.m));
+    return isToday ? 'today' : fmtYMD(c.y, c.m, d);
   }
   // "up to" dates read as yyyy MM dd, e.g. 2023 07 01.
   function fmtYMD(y, m, d) {

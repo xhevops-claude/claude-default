@@ -88,15 +88,17 @@ html, body {
 .fgroup-actions { display: flex; gap: 6px; }
 .fgroup-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 
-/* Group tabs: one pill per group from groups.json plus an automatic "All".
-   Sits right under the filters panel, always visible; horizontally
-   scrollable so a long list stays on one row on phones. */
-.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; margin-top: -6px; -webkit-overflow-scrolling: touch; }
-.tabs::-webkit-scrollbar { display: none; }
-.tab { flex: none; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer; white-space: nowrap; transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
+/* Group tabs: one box per group from groups.json plus an automatic "All".
+   "All" stays put on the left; the rest sit in a horizontally scrollable
+   strip so a long list stays on one row on phones. Each tab shows its own
+   cutoff date under the name. */
+.tabs { display: flex; gap: 6px; padding: 2px 0; margin-top: -6px; }
+.tabs-scroll { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tabs-scroll::-webkit-scrollbar { display: none; }
+.tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; font-weight: 700; font-size: 14px; line-height: 1.2; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; cursor: pointer; white-space: nowrap; transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
 .tab[aria-selected="true"] { background: var(--red); border-color: transparent; color: #fff; }
 .tab:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-.tab-n { opacity: 0.7; font-weight: 600; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.tab-n { opacity: 0.65; font-weight: 600; font-size: 10px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 
 .chan-switches { display: flex; flex-direction: column; gap: 2px; }
 .chan-switch { padding: 8px 2px; }
