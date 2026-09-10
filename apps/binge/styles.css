@@ -201,6 +201,8 @@ html, body {
 .v-badge { color: var(--amber); }
 .vcheck { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(12, 13, 18, 0.55); color: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 .vcard.watched .vcheck { background: var(--green); border-color: transparent; color: #06281c; }
+/* Armed (first tap): the check swells into an amber "Tap again" pill. */
+.vcheck.arm, .vcard.watched .vcheck.arm, .section-markall.arm { width: auto; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--amber); border-color: transparent; color: #1a1200; font-size: 12px; font-weight: 800; white-space: nowrap; }
 
 /* List layout */
 .vids.list .vcard { display: flex; align-items: center; gap: 12px; padding: 6px; }

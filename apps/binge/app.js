@@ -534,16 +534,16 @@
     return offSet(g.id).size > 0 || !isToday || !showWatched;
   }
   function cutoffLabel() { return cutoffText(cutoff); }
-  // A cutoff as text: "today", or yyyy MM dd.
+  // A cutoff as text: "today", or yyyy MON d.
   function cutoffText(c) {
     const t = todayYMD();
     const isToday = c.y === t.y && c.m === t.m && c.d === t.d;
     const d = Math.min(c.d, daysInMonth(c.y, c.m));
     return isToday ? 'today' : fmtYMD(c.y, c.m, d);
   }
-  // "up to" dates read as yyyy MM dd, e.g. 2023 07 01.
+  // "up to" dates read as yyyy MON d, e.g. 2023 JUL 1.
   function fmtYMD(y, m, d) {
-    return y + ' ' + String(m).padStart(2, '0') + ' ' + String(d).padStart(2, '0');
+    return y + ' ' + MONTHS[m - 1].toUpperCase() + ' ' + d;
   }
   function resetCutoff() { cutoff = todayYMD(); saveCutoff(); render(); }
   function commitCutoff() { saveCutoff(); render(); }
@@ -604,6 +604,7 @@
         + '<button class="section-markall' + (done ? ' done' : '') + '" type="button" data-markkey="' + escapeHTML(g.key) + '" title="Mark section watched">✓</button>'
         + '</div>' + body + '</div>';
     });
+    disarm();
     sectionsEl.innerHTML = html.join('');
   }
 
@@ -635,7 +636,7 @@
 
   sectionsEl.addEventListener('click', (e) => {
     const mark = e.target.closest('[data-markkey]');
-    if (mark) { markSectionWatched(mark.getAttribute('data-markkey')); return; }
+    if (mark) { armOrFire(mark, () => markSectionWatched(mark.getAttribute('data-markkey'))); return; }
     const tog = e.target.closest('.section-toggle');
     if (tog) {
       const k = tog.getAttribute('data-key');
@@ -644,10 +645,30 @@
       return;
     }
     const chk = e.target.closest('[data-act="toggle"]');
-    if (chk) { e.stopPropagation(); toggleWatched(chk.getAttribute('data-id')); return; }
+    if (chk) { e.stopPropagation(); armOrFire(chk, () => toggleWatched(chk.getAttribute('data-id'))); return; }
     const card = e.target.closest('.vcard');
     if (card) play(card.getAttribute('data-id'));
   });
+
+  // Marking watched moves a channel's date cursor (everything before it
+  // counts as watched too), so a stray tap is costly. The first tap arms the
+  // button ("Tap again"); a second tap within ARM_MS performs the action. Any
+  // other tap, a timeout, or a re-render disarms it.
+  const ARM_MS = 3000;
+  let armed = null;   // { el, timer }
+  function disarm() {
+    if (!armed) return;
+    clearTimeout(armed.timer);
+    const el = armed.el; armed = null;
+    if (el.isConnected) { el.classList.remove('arm'); el.textContent = '\u2713'; }
+  }
+  function armOrFire(el, fn) {
+    if (armed && armed.el === el) { disarm(); fn(); return; }
+    disarm();
+    el.classList.add('arm'); el.textContent = 'Tap again';
+    armed = { el: el, timer: setTimeout(disarm, ARM_MS) };
+  }
+  document.addEventListener('click', (e) => { if (armed && !armed.el.contains(e.target)) disarm(); }, true);
 
   collapseAllBtn.addEventListener('click', () => {
     const groups = buildGroups(sortVids(baseVideos()));
