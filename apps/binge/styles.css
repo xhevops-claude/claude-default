@@ -206,6 +206,7 @@ html, body {
 .vcard.armed.play .vmeta, .vcard.armed.play .vcheck { opacity: 0.35; }
 .vcard.armed.watch .vthumb, .vcard.armed.watch .vmeta,
 .vcard.armed.unwatch .vthumb, .vcard.armed.unwatch .vmeta { opacity: 0.35; }
+.vtap-row { border-radius: 10px; overflow: hidden; }   /* clips to the thumbnail's corners in grid */
 .vtap-thumb { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; border: 0; border-radius: inherit; cursor: pointer;
   background: rgba(52, 211, 153, 0.92); color: #06281c; font: inherit; font-weight: 600; font-size: 15px; animation: vtap-in 0.15s ease-out; }
 /* The watched confirm row: two equal touch areas — the action (green /

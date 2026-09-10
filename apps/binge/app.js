@@ -787,10 +787,15 @@
         row.style.height = thumb.offsetHeight + 'px';
         row.style.width = (thumb.offsetWidth * 2 + 6) + 'px';
         row.style.right = '6px';
+      } else if (!opts.area && thumb) {
+        // Grid card: two equal halves covering the thumbnail itself.
+        row.style.left = thumb.offsetLeft + 'px';
+        row.style.top = thumb.offsetTop + 'px';
+        row.style.width = thumb.offsetWidth + 'px';
+        row.style.height = thumb.offsetHeight + 'px';
       } else {
-        // Grid card: two equal halves over the text area under the thumbnail.
         // Section header: two halves over the whole header.
-        const area = opts.area || el.querySelector('.vmeta') || el;
+        const area = opts.area || el;
         const h = Math.max(60, area.offsetHeight);
         row.style.left = (area === el ? 0 : area.offsetLeft) + 'px';
         row.style.width = (area === el ? el.clientWidth : area.offsetWidth) + 'px';
