@@ -199,19 +199,20 @@ html, body {
 .vcard.playing { border-color: var(--red); background: var(--panel); }
 /* Touch-armed card: a veil with "Tap again to watch" and a cancel, so a
    stray finger doesn't open the player. */
-.vcard.armed { border-color: var(--amber); }
-/* Play-armed: white outline, green "Tap to watch" over the thumbnail only,
-   everything else dimmed. */
-.vcard.armed.play { border-color: var(--ink); background: var(--panel); }
+/* Armed (touch): white outline, the card content dimmed, and the confirm
+   target lit — over the thumbnail for play, beside the check for watched. */
+.vcard.armed { border-color: var(--ink); background: var(--panel); }
 .vcard.armed.play .vmeta, .vcard.armed.play .vcheck { opacity: 0.35; }
+.vcard.armed.watch .vthumb, .vcard.armed.watch .vmeta,
+.vcard.armed.unwatch .vthumb, .vcard.armed.unwatch .vmeta { opacity: 0.35; }
 .vtap-thumb { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; border: 0; border-radius: inherit; cursor: pointer;
   background: rgba(52, 211, 153, 0.92); color: #06281c; font: inherit; font-weight: 800; font-size: 15px; animation: vtap-in 0.15s ease-out; }
-.vtap { position: absolute; inset: 0; z-index: 3; display: flex; gap: 6px; padding: 6px; border-radius: inherit; background: rgba(12, 13, 18, 0.9); animation: vtap-in 0.15s ease-out; }
-/* Two fat-finger halves, each the full height of the card. */
-.vtap-go, .vtap-cancel { flex: 1 1 0; min-width: 0; font: inherit; font-weight: 800; font-size: 15px; border: 0; border-radius: 10px; cursor: pointer; }
-.vtap-go.watch { background: var(--green); color: #06281c; }
-.vtap-go.unwatch { background: var(--blue); color: #fff; }
-.vtap-cancel { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); }
+/* The confirm square for watched: same size as the check, just left of it. */
+.vtap-yes { position: absolute; z-index: 3; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; cursor: pointer;
+  font: inherit; font-weight: 800; font-size: 20px; line-height: 1; animation: vtap-in 0.15s ease-out; }
+.vtap-yes.watch { background: var(--green); color: #06281c; }
+.vtap-yes.unwatch { background: var(--blue); color: #fff; }
+.vtap-yes .ico { width: 22px; height: 22px; stroke-width: 2.6; }
 @keyframes vtap-in { from { opacity: 0; } to { opacity: 1; } }
 .vthumb { position: relative; border-radius: 10px; overflow: hidden; background: #000; }
 .vthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -221,8 +222,23 @@ html, body {
 .vcard.watched .vtitle { color: var(--muted); }
 .vsub { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .v-badge { color: var(--amber); }
-.vcheck { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(12, 13, 18, 0.55); color: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+/* Check square: a 40px tap/click target with a stroke check. Mouse marks at
+   once (hover shows a hint); on touch the square becomes the cancel area
+   once armed, showing ✕. */
+.vcheck { position: relative; width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(12, 13, 18, 0.6); color: rgba(255, 255, 255, 0.55); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font: inherit; font-weight: 800; font-size: 18px; line-height: 1; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+.vcheck .ico { width: 20px; height: 20px; stroke-width: 2.4; }
+.vcheck:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.5); }
 .vcard.watched .vcheck { background: var(--green); border-color: transparent; color: #06281c; }
+.vcard.armed.watch .vcheck, .vcard.armed.unwatch .vcheck { background: var(--panel-2); border-color: rgba(255, 255, 255, 0.5); color: var(--ink); }
+.vcard.armed.watch .vcheck .ico, .vcard.armed.unwatch .vcheck .ico { display: none; }
+.vcard.armed.watch .vcheck::before, .vcard.armed.unwatch .vcheck::before { content: "\2715"; }
+@media (hover: hover) {
+  .vcheck::after { content: attr(data-hint); position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%) translateX(6px); z-index: 4;
+    background: var(--ink); color: var(--bg); font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 7px; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity 0.15s ease, transform 0.15s ease; }
+  .vcheck:hover::after { opacity: 1; transform: translateY(-50%); }
+  .vcard.armed .vcheck::after { display: none; }
+}
 /* Armed section ✓ (first tap): swells into a two-half pill — the action on
    the left, Cancel on the right — growing leftwards from where it was, so
    the spot of the first tap lands in the cancel half. */
