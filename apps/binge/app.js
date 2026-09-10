@@ -536,7 +536,11 @@
     const t = todayYMD();
     const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
     const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    return isToday ? 'today' : d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y;
+    return isToday ? 'today' : fmtYMD(cutoff.y, cutoff.m, d);
+  }
+  // "up to" dates read as yyyy MM dd, e.g. 2023 07 01.
+  function fmtYMD(y, m, d) {
+    return y + ' ' + String(m).padStart(2, '0') + ' ' + String(d).padStart(2, '0');
   }
   function resetCutoff() { cutoff = todayYMD(); saveCutoff(); render(); }
   function commitCutoff() { saveCutoff(); render(); }
@@ -671,7 +675,7 @@
   }
   function fmtYMDInt(ymd) {
     const y = Math.floor(ymd / 10000), m = Math.floor(ymd / 100) % 100, d = ymd % 100;
-    return d + ' ' + MONTHS[m - 1] + ' ' + y;
+    return fmtYMD(y, m, d);
   }
   function toggleWatched(id) {
     const v = findVideo(id);
