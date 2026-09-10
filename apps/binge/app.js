@@ -696,7 +696,7 @@
       const fn = () => withUndo(() => markSectionWatched(key));
       if (lastPointer === 'touch') {
         const done = mark.classList.contains('done');
-        armCard(head, done ? 'unwatch' : 'watch', fn, { area: head, label: done ? 'Mark all as unwatched' : 'Mark all as watched' });
+        armCard(head, done ? 'unwatch' : 'watch', fn, { header: true, label: done ? 'Mark all as unwatched' : 'Mark all as watched' });
       } else fn();
       return;
     }
@@ -780,26 +780,26 @@
       const row = document.createElement('div');
       row.className = 'vtap-row';
       const thumb = el.querySelector('.vthumb');
-      if (!opts.area && thumb && el.closest('.vids.list')) {
+      if (!opts.header && thumb && el.closest('.vids.list')) {
         // List card: two cells, each exactly the thumbnail's size, hugging
         // the card's right edge at the thumbnail's level.
         row.style.top = thumb.offsetTop + 'px';
         row.style.height = thumb.offsetHeight + 'px';
         row.style.width = (thumb.offsetWidth * 2 + 6) + 'px';
         row.style.right = '6px';
-      } else if (!opts.area && thumb) {
+      } else if (!opts.header && thumb) {
         // Grid card: two equal halves covering the thumbnail itself.
         row.style.left = thumb.offsetLeft + 'px';
         row.style.top = thumb.offsetTop + 'px';
         row.style.width = thumb.offsetWidth + 'px';
         row.style.height = thumb.offsetHeight + 'px';
       } else {
-        // Section header: two halves over the whole header.
-        const area = opts.area || el;
-        const h = Math.max(60, area.offsetHeight);
-        row.style.left = (area === el ? 0 : area.offsetLeft) + 'px';
-        row.style.width = (area === el ? el.clientWidth : area.offsetWidth) + 'px';
-        row.style.top = ((area === el ? 0 : area.offsetTop) + (area === el ? el.clientHeight : area.offsetHeight) / 2 - h / 2) + 'px';
+        // Section header: two equal compact cells tucked at the right edge,
+        // centred on the header's height.
+        const h = Math.max(60, el.clientHeight), cell = 120;
+        row.style.right = '0px';
+        row.style.width = (cell * 2 + 6) + 'px';
+        row.style.top = (el.clientHeight / 2 - h / 2) + 'px';
         row.style.height = h + 'px';
       }
       const mk = (cls, act, icon, text) => {
