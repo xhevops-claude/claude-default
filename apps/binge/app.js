@@ -13,7 +13,7 @@
     sort: 'binge-sort',
     group: 'binge-group',
     tab: 'binge-tab',                    // active group id ('all' or a groups.json id)
-    tabs: 'binge-tabs',                  // { groupId: { off:[slug], cutoff:{y,m,d}, showWatched } } — per-tab filters
+    tabs: 'binge-tabs',                  // { groupId: { off, cutoff, showWatched, group, sort, views: { [group]: { view, collapsed } } } }
   };
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -26,16 +26,20 @@
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
   // A stored pref that isn't one of the allowed values falls back to the default.
   function pick(key, allowed, fallback) { const v = load(key, fallback); return allowed.indexOf(v) >= 0 ? v : fallback; }
-  const VIEWS = ['list', 'grid'], SORTS = ['old', 'new', 'popular'], GROUPS = ['year', 'channel'];
+  const VIEWS = ['list', 'grid'], SORTS = ['old', 'new', 'popular'], GROUPS = ['year', 'bundle', 'channel'];
 
   // ---- persisted state ----
   let selected = new Set();                       // channel slugs shown — derived from the active group minus its exclusions
   let activeTab = load(LS.tab, 'all');            // active group id
-  let tabs = load(LS.tabs, {});                   // groupId -> { off, cutoff, showWatched } — each tab owns its filters
+  // Settings form a tree that mirrors the rows on screen: each tab (row 1)
+  // owns its filters, group-by and sort (row 2); each tab + group-by pair owns
+  // its list/grid view and collapsed sections (row 3). `tabs` holds all of it;
+  // the vars below mirror the active branch for the renderer.
+  let tabs = load(LS.tabs, {});
   let watchedTo = load(LS.watchedTo, {});         // slug -> yyyymmdd cursor
   let showWatched = true;                         // mirrors the active tab's setting
   let cutoff = todayYMD();                        // mirrors the active tab's cutoff
-  let view = pick(LS.view, VIEWS, 'list');
+  let view = pick(LS.view, VIEWS, 'list');        // (legacy globals seed tabs that have no setting yet)
   let sortBy = pick(LS.sort, SORTS, 'old');
   let groupBy = pick(LS.group, GROUPS, 'year');
   let filtersOpen = false;                        // panel is tucked away until the funnel is tapped
@@ -46,7 +50,7 @@
   let channelData = {};      // slug -> {name, videos:[...]}
   let currentId = null;
   const unavailable = new Set();
-  const collapsed = new Set();   // collapsed section keys
+  let collapsed = new Set();     // collapsed section keys for the active tab + group-by
   let yearRange = [];
 
   // ---- elements ----
@@ -65,6 +69,7 @@
   const sectionsEl = $('sections');
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
   const quitBtn = $('quit');
+  const toastEl = $('toast'), toastMsg = $('toast-msg'), toastUndo = $('toast-undo');
   const syncOpenBtn = $('sync-open'), syncModal = $('sync-modal'), syncClose = $('sync-close');
   const syncCopyBtn = $('sync-copy'), syncPaste = $('sync-paste'), syncApplyBtn = $('sync-apply'), syncNote = $('sync-note');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
@@ -223,7 +228,33 @@
     const s = tabState(id).showWatched;
     return typeof s === 'boolean' ? s : load(LS.showWatched, true);
   }
-  // Pull the active tab's filters into the runtime vars the renderer reads.
+  // Row 2, per tab: group-by and sort. Grouping by bundle only makes sense on
+  // All, where several bundles are in play; elsewhere it falls back to year.
+  function tabGroup(id) {
+    const g = tabState(id).group;
+    const v = GROUPS.indexOf(g) >= 0 ? g : pick(LS.group, GROUPS, 'year');
+    return (v === 'bundle' && id !== 'all') ? 'year' : v;
+  }
+  function tabSort(id) { const v = tabState(id).sort; return SORTS.indexOf(v) >= 0 ? v : pick(LS.sort, SORTS, 'old'); }
+  // Row 3, per tab + group-by: list/grid view and collapsed sections.
+  function viewNode(id, group) {
+    const views = tabState(id).views;
+    const n = (views && typeof views === 'object') ? views[group] : null;
+    return (n && typeof n === 'object') ? n : {};
+  }
+  function setViewPref(id, group, key, val) {
+    const views = Object.assign({}, tabState(id).views || {});
+    const node = Object.assign({}, viewNode(id, group));
+    if (val == null) delete node[key]; else node[key] = val;
+    if (Object.keys(node).length) views[group] = node; else delete views[group];
+    setTabPref(id, 'views', Object.keys(views).length ? views : null);
+  }
+  function tabView(id, group) { const v = viewNode(id, group).view; return VIEWS.indexOf(v) >= 0 ? v : pick(LS.view, VIEWS, 'list'); }
+  function tabCollapsed(id, group) { const c = viewNode(id, group).collapsed; return new Set(Array.isArray(c) ? c : []); }
+  function loadViewNode() { view = tabView(activeTab, groupBy); collapsed = tabCollapsed(activeTab, groupBy); }
+  function saveCollapsed() { setViewPref(activeTab, groupBy, 'collapsed', collapsed.size ? Array.from(collapsed) : null); }
+  // Pull the active tab's branch of the settings tree into the runtime vars
+  // the renderer reads.
   function recomputeSelected() {
     const g = currentGroup();
     activeTab = g.id;
@@ -232,6 +263,9 @@
     cutoff = tabCutoff(g.id);
     showWatched = tabShowWatched(g.id);
     showWatchedChk.checked = showWatched;
+    groupBy = tabGroup(g.id);
+    sortBy = tabSort(g.id);
+    loadViewNode();
   }
   function saveCutoff() { setTabPref(activeTab, 'cutoff', { y: cutoff.y, m: cutoff.m, d: cutoff.d }); }
   function saveShowWatched() { setTabPref(activeTab, 'showWatched', showWatched); }
@@ -415,16 +449,17 @@
     const key = all.map((g) => g.id + ':' + g.channels.length).join('|');
     if (groupTabs.dataset.key !== key) {
       groupTabs.dataset.key = key;
-      groupTabs.innerHTML = all.map((g) =>
+      const tabHtml = (g) =>
         '<button class="tab" type="button" role="tab" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
-        + escapeHTML(g.name) + '<span class="tab-n"></span></button>'
-      ).join('');
+        + '<span class="tab-name">' + escapeHTML(g.name) + '</span><span class="tab-n"></span></button>';
+      // "All" stays put on the left; the bundles scroll sideways next to it.
+      groupTabs.innerHTML = tabHtml(all[0]) + '<div class="tabs-scroll">' + all.slice(1).map(tabHtml).join('') + '</div>';
     }
-    // Each pill carries its own cutoff year, so the per-tab dates read at a glance.
+    // Each tab carries its own cutoff date under the name, so the per-tab dates read at a glance.
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
       const id = b.getAttribute('data-tab');
       b.setAttribute('aria-selected', String(id === activeTab));
-      b.querySelector('.tab-n').textContent = String(tabCutoff(id).y);
+      b.querySelector('.tab-n').textContent = cutoffText(tabCutoff(id));
     });
   }
   groupTabs.addEventListener('click', (e) => {
@@ -532,17 +567,27 @@
     const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
     return offSet(g.id).size > 0 || !isToday || !showWatched;
   }
-  function cutoffLabel() {
+  function cutoffLabel() { return cutoffText(cutoff); }
+  // A cutoff as text: "today", or yyyy MON d.
+  function cutoffText(c) {
     const t = todayYMD();
-    const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
-    const d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    return isToday ? 'today' : d + ' ' + MONTHS[cutoff.m - 1] + ' ' + cutoff.y;
+    const isToday = c.y === t.y && c.m === t.m && c.d === t.d;
+    const d = Math.min(c.d, daysInMonth(c.y, c.m));
+    return isToday ? 'today' : fmtYMD(c.y, c.m, d);
+  }
+  // "up to" dates read as yyyy MON d, e.g. 2023 JUL 1.
+  function fmtYMD(y, m, d) {
+    return y + ' ' + MONTHS[m - 1].toUpperCase() + ' ' + d;
   }
   function resetCutoff() { cutoff = todayYMD(); saveCutoff(); render(); }
   function commitCutoff() { saveCutoff(); render(); }
 
   // ---- toolbar (view · sort · filters) + results bar (group by) ----
   function renderToolbar() {
+    // Bundle grouping is only offered on All; a single bundle has nothing to group.
+    const oneBundle = activeTab !== 'all';
+    toolbar.querySelector('[data-group="bundle"]').hidden = oneBundle;
+    toolbar.classList.toggle('one-bundle', oneBundle);
     Array.prototype.forEach.call(document.querySelectorAll('.toolbar .seg-btn, .results-bar .seg-btn'), (b) => {
       const on = b.hasAttribute('data-view') ? b.getAttribute('data-view') === view
         : b.hasAttribute('data-sort') ? b.getAttribute('data-sort') === sortBy
@@ -553,6 +598,21 @@
 
   // ---- sections ----
   function buildGroups(list) {
+    // By bundle: one section per groups.json entry, in file order. A channel
+    // that sits in several bundles shows up under each; channels in none
+    // fall into "Other".
+    if (groupBy === 'bundle') {
+      const out = [], seen = new Set();
+      groups.forEach((g) => {
+        const vids = list.filter((v) => g.channels.indexOf(v.slug) >= 0);
+        if (!vids.length) return;
+        out.push({ key: 'b:' + g.id, title: g.name, vids: vids });
+        vids.forEach((v) => seen.add(v.id));
+      });
+      const rest = list.filter((v) => !seen.has(v.id));
+      if (rest.length) out.push({ key: 'b:_other', title: 'Other', vids: rest });
+      return out;
+    }
     const map = new Map();
     list.forEach((v) => {
       let key, title;
@@ -561,15 +621,15 @@
       if (!map.has(key)) map.set(key, { key: key, title: title, vids: [] });
       map.get(key).vids.push(v);
     });
-    let groups = Array.from(map.values());
+    const out = Array.from(map.values());
     if (groupBy === 'year') {
-      groups.sort((a, b) => Number(a.key.slice(2)) - Number(b.key.slice(2)));
-      if (sortBy === 'new' || sortBy === 'popular') groups.reverse();
+      out.sort((a, b) => Number(a.key.slice(2)) - Number(b.key.slice(2)));
+      if (sortBy === 'new' || sortBy === 'popular') out.reverse();
     } else {
       const order = available.map((c) => 'c:' + c.slug);
-      groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+      out.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
     }
-    return groups;
+    return out;
   }
 
   function renderSections(list) {
@@ -597,6 +657,7 @@
         + '<button class="section-markall' + (done ? ' done' : '') + '" type="button" data-markkey="' + escapeHTML(g.key) + '" title="Mark section watched">✓</button>'
         + '</div>' + body + '</div>';
     });
+    disarm();
     sectionsEl.innerHTML = html.join('');
   }
 
@@ -628,24 +689,85 @@
 
   sectionsEl.addEventListener('click', (e) => {
     const mark = e.target.closest('[data-markkey]');
-    if (mark) { markSectionWatched(mark.getAttribute('data-markkey')); return; }
+    if (mark) { armOrFire(mark, () => withUndo(() => markSectionWatched(mark.getAttribute('data-markkey')))); return; }
     const tog = e.target.closest('.section-toggle');
     if (tog) {
       const k = tog.getAttribute('data-key');
       if (collapsed.has(k)) collapsed.delete(k); else collapsed.add(k);
+      saveCollapsed();
       render();
       return;
     }
     const chk = e.target.closest('[data-act="toggle"]');
-    if (chk) { e.stopPropagation(); toggleWatched(chk.getAttribute('data-id')); return; }
+    if (chk) { e.stopPropagation(); armOrFire(chk, () => withUndo(() => toggleWatched(chk.getAttribute('data-id')))); return; }
     const card = e.target.closest('.vcard');
     if (card) play(card.getAttribute('data-id'));
   });
 
+  // Marking watched moves a channel's date cursor (everything before it
+  // counts as watched too), so a stray tap is costly. The first tap arms the
+  // button ("Tap again"); a second tap within ARM_MS performs the action. Any
+  // other tap, a timeout, or a re-render disarms it.
+  const ARM_MS = 3000;
+  let armed = null;   // { el, timer }
+  function disarm() {
+    if (!armed) return;
+    clearTimeout(armed.timer);
+    const el = armed.el; armed = null;
+    if (el.isConnected) { el.classList.remove('arm'); el.textContent = '\u2713'; }
+  }
+  function armOrFire(el, fn) {
+    if (armed && armed.el === el) { disarm(); fn(); return; }
+    disarm();
+    el.classList.add('arm'); el.textContent = 'Tap again';
+    armed = { el: el, timer: setTimeout(disarm, ARM_MS) };
+  }
+  document.addEventListener('click', (e) => { if (armed && !armed.el.contains(e.target)) disarm(); }, true);
+
+  // Undo: the change is applied at once, and a toast offers to put the
+  // watched cursors back exactly as they were for UNDO_MS.
+  const UNDO_MS = 5000;
+  let undo = null;   // { before, timer }
+  function hideToast() {
+    if (undo) clearTimeout(undo.timer);
+    undo = null; toastEl.hidden = true;
+  }
+  function withUndo(fn) {
+    const before = JSON.stringify(watchedTo);
+    fn();
+    const after = JSON.stringify(watchedTo);
+    if (after === before) return;
+    hideToast();
+    toastMsg.textContent = watchedDelta(JSON.parse(before), watchedTo);
+    toastEl.hidden = false;
+    undo = { before: before, timer: setTimeout(hideToast, UNDO_MS) };
+  }
+  // "N marked watched" / "N marked unwatched" — counted across the active list.
+  function watchedDelta(prev, next) {
+    let more = 0, less = 0;
+    baseVideos().forEach((v) => {
+      const y = videoYMD(v), was = y <= (prev[v.slug] || 0), now = y <= (next[v.slug] || 0);
+      if (now && !was) more++; else if (was && !now) less++;
+    });
+    const n = more || less, what = more ? 'watched' : 'unwatched';
+    return n + (n === 1 ? ' video' : ' videos') + ' marked ' + what;
+  }
+  toastUndo.addEventListener('click', () => {
+    if (!undo) return;
+    watchedTo = JSON.parse(undo.before);
+    save(LS.watchedTo, watchedTo);
+    hideToast();
+    render();
+  });
+
+  // Section keys are namespaced per group-by mode (y:, b:, c:), so one set
+  // holds every mode's open/closed state at once and switching modes brings
+  // back whatever was left there. Expand all only touches the current mode.
   collapseAllBtn.addEventListener('click', () => {
     const groups = buildGroups(sortVids(baseVideos()));
     if (collapseAllBtn.dataset.allOpen === 'true') groups.forEach((g) => collapsed.add(g.key));
-    else collapsed.clear();
+    else groups.forEach((g) => collapsed.delete(g.key));
+    saveCollapsed();
     render();
   });
 
@@ -671,7 +793,7 @@
   }
   function fmtYMDInt(ymd) {
     const y = Math.floor(ymd / 10000), m = Math.floor(ymd / 100) % 100, d = ymd % 100;
-    return d + ' ' + MONTHS[m - 1] + ' ' + y;
+    return fmtYMD(y, m, d);
   }
   function toggleWatched(id) {
     const v = findVideo(id);
@@ -830,9 +952,9 @@
 
   function onSegClick(e) {
     const b = e.target.closest('.seg-btn'); if (!b) return;
-    if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); save(LS.view, view); }
-    else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); save(LS.sort, sortBy); }
-    else if (b.hasAttribute('data-group')) { groupBy = b.getAttribute('data-group'); collapsed.clear(); save(LS.group, groupBy); }
+    if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); setViewPref(activeTab, groupBy, 'view', view); }
+    else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); setTabPref(activeTab, 'sort', sortBy); }
+    else if (b.hasAttribute('data-group')) { groupBy = b.getAttribute('data-group'); setTabPref(activeTab, 'group', groupBy); loadViewNode(); }
     else return;   // the funnel button has its own handler
     render();
   }

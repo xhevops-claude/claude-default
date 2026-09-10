@@ -88,15 +88,17 @@ html, body {
 .fgroup-actions { display: flex; gap: 6px; }
 .fgroup-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 
-/* Group tabs: one pill per group from groups.json plus an automatic "All".
-   Sits right under the filters panel, always visible; horizontally
-   scrollable so a long list stays on one row on phones. */
-.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; margin-top: -6px; -webkit-overflow-scrolling: touch; }
-.tabs::-webkit-scrollbar { display: none; }
-.tab { flex: none; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer; white-space: nowrap; transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
+/* Group tabs: one box per group from groups.json plus an automatic "All".
+   "All" stays put on the left; the rest sit in a horizontally scrollable
+   strip so a long list stays on one row on phones. Each tab shows its own
+   cutoff date under the name. */
+.tabs { display: flex; gap: 6px; padding: 2px 0; margin-top: -6px; }
+.tabs-scroll { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tabs-scroll::-webkit-scrollbar { display: none; }
+.tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; font-weight: 700; font-size: 14px; line-height: 1.2; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; cursor: pointer; white-space: nowrap; transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
 .tab[aria-selected="true"] { background: var(--red); border-color: transparent; color: #fff; }
 .tab:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-.tab-n { opacity: 0.7; font-weight: 600; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.tab-n { opacity: 0.65; font-weight: 600; font-size: 10px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 
 .chan-switches { display: flex; flex-direction: column; gap: 2px; }
 .chan-switch { padding: 8px 2px; }
@@ -132,15 +134,16 @@ html, body {
 }
 .slot-slider.dragging .slot-knob { transition: none; box-shadow: 0 0 14px rgba(239, 68, 68, 0.85); }
 
-/* Toolbar: what content is shown — sort on the left, filters on the right.
-   Each segment takes width in proportion to its buttons, so all four come
-   out the same size on narrow screens. Each button is capped at
-   --seg-btn-max, so on wide screens the segments stop growing and the
-   leftover width opens up between the two. */
+/* Toolbar: group by (left), sort (middle), filters (right) — the controls
+   that change what is listed. Each segment takes width in proportion to
+   its buttons, so all seven come out the same size on narrow screens. Each
+   button is capped at --seg-btn-max, so on wide screens the segments stop
+   growing and the leftover width opens up between them. */
 .toolbar { --seg-btn-max: 68px; display: flex; gap: 8px; justify-content: space-between; align-items: stretch; }
 .seg { display: flex; flex: var(--n, 1) 1 0; min-width: 0; max-width: calc(var(--n, 1) * var(--seg-btn-max) + 8px); background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
-.seg[aria-label="Sort"] { --n: 3; }
-.seg-btn { font: inherit; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 7px; flex: 1 1 0; min-width: 0; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
+.seg[aria-label="Group by"], .seg[aria-label="Sort"] { --n: 3; }
+.toolbar.one-bundle .seg[aria-label="Group by"] { --n: 2; }   /* bundle option hidden off the All tab */
+.seg-btn { font: inherit; line-height: 1; color: var(--muted); background: transparent; border: 0; padding: 0; border-radius: 7px; flex: 1 1 0; min-width: 0; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
 .seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--amber); }
 .ico { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; display: block; }
 .seg-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
@@ -161,12 +164,14 @@ html, body {
 .progress-text { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .progress-bar { height: 8px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
 .progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--red), var(--amber)); transition: width 0.3s ease; }
-/* Results header: how the list is shown — list/grid and group-by on the
-   left, expand/collapse all on the right. None of these change which
-   videos are listed, only their form. */
+/* Results header: list/grid on the left, expand/collapse all on the
+   right. Neither changes which videos are listed, only their form. */
 .results-bar { display: flex; align-items: center; gap: 8px; }
-.results-bar .seg { flex: none; max-width: none; }
-.results-bar .seg-btn { flex: 0 0 56px; }
+/* Explicit widths here (not flex-basis): Safari sizes a shrink-wrapped flex
+   container from its items' content, not their basis, which left the box
+   narrower than its buttons. 2 buttons × 56px + 3px padding + 1px border each side. */
+.results-bar .seg { flex: none; width: 120px; max-width: none; }
+.results-bar .seg-btn { flex: none; width: 56px; }
 .results-bar #collapse-all { margin-left: auto; }
 
 /* Sections */
@@ -199,6 +204,8 @@ html, body {
 .v-badge { color: var(--amber); }
 .vcheck { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(12, 13, 18, 0.55); color: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 .vcard.watched .vcheck { background: var(--green); border-color: transparent; color: #06281c; }
+/* Armed (first tap): the check swells into an amber "Tap again" pill. */
+.vcheck.arm, .vcard.watched .vcheck.arm, .section-markall.arm { width: auto; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--amber); border-color: transparent; color: #1a1200; font-size: 12px; font-weight: 800; white-space: nowrap; }
 
 /* List layout */
 .vids.list .vcard { display: flex; align-items: center; gap: 12px; padding: 6px; }
@@ -232,6 +239,16 @@ html, body {
   color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
 .sync-actions { display: flex; justify-content: flex-end; }
 .sync-note { color: var(--amber); font-size: 13px; min-height: 18px; }
+
+/* Undo toast: a floating strip above the HUD, like a mail client's "Undo"
+   after a delete. Slides up, stays UNDO_MS, then slides away. */
+.toast { position: fixed; z-index: 8; left: 50%; bottom: 68px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px;
+  max-width: calc(100% - 32px); padding: 10px 10px 10px 16px; border-radius: 10px; background: var(--ink); color: var(--bg);
+  font-size: 14px; font-weight: 600; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55); animation: toast-in 0.22s ease-out; }
+.toast-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast-undo { font: inherit; font-weight: 800; color: #b45309; background: transparent; border: 0; border-radius: 7px; padding: 6px 10px; cursor: pointer; }
+.toast-undo:hover { background: rgba(0, 0, 0, 0.08); }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* HUD */
 .hud { position: fixed; z-index: 7; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; padding: 12px; pointer-events: none; }
