@@ -722,10 +722,13 @@
     render();
   });
 
+  // Section keys are namespaced per group-by mode (y:, b:, c:), so one set
+  // holds every mode's open/closed state at once and switching modes brings
+  // back whatever was left there. Expand all only touches the current mode.
   collapseAllBtn.addEventListener('click', () => {
     const groups = buildGroups(sortVids(baseVideos()));
     if (collapseAllBtn.dataset.allOpen === 'true') groups.forEach((g) => collapsed.add(g.key));
-    else collapsed.clear();
+    else groups.forEach((g) => collapsed.delete(g.key));
     render();
   });
 
@@ -912,7 +915,7 @@
     const b = e.target.closest('.seg-btn'); if (!b) return;
     if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); save(LS.view, view); }
     else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); save(LS.sort, sortBy); }
-    else if (b.hasAttribute('data-group')) { groupBy = b.getAttribute('data-group'); collapsed.clear(); save(LS.group, groupBy); }
+    else if (b.hasAttribute('data-group')) { groupBy = b.getAttribute('data-group'); save(LS.group, groupBy); }
     else return;   // the funnel button has its own handler
     render();
   }
