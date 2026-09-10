@@ -87,13 +87,7 @@ So before posting a preview/production link: poll the `pages-build-deployment` w
 
 **Every poll has a hard cap.** Never loop on a URL or a branch tip open-endedly: bound each wait (about 4 minutes for the gh-pages landing, about 5 minutes for the Pages publish; use `curl --max-time` and a counted loop). When a cap is hit, do not just retry — check the run statuses via the GitHub Actions tools: the branch's `CI` and `Deploy` runs (`list_workflow_runs` filtered by branch), then the latest `pages-build-deployment` run and its `deploy` job log. A `pages-build-deployment` run that is `cancelled` right after a push is normal (the prune commit's build is superseded by the publish commit's); one that ends in `failure` with the log stuck on `Current status: updating_pages` then `Timeout reached, aborting!` is a GitHub-side publish hang, not a content problem. The MCP integration cannot re-run or dispatch workflows (403), so recover by pushing a real commit to the branch (a genuine tidy-up, never an empty commit), which re-runs `Deploy` and starts a fresh Pages publish.
 
-After such a hang, the next publish can fail fast (under a minute) with `Deployment request failed ... due to in progress deployment. Please cancel <sha> first` — GitHub still holds the hung deployment as active and rejects every new one until it is cancelled. Nothing from this session can clear it: the Pages deployments API is blocked by the proxy and Actions re-runs are 403. Don't keep pushing; tell the user and give them the fix, which needs their own credentials:
-
-```sh
-gh api -X POST repos/xhevops-claude/claude-default/pages/deployments/<stuck-sha>/cancel
-```
-
-then re-run the failed `pages build and deployment` run from the Actions UI (or ask for a new push). The `<stuck-sha>` is the gh-pages commit named in the error.
+After such a hang, the next publish can fail fast (under a minute) with `Deployment request failed ... due to in progress deployment. Please cancel <sha> first` — GitHub still holds the hung deployment as active and rejects every new one until it is cancelled or expires. Nothing from this session can clear it: the Pages deployments API is blocked by the proxy and Actions re-runs are 403, and the user works from the sandbox too (no `gh`). It does expire on its own (seen: stuck at 11:15, still blocking at 11:43, publishing again by 14:38), so don't burn pushes on it: tell the user, then retry with a real commit after a decent wait (an hour or more). If the user does have `gh` somewhere, the fast path is `gh api -X POST repos/xhevops-claude/claude-default/pages/deployments/<stuck-sha>/cancel` with the gh-pages SHA from the error, then a new push.
 
 ### Always end with a clickable preview link
 
