@@ -95,7 +95,7 @@ html, body {
 .drawer-rule { height: 1px; background: var(--line); margin: 0 4px; }
 /* Active group shown in the app bar: name, then its cutoff date in small
    caps like the drawer rows. Tapping it opens the drawer. */
-.appbar-tab { display: inline-flex; align-items: center; gap: 8px; min-width: 0; margin-left: 2px; }
+.appbar-tab { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; margin-left: 2px; }   /* name left, flip at the right edge */
 .appbar-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
   color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
 .appbar-tab-name:hover { border-color: rgba(255, 255, 255, 0.22); }
