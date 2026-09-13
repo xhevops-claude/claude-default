@@ -509,7 +509,8 @@
   function flipHTML(cls) {
     return '<span class="seg2 ' + (cls || '') + '" role="group" aria-label="Cutoff">'
       + '<button class="flip-live" data-flip="off" type="button" title="Switch to the picked date">Today</button>'
-      + '<button class="flip-picked" data-flip="on" type="button" title="Switch to today"></button></span>';
+      + '<button class="flip-picked" data-flip="on" type="button" title="Switch to today"></button>'
+      + '<i class="flip-knob" aria-hidden="true"></i></span>';
   }
   // A group's watched progress up to its own cutoff (its channels minus the
   // ones switched off) — what the main bar would show with that group open.
