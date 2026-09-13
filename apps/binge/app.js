@@ -61,9 +61,9 @@
   const nowTitle = $('now-title'), nowBy = $('now-by'), ytLink = $('yt-link');
   const watchedNextBtn = $('watched-next'), skipBtn = $('skip'), closePlayerBtn = $('close-player');
   const filtersEl = $('filters'), filtersToggle = $('filters-toggle');
-  const groupTabs = $('group-tabs'), appbarTab = $('appbar-tab'), chanLabel = $('chan-label');
+  const groupTabs = $('group-tabs'), appbarTab = $('appbar-tab'), appbarTabName = $('appbar-tab-name'), appbarFlip = $('appbar-flip'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
-  const filtersReset = $('filters-reset'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
+  const showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
   const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
@@ -71,7 +71,8 @@
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
   const quitBtn = $('quit');
   const toastEl = $('toast'), toastMsg = $('toast-msg'), toastUndo = $('toast-undo');
-  const syncOpenBtn = $('sync-open'), syncModal = $('sync-modal'), syncClose = $('sync-close');
+  const syncBackBtn = $('sync-back');
+  const viewBinge = $('view-binge'), viewSync = $('view-sync'), appbarTitle = $('appbar-title'), drawerSyncBtn = $('drawer-sync');
   const syncCopyBtn = $('sync-copy'), syncPaste = $('sync-paste'), syncApplyBtn = $('sync-apply'), syncNote = $('sync-note');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
 
@@ -218,9 +219,24 @@
   }
   function offSet(id) { const off = tabState(id).off; return new Set(Array.isArray(off) ? off : []); }
   function setOff(id, slugs) { setTabPref(id, 'off', slugs.length ? slugs : null); }
+  // A tab keeps a picked cutoff { y, m, d } and a `live` flag. Live means
+  // "today": the cutoff resolves to the current date whenever it's read, so
+  // Today switched on yesterday still means today, while the picked date
+  // waits underneath for when Today is switched off. No cutoff at all also
+  // means today (unless a pre-groups global cutoff is still around). The
+  // earlier 'today' marker in `cutoff` still reads as live.
+  function tabCutoffLive(id) {
+    const s = tabState(id), c = s.cutoff;
+    if (s.live === true || c === 'today') return true;
+    if (c && typeof c.y === 'number') return false;
+    const legacy = load(LS.cutoff, null);
+    return !(legacy && typeof legacy.y === 'number');
+  }
+  function tabHasPickedCutoff(id) { const c = tabState(id).cutoff; return !!(c && typeof c.y === 'number'); }
   function tabCutoff(id) {
     const c = tabState(id).cutoff;
     if (c && typeof c.y === 'number') return { y: c.y, m: c.m || 1, d: c.d || 1 };
+    if (c === 'today') return todayYMD();
     // Tabs without their own cutoff yet inherit the pre-groups global one.
     const legacy = load(LS.cutoff, null);
     return (legacy && typeof legacy.y === 'number') ? { y: legacy.y, m: legacy.m || 1, d: legacy.d || 1 } : todayYMD();
@@ -384,6 +400,8 @@
   // Render
   // ---------------------------------------------------------------------------
   function render() {
+    // A live "today" cutoff follows the clock, even in a tab left open overnight.
+    if (tabCutoffLive(activeTab)) cutoff = todayYMD();
     if (!available.length) {
       groupTabs.hidden = true; appbarTab.hidden = true; toolbar.hidden = true; filtersEl.hidden = true; hideResults();
       showStatus('🍿', 'No channel data yet. The scraper publishes to the CDN daily. Check back soon.', null);
@@ -450,27 +468,78 @@
     const key = all.map((g) => g.id + ':' + g.channels.length).join('|');
     if (groupTabs.dataset.key !== key) {
       groupTabs.dataset.key = key;
+      // A div, not a button: each row holds its own Today ⇄ date flip (a
+      // button can't contain buttons). Enter/Space select via keydown below.
       groupTabs.innerHTML = all.map((g) =>
-        '<button class="tab" type="button" role="tab" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
-        + '<span class="tab-name">' + escapeHTML(g.name) + '</span><span class="tab-n"></span></button>').join('');
+        '<div class="tab" role="tab" tabindex="0" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
+        + '<span class="tab-name">' + escapeHTML(g.name) + '</span>' + flipHTML('ring') + '</div>').join('');
     }
-    // Each row carries its own cutoff date beside the name, so the per-tab dates read at a glance.
+    // Each row carries its own cutoff flip beside the name, so several groups
+    // can be switched between Today and their picked date in a run.
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
       const id = b.getAttribute('data-tab');
-      b.setAttribute('aria-selected', String(id === activeTab));
-      b.querySelector('.tab-n').textContent = cutoffText(tabCutoff(id));
+      b.setAttribute('aria-selected', String(id === activeTab && page === 'binge'));
+      syncFlip(b.querySelector('.flip'), id, { progress: true });
     });
-    // The app bar names the active group (the tabs themselves live in the drawer).
+    // The app bar names the active group (the tabs themselves live in the
+    // drawer) and carries its flip, ringed with its progress like the rows.
     const active = all.find((g) => g.id === activeTab) || all[0];
-    appbarTab.hidden = false;
-    appbarTab.querySelector('.appbar-tab-name').textContent = active.name;
-    appbarTab.querySelector('.appbar-tab-n').textContent = cutoffText(tabCutoff(active.id));
+    appbarTab.hidden = page !== 'binge';
+    appbarTabName.textContent = active.name;
+    syncFlip(appbarFlip, active.id, { progress: true });
   }
   groupTabs.addEventListener('click', (e) => {
     const b = e.target.closest('.tab'); if (!b) return;
+    // A click on the row's flip toggles its checkbox (handled on 'change'
+    // below) and must not also select the row or close the drawer, so a run
+    // of them can be flipped.
+    if (e.target.closest('.flip')) { e.stopPropagation(); return; }
+    if (page !== 'binge') showPage('binge');   // picking a group always lands on the videos
     selectTab(b.getAttribute('data-tab'));
     if (!docked()) setDrawer(false);   // a docked sidebar stays put
   });
+  groupTabs.addEventListener('change', (e) => {
+    const c = e.target.closest('.flip .switch-input'); if (!c) return;
+    setTabLive(c.closest('.tab').getAttribute('data-tab'), c.checked);
+  });
+  groupTabs.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const b = e.target.closest('.tab'); if (!b || e.target !== b) return;
+    e.preventDefault(); b.click();
+  });
+  // Today ⇄ picked-date flip: a real checkbox switch (checked = Today) with
+  // the two labels inside its track; the same widget in the app bar and in
+  // every sidebar row.
+  function flipHTML(cls) {
+    return '<label class="switch flip ' + (cls || '') + '">'
+      + '<input type="checkbox" class="switch-input" aria-label="Show up to today" />'
+      + '<span class="switch-track" aria-hidden="true"><span class="flip-off"></span><span class="flip-on">Today</span></span></label>';
+  }
+  // A group's watched progress up to its own cutoff (its channels minus the
+  // ones switched off) — what the main bar would show with that group open.
+  function tabProgress(id) {
+    const g = allGroups().find((x) => x.id === id);
+    if (!g) return { watched: 0, total: 0 };
+    const off = offSet(id), vids = [];
+    g.channels.forEach((s) => { if (off.has(s)) return; const cd = channelData[s]; if (cd) vids.push.apply(vids, cd.videos); });
+    const c = tabCutoffLive(id) ? todayYMD() : tabCutoff(id);   // live means today, whatever date is parked underneath
+    const cut = vids.some((v) => v.d) ? c.y * 10000 + c.m * 100 + Math.min(c.d, daysInMonth(c.y, c.m)) : c.y * 10000 + 1231;
+    let watched = 0, total = 0;
+    vids.forEach((v) => { if (videoYMD(v) <= cut) { total++; if (isWatched(v)) watched++; } });
+    return { watched: watched, total: total };
+  }
+  function syncFlip(seg, id, opts) {
+    const live = tabCutoffLive(id);
+    if (opts && opts.progress) {
+      // The sidebar rows draw the group's progress as a clockwise ring around the flip.
+      const p = tabProgress(id);
+      seg.style.setProperty('--p', (p.total ? Math.round(p.watched / p.total * 1000) / 10 : 0) + '%');
+      seg.title = p.watched + ' / ' + p.total + ' watched';
+    }
+    const p = tabCutoff(id);   // the date label always names the date the sliders hold
+    seg.querySelector('.flip-off').textContent = fmtYMD(p.y, p.m, Math.min(p.d, daysInMonth(p.y, p.m)));
+    seg.querySelector('.switch-input').checked = live;
+  }
   function selectTab(id) {
     if (id === activeTab) return;
     activeTab = id; save(LS.tab, activeTab);
@@ -560,6 +629,9 @@
     daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
+    // Today on (flip in the app bar): the sliders show today's date, dimmed.
+    filtersEl.classList.toggle('live', tabCutoffLive(activeTab));
+
     filtersEl.hidden = !filtersOpen;
     filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
     filtersToggle.classList.toggle('on', filtersEngaged());
@@ -567,24 +639,41 @@
   // True when the active tab strays from "everything, up to today, watched shown".
   function filtersEngaged() {
     const g = currentGroup();
-    const t = todayYMD();
-    const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
-    return offSet(g.id).size > 0 || !isToday || !showWatched;
+    return offSet(g.id).size > 0 || !tabCutoffLive(g.id) || !showWatched;
   }
-  function cutoffLabel() { return cutoffText(cutoff); }
-  // A cutoff as text: "today", or yyyy MON d.
-  function cutoffText(c) {
-    const t = todayYMD();
-    const isToday = c.y === t.y && c.m === t.m && c.d === t.d;
-    const d = Math.min(c.d, daysInMonth(c.y, c.m));
-    return isToday ? 'today' : fmtYMD(c.y, c.m, d);
+  function cutoffLabel() { return tabCutoffText(activeTab); }
+  // A tab's cutoff as text: "today" when it's live, else the fixed yyyy MON d
+  // (a fixed date that happens to be today still reads as the date, since
+  // it won't move tomorrow).
+  function tabCutoffText(id) {
+    if (tabCutoffLive(id)) return 'today';
+    const c = tabCutoff(id);
+    return fmtYMD(c.y, c.m, Math.min(c.d, daysInMonth(c.y, c.m)));
   }
   // "up to" dates read as yyyy MON d, e.g. 2023 JUL 1.
   function fmtYMD(y, m, d) {
     return y + ' ' + MONTHS[m - 1].toUpperCase() + ' ' + d;
   }
-  function resetCutoff() { cutoff = todayYMD(); saveCutoff(); render(); }
-  function commitCutoff() { saveCutoff(); render(); }
+  // Today on: the live flag, not the date it was pressed on. The picked date stays.
+  function resetCutoff() { setTabPref(activeTab, 'live', true); render(); }
+  // Today off: back to the picked date. With none picked for this tab yet,
+  // the pre-groups global cutoff (if any) or today's date becomes the picked
+  // one, so the sliders start from where they were. Works for any tab, not
+  // just the active one (the sidebar rows flip their own).
+  function setTabLive(id, on) {
+    if (tabState(id).cutoff === 'today') setTabPref(id, 'cutoff', null);   // retire the old marker
+    setTabPref(id, 'live', on ? true : null);
+    if (!on && !tabHasPickedCutoff(id)) {
+      const legacy = load(LS.cutoff, null);
+      const c = (legacy && typeof legacy.y === 'number') ? { y: legacy.y, m: legacy.m || 1, d: legacy.d || 1 } : todayYMD();
+      setTabPref(id, 'cutoff', c);
+    }
+    if (id === activeTab) cutoff = tabCutoff(activeTab);
+    render();
+  }
+  function setCutoffLive(on) { setTabLive(activeTab, on); }
+  // A slider move picks a date, which switches Today off.
+  function commitCutoff() { setTabPref(activeTab, 'live', null); saveCutoff(); render(); }
 
   // ---- toolbar (view · sort · filters) + results bar (group by) ----
   function renderToolbar() {
@@ -1045,7 +1134,6 @@
   });
   chanAllBtn.addEventListener('click', selectAllChannels);
   chanNoneBtn.addEventListener('click', clearAllChannels);
-  filtersReset.addEventListener('click', resetCutoff);
   showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; saveShowWatched(); render(); });
   clearWatchedBtn.addEventListener('click', () => {
     if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }
@@ -1131,13 +1219,14 @@
   if (dockedMQ.addEventListener) dockedMQ.addEventListener('change', applyDockMode);
   else dockedMQ.addListener(applyDockMode);
   drawerOpenBtn.addEventListener('click', () => setDrawer(true));
-  appbarTab.addEventListener('click', () => setDrawer(true));
+  appbarTabName.addEventListener('click', () => setDrawer(true));
+  appbarFlip.querySelector('.switch-input').addEventListener('change', (e) => setCutoffLive(e.target.checked));
   drawerCloseBtn.addEventListener('click', () => setDrawer(false));
   drawerScrim.addEventListener('click', () => setDrawer(false));
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !docked() && document.documentElement.classList.contains('drawer-open')) setDrawer(false);
   });
-  $('drawer-sync').addEventListener('click', () => { if (!docked()) setDrawer(false); syncOpenBtn.click(); });
+  drawerSyncBtn.addEventListener('click', () => { if (!docked()) setDrawer(false); showPage('sync'); });
   $('drawer-quit').addEventListener('click', () => { if (!docked()) setDrawer(false); quit(); });
 
   // Drag: a swipe in from the left edge pulls the drawer out; dragging the
@@ -1263,9 +1352,28 @@
   }
 
   function syncNoteMsg(m) { syncNote.textContent = m || ''; }
+  // The sync page's switches: each part is a set of storage keys, so the
+  // copy can carry just the progress, or just the settings, etc.
+  const SYNC_PARTS = {
+    watched: [LS.watchedTo, LS.watched],
+    channels: [LS.selected],
+    filters: [LS.tab, LS.tabs, LS.cutoff, LS.showWatched],
+    layout: [LS.view, LS.sort, LS.group, LS.sidebar],
+  };
+  const syncPick = $('sync-pick');
+  function pickedKeys() {
+    const keys = [];
+    Array.prototype.forEach.call(syncPick.querySelectorAll('input[data-part]:checked'), (c) => {
+      (SYNC_PARTS[c.getAttribute('data-part')] || []).forEach((k) => keys.push(k));
+    });
+    return keys;
+  }
+  syncPick.addEventListener('change', () => { syncCopyBtn.disabled = pickedKeys().length === 0; syncNoteMsg(''); });
   function exportData() {
+    const keys = pickedKeys();
+    if (!keys.length) { syncNoteMsg('Switch on at least one thing to copy.'); return; }
     const out = {};
-    Object.values(LS).forEach((k) => {
+    keys.forEach((k) => {
       const v = localStorage.getItem(k);
       if (v != null) { try { out[k] = JSON.parse(v); } catch (e) {} }
     });
@@ -1288,11 +1396,27 @@
     render();
     syncNoteMsg('Merged. Watched progress and settings updated on this device.');
   }
-  syncOpenBtn.addEventListener('click', () => { syncNoteMsg(''); syncPaste.value = ''; syncModal.hidden = false; });
-  syncClose.addEventListener('click', () => { syncModal.hidden = true; });
-  syncModal.addEventListener('click', (e) => { if (e.target === syncModal) syncModal.hidden = true; });
+  syncBackBtn.addEventListener('click', () => showPage('binge'));
   syncCopyBtn.addEventListener('click', exportData);
   syncApplyBtn.addEventListener('click', applyPaste);
+
+  // ---------------------------------------------------------------------------
+  // Pages — "binge" (the videos) or "sync". One is shown at a time; the app
+  // bar swaps the group pill for a page title, and the sidebar lights the
+  // page's item. Not remembered across reloads: the app opens on the videos.
+  // ---------------------------------------------------------------------------
+  let page = 'binge';
+  function showPage(name) {
+    page = name;
+    viewBinge.hidden = name !== 'binge';
+    viewSync.hidden = name !== 'sync';
+    appbarTitle.hidden = name === 'binge';
+    appbarTitle.textContent = name === 'sync' ? 'Sync across devices' : '';
+    if (name === 'sync') drawerSyncBtn.setAttribute('aria-current', 'page'); else drawerSyncBtn.removeAttribute('aria-current');
+    if (name === 'sync') { syncNoteMsg(''); syncPaste.value = ''; }
+    if (available.length) renderTabs();   // group highlight + app-bar pill follow the page
+    try { window.scrollTo({ top: 0 }); } catch (e) {}
+  }
 
   // ---------------------------------------------------------------------------
   // Boot

@@ -26,6 +26,9 @@ html, body {
   background: var(--bg); color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* No landscape text inflation on iOS: Safari would boost most text but
+     not button labels (the date/Today switch), leaving them looking small. */
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
   overscroll-behavior-y: none;
   /* pan-y (not manipulation): the browser keeps vertical scrolling, and a
      sideways drag reaches our pointer handlers for the sidebar swipe. */
@@ -95,11 +98,10 @@ html, body {
 .drawer-rule { height: 1px; background: var(--line); margin: 0 4px; }
 /* Active group shown in the app bar: name, then its cutoff date in small
    caps like the drawer rows. Tapping it opens the drawer. */
-.appbar-tab { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; margin-left: 2px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
-  color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease, background 0.15s ease; }
-.appbar-tab:hover { border-color: rgba(255, 255, 255, 0.22); }
-.appbar-tab-name { overflow: hidden; text-overflow: ellipsis; }
-.appbar-tab-n { color: var(--amber); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.appbar-tab { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; margin-left: 2px; }   /* name left, flip at the right edge */
+.appbar-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
+  color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
+.appbar-tab-name:hover { border-color: rgba(255, 255, 255, 0.22); }
 .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
 .drawer-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink);
   font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s ease; }
@@ -129,6 +131,44 @@ html, body {
 .switch-input:checked + .switch-track::after { transform: translateX(18px); }
 .switch-input:focus-visible + .switch-track { outline: 2px solid var(--amber); outline-offset: 2px; }
 .switch-text { font-size: 14px; }
+/* Flip toggle (Today ⇄ picked date): a real checkbox switch (the same
+   .switch as the filters' toggles) with a wide track that carries the
+   labels. Checked = Today. The knob (the track's ::after, as on every
+   switch) slides between the ends and the label sits on the side the knob
+   has left: date on the left with the knob at the right end; Today with
+   the knob at the left end and "Today" to its right, so it reads date →
+   knob → Today. The leaving label slides the knob's full travel and fades
+   as the arriving one slides in from the far side. */
+.flip { --travel: 84px; flex: none; }   /* knob travel: 112px track − 2px borders − 2×4px inset − 18px knob (a px value: translate percentages would be of the moved element, not the track) */
+.flip .switch-track { width: 112px; height: 28px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden;
+  color: var(--ink); font-size: 11px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.flip .switch-input:checked + .switch-track { background: var(--panel-2); border-color: var(--line); }   /* no red fill: the label says it all */
+.flip .flip-off, .flip .flip-on { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none;
+  transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }   /* labels ride along with the knob */
+.flip .flip-off { left: 8px; }    /* the picked date, on the left */
+.flip .flip-on { right: 8px; opacity: 0; transform: translateX(var(--travel)); }   /* "Today", on the right; parks off to the right */
+.flip .switch-input:checked + .switch-track .flip-off { opacity: 0; transform: translateX(calc(-1 * var(--travel))); }   /* the labels move exactly as far as the knob, so they travel together */
+.flip .switch-input:checked + .switch-track .flip-on { opacity: 1; transform: none; }
+/* The knob: a flat, modern key in YouTube red with a soft shadow. */
+.flip .switch-track::after { top: 4px; left: 4px; width: 18px; height: 18px; border-radius: 5px; background: var(--red); z-index: 1;   /* YouTube red; 4px clear of the track edge on every side */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45); transform: translateX(var(--travel)); transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.flip .switch-input:checked + .switch-track::after { transform: none; }
+.appbar .flip { --travel: 82px; }   /* 110 − 20 − 2×4 */
+.appbar .flip .switch-track { height: 30px; }   /* same height as the name beside it */
+.appbar .flip .switch-track::after { width: 20px; height: 20px; }   /* taller track, bigger knob, same 4px clearance */
+/* Ringed flip (sidebar rows, app bar): the outline is the group's watched
+   progress — a ring that fills clockwise from 12 o'clock (--p, set per
+   flip by app.js), solid YouTube red. A conic gradient masked to a 2px
+   frame, over the track's edge. Flipping a row's switch doesn't select
+   the row, so several groups can be switched in a run. */
+.flip.ring .switch-track { border-color: transparent; }
+.flip.ring .switch-track::before { content: ""; position: absolute; inset: -1px; z-index: 2; border-radius: inherit; padding: 2px; pointer-events: none;
+  background: conic-gradient(var(--red) var(--p, 0%), var(--line) 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
+/* With Today chosen (the app-bar flip), the date sliders are hidden; flip to
+   the picked date and they appear, ready to drag. */
+.filters.live #fg-cutoff { display: none; }
 
 /* Filters */
 /* Filters panel: opened by the funnel button in the toolbar, drops in right
@@ -146,14 +186,12 @@ html, body {
    listed in the drawer. The name sits left, the group's own cutoff date
    right; the active row is lit with a red edge, YouTube-sidebar style. */
 .tabs { display: flex; flex-direction: column; gap: 2px; }
-.tab { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; font: inherit; font-weight: 600; font-size: 14px; line-height: 1.2; color: var(--ink); background: transparent; border: 0; border-radius: 10px; padding: 11px 12px; cursor: pointer; text-align: left; white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
+.tab { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; font: inherit; font-weight: 600; font-size: 14px; line-height: 1.2; color: var(--ink); background: transparent; border: 0; border-radius: 10px; padding: 7px 8px 7px 12px; cursor: pointer; text-align: left; white-space: nowrap; user-select: none; -webkit-user-select: none; transition: background 0.15s ease, color 0.15s ease; }
 .tab:hover { background: var(--panel-2); }
 .tab[aria-selected="true"] { background: var(--panel-2); font-weight: 700; }
 .tab[aria-selected="true"]::before { content: ""; position: absolute; left: 3px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 2px; background: var(--red); }
 .tab:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.tab-n { flex: none; color: var(--muted); font-weight: 600; font-size: 11px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
-.tab[aria-selected="true"] .tab-n { color: var(--amber); }
 
 .chan-switches { display: flex; flex-direction: column; gap: 2px; }
 .chan-switch { padding: 8px 2px; }
@@ -217,8 +255,8 @@ html, body {
 .progress-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .progress-note { color: var(--muted); font-size: 13px; min-width: 0; }
 .progress-text { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
-.progress-bar { height: 8px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
-.progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--red), var(--amber)); transition: width 0.3s ease; }
+.progress-bar { height: 4px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }   /* slim, YouTube-style */
+.progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--red); transition: width 0.3s ease; }
 /* Results header: list/grid on the left, expand/collapse all on the
    right. Neither changes which videos are listed, only their form. */
 .results-bar { display: flex; align-items: center; gap: 8px; }
@@ -333,20 +371,32 @@ html, body {
 
 .foot-actions { display: flex; gap: 14px; }
 
-/* Sync modal */
-.sync-modal { position: fixed; inset: 0; z-index: 50;   /* above the docked sidebar */ display: flex; align-items: center; justify-content: center; padding: 18px;
-  background: rgba(0, 0, 0, 0.6); }
-.sync-card { width: min(520px, 100%); max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line);
-  border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
-.sync-head { display: flex; align-items: center; justify-content: space-between; }
-.sync-title { font-size: 18px; font-weight: 800; }
-.sync-x { background: transparent; border: 0; color: var(--muted); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
-.sync-sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0; }
+/* The videos page wraps its sections, so it lays them out like .binge does. */
+#view-binge { display: flex; flex-direction: column; gap: 14px; }
+/* Pages other than the videos view (reached from the sidebar): a narrow
+   column with a title, like a settings screen. */
+.page { width: min(560px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.page-head { display: flex; align-items: center; }
+.page-head .btn { margin-left: -12px; }
+.appbar-title { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+
+/* Sync page */
+.sync-sub { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0; }
+.sync-pick { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.sync-pick legend { padding: 0 6px; }
+.sync-pick .switch { align-items: flex-start; }
+.sync-pick .switch-text { display: flex; flex-direction: column; gap: 2px; line-height: 1.25; }
+.sync-pick .switch-text small { color: var(--muted); font-size: 12px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .sync-sub b { color: var(--ink); }
-.sync-ta { width: 100%; min-height: 96px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+.sync-ta { width: 100%; min-height: 200px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.45;
   color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
-.sync-actions { display: flex; justify-content: flex-end; }
+.sync-actions { display: flex; }
 .sync-note { color: var(--amber); font-size: 13px; min-height: 18px; }
+/* Sidebar item for the page you're on: lit like the active group. */
+.drawer-item[aria-current="page"] { background: var(--panel-2); font-weight: 700; position: relative; }
+.drawer-item[aria-current="page"]::before { content: ""; position: absolute; left: 3px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 2px; background: var(--red); }
+.drawer-item[aria-current="page"] .ico { color: var(--ink); }
 
 /* Undo toast: a floating strip above the HUD, like a mail client's "Undo"
    after a delete. Slides up, stays UNDO_MS, then slides away. */
