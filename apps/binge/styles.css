@@ -27,7 +27,9 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
-  touch-action: manipulation;
+  /* pan-y (not manipulation): the browser keeps vertical scrolling, and a
+     sideways drag reaches our pointer handlers for the sidebar swipe. */
+  touch-action: pan-y;
 }
 
 .binge {
@@ -70,6 +72,9 @@ html, body {
 .drawer-open .drawer-scrim { opacity: 1; visibility: visible; transition-delay: 0s; }
 .drawer-open .drawer { transform: none; visibility: visible; transition-delay: 0s; }
 .drawer-open body { overflow: hidden; }
+/* While a finger drags it, the panel tracks the pointer directly. */
+.drawer-dragging .drawer, .drawer-dragging .drawer-scrim { transition: none; }
+.drawer-dragging { user-select: none; -webkit-user-select: none; }
 .drawer-head { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-left: 4px; }
 .drawer-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0 12px; margin-bottom: -8px; }
 .drawer-rule { height: 1px; background: var(--line); margin: 0 4px; }

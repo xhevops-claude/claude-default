@@ -1123,6 +1123,55 @@
   $('drawer-sync').addEventListener('click', () => { setDrawer(false); syncOpenBtn.click(); });
   $('drawer-quit').addEventListener('click', () => { setDrawer(false); quit(); });
 
+  // Drag: a swipe in from the left edge pulls the drawer out; dragging the
+  // drawer (or the scrim) leftwards pushes it back. The panel follows the
+  // pointer, then snaps open or shut depending on how much is showing.
+  // Axis-locked like the shell's pager: the first DRAG_LOCK_PX decide, and
+  // a vertical move (scrolling) hands the gesture back to the browser.
+  const EDGE_PX = 28, DRAG_LOCK_PX = 8;
+  let drag = null;               // { id, x0, y0, opening, w, active, x }
+  let suppressClickUntil = 0;    // swallow the click a drag would otherwise leave behind
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button !== 0 || drag) return;
+    const open = document.documentElement.classList.contains('drawer-open');
+    if (!open && e.clientX > EDGE_PX) return;
+    if (open && !(drawerEl.contains(e.target) || e.target === drawerScrim)) return;
+    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, opening: !open, w: drawerEl.offsetWidth, active: false, x: 0 };
+  }, true);
+  document.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+    if (!drag.active) {
+      if (Math.abs(dx) < DRAG_LOCK_PX && Math.abs(dy) < DRAG_LOCK_PX) return;
+      // Vertical, or the wrong way for this gesture: not ours.
+      if (Math.abs(dy) > Math.abs(dx) || (drag.opening ? dx < 0 : dx > 0)) { drag = null; return; }
+      drag.active = true;
+      document.documentElement.classList.add('drawer-dragging');
+      drawerEl.style.visibility = drawerScrim.style.visibility = 'visible';
+    }
+    e.preventDefault();
+    // x is the drawer's offset: 0 fully open, -w fully hidden.
+    drag.x = Math.min(0, drag.opening ? dx - drag.w : dx);
+    drawerEl.style.transform = 'translateX(' + drag.x + 'px)';
+    drawerScrim.style.opacity = String(1 + drag.x / drag.w);
+  }, { passive: false });
+  function endDrag(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag; drag = null;
+    if (!d.active) return;
+    document.documentElement.classList.remove('drawer-dragging');
+    drawerEl.style.transform = ''; drawerEl.style.visibility = '';
+    drawerScrim.style.opacity = ''; drawerScrim.style.visibility = '';
+    const shown = 1 + d.x / d.w;   // fraction of the drawer on screen
+    setDrawer(e.type === 'pointercancel' ? !d.opening : shown > 0.4);
+    suppressClickUntil = Date.now() + 400;
+  }
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', endDrag);
+  document.addEventListener('click', (e) => {
+    if (Date.now() < suppressClickUntil) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
+
   // ---------------------------------------------------------------------------
   // Cross-device sync — no backend. A committed db.json is the shared
   // baseline; localStorage layers on top. Watched cursors merge by taking the
