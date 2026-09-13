@@ -60,7 +60,7 @@
   const nowTitle = $('now-title'), nowBy = $('now-by'), ytLink = $('yt-link');
   const watchedNextBtn = $('watched-next'), skipBtn = $('skip'), closePlayerBtn = $('close-player');
   const filtersEl = $('filters'), filtersToggle = $('filters-toggle');
-  const groupTabs = $('group-tabs'), chanLabel = $('chan-label');
+  const groupTabs = $('group-tabs'), appbarTab = $('appbar-tab'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
   const filtersReset = $('filters-reset'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar');
@@ -384,7 +384,7 @@
   // ---------------------------------------------------------------------------
   function render() {
     if (!available.length) {
-      groupTabs.hidden = true; toolbar.hidden = true; filtersEl.hidden = true; hideResults();
+      groupTabs.hidden = true; appbarTab.hidden = true; toolbar.hidden = true; filtersEl.hidden = true; hideResults();
       showStatus('🍿', 'No channel data yet. The scraper publishes to the CDN daily. Check back soon.', null);
       return;
     }
@@ -449,29 +449,32 @@
     const key = all.map((g) => g.id + ':' + g.channels.length).join('|');
     if (groupTabs.dataset.key !== key) {
       groupTabs.dataset.key = key;
-      const tabHtml = (g) =>
+      groupTabs.innerHTML = all.map((g) =>
         '<button class="tab" type="button" role="tab" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
-        + '<span class="tab-name">' + escapeHTML(g.name) + '</span><span class="tab-n"></span></button>';
-      // "All" stays put on the left; the bundles scroll sideways next to it.
-      groupTabs.innerHTML = tabHtml(all[0]) + '<div class="tabs-scroll">' + all.slice(1).map(tabHtml).join('') + '</div>';
+        + '<span class="tab-name">' + escapeHTML(g.name) + '</span><span class="tab-n"></span></button>').join('');
     }
-    // Each tab carries its own cutoff date under the name, so the per-tab dates read at a glance.
+    // Each row carries its own cutoff date beside the name, so the per-tab dates read at a glance.
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
       const id = b.getAttribute('data-tab');
       b.setAttribute('aria-selected', String(id === activeTab));
       b.querySelector('.tab-n').textContent = cutoffText(tabCutoff(id));
     });
+    // The app bar names the active group (the tabs themselves live in the drawer).
+    const active = all.find((g) => g.id === activeTab) || all[0];
+    appbarTab.hidden = false;
+    appbarTab.querySelector('.appbar-tab-name').textContent = active.name;
+    appbarTab.querySelector('.appbar-tab-n').textContent = cutoffText(tabCutoff(active.id));
   }
   groupTabs.addEventListener('click', (e) => {
     const b = e.target.closest('.tab'); if (!b) return;
     selectTab(b.getAttribute('data-tab'));
+    setDrawer(false);
   });
   function selectTab(id) {
     if (id === activeTab) return;
     activeTab = id; save(LS.tab, activeTab);
     recomputeSelected();
     render();
-    try { groupTabs.querySelector('[aria-selected="true"]').scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) {}
   }
 
   // ---- channels ----
@@ -1111,6 +1114,7 @@
     if (open) drawerCloseBtn.focus(); else drawerOpenBtn.focus();
   }
   drawerOpenBtn.addEventListener('click', () => setDrawer(true));
+  appbarTab.addEventListener('click', () => setDrawer(true));
   drawerCloseBtn.addEventListener('click', () => setDrawer(false));
   drawerScrim.addEventListener('click', () => setDrawer(false));
   document.addEventListener('keydown', (e) => {

@@ -71,6 +71,15 @@ html, body {
 .drawer-open .drawer { transform: none; visibility: visible; transition-delay: 0s; }
 .drawer-open body { overflow: hidden; }
 .drawer-head { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-left: 4px; }
+.drawer-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0 12px; margin-bottom: -8px; }
+.drawer-rule { height: 1px; background: var(--line); margin: 0 4px; }
+/* Active group shown in the app bar: name, then its cutoff date in small
+   caps like the drawer rows. Tapping it opens the drawer. */
+.appbar-tab { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; margin-left: 2px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
+  color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease, background 0.15s ease; }
+.appbar-tab:hover { border-color: rgba(255, 255, 255, 0.22); }
+.appbar-tab-name { overflow: hidden; text-overflow: ellipsis; }
+.appbar-tab-n { color: var(--amber); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
 .drawer-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink);
   font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s ease; }
@@ -113,19 +122,18 @@ html, body {
 .fgroup-actions { display: flex; gap: 6px; }
 .fgroup-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 
-/* Group tabs: one box per group from groups.json plus an automatic "All".
-   "All" stays put on the left; the rest sit in a horizontally scrollable
-   strip so a long list stays on one row on phones. Each tab shows its own
-   cutoff date under the name. */
-.tabs { display: flex; gap: 6px; padding: 2px 0; margin-top: -6px; }
-/* The strip hugs the right edge on wide screens (auto margin); on narrow
-   ones it fills the row and scrolls. */
-.tabs-scroll { display: flex; gap: 6px; min-width: 0; margin-left: auto; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.tabs-scroll::-webkit-scrollbar { display: none; }
-.tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; font-weight: 700; font-size: 14px; line-height: 1.2; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; cursor: pointer; white-space: nowrap; transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
-.tab[aria-selected="true"] { background: var(--red); border-color: transparent; color: #fff; }
+/* Group tabs: one row per group from groups.json plus an automatic "All",
+   listed in the drawer. The name sits left, the group's own cutoff date
+   right; the active row is lit with a red edge, YouTube-sidebar style. */
+.tabs { display: flex; flex-direction: column; gap: 2px; }
+.tab { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; font: inherit; font-weight: 600; font-size: 14px; line-height: 1.2; color: var(--ink); background: transparent; border: 0; border-radius: 10px; padding: 11px 12px; cursor: pointer; text-align: left; white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
+.tab:hover { background: var(--panel-2); }
+.tab[aria-selected="true"] { background: var(--panel-2); font-weight: 700; }
+.tab[aria-selected="true"]::before { content: ""; position: absolute; left: 3px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 2px; background: var(--red); }
 .tab:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-.tab-n { opacity: 0.65; font-weight: 600; font-size: 10px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tab-n { flex: none; color: var(--muted); font-weight: 600; font-size: 11px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.tab[aria-selected="true"] .tab-n { color: var(--amber); }
 
 .chan-switches { display: flex; flex-direction: column; gap: 2px; }
 .chan-switch { padding: 8px 2px; }
