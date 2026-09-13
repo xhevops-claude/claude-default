@@ -26,6 +26,9 @@ html, body {
   background: var(--bg); color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* No landscape text inflation on iOS: Safari would boost most text but
+     not button labels (the date/Today switch), leaving them looking small. */
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
   overscroll-behavior-y: none;
   /* pan-y (not manipulation): the browser keeps vertical scrolling, and a
      sideways drag reaches our pointer handlers for the sidebar swipe. */
