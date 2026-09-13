@@ -61,7 +61,7 @@
   const nowTitle = $('now-title'), nowBy = $('now-by'), ytLink = $('yt-link');
   const watchedNextBtn = $('watched-next'), skipBtn = $('skip'), closePlayerBtn = $('close-player');
   const filtersEl = $('filters'), filtersToggle = $('filters-toggle');
-  const groupTabs = $('group-tabs'), appbarTab = $('appbar-tab'), chanLabel = $('chan-label');
+  const groupTabs = $('group-tabs'), appbarTab = $('appbar-tab'), appbarTabName = $('appbar-tab-name'), appbarFlip = $('appbar-flip'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
   const cutoffMode = $('cutoff-mode');
   const showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
@@ -473,7 +473,7 @@
       // button can't contain buttons). Enter/Space select via keydown below.
       groupTabs.innerHTML = all.map((g) =>
         '<div class="tab" role="tab" tabindex="0" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
-        + '<span class="tab-name">' + escapeHTML(g.name) + '</span>' + flipHTML() + '</div>').join('');
+        + '<span class="tab-name">' + escapeHTML(g.name) + '</span>' + flipHTML('mini ring') + '</div>').join('');
     }
     // Each row carries its own cutoff flip beside the name, so several groups
     // can be switched between Today and their picked date in a run.
@@ -482,11 +482,12 @@
       b.setAttribute('aria-selected', String(id === activeTab && page === 'binge'));
       syncFlip(b.querySelector('.seg2'), id, { progress: true });
     });
-    // The app bar names the active group (the tabs themselves live in the drawer).
+    // The app bar names the active group (the tabs themselves live in the
+    // drawer) and carries its flip, ringed with its progress like the rows.
     const active = all.find((g) => g.id === activeTab) || all[0];
     appbarTab.hidden = page !== 'binge';
-    appbarTab.querySelector('.appbar-tab-name').textContent = active.name;
-    appbarTab.querySelector('.appbar-tab-n').textContent = tabCutoffText(active.id);
+    appbarTabName.textContent = active.name;
+    syncFlip(appbarFlip, active.id, { progress: true });
   }
   groupTabs.addEventListener('click', (e) => {
     const b = e.target.closest('.tab'); if (!b) return;
@@ -506,8 +507,8 @@
   // Today ⇄ picked-date flip: the same widget in the filters and in every
   // sidebar row. Only the active cell is visible and reachable; the other
   // waits offstage. data-flip names the state a tap switches *to*.
-  function flipHTML() {
-    return '<span class="seg2" role="group" aria-label="Cutoff">'
+  function flipHTML(cls) {
+    return '<span class="seg2 ' + (cls || '') + '" role="group" aria-label="Cutoff">'
       + '<button class="flip-live" data-flip="off" type="button" title="Switch to the picked date">Today</button>'
       + '<button class="flip-picked" data-flip="on" type="button" title="Switch to today"></button></span>';
   }
@@ -1225,7 +1226,11 @@
   if (dockedMQ.addEventListener) dockedMQ.addEventListener('change', applyDockMode);
   else dockedMQ.addListener(applyDockMode);
   drawerOpenBtn.addEventListener('click', () => setDrawer(true));
-  appbarTab.addEventListener('click', () => setDrawer(true));
+  appbarTabName.addEventListener('click', () => setDrawer(true));
+  appbarFlip.addEventListener('click', (e) => {
+    const flip = e.target.closest('[data-flip]'); if (!flip) return;
+    setCutoffLive(flip.getAttribute('data-flip') === 'on');
+  });
   drawerCloseBtn.addEventListener('click', () => setDrawer(false));
   drawerScrim.addEventListener('click', () => setDrawer(false));
   document.addEventListener('keydown', (e) => {

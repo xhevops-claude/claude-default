@@ -81,8 +81,15 @@
     <!-- App bar: hamburger + the active group, like YouTube's top-left -->
     <header class="appbar">
       <button id="drawer-open" type="button" class="iconbtn" aria-label="Open menu" aria-controls="drawer" aria-expanded="false"><svg class="ico"><use href="#i-menu"/></svg></button>
-      <!-- The active group, since the tabs live in the drawer; tapping it opens the drawer -->
-      <button id="appbar-tab" type="button" class="appbar-tab" hidden><span class="appbar-tab-name"></span><span class="appbar-tab-n"></span></button>
+      <!-- The active group (tabs live in the drawer): its name opens the drawer; beside it,
+           the same Today ⇄ date flip as the sidebar rows, ringed with the group's progress -->
+      <div id="appbar-tab" class="appbar-tab" hidden>
+        <button id="appbar-tab-name" type="button" class="appbar-tab-name" title="Open groups"></button>
+        <span class="seg2 mini ring" id="appbar-flip" role="group" aria-label="Cutoff">
+          <button class="flip-live" data-flip="off" type="button" title="Switch to the picked date">Today</button>
+          <button class="flip-picked" data-flip="on" type="button" title="Switch to today"></button>
+        </span>
+      </div>
       <!-- Page title, shown instead of the group pill on non-video pages -->
       <span class="appbar-title" id="appbar-title" hidden></span>
     </header>

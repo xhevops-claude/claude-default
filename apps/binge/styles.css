@@ -95,11 +95,11 @@ html, body {
 .drawer-rule { height: 1px; background: var(--line); margin: 0 4px; }
 /* Active group shown in the app bar: name, then its cutoff date in small
    caps like the drawer rows. Tapping it opens the drawer. */
-.appbar-tab { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; margin-left: 2px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
-  color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease, background 0.15s ease; }
-.appbar-tab:hover { border-color: rgba(255, 255, 255, 0.22); }
-.appbar-tab-name { overflow: hidden; text-overflow: ellipsis; }
-.appbar-tab-n { color: var(--amber); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.appbar-tab { display: inline-flex; align-items: center; gap: 8px; min-width: 0; margin-left: 2px; }
+.appbar-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
+  color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
+.appbar-tab-name:hover { border-color: rgba(255, 255, 255, 0.22); }
+.appbar .seg2.mini button { padding: 8px 8px; }   /* same height as the name beside it */
 .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
 .drawer-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink);
   font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s ease; }
@@ -143,18 +143,18 @@ html, body {
 .seg2 .flip-picked { background: var(--panel-2); color: var(--ink); transform: translateX(100%); opacity: 0; pointer-events: none; }
 .seg2.picked .flip-live { transform: translateX(-100%); opacity: 0; pointer-events: none; }
 .seg2.picked .flip-picked { transform: none; opacity: 1; pointer-events: auto; }
-/* In a sidebar row: compact, and the row's own hover/selected tint shows
-   through the date cell. Flipping here doesn't select the row, so several
-   groups can be switched in a run. */
-.tab .seg2 { flex: none; width: 112px; position: relative; border-color: transparent; }
-.tab .seg2 button { padding: 4px 8px; gap: 8px; font-size: 11px; }
-.tab .seg2 button::after { font-size: 11px; }
-/* Sidebar flips: Today wears the same plain colours as the date, and the
+/* Compact flip (sidebar rows, app bar). In a row, flipping doesn't select
+   the row, so several groups can be switched in a run. */
+.seg2.mini { flex: none; width: 112px; }
+.seg2.mini button { padding: 4px 8px; gap: 8px; font-size: 11px; }
+.seg2.mini button::after { font-size: 11px; }
+/* Ringed flip: Today wears the same plain colours as the date, and the
    outline is the group's watched progress — a ring that fills clockwise
-   from 12 o'clock (--p, set per row by app.js), red into amber like the
+   from 12 o'clock (--p, set per flip by app.js), red into amber like the
    main bar. A conic gradient masked to a 2px frame, over the box's edge. */
-.tab .seg2 .flip-live { background: var(--panel-2); color: var(--ink); }
-.tab .seg2::after { content: ""; position: absolute; inset: -1px; z-index: 2; border-radius: inherit; padding: 2px; pointer-events: none;
+.seg2.ring { position: relative; border-color: transparent; }
+.seg2.ring .flip-live { background: var(--panel-2); color: var(--ink); }
+.seg2.ring::after { content: ""; position: absolute; inset: -1px; z-index: 2; border-radius: inherit; padding: 2px; pointer-events: none;
   background: conic-gradient(var(--red) 0, var(--amber) var(--p, 0%), var(--line) var(--p, 0%));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
