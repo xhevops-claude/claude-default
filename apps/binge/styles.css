@@ -146,9 +146,18 @@ html, body {
 /* In a sidebar row: compact, and the row's own hover/selected tint shows
    through the date cell. Flipping here doesn't select the row, so several
    groups can be switched in a run. */
-.tab .seg2 { flex: none; width: 112px; }
+.tab .seg2 { flex: none; width: 112px; position: relative; border-color: transparent; }
 .tab .seg2 button { padding: 4px 8px; gap: 8px; font-size: 11px; }
 .tab .seg2 button::after { font-size: 11px; }
+/* Sidebar flips: Today wears the same plain colours as the date, and the
+   outline is the group's watched progress — a ring that fills clockwise
+   from 12 o'clock (--p, set per row by app.js), red into amber like the
+   main bar. A conic gradient masked to a 2px frame, over the box's edge. */
+.tab .seg2 .flip-live { background: var(--panel-2); color: var(--ink); }
+.tab .seg2::after { content: ""; position: absolute; inset: -1px; z-index: 2; border-radius: inherit; padding: 2px; pointer-events: none;
+  background: conic-gradient(var(--red) 0, var(--amber) var(--p, 0%), var(--line) var(--p, 0%));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
 .seg2 button:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
 /* With Today chosen, the sliders show today's date and sit dimmed; dragging
    one picks that date and moves the pill over to it. */

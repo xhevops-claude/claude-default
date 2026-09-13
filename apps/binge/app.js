@@ -480,7 +480,7 @@
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
       const id = b.getAttribute('data-tab');
       b.setAttribute('aria-selected', String(id === activeTab && page === 'binge'));
-      syncFlip(b.querySelector('.seg2'), id);
+      syncFlip(b.querySelector('.seg2'), id, { progress: true });
     });
     // The app bar names the active group (the tabs themselves live in the drawer).
     const active = all.find((g) => g.id === activeTab) || all[0];
@@ -511,8 +511,27 @@
       + '<button class="flip-live" data-flip="off" type="button" title="Switch to the picked date">Today</button>'
       + '<button class="flip-picked" data-flip="on" type="button" title="Switch to today"></button></span>';
   }
-  function syncFlip(seg, id) {
+  // A group's watched progress up to its own cutoff (its channels minus the
+  // ones switched off) — what the main bar would show with that group open.
+  function tabProgress(id) {
+    const g = allGroups().find((x) => x.id === id);
+    if (!g) return { watched: 0, total: 0 };
+    const off = offSet(id), vids = [];
+    g.channels.forEach((s) => { if (off.has(s)) return; const cd = channelData[s]; if (cd) vids.push.apply(vids, cd.videos); });
+    const c = tabCutoffLive(id) ? todayYMD() : tabCutoff(id);   // live means today, whatever date is parked underneath
+    const cut = vids.some((v) => v.d) ? c.y * 10000 + c.m * 100 + Math.min(c.d, daysInMonth(c.y, c.m)) : c.y * 10000 + 1231;
+    let watched = 0, total = 0;
+    vids.forEach((v) => { if (videoYMD(v) <= cut) { total++; if (isWatched(v)) watched++; } });
+    return { watched: watched, total: total };
+  }
+  function syncFlip(seg, id, opts) {
     const live = tabCutoffLive(id);
+    if (opts && opts.progress) {
+      // The sidebar rows draw the group's progress as a clockwise ring around the flip.
+      const p = tabProgress(id);
+      seg.style.setProperty('--p', (p.total ? Math.round(p.watched / p.total * 1000) / 10 : 0) + '%');
+      seg.title = p.watched + ' / ' + p.total + ' watched';
+    }
     const liveBtn = seg.querySelector('.flip-live'), pickedBtn = seg.querySelector('.flip-picked');
     liveBtn.tabIndex = live ? 0 : -1; liveBtn.setAttribute('aria-hidden', String(!live));
     pickedBtn.tabIndex = live ? -1 : 0; pickedBtn.setAttribute('aria-hidden', String(live));
