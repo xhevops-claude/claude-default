@@ -138,7 +138,9 @@ html, body {
 .seg2 button { grid-area: 1 / 1; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px 4px 4px; border: 0; cursor: pointer;
   font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums;
   transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.24s ease; }
-.seg2 button::before { content: "\21C4"; flex: none; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; background: rgba(255, 255, 255, 0.12); font-size: 12px; }   /* ⇄ knob: a small square on the left; the label sits right */
+.seg2 button::before { content: ""; flex: none; width: 22px; height: 22px; border-radius: 3px; background-color: rgba(255, 255, 255, 0.12);   /* knob: a small square on the left with a grip of three vertical lines; the label sits right */
+  background-image: linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor);
+  background-size: 2px 10px; background-repeat: no-repeat; background-position: calc(50% - 4px) 50%, 50% 50%, calc(50% + 4px) 50%; }
 .seg2 .flip-live { background: var(--red); color: #fff; }
 .seg2 .flip-picked { background: var(--panel-2); color: var(--ink); transform: translateX(100%); opacity: 0; pointer-events: none; }
 .seg2.picked .flip-live { transform: translateX(-100%); opacity: 0; pointer-events: none; }
@@ -147,7 +149,7 @@ html, body {
    the row, so several groups can be switched in a run. */
 .seg2.mini { flex: none; width: 112px; }
 .seg2.mini button { padding: 3px 8px 3px 3px; gap: 8px; font-size: 11px; }
-.seg2.mini button::before { width: 20px; height: 20px; font-size: 11px; }
+.seg2.mini button::before { width: 20px; height: 20px; background-size: 2px 9px; background-position: calc(50% - 3.5px) 50%, 50% 50%, calc(50% + 3.5px) 50%; }
 /* Ringed flip: Today wears the same plain colours as the date, and the
    outline is the group's watched progress — a ring that fills clockwise
    from 12 o'clock (--p, set per flip by app.js), red into amber like the
