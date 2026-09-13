@@ -154,8 +154,12 @@ html, body {
    outline is the group's watched progress — a ring that fills clockwise
    from 12 o'clock (--p, set per flip by app.js), red into amber like the
    main bar, solid YouTube red. A conic gradient masked to a 2px frame, over the box's edge. */
+/* Plain flip: both cells wear the same colours (no red "live" cell). */
+.seg2.plain .flip-live, .seg2.ring .flip-live { background: var(--panel-2); color: var(--ink); }
+/* A label with an icon before its text (the list/grid flip). */
+.flip-lbl { display: inline-flex; align-items: center; gap: 6px; }
+.flip-lbl .ico { width: 16px; height: 16px; stroke-width: 2; }
 .seg2.ring { position: relative; border-color: transparent; }
-.seg2.ring .flip-live { background: var(--panel-2); color: var(--ink); }
 .seg2.ring::after { content: ""; position: absolute; inset: -1px; z-index: 2; border-radius: inherit; padding: 2px; pointer-events: none;
   background: conic-gradient(var(--red) var(--p, 0%), var(--line) 0);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
@@ -255,11 +259,6 @@ html, body {
 /* Results header: list/grid on the left, expand/collapse all on the
    right. Neither changes which videos are listed, only their form. */
 .results-bar { display: flex; align-items: center; gap: 8px; }
-/* Explicit widths here (not flex-basis): Safari sizes a shrink-wrapped flex
-   container from its items' content, not their basis, which left the box
-   narrower than its buttons. 2 buttons × 56px + 3px padding + 1px border each side. */
-.results-bar .seg { flex: none; width: 120px; max-width: none; }
-.results-bar .seg-btn { flex: none; width: 56px; }
 .results-bar #collapse-all { margin-left: auto; }
 
 /* Sections */
