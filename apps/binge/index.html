@@ -83,8 +83,13 @@
       <button id="drawer-open" type="button" class="iconbtn" aria-label="Open menu" aria-controls="drawer" aria-expanded="false"><svg class="ico"><use href="#i-menu"/></svg></button>
       <!-- The active group, since the tabs live in the drawer; tapping it opens the drawer -->
       <button id="appbar-tab" type="button" class="appbar-tab" hidden><span class="appbar-tab-name"></span><span class="appbar-tab-n"></span></button>
+      <!-- Page title, shown instead of the group pill on non-video pages -->
+      <span class="appbar-title" id="appbar-title" hidden></span>
     </header>
 
+    <!-- Pages: one is shown at a time. "binge" is the videos view; "sync" is
+         reached from the sidebar. -->
+    <div id="view-binge">
     <!-- Player -->
     <section class="player-wrap" id="player-wrap" hidden>
       <div class="player-frame">
@@ -199,6 +204,23 @@
       <div class="status-msg" id="status-msg">Loading channels…</div>
       <button id="status-action" type="button" class="btn primary" hidden></button>
     </section>
+    </div>
+
+    <!-- Sync page (no backend): copy your data to save it as the shared baseline -->
+    <section class="page" id="view-sync" hidden aria-label="Sync across devices">
+      <div class="page-head">
+        <button id="sync-back" type="button" class="btn ghost small">‹ Back to videos</button>
+      </div>
+      <p class="sync-sub">No account needed. <b>Copy your data</b> and paste it to Claude to save it as the shared baseline — every device loads that on top of its own changes. Or paste someone's data below and <b>Merge</b> to pull it in here.</p>
+      <div class="sync-actions">
+        <button id="sync-copy" type="button" class="btn primary">⧉ Copy my data</button>
+      </div>
+      <textarea id="sync-paste" class="sync-ta" placeholder="Paste data here, then Merge…" spellcheck="false"></textarea>
+      <div class="sync-actions">
+        <button id="sync-apply" type="button" class="btn">Merge pasted data</button>
+      </div>
+      <div class="sync-note" id="sync-note" role="status"></div>
+    </section>
 
     <!-- Undo toast: floats above the HUD for a few seconds after marking watched -->
     <div class="toast" id="toast" hidden role="status">
@@ -210,23 +232,6 @@
       <button id="quit" type="button" class="btn ghost">Quit</button>
     </div>
   </main>
-
-  <!-- Sync (no backend): copy your data to save it as the shared baseline -->
-  <div class="sync-modal" id="sync-modal" hidden role="dialog" aria-label="Sync data">
-    <div class="sync-card">
-      <div class="sync-head">
-        <span class="sync-title">Sync across devices</span>
-        <button id="sync-close" type="button" class="sync-x" aria-label="Close">×</button>
-      </div>
-      <p class="sync-sub">No account needed. <b>Copy your data</b> and paste it to Claude to save it as the shared baseline — every device loads that on top of its own changes. Or paste someone's data below and <b>Merge</b> to pull it in here.</p>
-      <button id="sync-copy" type="button" class="btn primary">⧉ Copy my data</button>
-      <textarea id="sync-paste" class="sync-ta" placeholder="Paste data here, then Merge…" spellcheck="false"></textarea>
-      <div class="sync-actions">
-        <button id="sync-apply" type="button" class="btn">Merge pasted data</button>
-      </div>
-      <div class="sync-note" id="sync-note" role="status"></div>
-    </div>
-  </div>
 
   <script src="app.js"></script>
 </body>

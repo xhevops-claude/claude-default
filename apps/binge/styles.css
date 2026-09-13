@@ -333,20 +333,26 @@ html, body {
 
 .foot-actions { display: flex; gap: 14px; }
 
-/* Sync modal */
-.sync-modal { position: fixed; inset: 0; z-index: 50;   /* above the docked sidebar */ display: flex; align-items: center; justify-content: center; padding: 18px;
-  background: rgba(0, 0, 0, 0.6); }
-.sync-card { width: min(520px, 100%); max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line);
-  border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
-.sync-head { display: flex; align-items: center; justify-content: space-between; }
-.sync-title { font-size: 18px; font-weight: 800; }
-.sync-x { background: transparent; border: 0; color: var(--muted); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
-.sync-sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0; }
+/* The videos page wraps its sections, so it lays them out like .binge does. */
+#view-binge { display: flex; flex-direction: column; gap: 14px; }
+/* Pages other than the videos view (reached from the sidebar): a narrow
+   column with a title, like a settings screen. */
+.page { width: min(560px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.page-head { display: flex; align-items: center; }
+.page-head .btn { margin-left: -12px; }
+.appbar-title { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+
+/* Sync page */
+.sync-sub { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0; }
 .sync-sub b { color: var(--ink); }
-.sync-ta { width: 100%; min-height: 96px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+.sync-ta { width: 100%; min-height: 200px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.45;
   color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
-.sync-actions { display: flex; justify-content: flex-end; }
+.sync-actions { display: flex; }
 .sync-note { color: var(--amber); font-size: 13px; min-height: 18px; }
+/* Sidebar item for the page you're on: lit like the active group. */
+.drawer-item[aria-current="page"] { background: var(--panel-2); font-weight: 700; position: relative; }
+.drawer-item[aria-current="page"]::before { content: ""; position: absolute; left: 3px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 2px; background: var(--red); }
+.drawer-item[aria-current="page"] .ico { color: var(--ink); }
 
 /* Undo toast: a floating strip above the HUD, like a mail client's "Undo"
    after a delete. Slides up, stays UNDO_MS, then slides away. */

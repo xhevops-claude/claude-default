@@ -71,7 +71,8 @@
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
   const quitBtn = $('quit');
   const toastEl = $('toast'), toastMsg = $('toast-msg'), toastUndo = $('toast-undo');
-  const syncOpenBtn = $('sync-open'), syncModal = $('sync-modal'), syncClose = $('sync-close');
+  const syncOpenBtn = $('sync-open'), syncBackBtn = $('sync-back');
+  const viewBinge = $('view-binge'), viewSync = $('view-sync'), appbarTitle = $('appbar-title'), drawerSyncBtn = $('drawer-sync');
   const syncCopyBtn = $('sync-copy'), syncPaste = $('sync-paste'), syncApplyBtn = $('sync-apply'), syncNote = $('sync-note');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
 
@@ -457,17 +458,18 @@
     // Each row carries its own cutoff date beside the name, so the per-tab dates read at a glance.
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
       const id = b.getAttribute('data-tab');
-      b.setAttribute('aria-selected', String(id === activeTab));
+      b.setAttribute('aria-selected', String(id === activeTab && page === 'binge'));
       b.querySelector('.tab-n').textContent = cutoffText(tabCutoff(id));
     });
     // The app bar names the active group (the tabs themselves live in the drawer).
     const active = all.find((g) => g.id === activeTab) || all[0];
-    appbarTab.hidden = false;
+    appbarTab.hidden = page !== 'binge';
     appbarTab.querySelector('.appbar-tab-name').textContent = active.name;
     appbarTab.querySelector('.appbar-tab-n').textContent = cutoffText(tabCutoff(active.id));
   }
   groupTabs.addEventListener('click', (e) => {
     const b = e.target.closest('.tab'); if (!b) return;
+    if (page !== 'binge') showPage('binge');   // picking a group always lands on the videos
     selectTab(b.getAttribute('data-tab'));
     if (!docked()) setDrawer(false);   // a docked sidebar stays put
   });
@@ -1137,7 +1139,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !docked() && document.documentElement.classList.contains('drawer-open')) setDrawer(false);
   });
-  $('drawer-sync').addEventListener('click', () => { if (!docked()) setDrawer(false); syncOpenBtn.click(); });
+  drawerSyncBtn.addEventListener('click', () => { if (!docked()) setDrawer(false); showPage('sync'); });
   $('drawer-quit').addEventListener('click', () => { if (!docked()) setDrawer(false); quit(); });
 
   // Drag: a swipe in from the left edge pulls the drawer out; dragging the
@@ -1288,11 +1290,28 @@
     render();
     syncNoteMsg('Merged. Watched progress and settings updated on this device.');
   }
-  syncOpenBtn.addEventListener('click', () => { syncNoteMsg(''); syncPaste.value = ''; syncModal.hidden = false; });
-  syncClose.addEventListener('click', () => { syncModal.hidden = true; });
-  syncModal.addEventListener('click', (e) => { if (e.target === syncModal) syncModal.hidden = true; });
+  syncOpenBtn.addEventListener('click', () => showPage('sync'));
+  syncBackBtn.addEventListener('click', () => showPage('binge'));
   syncCopyBtn.addEventListener('click', exportData);
   syncApplyBtn.addEventListener('click', applyPaste);
+
+  // ---------------------------------------------------------------------------
+  // Pages — "binge" (the videos) or "sync". One is shown at a time; the app
+  // bar swaps the group pill for a page title, and the sidebar lights the
+  // page's item. Not remembered across reloads: the app opens on the videos.
+  // ---------------------------------------------------------------------------
+  let page = 'binge';
+  function showPage(name) {
+    page = name;
+    viewBinge.hidden = name !== 'binge';
+    viewSync.hidden = name !== 'sync';
+    appbarTitle.hidden = name === 'binge';
+    appbarTitle.textContent = name === 'sync' ? 'Sync across devices' : '';
+    if (name === 'sync') drawerSyncBtn.setAttribute('aria-current', 'page'); else drawerSyncBtn.removeAttribute('aria-current');
+    if (name === 'sync') { syncNoteMsg(''); syncPaste.value = ''; }
+    if (available.length) renderTabs();   // group highlight + app-bar pill follow the page
+    try { window.scrollTo({ top: 0 }); } catch (e) {}
+  }
 
   // ---------------------------------------------------------------------------
   // Boot
