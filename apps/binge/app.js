@@ -1265,9 +1265,28 @@
   }
 
   function syncNoteMsg(m) { syncNote.textContent = m || ''; }
+  // The sync page's switches: each part is a set of storage keys, so the
+  // copy can carry just the progress, or just the settings, etc.
+  const SYNC_PARTS = {
+    watched: [LS.watchedTo, LS.watched],
+    channels: [LS.selected],
+    filters: [LS.tab, LS.tabs, LS.cutoff, LS.showWatched],
+    layout: [LS.view, LS.sort, LS.group, LS.sidebar],
+  };
+  const syncPick = $('sync-pick');
+  function pickedKeys() {
+    const keys = [];
+    Array.prototype.forEach.call(syncPick.querySelectorAll('input[data-part]:checked'), (c) => {
+      (SYNC_PARTS[c.getAttribute('data-part')] || []).forEach((k) => keys.push(k));
+    });
+    return keys;
+  }
+  syncPick.addEventListener('change', () => { syncCopyBtn.disabled = pickedKeys().length === 0; syncNoteMsg(''); });
   function exportData() {
+    const keys = pickedKeys();
+    if (!keys.length) { syncNoteMsg('Switch on at least one thing to copy.'); return; }
     const out = {};
-    Object.values(LS).forEach((k) => {
+    keys.forEach((k) => {
       const v = localStorage.getItem(k);
       if (v != null) { try { out[k] = JSON.parse(v); } catch (e) {} }
     });

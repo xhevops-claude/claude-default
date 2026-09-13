@@ -344,6 +344,12 @@ html, body {
 
 /* Sync page */
 .sync-sub { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0; }
+.sync-pick { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.sync-pick legend { padding: 0 6px; }
+.sync-pick .switch { align-items: flex-start; }
+.sync-pick .switch-text { display: flex; flex-direction: column; gap: 2px; line-height: 1.25; }
+.sync-pick .switch-text small { color: var(--muted); font-size: 12px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .sync-sub b { color: var(--ink); }
 .sync-ta { width: 100%; min-height: 200px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.45;
   color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }

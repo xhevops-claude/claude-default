@@ -212,6 +212,14 @@
         <button id="sync-back" type="button" class="btn ghost small">‹ Back to videos</button>
       </div>
       <p class="sync-sub">No account needed. <b>Copy your data</b> and paste it to Claude to save it as the shared baseline — every device loads that on top of its own changes. Or paste someone's data below and <b>Merge</b> to pull it in here.</p>
+      <!-- What to include in the copy; each switch maps to a set of storage keys (SYNC_PARTS in app.js) -->
+      <fieldset class="sync-pick" id="sync-pick">
+        <legend class="fgroup-label">What to copy</legend>
+        <label class="switch"><input type="checkbox" class="switch-input" data-part="watched" checked /><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Watched progress <small>per-channel watched-up-to dates</small></span></label>
+        <label class="switch"><input type="checkbox" class="switch-input" data-part="channels" checked /><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Channel selection <small>which channels are switched on</small></span></label>
+        <label class="switch"><input type="checkbox" class="switch-input" data-part="filters" checked /><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Groups &amp; filters <small>active group, per-group cutoffs, hidden channels, show-watched</small></span></label>
+        <label class="switch"><input type="checkbox" class="switch-input" data-part="layout" checked /><span class="switch-track" aria-hidden="true"></span><span class="switch-text">View &amp; layout <small>list/grid, sort, grouping, sidebar</small></span></label>
+      </fieldset>
       <div class="sync-actions">
         <button id="sync-copy" type="button" class="btn primary">⧉ Copy my data</button>
       </div>
