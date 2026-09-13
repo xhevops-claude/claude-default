@@ -148,9 +148,8 @@ html, body {
 .seg2.picked .flip-live { opacity: 0; transform: translateX(var(--travel)); pointer-events: none; }   /* the labels move exactly as far as the knob, so they travel together */
 .seg2.picked .flip-picked { opacity: 1; transform: none; pointer-events: auto; }
 .flip-knob { position: absolute; z-index: 1; top: 50%; left: 3px; width: 22px; height: 22px; margin-top: -11px; border-radius: 5px; pointer-events: none;
-  /* a lit, slightly raised key: soft top highlight, faint drop shadow, and a fine three-pin grip (SVG) */
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cg fill='%23fff' fill-opacity='.82'%3E%3Crect x='7.2' y='7' width='1.6' height='8' rx='.8'/%3E%3Crect x='10.2' y='7' width='1.6' height='8' rx='.8'/%3E%3Crect x='13.2' y='7' width='1.6' height='8' rx='.8'/%3E%3C/g%3E%3C/svg%3E") center / 22px 22px no-repeat, linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.10));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  /* flat, modern key: plain off-white with a soft shadow, nothing else */
+  background: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(0, 0, 0, 0.2);
   transition: left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .seg2.picked .flip-knob { left: calc(100% - 25px); }
 /* Compact flip (sidebar rows, app bar). In a row, flipping doesn't select
@@ -159,7 +158,7 @@ html, body {
 .seg2.mini button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
 .seg2.mini .flip-live { padding-left: 30px; }
 .seg2.mini .flip-picked { padding-right: 30px; }
-.seg2.mini .flip-knob { width: 20px; height: 20px; margin-top: -10px; background-size: 20px 20px, auto; }
+.seg2.mini .flip-knob { width: 20px; height: 20px; margin-top: -10px; }
 .seg2.mini.picked .flip-knob { left: calc(100% - 23px); }
 /* Ringed flip: Today wears the same plain colours as the date, and the
    outline is the group's watched progress — a ring that fills clockwise
