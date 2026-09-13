@@ -1100,6 +1100,26 @@
   quitBtn.addEventListener('click', quit);
 
   // ---------------------------------------------------------------------------
+  // Sidebar drawer — opens from the app-bar hamburger, closes on the scrim,
+  // the hamburger inside it, Escape, or picking an item.
+  // ---------------------------------------------------------------------------
+  const drawerOpenBtn = $('drawer-open'), drawerCloseBtn = $('drawer-close'), drawerEl = $('drawer'), drawerScrim = $('drawer-scrim');
+  function setDrawer(open) {
+    document.documentElement.classList.toggle('drawer-open', open);
+    drawerEl.setAttribute('aria-hidden', String(!open));
+    drawerOpenBtn.setAttribute('aria-expanded', String(open));
+    if (open) drawerCloseBtn.focus(); else drawerOpenBtn.focus();
+  }
+  drawerOpenBtn.addEventListener('click', () => setDrawer(true));
+  drawerCloseBtn.addEventListener('click', () => setDrawer(false));
+  drawerScrim.addEventListener('click', () => setDrawer(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.documentElement.classList.contains('drawer-open')) setDrawer(false);
+  });
+  $('drawer-sync').addEventListener('click', () => { setDrawer(false); syncOpenBtn.click(); });
+  $('drawer-quit').addEventListener('click', () => { setDrawer(false); quit(); });
+
+  // ---------------------------------------------------------------------------
   // Cross-device sync — no backend. A committed db.json is the shared
   // baseline; localStorage layers on top. Watched cursors merge by taking the
   // later date per channel (never loses progress); per-device prefs fill only
