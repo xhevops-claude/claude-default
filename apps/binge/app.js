@@ -63,7 +63,6 @@
   const filtersEl = $('filters'), filtersToggle = $('filters-toggle');
   const groupTabs = $('group-tabs'), appbarTab = $('appbar-tab'), appbarTabName = $('appbar-tab-name'), appbarFlip = $('appbar-flip'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
-  const cutoffMode = $('cutoff-mode');
   const showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
@@ -629,10 +628,8 @@
     daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
-    // Today ⇄ picked date flip for the active tab.
-    const live = tabCutoffLive(activeTab);
-    syncFlip(cutoffMode, activeTab);
-    filtersEl.classList.toggle('live', live);
+    // Today on (flip in the app bar): the sliders show today's date, dimmed.
+    filtersEl.classList.toggle('live', tabCutoffLive(activeTab));
 
     filtersEl.hidden = !filtersOpen;
     filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
@@ -1136,11 +1133,6 @@
   });
   chanAllBtn.addEventListener('click', selectAllChannels);
   chanNoneBtn.addEventListener('click', clearAllChannels);
-  // Tapping the visible value flips to the other one.
-  cutoffMode.addEventListener('click', (e) => {
-    const flip = e.target.closest('[data-flip]'); if (!flip) return;
-    setCutoffLive(flip.getAttribute('data-flip') === 'on');
-  });
   showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; saveShowWatched(); render(); });
   clearWatchedBtn.addEventListener('click', () => {
     if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }
