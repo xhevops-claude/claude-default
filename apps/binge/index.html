@@ -85,11 +85,10 @@
            the same Today ⇄ date flip as the sidebar rows, ringed with the group's progress -->
       <div id="appbar-tab" class="appbar-tab" hidden>
         <button id="appbar-tab-name" type="button" class="appbar-tab-name" title="Open groups"></button>
-        <span class="seg2 mini ring" id="appbar-flip" role="group" aria-label="Cutoff">
-          <button class="flip-live" data-flip="off" type="button" title="Switch to the picked date">Today</button>
-          <button class="flip-picked" data-flip="on" type="button" title="Switch to today"></button>
-          <i class="flip-knob" aria-hidden="true"></i>
-        </span>
+        <label class="switch flip ring" id="appbar-flip">
+          <input type="checkbox" class="switch-input" aria-label="Show up to today" />
+          <span class="switch-track" aria-hidden="true"><span class="flip-off"></span><span class="flip-on">Today</span></span>
+        </label>
       </div>
       <!-- Page title, shown instead of the group pill on non-video pages -->
       <span class="appbar-title" id="appbar-title" hidden></span>

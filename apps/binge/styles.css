@@ -102,7 +102,6 @@ html, body {
 .appbar-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
   color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
 .appbar-tab-name:hover { border-color: rgba(255, 255, 255, 0.22); }
-.appbar .seg2.mini button { min-height: 30px; }   /* same height as the name beside it */
 .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
 .drawer-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink);
   font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s ease; }
@@ -132,45 +131,40 @@ html, body {
 .switch-input:checked + .switch-track::after { transform: translateX(18px); }
 .switch-input:focus-visible + .switch-track { outline: 2px solid var(--amber); outline-offset: 2px; }
 .switch-text { font-size: 14px; }
-/* Flip toggle (Today ⇄ picked date): a switch. One knob (a grip of three
-   lines) slides between the two ends, and the label sits on the side the
-   knob has left. Picked date: date on the left, knob at the right end.
-   Today: the knob slides to the left end and "Today" sits to its right,
-   so the order reads date → knob → Today. Both cells share one grid cell
-   (the box is a fixed width and never jumps); the leaving label fades out
-   as the arriving one fades in, under the sliding knob. */
-.seg2 { --travel: calc(100% - 28px); position: relative; display: grid; width: 124px; overflow: hidden; border-radius: 4px; border: 1px solid var(--line); background: var(--panel-2); }   /* fixed width: fits the widest date, so every flip is the same size */
-.seg2 button { grid-area: 1 / 1; display: flex; align-items: center; min-height: 30px; padding: 4px 8px; border: 0; cursor: pointer;
-  font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums;
+/* Flip toggle (Today ⇄ picked date): a real checkbox switch (the same
+   .switch as the filters' toggles) with a wide track that carries the
+   labels. Checked = Today. The knob (the track's ::after, as on every
+   switch) slides between the ends and the label sits on the side the knob
+   has left: date on the left with the knob at the right end; Today with
+   the knob at the left end and "Today" to its right, so it reads date →
+   knob → Today. The leaving label slides the knob's full travel and fades
+   as the arriving one slides in from the far side. */
+.flip { --travel: 88px; flex: none; }   /* knob travel: 112px track − 2px borders − 2×2px inset − 20px knob (a px value: translate percentages would be of the moved element, not the track) */
+.flip .switch-track { width: 112px; height: 26px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden;
+  color: var(--ink); font-size: 11px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.flip .switch-input:checked + .switch-track { background: var(--panel-2); border-color: var(--line); }   /* no red fill: the label says it all */
+.flip .flip-off, .flip .flip-on { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none;
   transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }   /* labels ride along with the knob */
-.seg2 .flip-live { justify-content: flex-end; padding-left: 32px; background: var(--red); color: #fff; }             /* Today: knob left, label right; parks off to the right */
-.seg2 .flip-picked { justify-content: flex-start; padding-right: 32px; background: var(--panel-2); color: var(--ink); opacity: 0; transform: translateX(calc(-1 * var(--travel))); pointer-events: none; }   /* date: label left, knob right; parks off to the left, the knob's full travel */
-.seg2.picked .flip-live { opacity: 0; transform: translateX(var(--travel)); pointer-events: none; }   /* the labels move exactly as far as the knob, so they travel together */
-.seg2.picked .flip-picked { opacity: 1; transform: none; pointer-events: auto; }
-.flip-knob { position: absolute; z-index: 1; top: 50%; left: 3px; width: 22px; height: 22px; margin-top: -11px; border-radius: 5px; pointer-events: none;
-  /* flat, modern key: plain off-white with a soft shadow, nothing else */
-  background: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(0, 0, 0, 0.2);
-  transition: left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.seg2.picked .flip-knob { left: calc(100% - 25px); }
-/* Compact flip (sidebar rows, app bar). In a row, flipping doesn't select
+.flip .flip-off { left: 8px; }    /* the picked date, on the left */
+.flip .flip-on { right: 8px; opacity: 0; transform: translateX(var(--travel)); }   /* "Today", on the right; parks off to the right */
+.flip .switch-input:checked + .switch-track .flip-off { opacity: 0; transform: translateX(calc(-1 * var(--travel))); }   /* the labels move exactly as far as the knob, so they travel together */
+.flip .switch-input:checked + .switch-track .flip-on { opacity: 1; transform: none; }
+/* The knob: a flat, modern key — plain off-white with a soft shadow. */
+.flip .switch-track::after { top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 5px; background: var(--ink); z-index: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(0, 0, 0, 0.2); transform: translateX(var(--travel)); transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.flip .switch-input:checked + .switch-track::after { transform: none; }
+.appbar .flip .switch-track { height: 30px; }   /* same height as the name beside it */
+.appbar .flip .switch-track::after { top: 4px; }
+/* Ringed flip (sidebar rows, app bar): the outline is the group's watched
+   progress — a ring that fills clockwise from 12 o'clock (--p, set per
+   flip by app.js), solid YouTube red. A conic gradient masked to a 2px
+   frame, over the track's edge. Flipping a row's switch doesn't select
    the row, so several groups can be switched in a run. */
-.seg2.mini { --travel: calc(100% - 26px); flex: none; width: 112px; }
-.seg2.mini button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
-.seg2.mini .flip-live { padding-left: 30px; }
-.seg2.mini .flip-picked { padding-right: 30px; }
-.seg2.mini .flip-knob { width: 20px; height: 20px; margin-top: -10px; }
-.seg2.mini.picked .flip-knob { left: calc(100% - 23px); }
-/* Ringed flip: Today wears the same plain colours as the date, and the
-   outline is the group's watched progress — a ring that fills clockwise
-   from 12 o'clock (--p, set per flip by app.js), red into amber like the
-   main bar, solid YouTube red. A conic gradient masked to a 2px frame, over the box's edge. */
-.seg2.ring { position: relative; border-color: transparent; }
-.seg2.ring .flip-live { background: var(--panel-2); color: var(--ink); }
-.seg2.ring::after { content: ""; position: absolute; inset: -1px; z-index: 2; border-radius: inherit; padding: 2px; pointer-events: none;
+.flip.ring .switch-track { border-color: transparent; }
+.flip.ring .switch-track::before { content: ""; position: absolute; inset: -1px; z-index: 2; border-radius: inherit; padding: 2px; pointer-events: none;
   background: conic-gradient(var(--red) var(--p, 0%), var(--line) 0);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
-.seg2 button:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
 /* With Today chosen (the app-bar flip), the date sliders are hidden; flip to
    the picked date and they appear, ready to drag. */
 .filters.live #fg-cutoff { display: none; }

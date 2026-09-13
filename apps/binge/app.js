@@ -472,14 +472,14 @@
       // button can't contain buttons). Enter/Space select via keydown below.
       groupTabs.innerHTML = all.map((g) =>
         '<div class="tab" role="tab" tabindex="0" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
-        + '<span class="tab-name">' + escapeHTML(g.name) + '</span>' + flipHTML('mini ring') + '</div>').join('');
+        + '<span class="tab-name">' + escapeHTML(g.name) + '</span>' + flipHTML('ring') + '</div>').join('');
     }
     // Each row carries its own cutoff flip beside the name, so several groups
     // can be switched between Today and their picked date in a run.
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
       const id = b.getAttribute('data-tab');
       b.setAttribute('aria-selected', String(id === activeTab && page === 'binge'));
-      syncFlip(b.querySelector('.seg2'), id, { progress: true });
+      syncFlip(b.querySelector('.flip'), id, { progress: true });
     });
     // The app bar names the active group (the tabs themselves live in the
     // drawer) and carries its flip, ringed with its progress like the rows.
@@ -490,27 +490,30 @@
   }
   groupTabs.addEventListener('click', (e) => {
     const b = e.target.closest('.tab'); if (!b) return;
-    // The row's flip: switch that group's cutoff without selecting the row
-    // (and without closing the drawer), so a run of them can be flipped.
-    const flip = e.target.closest('[data-flip]');
-    if (flip) { e.stopPropagation(); setTabLive(b.getAttribute('data-tab'), flip.getAttribute('data-flip') === 'on'); return; }
+    // A click on the row's flip toggles its checkbox (handled on 'change'
+    // below) and must not also select the row or close the drawer, so a run
+    // of them can be flipped.
+    if (e.target.closest('.flip')) { e.stopPropagation(); return; }
     if (page !== 'binge') showPage('binge');   // picking a group always lands on the videos
     selectTab(b.getAttribute('data-tab'));
     if (!docked()) setDrawer(false);   // a docked sidebar stays put
+  });
+  groupTabs.addEventListener('change', (e) => {
+    const c = e.target.closest('.flip .switch-input'); if (!c) return;
+    setTabLive(c.closest('.tab').getAttribute('data-tab'), c.checked);
   });
   groupTabs.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const b = e.target.closest('.tab'); if (!b || e.target !== b) return;
     e.preventDefault(); b.click();
   });
-  // Today ⇄ picked-date flip: the same widget in the filters and in every
-  // sidebar row. Only the active cell is visible and reachable; the other
-  // waits offstage. data-flip names the state a tap switches *to*.
+  // Today ⇄ picked-date flip: a real checkbox switch (checked = Today) with
+  // the two labels inside its track; the same widget in the app bar and in
+  // every sidebar row.
   function flipHTML(cls) {
-    return '<span class="seg2 ' + (cls || '') + '" role="group" aria-label="Cutoff">'
-      + '<button class="flip-live" data-flip="off" type="button" title="Switch to the picked date">Today</button>'
-      + '<button class="flip-picked" data-flip="on" type="button" title="Switch to today"></button>'
-      + '<i class="flip-knob" aria-hidden="true"></i></span>';
+    return '<label class="switch flip ' + (cls || '') + '">'
+      + '<input type="checkbox" class="switch-input" aria-label="Show up to today" />'
+      + '<span class="switch-track" aria-hidden="true"><span class="flip-off"></span><span class="flip-on">Today</span></span></label>';
   }
   // A group's watched progress up to its own cutoff (its channels minus the
   // ones switched off) — what the main bar would show with that group open.
@@ -533,12 +536,9 @@
       seg.style.setProperty('--p', (p.total ? Math.round(p.watched / p.total * 1000) / 10 : 0) + '%');
       seg.title = p.watched + ' / ' + p.total + ' watched';
     }
-    const liveBtn = seg.querySelector('.flip-live'), pickedBtn = seg.querySelector('.flip-picked');
-    liveBtn.tabIndex = live ? 0 : -1; liveBtn.setAttribute('aria-hidden', String(!live));
-    pickedBtn.tabIndex = live ? -1 : 0; pickedBtn.setAttribute('aria-hidden', String(live));
-    const p = tabCutoff(id);   // the picked cell always names the date the sliders hold
-    pickedBtn.textContent = fmtYMD(p.y, p.m, Math.min(p.d, daysInMonth(p.y, p.m)));
-    seg.classList.toggle('picked', !live);
+    const p = tabCutoff(id);   // the date label always names the date the sliders hold
+    seg.querySelector('.flip-off').textContent = fmtYMD(p.y, p.m, Math.min(p.d, daysInMonth(p.y, p.m)));
+    seg.querySelector('.switch-input').checked = live;
   }
   function selectTab(id) {
     if (id === activeTab) return;
@@ -1220,10 +1220,7 @@
   else dockedMQ.addListener(applyDockMode);
   drawerOpenBtn.addEventListener('click', () => setDrawer(true));
   appbarTabName.addEventListener('click', () => setDrawer(true));
-  appbarFlip.addEventListener('click', (e) => {
-    const flip = e.target.closest('[data-flip]'); if (!flip) return;
-    setCutoffLive(flip.getAttribute('data-flip') === 'on');
-  });
+  appbarFlip.querySelector('.switch-input').addEventListener('change', (e) => setCutoffLive(e.target.checked));
   drawerCloseBtn.addEventListener('click', () => setDrawer(false));
   drawerScrim.addEventListener('click', () => setDrawer(false));
   document.addEventListener('keydown', (e) => {
