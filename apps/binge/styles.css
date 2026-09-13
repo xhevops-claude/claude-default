@@ -159,9 +159,9 @@ html, body {
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
 .seg2 button:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
-/* With Today chosen, the sliders show today's date and sit dimmed; dragging
-   one picks that date and moves the pill over to it. */
-.filters.live .dslider { opacity: 0.55; }
+/* With Today chosen (the app-bar flip), the date sliders are hidden; flip to
+   the picked date and they appear, ready to drag. */
+.filters.live #fg-cutoff { display: none; }
 
 /* Filters */
 /* Filters panel: opened by the funnel button in the toolbar, drops in right
