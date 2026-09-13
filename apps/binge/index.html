@@ -151,7 +151,8 @@
           <div class="chan-switches" id="chan-switches"></div>
         </div>
 
-        <!-- Hidden while the app-bar flip is on Today; shown when a picked date is in force -->
+        <!-- Collapses (animated) while the app-bar flip is on Today; opens when a picked date is in force -->
+        <div class="collapse" id="fg-cutoff-wrap">
         <div class="fgroup" id="fg-cutoff">
           <div class="fgroup-head">
             <!-- The Today ⇄ picked date flip lives in the app bar; the sliders below set the picked date -->
@@ -169,6 +170,7 @@
             <div class="dslider-row"><span class="dslider-label">Day</span><span class="dslider-value" id="dy-value">—</span></div>
             <div id="f-day" class="slot-slider" role="slider" tabindex="0" aria-label="Day" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0"><div class="slot-knob"></div></div>
           </div>
+        </div>
         </div>
 
         <div class="fgroup-foot">
