@@ -14,6 +14,7 @@
     group: 'binge-group',
     tab: 'binge-tab',                    // active group id ('all' or a groups.json id)
     tabs: 'binge-tabs',                  // { groupId: { off, cutoff, showWatched, group, sort, views: { [group]: { view, collapsed } } } }
+    sidebar: 'binge-sidebar',            // desktop only: true = docked sidebar expanded, false = collapsed
   };
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -468,7 +469,7 @@
   groupTabs.addEventListener('click', (e) => {
     const b = e.target.closest('.tab'); if (!b) return;
     selectTab(b.getAttribute('data-tab'));
-    setDrawer(false);
+    if (!docked()) setDrawer(false);   // a docked sidebar stays put
   });
   function selectTab(id) {
     if (id === activeTab) return;
@@ -1106,22 +1107,38 @@
   // Sidebar drawer — opens from the app-bar hamburger, closes on the scrim,
   // the hamburger inside it, Escape, or picking an item.
   // ---------------------------------------------------------------------------
+  // On wide screens the sidebar docks (mirrors the CSS breakpoint): it pushes
+  // the content aside instead of overlaying it, is expanded by default, and
+  // its expanded/collapsed state is remembered per device. Narrow screens
+  // get the overlay drawer, which never persists.
   const drawerOpenBtn = $('drawer-open'), drawerCloseBtn = $('drawer-close'), drawerEl = $('drawer'), drawerScrim = $('drawer-scrim');
-  function setDrawer(open) {
+  const dockedMQ = window.matchMedia('(min-width: 900px)');
+  const docked = () => dockedMQ.matches;
+  function setDrawer(open, opts) {
+    opts = opts || {};
     document.documentElement.classList.toggle('drawer-open', open);
     drawerEl.setAttribute('aria-hidden', String(!open));
     drawerOpenBtn.setAttribute('aria-expanded', String(open));
-    if (open) drawerCloseBtn.focus(); else drawerOpenBtn.focus();
+    if (docked()) save(LS.sidebar, open);
+    if (!opts.quiet) { if (open) drawerCloseBtn.focus(); else drawerOpenBtn.focus(); }
   }
+  function applyDockMode() {
+    // Entering desktop: restore the saved preference (expanded by default).
+    // Leaving it: the overlay starts closed.
+    setDrawer(docked() ? load(LS.sidebar, true) !== false : false, { quiet: true });
+  }
+  applyDockMode();
+  if (dockedMQ.addEventListener) dockedMQ.addEventListener('change', applyDockMode);
+  else dockedMQ.addListener(applyDockMode);
   drawerOpenBtn.addEventListener('click', () => setDrawer(true));
   appbarTab.addEventListener('click', () => setDrawer(true));
   drawerCloseBtn.addEventListener('click', () => setDrawer(false));
   drawerScrim.addEventListener('click', () => setDrawer(false));
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && document.documentElement.classList.contains('drawer-open')) setDrawer(false);
+    if (e.key === 'Escape' && !docked() && document.documentElement.classList.contains('drawer-open')) setDrawer(false);
   });
-  $('drawer-sync').addEventListener('click', () => { setDrawer(false); syncOpenBtn.click(); });
-  $('drawer-quit').addEventListener('click', () => { setDrawer(false); quit(); });
+  $('drawer-sync').addEventListener('click', () => { if (!docked()) setDrawer(false); syncOpenBtn.click(); });
+  $('drawer-quit').addEventListener('click', () => { if (!docked()) setDrawer(false); quit(); });
 
   // Drag: a swipe in from the left edge pulls the drawer out; dragging the
   // drawer (or the scrim) leftwards pushes it back. The panel follows the

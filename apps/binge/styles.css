@@ -72,6 +72,21 @@ html, body {
 .drawer-open .drawer-scrim { opacity: 1; visibility: visible; transition-delay: 0s; }
 .drawer-open .drawer { transform: none; visibility: visible; transition-delay: 0s; }
 .drawer-open body { overflow: hidden; }
+/* Docked sidebar (wide screens): no scrim, no scroll lock; the page shifts
+   right by the drawer's width and the drawer becomes part of the layout.
+   The breakpoint is mirrored in app.js (dockedMQ). */
+@media (min-width: 900px) {
+  :root { --drawer-w: 280px; }
+  body { transition: padding-left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .drawer { box-shadow: none; }
+  .drawer-scrim { display: none; }
+  .drawer-open body { overflow: visible; padding-left: var(--drawer-w); }
+  /* Expanded: the drawer's own hamburger is the toggle, so the page's hides. */
+  .drawer-open .appbar #drawer-open { display: none; }
+  /* Fixed overlays centre on the remaining page, not the whole viewport. */
+  .drawer-open .hud { left: var(--drawer-w); }
+  .drawer-open .toast { left: calc(50% + var(--drawer-w) / 2); }
+}
 /* While a finger drags it, the panel tracks the pointer directly. */
 .drawer-dragging .drawer, .drawer-dragging .drawer-scrim { transition: none; }
 .drawer-dragging { user-select: none; -webkit-user-select: none; }
@@ -319,7 +334,7 @@ html, body {
 .foot-actions { display: flex; gap: 14px; }
 
 /* Sync modal */
-.sync-modal { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 18px;
+.sync-modal { position: fixed; inset: 0; z-index: 50;   /* above the docked sidebar */ display: flex; align-items: center; justify-content: center; padding: 18px;
   background: rgba(0, 0, 0, 0.6); }
 .sync-card { width: min(520px, 100%); max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line);
   border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
