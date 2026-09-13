@@ -139,7 +139,7 @@ html, body {
    the knob at the left end and "Today" to its right, so it reads date →
    knob → Today. The leaving label slides the knob's full travel and fades
    as the arriving one slides in from the far side. */
-.flip { --travel: 88px; flex: none; }   /* knob travel: 112px track − 2px borders − 2×2px inset − 20px knob (a px value: translate percentages would be of the moved element, not the track) */
+.flip { --travel: 86px; flex: none; }   /* knob travel: 112px track − 2px borders − 2×3px inset − 18px knob (a px value: translate percentages would be of the moved element, not the track) */
 .flip .switch-track { width: 112px; height: 26px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden;
   color: var(--ink); font-size: 11px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .flip .switch-input:checked + .switch-track { background: var(--panel-2); border-color: var(--line); }   /* no red fill: the label says it all */
@@ -150,11 +150,12 @@ html, body {
 .flip .switch-input:checked + .switch-track .flip-off { opacity: 0; transform: translateX(calc(-1 * var(--travel))); }   /* the labels move exactly as far as the knob, so they travel together */
 .flip .switch-input:checked + .switch-track .flip-on { opacity: 1; transform: none; }
 /* The knob: a flat, modern key — plain off-white with a soft shadow. */
-.flip .switch-track::after { top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 5px; background: var(--ink); z-index: 1;
+.flip .switch-track::after { top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 5px; background: var(--ink); z-index: 1;   /* 3px clear of the track edge on every side */
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(0, 0, 0, 0.2); transform: translateX(var(--travel)); transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .flip .switch-input:checked + .switch-track::after { transform: none; }
+.appbar .flip { --travel: 82px; }   /* 110 − 22 − 2×3 */
 .appbar .flip .switch-track { height: 30px; }   /* same height as the name beside it */
-.appbar .flip .switch-track::after { top: 4px; }
+.appbar .flip .switch-track::after { width: 22px; height: 22px; }   /* taller track, bigger knob, same 3px clearance */
 /* Ringed flip (sidebar rows, app bar): the outline is the group's watched
    progress — a ring that fills clockwise from 12 o'clock (--p, set per
    flip by app.js), solid YouTube red. A conic gradient masked to a 2px
