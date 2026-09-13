@@ -131,31 +131,32 @@ html, body {
 .switch-text { font-size: 14px; }
 /* Flip toggle (Today ⇄ picked date): a switch. One knob (a grip of three
    lines) slides between the two ends, and the label sits on the side the
-   knob has left. Picked date: knob left, date on the right. Today: the knob
-   slides right and "Today" takes the left. Both cells share one grid cell
+   knob has left. Picked date: date on the left, knob at the right end.
+   Today: the knob slides to the left end and "Today" sits to its right,
+   so the order reads date → knob → Today. Both cells share one grid cell
    (the box is a fixed width and never jumps); the leaving label fades out
    as the arriving one fades in, under the sliding knob. */
 .seg2 { position: relative; display: grid; width: 124px; overflow: hidden; border-radius: 4px; border: 1px solid var(--line); background: var(--panel-2); }   /* fixed width: fits the widest date, so every flip is the same size */
 .seg2 button { grid-area: 1 / 1; display: flex; align-items: center; min-height: 30px; padding: 4px 8px; border: 0; cursor: pointer;
   font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; transition: opacity 0.2s ease; }
-.seg2 .flip-live { justify-content: flex-start; padding-right: 32px; background: var(--red); color: #fff; }           /* Today: label left, knob right */
-.seg2 .flip-picked { justify-content: flex-end; padding-left: 32px; background: var(--panel-2); color: var(--ink); opacity: 0; pointer-events: none; }   /* date: knob left, label right */
+.seg2 .flip-live { justify-content: flex-end; padding-left: 32px; background: var(--red); color: #fff; }             /* Today: knob left, label right */
+.seg2 .flip-picked { justify-content: flex-start; padding-right: 32px; background: var(--panel-2); color: var(--ink); opacity: 0; pointer-events: none; }   /* date: label left, knob right */
 .seg2.picked .flip-live { opacity: 0; pointer-events: none; }
 .seg2.picked .flip-picked { opacity: 1; pointer-events: auto; }
-.flip-knob { position: absolute; z-index: 1; top: 50%; left: calc(100% - 25px); width: 22px; height: 22px; margin-top: -11px; border-radius: 3px; pointer-events: none;
+.flip-knob { position: absolute; z-index: 1; top: 50%; left: 3px; width: 22px; height: 22px; margin-top: -11px; border-radius: 3px; pointer-events: none;
   background-color: rgba(255, 255, 255, 0.14);
   background-image: linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor);
   background-size: 2px 10px; background-repeat: no-repeat; background-position: calc(50% - 4px) 50%, 50% 50%, calc(50% + 4px) 50%;
   transition: left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.seg2.picked .flip-knob { left: 3px; }
+.seg2.picked .flip-knob { left: calc(100% - 25px); }
 /* Compact flip (sidebar rows, app bar). In a row, flipping doesn't select
    the row, so several groups can be switched in a run. */
 .seg2.mini { flex: none; width: 112px; }
 .seg2.mini button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
-.seg2.mini .flip-live { padding-right: 30px; }
-.seg2.mini .flip-picked { padding-left: 30px; }
-.seg2.mini .flip-knob { width: 20px; height: 20px; margin-top: -10px; left: calc(100% - 23px); background-size: 2px 9px; background-position: calc(50% - 3.5px) 50%, 50% 50%, calc(50% + 3.5px) 50%; }
-.seg2.mini.picked .flip-knob { left: 3px; }
+.seg2.mini .flip-live { padding-left: 30px; }
+.seg2.mini .flip-picked { padding-right: 30px; }
+.seg2.mini .flip-knob { width: 20px; height: 20px; margin-top: -10px; background-size: 2px 9px; background-position: calc(50% - 3.5px) 50%, 50% 50%, calc(50% + 3.5px) 50%; }
+.seg2.mini.picked .flip-knob { left: calc(100% - 23px); }
 /* Ringed flip: Today wears the same plain colours as the date, and the
    outline is the group's watched progress — a ring that fills clockwise
    from 12 o'clock (--p, set per flip by app.js), red into amber like the
