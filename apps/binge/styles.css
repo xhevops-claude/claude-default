@@ -129,6 +129,15 @@ html, body {
 .switch-input:checked + .switch-track::after { transform: translateX(18px); }
 .switch-input:focus-visible + .switch-track { outline: 2px solid var(--amber); outline-offset: 2px; }
 .switch-text { font-size: 14px; }
+/* Compact switch for a group header (the Today toggle). */
+.switch.small { gap: 8px; }
+.switch.small .switch-track { width: 34px; height: 20px; }
+.switch.small .switch-track::after { width: 14px; height: 14px; }
+.switch.small .switch-input:checked + .switch-track::after { transform: translateX(14px); }
+.switch.small .switch-text { font-size: 13px; font-weight: 700; }
+/* With Today on, the sliders show today's date and sit dimmed; dragging one
+   switches Today off and keeps the dragged date. */
+.filters.live .dslider { opacity: 0.55; }
 
 /* Filters */
 /* Filters panel: opened by the funnel button in the toolbar, drops in right

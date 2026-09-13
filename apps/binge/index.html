@@ -147,7 +147,14 @@
         <div class="fgroup">
           <div class="fgroup-head">
             <span class="fgroup-label">Show up to</span>
-            <span class="fgroup-actions"><button id="filters-reset" type="button" class="linkbtn">Today</button></span>
+            <!-- Today switch: on = the cutoff follows the clock; off = the date picked on the sliders below -->
+            <span class="fgroup-actions">
+              <label class="switch small">
+                <input type="checkbox" id="cutoff-today" class="switch-input" />
+                <span class="switch-track" aria-hidden="true"></span>
+                <span class="switch-text">Today</span>
+              </label>
+            </span>
           </div>
           <div class="dslider" id="ds-year">
             <div class="dslider-row"><span class="dslider-label">Year</span><span class="dslider-value" id="yr-value">—</span></div>

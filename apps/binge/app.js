@@ -63,7 +63,7 @@
   const filtersEl = $('filters'), filtersToggle = $('filters-toggle');
   const groupTabs = $('group-tabs'), appbarTab = $('appbar-tab'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
-  const filtersReset = $('filters-reset'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
+  const cutoffTodayChk = $('cutoff-today'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
   const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
@@ -219,17 +219,20 @@
   }
   function offSet(id) { const off = tabState(id).off; return new Set(Array.isArray(off) ? off : []); }
   function setOff(id, slugs) { setTabPref(id, 'off', slugs.length ? slugs : null); }
-  // A tab's cutoff is either a fixed { y, m, d } or the string 'today', which
-  // is live: it resolves to the current date whenever it's read, so "Today"
-  // pressed yesterday still means today. No cutoff at all also means today
-  // (unless a pre-groups global cutoff is still around).
+  // A tab keeps a picked cutoff { y, m, d } and a `live` flag. Live means
+  // "today": the cutoff resolves to the current date whenever it's read, so
+  // Today switched on yesterday still means today, while the picked date
+  // waits underneath for when Today is switched off. No cutoff at all also
+  // means today (unless a pre-groups global cutoff is still around). The
+  // earlier 'today' marker in `cutoff` still reads as live.
   function tabCutoffLive(id) {
-    const c = tabState(id).cutoff;
-    if (c === 'today') return true;
+    const s = tabState(id), c = s.cutoff;
+    if (s.live === true || c === 'today') return true;
     if (c && typeof c.y === 'number') return false;
     const legacy = load(LS.cutoff, null);
     return !(legacy && typeof legacy.y === 'number');
   }
+  function tabHasPickedCutoff(id) { const c = tabState(id).cutoff; return !!(c && typeof c.y === 'number'); }
   function tabCutoff(id) {
     const c = tabState(id).cutoff;
     if (c && typeof c.y === 'number') return { y: c.y, m: c.m || 1, d: c.d || 1 };
@@ -576,6 +579,10 @@
     daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
+    const live = tabCutoffLive(activeTab);
+    cutoffTodayChk.checked = live;
+    filtersEl.classList.toggle('live', live);
+
     filtersEl.hidden = !filtersOpen;
     filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
     filtersToggle.classList.toggle('on', filtersEngaged());
@@ -598,9 +605,24 @@
   function fmtYMD(y, m, d) {
     return y + ' ' + MONTHS[m - 1].toUpperCase() + ' ' + d;
   }
-  // "Today" stores the live marker, not the date it was pressed on.
-  function resetCutoff() { cutoff = todayYMD(); setTabPref(activeTab, 'cutoff', 'today'); render(); }
-  function commitCutoff() { saveCutoff(); render(); }
+  // Today on: the live flag, not the date it was pressed on. The picked date stays.
+  function resetCutoff() { setTabPref(activeTab, 'live', true); render(); }
+  // Today off: back to the picked date. With none picked for this tab yet,
+  // the pre-groups global cutoff (if any) or today's date becomes the picked
+  // one, so the sliders start from where they were.
+  function setCutoffLive(on) {
+    if (tabState(activeTab).cutoff === 'today') setTabPref(activeTab, 'cutoff', null);   // retire the old marker
+    setTabPref(activeTab, 'live', on ? true : null);
+    if (!on && !tabHasPickedCutoff(activeTab)) {
+      const legacy = load(LS.cutoff, null);
+      cutoff = (legacy && typeof legacy.y === 'number') ? { y: legacy.y, m: legacy.m || 1, d: legacy.d || 1 } : todayYMD();
+      saveCutoff();
+    }
+    cutoff = tabCutoff(activeTab);
+    render();
+  }
+  // A slider move picks a date, which switches Today off.
+  function commitCutoff() { setTabPref(activeTab, 'live', null); saveCutoff(); render(); }
 
   // ---- toolbar (view · sort · filters) + results bar (group by) ----
   function renderToolbar() {
@@ -1061,7 +1083,7 @@
   });
   chanAllBtn.addEventListener('click', selectAllChannels);
   chanNoneBtn.addEventListener('click', clearAllChannels);
-  filtersReset.addEventListener('click', resetCutoff);
+  cutoffTodayChk.addEventListener('change', () => setCutoffLive(cutoffTodayChk.checked));
   showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; saveShowWatched(); render(); });
   clearWatchedBtn.addEventListener('click', () => {
     if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }
