@@ -71,7 +71,7 @@
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
   const quitBtn = $('quit');
   const toastEl = $('toast'), toastMsg = $('toast-msg'), toastUndo = $('toast-undo');
-  const syncOpenBtn = $('sync-open'), syncBackBtn = $('sync-back');
+  const syncBackBtn = $('sync-back');
   const viewBinge = $('view-binge'), viewSync = $('view-sync'), appbarTitle = $('appbar-title'), drawerSyncBtn = $('drawer-sync');
   const syncCopyBtn = $('sync-copy'), syncPaste = $('sync-paste'), syncApplyBtn = $('sync-apply'), syncNote = $('sync-note');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
@@ -219,9 +219,21 @@
   }
   function offSet(id) { const off = tabState(id).off; return new Set(Array.isArray(off) ? off : []); }
   function setOff(id, slugs) { setTabPref(id, 'off', slugs.length ? slugs : null); }
+  // A tab's cutoff is either a fixed { y, m, d } or the string 'today', which
+  // is live: it resolves to the current date whenever it's read, so "Today"
+  // pressed yesterday still means today. No cutoff at all also means today
+  // (unless a pre-groups global cutoff is still around).
+  function tabCutoffLive(id) {
+    const c = tabState(id).cutoff;
+    if (c === 'today') return true;
+    if (c && typeof c.y === 'number') return false;
+    const legacy = load(LS.cutoff, null);
+    return !(legacy && typeof legacy.y === 'number');
+  }
   function tabCutoff(id) {
     const c = tabState(id).cutoff;
     if (c && typeof c.y === 'number') return { y: c.y, m: c.m || 1, d: c.d || 1 };
+    if (c === 'today') return todayYMD();
     // Tabs without their own cutoff yet inherit the pre-groups global one.
     const legacy = load(LS.cutoff, null);
     return (legacy && typeof legacy.y === 'number') ? { y: legacy.y, m: legacy.m || 1, d: legacy.d || 1 } : todayYMD();
@@ -385,6 +397,8 @@
   // Render
   // ---------------------------------------------------------------------------
   function render() {
+    // A live "today" cutoff follows the clock, even in a tab left open overnight.
+    if (tabCutoffLive(activeTab)) cutoff = todayYMD();
     if (!available.length) {
       groupTabs.hidden = true; appbarTab.hidden = true; toolbar.hidden = true; filtersEl.hidden = true; hideResults();
       showStatus('🍿', 'No channel data yet. The scraper publishes to the CDN daily. Check back soon.', null);
@@ -459,13 +473,13 @@
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
       const id = b.getAttribute('data-tab');
       b.setAttribute('aria-selected', String(id === activeTab && page === 'binge'));
-      b.querySelector('.tab-n').textContent = cutoffText(tabCutoff(id));
+      b.querySelector('.tab-n').textContent = tabCutoffText(id);
     });
     // The app bar names the active group (the tabs themselves live in the drawer).
     const active = all.find((g) => g.id === activeTab) || all[0];
     appbarTab.hidden = page !== 'binge';
     appbarTab.querySelector('.appbar-tab-name').textContent = active.name;
-    appbarTab.querySelector('.appbar-tab-n').textContent = cutoffText(tabCutoff(active.id));
+    appbarTab.querySelector('.appbar-tab-n').textContent = tabCutoffText(active.id);
   }
   groupTabs.addEventListener('click', (e) => {
     const b = e.target.closest('.tab'); if (!b) return;
@@ -569,23 +583,23 @@
   // True when the active tab strays from "everything, up to today, watched shown".
   function filtersEngaged() {
     const g = currentGroup();
-    const t = todayYMD();
-    const isToday = cutoff.y === t.y && cutoff.m === t.m && cutoff.d === t.d;
-    return offSet(g.id).size > 0 || !isToday || !showWatched;
+    return offSet(g.id).size > 0 || !tabCutoffLive(g.id) || !showWatched;
   }
-  function cutoffLabel() { return cutoffText(cutoff); }
-  // A cutoff as text: "today", or yyyy MON d.
-  function cutoffText(c) {
-    const t = todayYMD();
-    const isToday = c.y === t.y && c.m === t.m && c.d === t.d;
-    const d = Math.min(c.d, daysInMonth(c.y, c.m));
-    return isToday ? 'today' : fmtYMD(c.y, c.m, d);
+  function cutoffLabel() { return tabCutoffText(activeTab); }
+  // A tab's cutoff as text: "today" when it's live, else the fixed yyyy MON d
+  // (a fixed date that happens to be today still reads as the date, since
+  // it won't move tomorrow).
+  function tabCutoffText(id) {
+    if (tabCutoffLive(id)) return 'today';
+    const c = tabCutoff(id);
+    return fmtYMD(c.y, c.m, Math.min(c.d, daysInMonth(c.y, c.m)));
   }
   // "up to" dates read as yyyy MON d, e.g. 2023 JUL 1.
   function fmtYMD(y, m, d) {
     return y + ' ' + MONTHS[m - 1].toUpperCase() + ' ' + d;
   }
-  function resetCutoff() { cutoff = todayYMD(); saveCutoff(); render(); }
+  // "Today" stores the live marker, not the date it was pressed on.
+  function resetCutoff() { cutoff = todayYMD(); setTabPref(activeTab, 'cutoff', 'today'); render(); }
   function commitCutoff() { saveCutoff(); render(); }
 
   // ---- toolbar (view · sort · filters) + results bar (group by) ----
@@ -1309,7 +1323,6 @@
     render();
     syncNoteMsg('Merged. Watched progress and settings updated on this device.');
   }
-  syncOpenBtn.addEventListener('click', () => showPage('sync'));
   syncBackBtn.addEventListener('click', () => showPage('binge'));
   syncCopyBtn.addEventListener('click', exportData);
   syncApplyBtn.addEventListener('click', applyPaste);
