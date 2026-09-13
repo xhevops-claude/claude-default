@@ -63,7 +63,7 @@
   const filtersEl = $('filters'), filtersToggle = $('filters-toggle');
   const groupTabs = $('group-tabs'), appbarTab = $('appbar-tab'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
-  const cutoffMode = $('cutoff-mode'), cutoffLiveBtn = $('cutoff-live'), cutoffPickedBtn = $('cutoff-picked');
+  const cutoffMode = $('cutoff-mode');
   const showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
@@ -469,15 +469,18 @@
     const key = all.map((g) => g.id + ':' + g.channels.length).join('|');
     if (groupTabs.dataset.key !== key) {
       groupTabs.dataset.key = key;
+      // A div, not a button: each row holds its own Today ⇄ date flip (a
+      // button can't contain buttons). Enter/Space select via keydown below.
       groupTabs.innerHTML = all.map((g) =>
-        '<button class="tab" type="button" role="tab" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
-        + '<span class="tab-name">' + escapeHTML(g.name) + '</span><span class="tab-n"></span></button>').join('');
+        '<div class="tab" role="tab" tabindex="0" data-tab="' + escapeHTML(g.id) + '" aria-selected="false">'
+        + '<span class="tab-name">' + escapeHTML(g.name) + '</span>' + flipHTML() + '</div>').join('');
     }
-    // Each row carries its own cutoff date beside the name, so the per-tab dates read at a glance.
+    // Each row carries its own cutoff flip beside the name, so several groups
+    // can be switched between Today and their picked date in a run.
     Array.prototype.forEach.call(groupTabs.querySelectorAll('.tab'), (b) => {
       const id = b.getAttribute('data-tab');
       b.setAttribute('aria-selected', String(id === activeTab && page === 'binge'));
-      b.querySelector('.tab-n').textContent = tabCutoffText(id);
+      syncFlip(b.querySelector('.seg2'), id);
     });
     // The app bar names the active group (the tabs themselves live in the drawer).
     const active = all.find((g) => g.id === activeTab) || all[0];
@@ -487,10 +490,36 @@
   }
   groupTabs.addEventListener('click', (e) => {
     const b = e.target.closest('.tab'); if (!b) return;
+    // The row's flip: switch that group's cutoff without selecting the row
+    // (and without closing the drawer), so a run of them can be flipped.
+    const flip = e.target.closest('[data-flip]');
+    if (flip) { e.stopPropagation(); setTabLive(b.getAttribute('data-tab'), flip.getAttribute('data-flip') === 'on'); return; }
     if (page !== 'binge') showPage('binge');   // picking a group always lands on the videos
     selectTab(b.getAttribute('data-tab'));
     if (!docked()) setDrawer(false);   // a docked sidebar stays put
   });
+  groupTabs.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const b = e.target.closest('.tab'); if (!b || e.target !== b) return;
+    e.preventDefault(); b.click();
+  });
+  // Today ⇄ picked-date flip: the same widget in the filters and in every
+  // sidebar row. Only the active cell is visible and reachable; the other
+  // waits offstage. data-flip names the state a tap switches *to*.
+  function flipHTML() {
+    return '<span class="seg2" role="group" aria-label="Cutoff">'
+      + '<button class="flip-live" data-flip="off" type="button" title="Switch to the picked date">Today</button>'
+      + '<button class="flip-picked" data-flip="on" type="button" title="Switch to today"></button></span>';
+  }
+  function syncFlip(seg, id) {
+    const live = tabCutoffLive(id);
+    const liveBtn = seg.querySelector('.flip-live'), pickedBtn = seg.querySelector('.flip-picked');
+    liveBtn.tabIndex = live ? 0 : -1; liveBtn.setAttribute('aria-hidden', String(!live));
+    pickedBtn.tabIndex = live ? -1 : 0; pickedBtn.setAttribute('aria-hidden', String(live));
+    const p = tabCutoff(id);   // the picked cell always names the date the sliders hold
+    pickedBtn.textContent = fmtYMD(p.y, p.m, Math.min(p.d, daysInMonth(p.y, p.m)));
+    seg.classList.toggle('picked', !live);
+  }
   function selectTab(id) {
     if (id === activeTab) return;
     activeTab = id; save(LS.tab, activeTab);
@@ -580,15 +609,9 @@
     daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
-    // Today | picked date segment. The picked cell always names the date the
-    // sliders hold (today's date if nothing was picked yet).
+    // Today ⇄ picked date flip for the active tab.
     const live = tabCutoffLive(activeTab);
-    // Only the active cell is visible and reachable; the other waits offstage.
-    cutoffLiveBtn.tabIndex = live ? 0 : -1; cutoffLiveBtn.setAttribute('aria-hidden', String(!live));
-    cutoffPickedBtn.tabIndex = live ? -1 : 0; cutoffPickedBtn.setAttribute('aria-hidden', String(live));
-    const p = tabCutoff(activeTab);
-    cutoffPickedBtn.textContent = fmtYMD(p.y, p.m, Math.min(p.d, daysInMonth(p.y, p.m)));
-    cutoffMode.classList.toggle('picked', !live);
+    syncFlip(cutoffMode, activeTab);
     filtersEl.classList.toggle('live', live);
 
     filtersEl.hidden = !filtersOpen;
@@ -617,18 +640,20 @@
   function resetCutoff() { setTabPref(activeTab, 'live', true); render(); }
   // Today off: back to the picked date. With none picked for this tab yet,
   // the pre-groups global cutoff (if any) or today's date becomes the picked
-  // one, so the sliders start from where they were.
-  function setCutoffLive(on) {
-    if (tabState(activeTab).cutoff === 'today') setTabPref(activeTab, 'cutoff', null);   // retire the old marker
-    setTabPref(activeTab, 'live', on ? true : null);
-    if (!on && !tabHasPickedCutoff(activeTab)) {
+  // one, so the sliders start from where they were. Works for any tab, not
+  // just the active one (the sidebar rows flip their own).
+  function setTabLive(id, on) {
+    if (tabState(id).cutoff === 'today') setTabPref(id, 'cutoff', null);   // retire the old marker
+    setTabPref(id, 'live', on ? true : null);
+    if (!on && !tabHasPickedCutoff(id)) {
       const legacy = load(LS.cutoff, null);
-      cutoff = (legacy && typeof legacy.y === 'number') ? { y: legacy.y, m: legacy.m || 1, d: legacy.d || 1 } : todayYMD();
-      saveCutoff();
+      const c = (legacy && typeof legacy.y === 'number') ? { y: legacy.y, m: legacy.m || 1, d: legacy.d || 1 } : todayYMD();
+      setTabPref(id, 'cutoff', c);
     }
-    cutoff = tabCutoff(activeTab);
+    if (id === activeTab) cutoff = tabCutoff(activeTab);
     render();
   }
+  function setCutoffLive(on) { setTabLive(activeTab, on); }
   // A slider move picks a date, which switches Today off.
   function commitCutoff() { setTabPref(activeTab, 'live', null); saveCutoff(); render(); }
 
@@ -1092,8 +1117,10 @@
   chanAllBtn.addEventListener('click', selectAllChannels);
   chanNoneBtn.addEventListener('click', clearAllChannels);
   // Tapping the visible value flips to the other one.
-  cutoffLiveBtn.addEventListener('click', () => setCutoffLive(false));
-  cutoffPickedBtn.addEventListener('click', () => setCutoffLive(true));
+  cutoffMode.addEventListener('click', (e) => {
+    const flip = e.target.closest('[data-flip]'); if (!flip) return;
+    setCutoffLive(flip.getAttribute('data-flip') === 'on');
+  });
   showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; saveShowWatched(); render(); });
   clearWatchedBtn.addEventListener('click', () => {
     if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }
