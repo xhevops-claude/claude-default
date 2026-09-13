@@ -134,7 +134,7 @@ html, body {
    wider label and never jumps); the inactive one waits just outside the
    clipped box and slides in when tapped — Today parks on the left, the
    picked date on the right, so the flip always reads as a carousel. */
-.seg2 { display: grid; overflow: hidden; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); }
+.seg2 { display: grid; width: 124px; overflow: hidden; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); }   /* fixed width: fits the widest date, so every flip is the same size */
 .seg2 button { grid-area: 1 / 1; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border: 0; cursor: pointer;
   font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums;
   transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.24s ease; }
@@ -146,7 +146,7 @@ html, body {
 /* In a sidebar row: compact, and the row's own hover/selected tint shows
    through the date cell. Flipping here doesn't select the row, so several
    groups can be switched in a run. */
-.tab .seg2 { flex: none; }
+.tab .seg2 { flex: none; width: 112px; }
 .tab .seg2 button { padding: 4px 8px; gap: 8px; font-size: 11px; }
 .tab .seg2 button::after { font-size: 11px; }
 .seg2 button:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
