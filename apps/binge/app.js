@@ -661,6 +661,29 @@
     sectionsEl.innerHTML = html.join('');
   }
 
+  // "Watch on YouTube": the app first, the browser as fallback. The web can't
+  // ask the OS what's installed, so each platform gets the link it handles:
+  //  - Android: an intent: URL naming the YouTube package; Chrome opens the
+  //    app when it's there and loads browser_fallback_url (the web URL) when
+  //    it isn't.
+  //  - iOS: a plain https link. Safari hands youtube.com taps to the app via
+  //    universal links when it's installed, else opens the site.
+  //  - Desktop: the same https link. The browser opens it, or an installed
+  //    YouTube PWA if the browser is set to capture its links.
+  // All open in a new tab (target=_blank), so the shell is never navigated.
+  const IS_ANDROID = /Android/i.test(navigator.userAgent);
+  function ytWatchUrl(id) { return 'https://www.youtube.com/watch?v=' + id; }
+  function ytHref(id) {
+    const web = ytWatchUrl(id);
+    if (!IS_ANDROID) return web;
+    return 'intent://www.youtube.com/watch?v=' + id
+      + '#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=' + encodeURIComponent(web) + ';end';
+  }
+  function ytLinkHTML(id, cls, inner, label) {
+    return '<a class="' + cls + '" href="' + escapeHTML(ytHref(id)) + '" target="_blank" rel="noopener" data-act="yt"'
+      + ' data-hint="' + label + '" aria-label="' + label + '">' + inner + '</a>';
+  }
+
   function cardHTML(v) {
     const isW = isWatched(v);
     const isP = v.id === currentId;
@@ -677,6 +700,7 @@
       + '</div>'
       + '<div class="vmeta"><div class="vtitle">' + escapeHTML(v.title) + '</div>'
       + '<div class="vsub">' + bits.join(' · ') + '</div></div>'
+      + ytLinkHTML(v.id, 'vyt', '<svg class="ico"><use href="#i-yt"/></svg>', 'Watch on YouTube')
       + '<button class="vcheck" type="button" data-act="toggle" data-id="' + escapeHTML(v.id) + '" data-hint="' + (isW ? 'Click to mark unwatched' : 'Click to mark watched') + '" aria-label="' + (isW ? 'Mark unwatched' : 'Mark watched') + '"><svg class="ico"><use href="#i-check"/></svg></button>'
       + '</div>';
   }
@@ -688,6 +712,10 @@
   }
 
   sectionsEl.addEventListener('click', (e) => {
+    // "Watch on YouTube" is a real link: let its own navigation happen, just
+    // keep the click from also playing the card in the embedded player.
+    const yt = e.target.closest('[data-act="yt"]');
+    if (yt) { e.stopPropagation(); disarmCard(); return; }
     const mark = e.target.closest('[data-markkey]');
     if (mark) {
       e.stopPropagation();
@@ -754,12 +782,13 @@
     const el = armedCard.el; armedCard = null;
     if (!el.isConnected) return;
     el.classList.remove('armed', 'play', 'watch', 'unwatch');
-    Array.prototype.forEach.call(el.querySelectorAll('.vtap-thumb, .vtap-row'), (t) => t.remove());
+    Array.prototype.forEach.call(el.querySelectorAll('.vtap-play, .vtap-row'), (t) => t.remove());
   }
   // Arm a card for TAP_MS (touch only); confirming runs `fn`. In every kind
   // the card dims and its outline turns white, and a tap anywhere else
   // cancels — there is no cancel button.
-  //  - play: a green "Tap to watch" sits over the thumbnail.
+  //  - play: the thumbnail splits into a green "Tap to watch" (embedded
+  //    player) and a red "Watch on YouTube" (the app, or the site).
   //  - watch / unwatch: the check square turns into the cancel area and a
   //    same-sized green (blue) square appears just left of it as the
   //    confirm. It's an overlay, positioned off the square, so nothing moves.
@@ -769,7 +798,10 @@
     el.classList.add('armed', kind);
     if (kind === 'play') {
       el.querySelector('.vthumb').insertAdjacentHTML('beforeend',
-        '<button type="button" class="vtap-thumb" data-act="confirm-tap">\u25B6 Tap to watch</button>');
+        '<div class="vtap-play">'
+        + '<button type="button" class="vtap-thumb" data-act="confirm-tap">\u25B6 Tap to watch</button>'
+        + ytLinkHTML(el.getAttribute('data-id'), 'vtap-thumb yt', 'Watch on YouTube', 'Watch on YouTube')
+        + '</div>');
     } else {
       // Two labelled buttons anchored to the check's spot (right edge and
       // vertical centre), growing leftwards: Cancel where the check was,
@@ -949,8 +981,7 @@
     playerWrap.hidden = false;
     nowTitle.textContent = v.title;
     nowBy.textContent = v.channelName + ' · ' + fmtDate(v);
-    const url = 'https://www.youtube.com/watch?v=' + id;
-    ytLink.href = url; veilLink.href = url;
+    ytLink.href = veilLink.href = ytHref(id);
     setVeil('on', 'Loading…');
     // Safety net: if the embed can't autoplay (the click gesture doesn't cross
     // into the YouTube iframe), the PLAYING event never fires — so reveal the
