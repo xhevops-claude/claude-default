@@ -153,11 +153,11 @@ html, body {
 /* Ringed flip: Today wears the same plain colours as the date, and the
    outline is the group's watched progress — a ring that fills clockwise
    from 12 o'clock (--p, set per flip by app.js), red into amber like the
-   main bar, fading in from nothing to red (YouTube red). A conic gradient masked to a 2px frame, over the box's edge. */
+   main bar, solid YouTube red. A conic gradient masked to a 2px frame, over the box's edge. */
 .seg2.ring { position: relative; border-color: transparent; }
 .seg2.ring .flip-live { background: var(--panel-2); color: var(--ink); }
 .seg2.ring::after { content: ""; position: absolute; inset: -1px; z-index: 2; border-radius: inherit; padding: 2px; pointer-events: none;
-  background: conic-gradient(transparent 0, var(--red) var(--p, 0%), var(--line) var(--p, 0%));
+  background: conic-gradient(var(--red) var(--p, 0%), var(--line) 0);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
 .seg2 button:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
@@ -250,8 +250,8 @@ html, body {
 .progress-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .progress-note { color: var(--muted); font-size: 13px; min-width: 0; }
 .progress-text { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
-.progress-bar { height: 8px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
-.progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, transparent, var(--red)); transition: width 0.3s ease; }
+.progress-bar { height: 4px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }   /* slim, YouTube-style */
+.progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--red); transition: width 0.3s ease; }
 /* Results header: list/grid on the left, expand/collapse all on the
    right. Neither changes which videos are listed, only their form. */
 .results-bar { display: flex; align-items: center; gap: 8px; }
