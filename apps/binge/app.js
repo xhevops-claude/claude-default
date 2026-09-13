@@ -583,8 +583,9 @@
     // Today | picked date segment. The picked cell always names the date the
     // sliders hold (today's date if nothing was picked yet).
     const live = tabCutoffLive(activeTab);
-    cutoffLiveBtn.setAttribute('aria-pressed', String(live));
-    cutoffPickedBtn.setAttribute('aria-pressed', String(!live));
+    // Only the active cell is visible and reachable; the other waits offstage.
+    cutoffLiveBtn.tabIndex = live ? 0 : -1; cutoffLiveBtn.setAttribute('aria-hidden', String(!live));
+    cutoffPickedBtn.tabIndex = live ? -1 : 0; cutoffPickedBtn.setAttribute('aria-hidden', String(live));
     const p = tabCutoff(activeTab);
     cutoffPickedBtn.textContent = fmtYMD(p.y, p.m, Math.min(p.d, daysInMonth(p.y, p.m)));
     cutoffMode.classList.toggle('picked', !live);
@@ -1090,8 +1091,9 @@
   });
   chanAllBtn.addEventListener('click', selectAllChannels);
   chanNoneBtn.addEventListener('click', clearAllChannels);
-  cutoffLiveBtn.addEventListener('click', () => { if (!tabCutoffLive(activeTab)) setCutoffLive(true); });
-  cutoffPickedBtn.addEventListener('click', () => { if (tabCutoffLive(activeTab)) setCutoffLive(false); });
+  // Tapping the visible value flips to the other one.
+  cutoffLiveBtn.addEventListener('click', () => setCutoffLive(false));
+  cutoffPickedBtn.addEventListener('click', () => setCutoffLive(true));
   showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; saveShowWatched(); render(); });
   clearWatchedBtn.addEventListener('click', () => {
     if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }

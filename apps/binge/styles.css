@@ -129,16 +129,21 @@ html, body {
 .switch-input:checked + .switch-track::after { transform: translateX(18px); }
 .switch-input:focus-visible + .switch-track { outline: 2px solid var(--amber); outline-offset: 2px; }
 .switch-text { font-size: 14px; }
-/* Two-way segment (Today | picked date): equal cells on a track, and a red
-   pill that slides to sit over the chosen one. */
-.seg2 { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line); }
-.seg2::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 4px; background: var(--red);
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.seg2.picked::before { transform: translateX(100%); }
-.seg2 button { position: relative; z-index: 1; background: transparent; border: 0; border-radius: 4px; padding: 5px 12px; cursor: pointer;
-  color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; transition: color 0.2s ease; }
-.seg2 button[aria-pressed="true"] { color: #fff; }
-.seg2 button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+/* Flip toggle (Today ⇄ picked date): one narrow box showing only the active
+   value. Both cells share the same grid cell (so the box is as wide as the
+   wider label and never jumps); the inactive one waits just outside the
+   clipped box and slides in when tapped — Today parks on the left, the
+   picked date on the right, so the flip always reads as a carousel. */
+.seg2 { display: grid; overflow: hidden; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); }
+.seg2 button { grid-area: 1 / 1; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border: 0; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums;
+  transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.24s ease; }
+.seg2 button::after { content: "\21C4"; font-size: 12px; opacity: 0.65; }   /* ⇄: tap to flip */
+#cutoff-live { background: var(--red); color: #fff; }
+#cutoff-picked { background: var(--panel-2); color: var(--ink); transform: translateX(100%); opacity: 0; pointer-events: none; }
+.seg2.picked #cutoff-live { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+.seg2.picked #cutoff-picked { transform: none; opacity: 1; pointer-events: auto; }
+.seg2 button:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
 /* With Today chosen, the sliders show today's date and sit dimmed; dragging
    one picks that date and moves the pill over to it. */
 .filters.live .dslider { opacity: 0.55; }
