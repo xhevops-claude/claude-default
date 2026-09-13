@@ -147,13 +147,13 @@
         <div class="fgroup">
           <div class="fgroup-head">
             <span class="fgroup-label">Show up to</span>
-            <!-- Today switch: on = the cutoff follows the clock; off = the date picked on the sliders below -->
+            <!-- Today / picked date: a two-cell segment whose pill slides over the chosen one.
+                 Today follows the clock; the picked date is the one set on the sliders below. -->
             <span class="fgroup-actions">
-              <label class="switch small">
-                <input type="checkbox" id="cutoff-today" class="switch-input" />
-                <span class="switch-track" aria-hidden="true"></span>
-                <span class="switch-text">Today</span>
-              </label>
+              <div class="seg2" id="cutoff-mode" role="group" aria-label="Cutoff">
+                <button id="cutoff-live" type="button" aria-pressed="false">Today</button>
+                <button id="cutoff-picked" type="button" aria-pressed="false">—</button>
+              </div>
             </span>
           </div>
           <div class="dslider" id="ds-year">

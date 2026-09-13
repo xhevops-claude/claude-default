@@ -63,7 +63,8 @@
   const filtersEl = $('filters'), filtersToggle = $('filters-toggle');
   const groupTabs = $('group-tabs'), appbarTab = $('appbar-tab'), chanLabel = $('chan-label');
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
-  const cutoffTodayChk = $('cutoff-today'), showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
+  const cutoffMode = $('cutoff-mode'), cutoffLiveBtn = $('cutoff-live'), cutoffPickedBtn = $('cutoff-picked');
+  const showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
   const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
@@ -579,8 +580,14 @@
     daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
+    // Today | picked date segment. The picked cell always names the date the
+    // sliders hold (today's date if nothing was picked yet).
     const live = tabCutoffLive(activeTab);
-    cutoffTodayChk.checked = live;
+    cutoffLiveBtn.setAttribute('aria-pressed', String(live));
+    cutoffPickedBtn.setAttribute('aria-pressed', String(!live));
+    const p = tabCutoff(activeTab);
+    cutoffPickedBtn.textContent = fmtYMD(p.y, p.m, Math.min(p.d, daysInMonth(p.y, p.m)));
+    cutoffMode.classList.toggle('picked', !live);
     filtersEl.classList.toggle('live', live);
 
     filtersEl.hidden = !filtersOpen;
@@ -1083,7 +1090,8 @@
   });
   chanAllBtn.addEventListener('click', selectAllChannels);
   chanNoneBtn.addEventListener('click', clearAllChannels);
-  cutoffTodayChk.addEventListener('change', () => setCutoffLive(cutoffTodayChk.checked));
+  cutoffLiveBtn.addEventListener('click', () => { if (!tabCutoffLive(activeTab)) setCutoffLive(true); });
+  cutoffPickedBtn.addEventListener('click', () => { if (tabCutoffLive(activeTab)) setCutoffLive(false); });
   showWatchedChk.addEventListener('change', () => { showWatched = showWatchedChk.checked; saveShowWatched(); render(); });
   clearWatchedBtn.addEventListener('click', () => {
     if (Object.keys(watchedTo).length) { watchedTo = {}; save(LS.watchedTo, watchedTo); render(); }
