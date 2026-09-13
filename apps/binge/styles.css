@@ -27,7 +27,9 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
-  touch-action: manipulation;
+  /* pan-y (not manipulation): the browser keeps vertical scrolling, and a
+     sideways drag reaches our pointer handlers for the sidebar swipe. */
+  touch-action: pan-y;
 }
 
 .binge {
@@ -53,6 +55,57 @@ html, body {
 .btn.small { font-size: 13px; padding: 8px 12px; }
 .linkbtn { background: none; border: 0; color: var(--amber); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 2px 4px; }
 .linkbtn:hover { text-decoration: underline; }
+
+/* App bar + sidebar drawer. The drawer sits off-canvas to the left and
+   slides in over a scrim; it's toggled by class so the transform can
+   animate (the [hidden] rule would kill it). */
+.appbar { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.iconbtn { width: 40px; height: 40px; flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 0; border-radius: 10px;
+  border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer; font: inherit; transition: background 0.15s ease, border-color 0.15s ease; }
+.iconbtn:hover { background: var(--panel); border-color: var(--line); }
+.iconbtn .ico { width: 22px; height: 22px; stroke-width: 2; }
+.wordmark { font-weight: 800; font-size: 18px; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 6px; }
+.drawer-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.55); opacity: 0; visibility: hidden; transition: opacity 0.22s ease, visibility 0s linear 0.22s; }
+.drawer { position: fixed; z-index: 41; top: 0; bottom: 0; left: 0; width: min(280px, 85vw); padding: clamp(14px, 3vw, 22px) 12px 16px; overflow-y: auto;
+  background: var(--panel); border-right: 1px solid var(--line); box-shadow: 0 0 60px rgba(0, 0, 0, 0.6); display: flex; flex-direction: column; gap: 14px;
+  transform: translateX(-100%); visibility: hidden; transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.24s; }
+.drawer-open .drawer-scrim { opacity: 1; visibility: visible; transition-delay: 0s; }
+.drawer-open .drawer { transform: none; visibility: visible; transition-delay: 0s; }
+.drawer-open body { overflow: hidden; }
+/* Docked sidebar (wide screens): no scrim, no scroll lock; the page shifts
+   right by the drawer's width and the drawer becomes part of the layout.
+   The breakpoint is mirrored in app.js (dockedMQ). */
+@media (min-width: 900px) {
+  :root { --drawer-w: 280px; }
+  body { transition: padding-left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .drawer { box-shadow: none; }
+  .drawer-scrim { display: none; }
+  .drawer-open body { overflow: visible; padding-left: var(--drawer-w); }
+  /* Expanded: the drawer's own hamburger is the toggle, so the page's hides. */
+  .drawer-open .appbar #drawer-open { display: none; }
+  /* Fixed overlays centre on the remaining page, not the whole viewport. */
+  .drawer-open .hud { left: var(--drawer-w); }
+  .drawer-open .toast { left: calc(50% + var(--drawer-w) / 2); }
+}
+/* While a finger drags it, the panel tracks the pointer directly. */
+.drawer-dragging .drawer, .drawer-dragging .drawer-scrim { transition: none; }
+.drawer-dragging { user-select: none; -webkit-user-select: none; }
+.drawer-head { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-left: 4px; }
+.drawer-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0 12px; margin-bottom: -8px; }
+.drawer-rule { height: 1px; background: var(--line); margin: 0 4px; }
+/* Active group shown in the app bar: name, then its cutoff date in small
+   caps like the drawer rows. Tapping it opens the drawer. */
+.appbar-tab { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; margin-left: 2px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
+  color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease, background 0.15s ease; }
+.appbar-tab:hover { border-color: rgba(255, 255, 255, 0.22); }
+.appbar-tab-name { overflow: hidden; text-overflow: ellipsis; }
+.appbar-tab-n { color: var(--amber); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.drawer-nav { display: flex; flex-direction: column; gap: 2px; }
+.drawer-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink);
+  font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s ease; }
+.drawer-item:hover { background: var(--panel-2); }
+.drawer-item .ico { width: 22px; height: 22px; stroke-width: 1.9; color: var(--muted); flex: none; }
+.drawer-item:hover .ico { color: var(--ink); }
 
 /* Player */
 .player-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000;
@@ -89,19 +142,18 @@ html, body {
 .fgroup-actions { display: flex; gap: 6px; }
 .fgroup-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 
-/* Group tabs: one box per group from groups.json plus an automatic "All".
-   "All" stays put on the left; the rest sit in a horizontally scrollable
-   strip so a long list stays on one row on phones. Each tab shows its own
-   cutoff date under the name. */
-.tabs { display: flex; gap: 6px; padding: 2px 0; margin-top: -6px; }
-/* The strip hugs the right edge on wide screens (auto margin); on narrow
-   ones it fills the row and scrolls. */
-.tabs-scroll { display: flex; gap: 6px; min-width: 0; margin-left: auto; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.tabs-scroll::-webkit-scrollbar { display: none; }
-.tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; font-weight: 700; font-size: 14px; line-height: 1.2; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; cursor: pointer; white-space: nowrap; transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
-.tab[aria-selected="true"] { background: var(--red); border-color: transparent; color: #fff; }
+/* Group tabs: one row per group from groups.json plus an automatic "All",
+   listed in the drawer. The name sits left, the group's own cutoff date
+   right; the active row is lit with a red edge, YouTube-sidebar style. */
+.tabs { display: flex; flex-direction: column; gap: 2px; }
+.tab { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; font: inherit; font-weight: 600; font-size: 14px; line-height: 1.2; color: var(--ink); background: transparent; border: 0; border-radius: 10px; padding: 11px 12px; cursor: pointer; text-align: left; white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
+.tab:hover { background: var(--panel-2); }
+.tab[aria-selected="true"] { background: var(--panel-2); font-weight: 700; }
+.tab[aria-selected="true"]::before { content: ""; position: absolute; left: 3px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 2px; background: var(--red); }
 .tab:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-.tab-n { opacity: 0.65; font-weight: 600; font-size: 10px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tab-n { flex: none; color: var(--muted); font-weight: 600; font-size: 11px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.tab[aria-selected="true"] .tab-n { color: var(--amber); }
 
 .chan-switches { display: flex; flex-direction: column; gap: 2px; }
 .chan-switch { padding: 8px 2px; }
@@ -282,7 +334,7 @@ html, body {
 .foot-actions { display: flex; gap: 14px; }
 
 /* Sync modal */
-.sync-modal { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 18px;
+.sync-modal { position: fixed; inset: 0; z-index: 50;   /* above the docked sidebar */ display: flex; align-items: center; justify-content: center; padding: 18px;
   background: rgba(0, 0, 0, 0.6); }
 .sync-card { width: min(520px, 100%); max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line);
   border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }

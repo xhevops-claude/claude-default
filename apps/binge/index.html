@@ -51,12 +51,40 @@
       <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3.5 5h17l-6.5 7.5V18l-4 2v-7.5z"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
       <symbol id="i-bundle" viewBox="0 0 24 24"><path d="M12 3 3 7.5l9 4.5 9-4.5L12 3zM3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7M6 10v10h4.5v-5h3v5H18V10"/></symbol>
+      <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 9.5a4.5 4.5 0 0 1 .5 9H7z"/></symbol>
       <symbol id="i-yt" viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="M10 9.2v5.6L15 12z"/></symbol>
       <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="12.5" rx="2"/><path d="M8 3.5l4 4 4-4"/></symbol>
     </defs>
   </svg>
 
+  <!-- Sidebar: a YouTube-style pull-out drawer. Toggled by class (not the
+       hidden attribute) so it can slide; the scrim behind it closes it. -->
+  <div class="drawer-scrim" id="drawer-scrim" aria-hidden="true"></div>
+  <aside class="drawer" id="drawer" aria-label="Menu" aria-hidden="true">
+    <div class="drawer-head">
+      <button id="drawer-close" type="button" class="iconbtn" aria-label="Close menu"><svg class="ico"><use href="#i-menu"/></svg></button>
+      <span class="wordmark"><span aria-hidden="true">🍿</span> Binge</span>
+    </div>
+    <!-- Group tabs: one row per group from groups.json plus an automatic "All" -->
+    <div class="drawer-label">Groups</div>
+    <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
+    <div class="drawer-rule" role="separator"></div>
+    <nav class="drawer-nav">
+      <button id="drawer-sync" type="button" class="drawer-item"><svg class="ico"><use href="#i-cloud"/></svg><span>Sync across devices</span></button>
+      <button id="drawer-quit" type="button" class="drawer-item"><svg class="ico"><use href="#i-home"/></svg><span>Quit to arcade</span></button>
+    </nav>
+  </aside>
+
   <main class="binge">
+    <!-- App bar: hamburger + the active group, like YouTube's top-left -->
+    <header class="appbar">
+      <button id="drawer-open" type="button" class="iconbtn" aria-label="Open menu" aria-controls="drawer" aria-expanded="false"><svg class="ico"><use href="#i-menu"/></svg></button>
+      <!-- The active group, since the tabs live in the drawer; tapping it opens the drawer -->
+      <button id="appbar-tab" type="button" class="appbar-tab" hidden><span class="appbar-tab-name"></span><span class="appbar-tab-n"></span></button>
+    </header>
+
     <!-- Player -->
     <section class="player-wrap" id="player-wrap" hidden>
       <div class="player-frame">
@@ -79,9 +107,6 @@
         <button id="close-player" type="button" class="btn ghost">✕ Close</button>
       </div>
     </section>
-
-    <!-- Group tabs: always visible; the active tab owns the filters -->
-    <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
 
     <!-- Toolbar: Group by / Sort / Filters — what content is shown, and how it is arranged -->
     <section class="toolbar" id="toolbar" hidden>
