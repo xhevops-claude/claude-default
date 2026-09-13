@@ -66,7 +66,7 @@
   const showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar');
   const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
-  const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all'), viewFlip = $('view-flip');
+  const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
   const sectionsEl = $('sections');
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
   const quitBtn = $('quit');
@@ -524,14 +524,6 @@
     vids.forEach((v) => { if (videoYMD(v) <= cut) { total++; if (isWatched(v)) watched++; } });
     return { watched: watched, total: total };
   }
-  // Show one cell of a flip: the "picked" cell when `picked`, else the
-  // "live" one. The hidden cell is unreachable to focus and assistive tech.
-  function setFlipState(seg, picked) {
-    const liveBtn = seg.querySelector('.flip-live'), pickedBtn = seg.querySelector('.flip-picked');
-    liveBtn.tabIndex = picked ? -1 : 0; liveBtn.setAttribute('aria-hidden', String(picked));
-    pickedBtn.tabIndex = picked ? 0 : -1; pickedBtn.setAttribute('aria-hidden', String(!picked));
-    seg.classList.toggle('picked', picked);
-  }
   function syncFlip(seg, id, opts) {
     const live = tabCutoffLive(id);
     if (opts && opts.progress) {
@@ -540,9 +532,12 @@
       seg.style.setProperty('--p', (p.total ? Math.round(p.watched / p.total * 1000) / 10 : 0) + '%');
       seg.title = p.watched + ' / ' + p.total + ' watched';
     }
+    const liveBtn = seg.querySelector('.flip-live'), pickedBtn = seg.querySelector('.flip-picked');
+    liveBtn.tabIndex = live ? 0 : -1; liveBtn.setAttribute('aria-hidden', String(!live));
+    pickedBtn.tabIndex = live ? -1 : 0; pickedBtn.setAttribute('aria-hidden', String(live));
     const p = tabCutoff(id);   // the picked cell always names the date the sliders hold
-    seg.querySelector('.flip-picked').textContent = fmtYMD(p.y, p.m, Math.min(p.d, daysInMonth(p.y, p.m)));
-    setFlipState(seg, !live);
+    pickedBtn.textContent = fmtYMD(p.y, p.m, Math.min(p.d, daysInMonth(p.y, p.m)));
+    seg.classList.toggle('picked', !live);
   }
   function selectTab(id) {
     if (id === activeTab) return;
@@ -685,13 +680,12 @@
     const oneBundle = activeTab !== 'all';
     toolbar.querySelector('[data-group="bundle"]').hidden = oneBundle;
     toolbar.classList.toggle('one-bundle', oneBundle);
-    Array.prototype.forEach.call(document.querySelectorAll('.toolbar .seg-btn'), (b) => {
-      const on = b.hasAttribute('data-sort') ? b.getAttribute('data-sort') === sortBy
-        : b.getAttribute('data-group') === groupBy;
+    Array.prototype.forEach.call(document.querySelectorAll('.toolbar .seg-btn, .results-bar .seg-btn'), (b) => {
+      const on = b.hasAttribute('data-view') ? b.getAttribute('data-view') === view
+        : b.hasAttribute('data-sort') ? b.getAttribute('data-sort') === sortBy
+          : b.getAttribute('data-group') === groupBy;
       b.setAttribute('aria-selected', String(on));
     });
-    // List ⇄ grid flip: the "picked" cell is grid.
-    setFlipState(viewFlip, view === 'grid');
   }
 
   // ---- sections ----
@@ -1175,7 +1169,7 @@
   });
 
   function onSegClick(e) {
-    const b = e.target.closest('.seg-btn, #view-flip [data-view]'); if (!b) return;
+    const b = e.target.closest('.seg-btn'); if (!b) return;
     if (b.hasAttribute('data-view')) { view = b.getAttribute('data-view'); setViewPref(activeTab, groupBy, 'view', view); }
     else if (b.hasAttribute('data-sort')) { sortBy = b.getAttribute('data-sort'); setTabPref(activeTab, 'sort', sortBy); }
     else if (b.hasAttribute('data-group')) { groupBy = b.getAttribute('data-group'); setTabPref(activeTab, 'group', groupBy); loadViewNode(); }

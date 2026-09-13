@@ -195,12 +195,10 @@
 
     <!-- Results header: list/grid view and expand/collapse all groups -->
     <div class="results-bar" id="results-bar" hidden>
-      <!-- List ⇄ grid flip, same widget as the Today/date one: shows the current view; tapping switches to the other.
-           data-view names the view a tap switches *to*. -->
-      <span class="seg2 mini plain" id="view-flip" role="group" aria-label="View">
-        <button class="flip-live" data-view="grid" type="button" title="Switch to grid"><span class="flip-lbl"><svg class="ico"><use href="#i-list"/></svg>List</span></button>
-        <button class="flip-picked" data-view="list" type="button" title="Switch to list"><span class="flip-lbl"><svg class="ico"><use href="#i-grid"/></svg>Grid</span></button>
-      </span>
+      <div class="seg" role="tablist" aria-label="View">
+        <button type="button" class="seg-btn" data-view="list" role="tab" title="List" aria-label="List view"><svg class="ico"><use href="#i-list"/></svg></button>
+        <button type="button" class="seg-btn" data-view="grid" role="tab" title="Grid" aria-label="Grid view"><svg class="ico"><use href="#i-grid"/></svg></button>
+      </div>
       <button id="collapse-all" type="button" class="btn ghost small">Collapse all</button>
     </div>
 
