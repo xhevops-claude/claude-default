@@ -1179,7 +1179,8 @@
       const v = localStorage.getItem(k);
       if (v != null) { try { out[k] = JSON.parse(v); } catch (e) {} }
     });
-    const text = JSON.stringify(out);
+    // Shown in the textarea as well as copied, so keep it readable: two-space indent.
+    const text = JSON.stringify(out, null, 2);
     syncPaste.value = text;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(
