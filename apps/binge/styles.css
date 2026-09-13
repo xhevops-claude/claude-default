@@ -99,7 +99,7 @@ html, body {
 .appbar-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
   color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
 .appbar-tab-name:hover { border-color: rgba(255, 255, 255, 0.22); }
-.appbar .seg2.mini button { padding: 8px 8px; }   /* same height as the name beside it */
+.appbar .seg2.mini button { padding: 4px 8px 4px 4px; }   /* same height as the name beside it */
 .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
 .drawer-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink);
   font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s ease; }
@@ -134,11 +134,11 @@ html, body {
    wider label and never jumps); the inactive one waits just outside the
    clipped box and slides in when tapped — Today parks on the left, the
    picked date on the right, so the flip always reads as a carousel. */
-.seg2 { display: grid; width: 124px; overflow: hidden; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); }   /* fixed width: fits the widest date, so every flip is the same size */
-.seg2 button { grid-area: 1 / 1; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border: 0; cursor: pointer;
+.seg2 { display: grid; width: 124px; overflow: hidden; border-radius: 4px; border: 1px solid var(--line); background: var(--panel-2); }   /* fixed width: fits the widest date, so every flip is the same size */
+.seg2 button { grid-area: 1 / 1; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px 4px 4px; border: 0; cursor: pointer;
   font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums;
   transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.24s ease; }
-.seg2 button::after { content: "\21C4"; font-size: 12px; opacity: 0.65; }   /* ⇄: tap to flip */
+.seg2 button::before { content: "\21C4"; flex: none; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; background: rgba(255, 255, 255, 0.12); font-size: 12px; }   /* ⇄ knob: a small square on the left; the label sits right */
 .seg2 .flip-live { background: var(--red); color: #fff; }
 .seg2 .flip-picked { background: var(--panel-2); color: var(--ink); transform: translateX(100%); opacity: 0; pointer-events: none; }
 .seg2.picked .flip-live { transform: translateX(-100%); opacity: 0; pointer-events: none; }
@@ -146,8 +146,8 @@ html, body {
 /* Compact flip (sidebar rows, app bar). In a row, flipping doesn't select
    the row, so several groups can be switched in a run. */
 .seg2.mini { flex: none; width: 112px; }
-.seg2.mini button { padding: 4px 8px; gap: 8px; font-size: 11px; }
-.seg2.mini button::after { font-size: 11px; }
+.seg2.mini button { padding: 3px 8px 3px 3px; gap: 8px; font-size: 11px; }
+.seg2.mini button::before { width: 20px; height: 20px; font-size: 11px; }
 /* Ringed flip: Today wears the same plain colours as the date, and the
    outline is the group's watched progress — a ring that fills clockwise
    from 12 o'clock (--p, set per flip by app.js), red into amber like the
