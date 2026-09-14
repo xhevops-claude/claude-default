@@ -1196,16 +1196,19 @@
   // the content aside instead of overlaying it, is expanded by default, and
   // its expanded/collapsed state is remembered per device. Narrow screens
   // get the overlay drawer, which never persists.
-  const drawerOpenBtn = $('drawer-open'), drawerCloseBtn = $('drawer-close'), drawerEl = $('drawer'), drawerScrim = $('drawer-scrim');
+  const drawerEl = $('drawer'), drawerScrim = $('drawer-scrim');
   const dockedMQ = window.matchMedia('(min-width: 900px)');
   const docked = () => dockedMQ.matches;
   function setDrawer(open, opts) {
     opts = opts || {};
     document.documentElement.classList.toggle('drawer-open', open);
     drawerEl.setAttribute('aria-hidden', String(!open));
-    drawerOpenBtn.setAttribute('aria-expanded', String(open));
+    appbarTabName.setAttribute('aria-expanded', String(open));
     if (docked()) save(LS.sidebar, open);
-    if (!opts.quiet) { if (open) drawerCloseBtn.focus(); else drawerOpenBtn.focus(); }
+    if (!opts.quiet) {
+      if (open) { const row = groupTabs.querySelector('[aria-selected="true"]') || groupTabs.querySelector('.tab'); if (row) row.focus(); }
+      else appbarTabName.focus();
+    }
   }
   function applyDockMode() {
     // Entering desktop: restore the saved preference (expanded by default).
@@ -1215,11 +1218,11 @@
   applyDockMode();
   if (dockedMQ.addEventListener) dockedMQ.addEventListener('change', applyDockMode);
   else dockedMQ.addListener(applyDockMode);
-  drawerOpenBtn.addEventListener('click', () => setDrawer(true));
-  appbarTabName.addEventListener('click', () => setDrawer(true));
+  // The group pill is the drawer's only button: it opens the drawer, and on
+  // desktop (where it stays visible beside a docked sidebar) it collapses it too.
+  appbarTabName.addEventListener('click', () => setDrawer(!document.documentElement.classList.contains('drawer-open')));
   appbarCount.addEventListener('click', () => appbarCount.classList.toggle('full'));   // each tap toggles "N left" ⇄ watched / total
   appbarFlip.querySelector('.switch-input').addEventListener('change', (e) => setCutoffLive(e.target.checked));
-  drawerCloseBtn.addEventListener('click', () => setDrawer(false));
   drawerScrim.addEventListener('click', () => setDrawer(false));
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !docked() && document.documentElement.classList.contains('drawer-open')) setDrawer(false);
