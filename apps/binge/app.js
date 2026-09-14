@@ -1217,7 +1217,7 @@
   else dockedMQ.addListener(applyDockMode);
   drawerOpenBtn.addEventListener('click', () => setDrawer(true));
   appbarTabName.addEventListener('click', () => setDrawer(true));
-  appbarCount.addEventListener('click', () => appbarCount.classList.toggle('full'));   // tap: show watched / total (hover does too)
+  appbarCount.addEventListener('click', () => appbarCount.classList.toggle('full'));   // each tap toggles "N left" ⇄ watched / total
   appbarFlip.querySelector('.switch-input').addEventListener('change', (e) => setCutoffLive(e.target.checked));
   drawerCloseBtn.addEventListener('click', () => setDrawer(false));
   drawerScrim.addEventListener('click', () => setDrawer(false));

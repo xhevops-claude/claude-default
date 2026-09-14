@@ -253,14 +253,14 @@ html, body {
 .tb-filter .seg-btn.on::after { content: ""; position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 2px var(--panel); }
 
 /* Progress + results bar */
-/* App-bar count: "N left" at rest; hover or tap (toggles .full) swaps in
-   watched / total. Both spans share one grid cell so the width is the wider. */
+/* App-bar count: "N left"; each tap toggles it with watched / total (no
+   hover behaviour). Both spans share one grid cell so the width is the wider. */
 .appbar-count { display: grid; padding: 0 2px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
   font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; text-align: right; }
 .appbar-count > span { grid-area: 1 / 1; transition: opacity 0.15s ease; }
 .appbar-count .count-full { opacity: 0; }
-.appbar-count:hover .count-left, .appbar-count.full .count-left { opacity: 0; }
-.appbar-count:hover .count-full, .appbar-count.full .count-full { opacity: 1; color: var(--ink); }
+.appbar-count.full .count-left { opacity: 0; }
+.appbar-count.full .count-full { opacity: 1; color: var(--ink); }
 .appbar-count:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
 /* Results header: list/grid on the left, expand/collapse all on the
    right. Neither changes which videos are listed, only their form. */
