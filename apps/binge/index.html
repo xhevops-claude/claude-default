@@ -85,10 +85,14 @@
            the same Today ⇄ date flip as the sidebar rows, ringed with the group's progress -->
       <div id="appbar-tab" class="appbar-tab" hidden>
         <button id="appbar-tab-name" type="button" class="appbar-tab-name" title="Open groups"></button>
+        <span class="appbar-right">
+        <!-- Watched / total for the active group, right next to its switch -->
+        <span class="progress-text" id="progress-text"></span>
         <label class="switch flip ring" id="appbar-flip">
           <input type="checkbox" class="switch-input" aria-label="Show up to today" />
           <span class="switch-track" aria-hidden="true"><span class="flip-off"></span><span class="flip-on">Today</span></span>
         </label>
+        </span>
       </div>
       <!-- Page title, shown instead of the group pill on non-video pages -->
       <span class="appbar-title" id="appbar-title" hidden></span>
@@ -190,7 +194,6 @@
     <div class="progress" id="progress" hidden>
       <div class="progress-row">
         <span class="progress-note" id="results-count">—</span>
-        <span class="progress-text" id="progress-text">—</span>
       </div>
       <div class="progress-bar"><span id="progress-fill"></span></div>
     </div>

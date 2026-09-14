@@ -448,7 +448,7 @@
   }
 
   function hideResults(keepProgress) {
-    if (!keepProgress) progressEl.hidden = true;
+    if (!keepProgress) { progressEl.hidden = true; progressText.textContent = ''; }
     resultsBar.hidden = true;
     sectionsEl.innerHTML = '';
   }

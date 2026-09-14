@@ -102,6 +102,7 @@ html, body {
 .appbar-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
   color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
 .appbar-tab-name:hover { border-color: rgba(255, 255, 255, 0.22); }
+.appbar-right { display: inline-flex; align-items: center; gap: 10px; flex: none; }   /* count, then the switch */
 .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
 .drawer-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink);
   font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s ease; }
@@ -252,9 +253,8 @@ html, body {
 .tb-filter .seg-btn.on::after { content: ""; position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 2px var(--panel); }
 
 /* Progress + results bar */
-/* Watched progress: the text sits on its own line above a full-width track,
-   so the bar's end is never confused with where the label starts. The track
-   has a visible border, so its total length reads even when nearly empty. */
+/* Watched progress: the note sits on its own line above a full-width track;
+   the watched / total count lives in the app bar beside the group's switch. */
 .progress { display: flex; flex-direction: column; gap: 6px; }
 .progress-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .progress-note { color: var(--muted); font-size: 13px; min-width: 0; }
