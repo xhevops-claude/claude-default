@@ -86,8 +86,8 @@
       <div id="appbar-tab" class="appbar-tab" hidden>
         <button id="appbar-tab-name" type="button" class="appbar-tab-name" title="Open groups"></button>
         <span class="appbar-right">
-        <!-- Watched / total for the active group, right next to its switch -->
-        <span class="progress-text" id="progress-text"></span>
+        <!-- "N left" for the active group beside its switch; hover or tap shows watched / total -->
+        <button type="button" class="appbar-count" id="appbar-count" hidden><span class="count-left"></span><span class="count-full"></span></button>
         <label class="switch flip ring" id="appbar-flip">
           <input type="checkbox" class="switch-input" aria-label="Show up to today" />
           <span class="switch-track" aria-hidden="true"><span class="flip-off"></span><span class="flip-on">Today</span></span>
@@ -189,13 +189,6 @@
         </div>
       </div>
     </section>
-
-    <!-- Progress note: what's left up to the cutoff (the count and the ring live in the app bar) -->
-    <div class="progress" id="progress" hidden>
-      <div class="progress-row">
-        <span class="progress-note" id="results-count">—</span>
-      </div>
-    </div>
 
     <!-- Results header: list/grid view and expand/collapse all groups -->
     <div class="results-bar" id="results-bar" hidden>
