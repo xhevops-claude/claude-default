@@ -65,7 +65,7 @@
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
   const showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar');
-  const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
+  const progressEl = $('progress'), progressText = $('progress-text');
   const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
   const sectionsEl = $('sections');
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
@@ -423,7 +423,6 @@
     const remaining = total - watchedCount;
 
     progressEl.hidden = false;
-    progressFill.style.width = total ? (watchedCount / total * 100) + '%' : '0%';
     progressText.textContent = watchedCount + ' / ' + total;
     resultsCount.textContent = (showWatched
       ? total + (total === 1 ? ' video' : ' videos')

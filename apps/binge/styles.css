@@ -253,14 +253,12 @@ html, body {
 .tb-filter .seg-btn.on::after { content: ""; position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 2px var(--panel); }
 
 /* Progress + results bar */
-/* Watched progress: the note sits on its own line above a full-width track;
-   the watched / total count lives in the app bar beside the group's switch. */
+/* Progress note: one line, what's left up to the cutoff. The watched / total
+   count and the progress ring live in the app bar beside the group's switch. */
 .progress { display: flex; flex-direction: column; gap: 6px; }
 .progress-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .progress-note { color: var(--muted); font-size: 13px; min-width: 0; }
 .progress-text { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
-.progress-bar { height: 4px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }   /* slim, YouTube-style */
-.progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--red); transition: width 0.3s ease; }
 /* Results header: list/grid on the left, expand/collapse all on the
    right. Neither changes which videos are listed, only their form. */
 .results-bar { display: flex; align-items: center; gap: 8px; }
