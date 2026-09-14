@@ -172,8 +172,18 @@ html, body {
 /* Filters panel: opened by the funnel button in the toolbar, drops in right
    under it. Holds the active tab's channel switches, date cutoff and
    show-watched toggle. */
-.filters { border-radius: 12px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; margin-top: -4px; }
-.filters-body { padding: 14px; display: flex; flex-direction: column; gap: 18px; }
+/* The filters panel folds open and shut (grid-row collapse, like the date
+   sliders inside it). Shut, its border fades and a negative margin swallows
+   the layout gap so the toolbar and results sit as if it weren't there. */
+.filters { display: grid; grid-template-rows: 0fr; opacity: 0; margin-top: -16px; border-radius: 12px; background: var(--panel); border: 1px solid transparent; overflow: hidden;
+  transition: grid-template-rows 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease, margin-top 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease; }
+.filters.open { grid-template-rows: 1fr; opacity: 1; margin-top: -4px; border-color: var(--line); }
+.filters-body { min-height: 0; overflow: hidden; padding: 0 14px; display: flex; flex-direction: column; gap: 18px; }
+/* Vertical padding as child margins, not body padding: a grid row at 0fr
+   collapses the body's content but not its own padding, so this way the
+   panel folds to nothing. */
+.filters-body > :first-child { margin-top: 14px; }
+.filters-body > :last-child { margin-bottom: 14px; }
 .fgroup { display: flex; flex-direction: column; gap: 8px; }
 .fgroup-head { display: flex; align-items: center; justify-content: space-between; }
 .fgroup-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }

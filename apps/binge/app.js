@@ -630,7 +630,7 @@
     // Today on (flip in the app bar): the sliders show today's date, dimmed.
     filtersEl.classList.toggle('live', tabCutoffLive(activeTab));
 
-    filtersEl.hidden = !filtersOpen;
+    filtersEl.hidden = false; filtersEl.classList.toggle('open', filtersOpen);   // .open animates; hidden is only for "no data"
     filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
     filtersToggle.classList.toggle('on', filtersEngaged());
   }
@@ -1126,7 +1126,7 @@
   // ---------------------------------------------------------------------------
   filtersToggle.addEventListener('click', () => {
     filtersOpen = !filtersOpen;
-    filtersEl.hidden = !filtersOpen;
+    filtersEl.classList.toggle('open', filtersOpen);
     filtersToggle.setAttribute('aria-expanded', String(filtersOpen));
   });
   chanAllBtn.addEventListener('click', selectAllChannels);
