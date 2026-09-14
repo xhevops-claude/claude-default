@@ -51,7 +51,6 @@
       <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3.5 5h17l-6.5 7.5V18l-4 2v-7.5z"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
       <symbol id="i-bundle" viewBox="0 0 24 24"><path d="M12 3 3 7.5l9 4.5 9-4.5L12 3zM3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></symbol>
-      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
       <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7M6 10v10h4.5v-5h3v5H18V10"/></symbol>
       <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 9.5a4.5 4.5 0 0 1 .5 9H7z"/></symbol>
       <symbol id="i-yt" viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="M10 9.2v5.6L15 12z"/></symbol>
@@ -59,14 +58,11 @@
     </defs>
   </svg>
 
-  <!-- Sidebar: a YouTube-style pull-out drawer. Toggled by class (not the
-       hidden attribute) so it can slide; the scrim behind it closes it. -->
+  <!-- Sidebar: a YouTube-style pull-out drawer, opened by the group pill in the
+       app bar. Toggled by class (not the hidden attribute) so it can slide; the
+       scrim behind it closes it. It opens straight onto the Groups list. -->
   <div class="drawer-scrim" id="drawer-scrim" aria-hidden="true"></div>
   <aside class="drawer" id="drawer" aria-label="Menu" aria-hidden="true">
-    <div class="drawer-head">
-      <button id="drawer-close" type="button" class="iconbtn" aria-label="Close menu"><svg class="ico"><use href="#i-menu"/></svg></button>
-      <span class="wordmark"><span aria-hidden="true">🍿</span> Binge</span>
-    </div>
     <!-- Group tabs: one row per group from groups.json plus an automatic "All" -->
     <div class="drawer-label">Groups</div>
     <nav class="tabs" id="group-tabs" role="tablist" aria-label="Channel groups" hidden></nav>
@@ -78,17 +74,20 @@
   </aside>
 
   <main class="binge">
-    <!-- App bar: hamburger + the active group, like YouTube's top-left -->
+    <!-- App bar: the active group's red pill (tabs live in the drawer; tapping it opens
+         the drawer, and on desktop collapses a docked one) and, at the right edge, the
+         same Today ⇄ date flip as the sidebar rows, ringed with the group's progress -->
     <header class="appbar">
-      <button id="drawer-open" type="button" class="iconbtn" aria-label="Open menu" aria-controls="drawer" aria-expanded="false"><svg class="ico"><use href="#i-menu"/></svg></button>
-      <!-- The active group (tabs live in the drawer): its name opens the drawer; beside it,
-           the same Today ⇄ date flip as the sidebar rows, ringed with the group's progress -->
       <div id="appbar-tab" class="appbar-tab" hidden>
-        <button id="appbar-tab-name" type="button" class="appbar-tab-name" title="Open groups"></button>
+        <button id="appbar-tab-name" type="button" class="appbar-tab-name" title="Groups" aria-controls="drawer" aria-expanded="false"></button>
+        <span class="appbar-right">
+        <!-- "N left" for the active group beside its switch; each tap toggles it with watched / total -->
+        <button type="button" class="appbar-count" id="appbar-count" hidden><span class="count-left"></span><span class="count-full"></span></button>
         <label class="switch flip ring" id="appbar-flip">
           <input type="checkbox" class="switch-input" aria-label="Show up to today" />
           <span class="switch-track" aria-hidden="true"><span class="flip-off"></span><span class="flip-on">Today</span></span>
         </label>
+        </span>
       </div>
       <!-- Page title, shown instead of the group pill on non-video pages -->
       <span class="appbar-title" id="appbar-title" hidden></span>
@@ -151,7 +150,8 @@
           <div class="chan-switches" id="chan-switches"></div>
         </div>
 
-        <!-- Hidden while the app-bar flip is on Today; shown when a picked date is in force -->
+        <!-- Collapses (animated) while the app-bar flip is on Today; opens when a picked date is in force -->
+        <div class="collapse" id="fg-cutoff-wrap">
         <div class="fgroup" id="fg-cutoff">
           <div class="fgroup-head">
             <!-- The Today ⇄ picked date flip lives in the app bar; the sliders below set the picked date -->
@@ -170,6 +170,7 @@
             <div id="f-day" class="slot-slider" role="slider" tabindex="0" aria-label="Day" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0"><div class="slot-knob"></div></div>
           </div>
         </div>
+        </div>
 
         <div class="fgroup-foot">
           <label class="switch">
@@ -183,15 +184,6 @@
         </div>
       </div>
     </section>
-
-    <!-- Progress: the active bundle's watched count, separates the content controls above from the view controls below -->
-    <div class="progress" id="progress" hidden>
-      <div class="progress-row">
-        <span class="progress-note" id="results-count">—</span>
-        <span class="progress-text" id="progress-text">—</span>
-      </div>
-      <div class="progress-bar"><span id="progress-fill"></span></div>
-    </div>
 
     <!-- Results header: list/grid view and expand/collapse all groups -->
     <div class="results-bar" id="results-bar" hidden>
