@@ -63,11 +63,6 @@ html, body {
    slides in over a scrim; it's toggled by class so the transform can
    animate (the [hidden] rule would kill it). */
 .appbar { display: flex; align-items: center; gap: 10px; min-height: 40px; }
-.iconbtn { width: 40px; height: 40px; flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 0; border-radius: 10px;
-  border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer; font: inherit; transition: background 0.15s ease, border-color 0.15s ease; }
-.iconbtn:hover { background: var(--panel); border-color: var(--line); }
-.iconbtn .ico { width: 22px; height: 22px; stroke-width: 2; }
-.wordmark { font-weight: 800; font-size: 18px; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 6px; }
 .drawer-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.55); opacity: 0; visibility: hidden; transition: opacity 0.22s ease, visibility 0s linear 0.22s; }
 .drawer { position: fixed; z-index: 41; top: 0; bottom: 0; left: 0; width: min(280px, 85vw); padding: clamp(14px, 3vw, 22px) 12px 16px; overflow-y: auto;
   background: var(--panel); border-right: 1px solid var(--line); box-shadow: 0 0 60px rgba(0, 0, 0, 0.6); display: flex; flex-direction: column; gap: 14px;
@@ -84,8 +79,6 @@ html, body {
   .drawer { box-shadow: none; }
   .drawer-scrim { display: none; }
   .drawer-open body { overflow: visible; padding-left: var(--drawer-w); }
-  /* Expanded: the drawer's own hamburger is the toggle, so the page's hides. */
-  .drawer-open .appbar #drawer-open { display: none; }
   /* Fixed overlays centre on the remaining page, not the whole viewport. */
   .drawer-open .hud { left: var(--drawer-w); }
   .drawer-open .toast { left: calc(50% + var(--drawer-w) / 2); }
@@ -93,15 +86,16 @@ html, body {
 /* While a finger drags it, the panel tracks the pointer directly. */
 .drawer-dragging .drawer, .drawer-dragging .drawer-scrim { transition: none; }
 .drawer-dragging { user-select: none; -webkit-user-select: none; }
-.drawer-head { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-left: 4px; }
 .drawer-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0 12px; margin-bottom: -8px; }
 .drawer-rule { height: 1px; background: var(--line); margin: 0 4px; }
-/* Active group shown in the app bar: name, then its cutoff date in small
-   caps like the drawer rows. Tapping it opens the drawer. */
+/* Active group shown in the app bar as a red pill: tapping it opens the
+   drawer (and collapses a docked one). */
 .appbar-tab { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; margin-left: 2px; }   /* name left, flip at the right edge */
-.appbar-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
-  color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease; }
-.appbar-tab-name:hover { border-color: rgba(255, 255, 255, 0.22); }
+.appbar-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 6px 12px; border-radius: 6px; border: 1px solid transparent; background: var(--red);
+  color: #fff; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; cursor: pointer; white-space: nowrap; transition: background 0.15s ease; }
+.appbar-tab-name:hover { background: #f25555; }
+.appbar-tab-name:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.appbar-right { display: inline-flex; align-items: center; gap: 10px; flex: none; }   /* count, then the switch */
 .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
 .drawer-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink);
   font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transition: background 0.15s ease; }
@@ -166,9 +160,13 @@ html, body {
   background: conic-gradient(var(--red) var(--p, 0%), var(--line) 0);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
-/* With Today chosen (the app-bar flip), the date sliders are hidden; flip to
-   the picked date and they appear, ready to drag. */
-.filters.live #fg-cutoff { display: none; }
+/* With Today chosen (the app-bar flip), the date sliders fold away; flip to
+   the picked date and they unfold, ready to drag. A grid-row collapse
+   (1fr → 0fr) animates the height without knowing it; the negative margin
+   swallows the filters' gap so nothing is left behind. */
+.collapse { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease, margin-top 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.collapse > * { min-height: 0; overflow: hidden; }
+.filters.live .collapse { grid-template-rows: 0fr; opacity: 0; margin-top: -18px; }
 
 /* Filters */
 /* Filters panel: opened by the funnel button in the toolbar, drops in right
@@ -248,15 +246,15 @@ html, body {
 .tb-filter .seg-btn.on::after { content: ""; position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 2px var(--panel); }
 
 /* Progress + results bar */
-/* Watched progress: the text sits on its own line above a full-width track,
-   so the bar's end is never confused with where the label starts. The track
-   has a visible border, so its total length reads even when nearly empty. */
-.progress { display: flex; flex-direction: column; gap: 6px; }
-.progress-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.progress-note { color: var(--muted); font-size: 13px; min-width: 0; }
-.progress-text { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
-.progress-bar { height: 4px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }   /* slim, YouTube-style */
-.progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--red); transition: width 0.3s ease; }
+/* App-bar count: "N left"; each tap toggles it with watched / total (no
+   hover behaviour). Both spans share one grid cell so the width is the wider. */
+.appbar-count { display: grid; padding: 0 2px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
+  font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; text-align: right; }
+.appbar-count > span { grid-area: 1 / 1; transition: opacity 0.15s ease; }
+.appbar-count .count-full { opacity: 0; }
+.appbar-count.full .count-left { opacity: 0; }
+.appbar-count.full .count-full { opacity: 1; color: var(--ink); }
+.appbar-count:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
 /* Results header: list/grid on the left, expand/collapse all on the
    right. Neither changes which videos are listed, only their form. */
 .results-bar { display: flex; align-items: center; gap: 8px; }

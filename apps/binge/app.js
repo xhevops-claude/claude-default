@@ -65,8 +65,8 @@
   const chanSwitches = $('chan-switches'), chanAllBtn = $('chan-all'), chanNoneBtn = $('chan-none');
   const showWatchedChk = $('show-watched'), clearWatchedBtn = $('clear-watched');
   const toolbar = $('toolbar');
-  const progressEl = $('progress'), progressFill = $('progress-fill'), progressText = $('progress-text');
-  const resultsBar = $('results-bar'), resultsCount = $('results-count'), collapseAllBtn = $('collapse-all');
+  const appbarCount = $('appbar-count'), countLeft = appbarCount.querySelector('.count-left'), countFull = appbarCount.querySelector('.count-full');
+  const resultsBar = $('results-bar'), collapseAllBtn = $('collapse-all');
   const sectionsEl = $('sections');
   const statusPanel = $('status-panel'), statusMsg = $('status-msg'), statusAction = $('status-action');
   const quitBtn = $('quit');
@@ -422,12 +422,10 @@
     const watchedCount = list.filter(isWatched).length;
     const remaining = total - watchedCount;
 
-    progressEl.hidden = false;
-    progressFill.style.width = total ? (watchedCount / total * 100) + '%' : '0%';
-    progressText.textContent = watchedCount + ' / ' + total;
-    resultsCount.textContent = (showWatched
-      ? total + (total === 1 ? ' video' : ' videos')
-      : remaining + ' left') + ' · up to ' + cutoffLabel();
+    // App-bar count beside the switch: "N left" at rest, watched / total on hover or tap.
+    appbarCount.hidden = false;
+    countLeft.textContent = remaining + ' left';
+    countFull.textContent = watchedCount + ' / ' + total;
 
     if (!total) {
       hideResults(true);
@@ -448,7 +446,7 @@
   }
 
   function hideResults(keepProgress) {
-    if (!keepProgress) progressEl.hidden = true;
+    if (!keepProgress) { appbarCount.hidden = true; appbarCount.classList.remove('full'); }
     resultsBar.hidden = true;
     sectionsEl.innerHTML = '';
   }
@@ -641,7 +639,6 @@
     const g = currentGroup();
     return offSet(g.id).size > 0 || !tabCutoffLive(g.id) || !showWatched;
   }
-  function cutoffLabel() { return tabCutoffText(activeTab); }
   // A tab's cutoff as text: "today" when it's live, else the fixed yyyy MON d
   // (a fixed date that happens to be today still reads as the date, since
   // it won't move tomorrow).
@@ -1199,16 +1196,19 @@
   // the content aside instead of overlaying it, is expanded by default, and
   // its expanded/collapsed state is remembered per device. Narrow screens
   // get the overlay drawer, which never persists.
-  const drawerOpenBtn = $('drawer-open'), drawerCloseBtn = $('drawer-close'), drawerEl = $('drawer'), drawerScrim = $('drawer-scrim');
+  const drawerEl = $('drawer'), drawerScrim = $('drawer-scrim');
   const dockedMQ = window.matchMedia('(min-width: 900px)');
   const docked = () => dockedMQ.matches;
   function setDrawer(open, opts) {
     opts = opts || {};
     document.documentElement.classList.toggle('drawer-open', open);
     drawerEl.setAttribute('aria-hidden', String(!open));
-    drawerOpenBtn.setAttribute('aria-expanded', String(open));
+    appbarTabName.setAttribute('aria-expanded', String(open));
     if (docked()) save(LS.sidebar, open);
-    if (!opts.quiet) { if (open) drawerCloseBtn.focus(); else drawerOpenBtn.focus(); }
+    if (!opts.quiet) {
+      if (open) { const row = groupTabs.querySelector('[aria-selected="true"]') || groupTabs.querySelector('.tab'); if (row) row.focus(); }
+      else appbarTabName.focus();
+    }
   }
   function applyDockMode() {
     // Entering desktop: restore the saved preference (expanded by default).
@@ -1218,10 +1218,11 @@
   applyDockMode();
   if (dockedMQ.addEventListener) dockedMQ.addEventListener('change', applyDockMode);
   else dockedMQ.addListener(applyDockMode);
-  drawerOpenBtn.addEventListener('click', () => setDrawer(true));
-  appbarTabName.addEventListener('click', () => setDrawer(true));
+  // The group pill is the drawer's only button: it opens the drawer, and on
+  // desktop (where it stays visible beside a docked sidebar) it collapses it too.
+  appbarTabName.addEventListener('click', () => setDrawer(!document.documentElement.classList.contains('drawer-open')));
+  appbarCount.addEventListener('click', () => appbarCount.classList.toggle('full'));   // each tap toggles "N left" ⇄ watched / total
   appbarFlip.querySelector('.switch-input').addEventListener('change', (e) => setCutoffLive(e.target.checked));
-  drawerCloseBtn.addEventListener('click', () => setDrawer(false));
   drawerScrim.addEventListener('click', () => setDrawer(false));
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !docked() && document.documentElement.classList.contains('drawer-open')) setDrawer(false);
