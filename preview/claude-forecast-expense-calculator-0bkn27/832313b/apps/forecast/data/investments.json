@@ -1,0 +1,35 @@
+{
+  "note": "Property projects. `loanId` ties a project to a debt in loans.json so the outstanding balance and the remaining instalments come from the same simulation as the timeline.",
+  "salePricePerM2": 3500,
+  "currency": "EUR",
+  "projects": [
+    {
+      "id": "b100",
+      "label": "B100",
+      "kind": "Apartment",
+      "areaM2": 49,
+      "loanId": "b100",
+      "costs": [
+        { "id": "b100-down", "label": "Down payment", "amount": 15000, "currency": "EUR" },
+        { "id": "b100-parking", "label": "Parking lot", "amount": 10000, "currency": "EUR" }
+      ],
+      "saleExtras": [
+        { "id": "b100-parking-sale", "label": "Parking place", "amount": 30000, "currency": "EUR" }
+      ]
+    },
+    {
+      "id": "b56",
+      "label": "B56",
+      "kind": "Apartment",
+      "areaM2": 78,
+      "loanId": "b56",
+      "costs": [
+        { "id": "b56-down", "label": "Down payment", "amount": 5000, "currency": "EUR" },
+        { "id": "b56-parking", "label": "Parking lot", "amount": 10000, "currency": "EUR" }
+      ],
+      "saleExtras": [
+        { "id": "b56-parking-sale", "label": "Parking place", "amount": 30000, "currency": "EUR" }
+      ]
+    }
+  ]
+}
