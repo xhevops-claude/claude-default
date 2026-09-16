@@ -1,0 +1,47 @@
+{
+  "loans": [
+    {
+      "id": "tani",
+      "label": "Tani",
+      "lender": "",
+      "principal": 8600,
+      "currency": "EUR",
+      "annualRate": 0,
+      "startMonth": "2026-09",
+      "priority": 1,
+      "active": true,
+      "installments": [
+        { "payPeriod": "first-half", "amount": 1000 },
+        { "payPeriod": "second-half", "amount": 1000 }
+      ]
+    },
+    {
+      "id": "b100",
+      "label": "B100",
+      "lender": "",
+      "principal": 57311,
+      "currency": "EUR",
+      "annualRate": 3.3,
+      "startMonth": "2026-09",
+      "priority": 2,
+      "active": true,
+      "installments": [
+        { "payPeriod": "first-half", "amount": 283.25 }
+      ]
+    },
+    {
+      "id": "b56",
+      "label": "B56",
+      "lender": "",
+      "principal": 7423825,
+      "currency": "MKD",
+      "annualRate": 7.5,
+      "startMonth": "2026-09",
+      "priority": 3,
+      "active": true,
+      "installments": [
+        { "payPeriod": "first-half", "amount": 54555 }
+      ]
+    }
+  ]
+}
