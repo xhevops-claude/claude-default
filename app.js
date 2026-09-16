@@ -108,6 +108,14 @@
       url: 'apps/buildtrack/',
     },
     {
+      slug: 'forecast',
+      name: 'Forecast',
+      meta: 'Planner',
+      tagline: 'Project income, debt and savings ahead.',
+      icon: '📈',
+      url: 'apps/forecast/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',

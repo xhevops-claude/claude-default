@@ -37,7 +37,11 @@
 
 * { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  /* Project rule: no double-tap-to-zoom (pinch-zoom still works). */
+  touch-action: manipulation;
+}
 
 body {
   margin: 0;
@@ -1000,4 +1004,86 @@ button { cursor: pointer; font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   #app-loading { transition: none; }
   .view.active { animation: none; }
+}
+
+/* ------------------------------------------------------------ lock screen */
+
+#lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: #0d0f16;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* `display: flex` beats the UA rule for [hidden], so without this the gate
+   stays laid out once dismissed and silently eats every click on the app. */
+#lock-screen[hidden] { display: none; }
+
+.lock-card {
+  width: 100%;
+  max-width: 340px;
+  background: linear-gradient(150deg, #2a2f52 0%, #1b1f38 100%);
+  border-radius: 20px;
+  padding: 26px 22px 22px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.lock-icon { font-size: 40px; line-height: 1; }
+.lock-title { margin: 8px 0 0; font-size: 22px; font-weight: 800; color: #fff; }
+
+.lock-text {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 8px 0 18px;
+}
+
+.lock-input {
+  display: block;
+  width: 100%;
+  margin-bottom: 9px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+}
+
+.lock-input::placeholder { color: rgba(255, 255, 255, 0.4); }
+.lock-input:focus { outline: 2px solid #8ec5ff; outline-offset: 1px; }
+
+.lock-btn-go {
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #818cf8;
+  color: #0d0f16;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lock-error { font-size: 12px; color: #ff9c8f; min-height: 16px; margin: 10px 0 0; }
+
+.hdr-lock-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
 }

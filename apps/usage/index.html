@@ -44,7 +44,8 @@
     }
   }
   * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
+  /* Project rule: no double-tap-to-zoom (pinch-zoom still works). */
+  html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
   body {
     margin: 0; min-height: 100vh; background: var(--page); color: var(--ink);
     font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;

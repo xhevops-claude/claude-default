@@ -39,7 +39,15 @@ jobs:
           exit $status
 
       - name: Validate expenses data
-        run: node scripts/build-expenses-data.mjs --check
+        # The ledger ships encrypted, so its source files are not in the repo
+        # and there is nothing here to validate. The check still runs for a
+        # working tree that has been unlocked, which is where data is edited.
+        run: |
+          if [ -d apps/expenses/data/expenses ]; then
+            node scripts/build-expenses-data.mjs --check
+          else
+            echo "Ledger is encrypted in this checkout — skipping."
+          fi
 
       - name: Lint HTML
         run: npm run lint:html

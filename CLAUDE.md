@@ -147,8 +147,138 @@ A suspected duplicate is never resolved in prose or by guessing — put an expli
 
 Only a bill the user explicitly confirmed gets `"allowDuplicate": true`. The build script remains the backstop: CI fails on duplicate `sha256` or duplicate date+amount+currency+vendor without that flag, so an unconfirmed duplicate cannot merge either way.
 
+## Forecast planner (apps/forecast/)
+
+A forward-looking cash-flow calculator. Like Expenses it is read-only in the
+browser and its numbers are committed JSON under `apps/forecast/data/` — but the
+files are small and hand-maintained, so there is **no build step and no
+aggregate**; `app.js` fetches each file directly.
+
+| File | Holds |
+|---|---|
+| `meta.json` | `baseCurrency`, `fixedRates` (units per 1 EUR — MKD pegged at 61.5, USD an assumption), `startMonth` (`"auto"` = current month), `horizonMonths`, `startingSavings`, `rollover` |
+| `income.json` | `workday` (either `amount` or `hourlyRate` + `hoursPerDay`, in any currency), the `payCycle`, plus an `additional` array of extra income |
+| `loans.json` / `liabilities.json` | debts — same shape, two lists, one engine |
+| `budget.json` | fixed monthly budget lines (`chargeDay` is only the fallback for a month with no pay) |
+| `extras.json` | unplanned one-off expenses, drawn from savings |
+| `calendar.json` | per-month work-day `adjustments` (`days: -2`, optional `period` to pin it to one half of the month) |
+| `investments.json` | property projects — `salePricePerM2`, and per project `areaM2`, a `loanId`, a `costs` list and `saleExtras` |
+
+Everything is computed in EUR internally (the MKD peg makes that lossless) and
+converted only for display; the header toggle switches EUR/MKD.
+
+The app is **dark-only** — there is no light variant to keep in step. The palette
+lives entirely in `:root` in its `styles.css`, including `--viz-savings` and
+`--viz-debt`, which `app.js` reads at boot for the chart so the colours are
+defined in one place. A debt's `principal` is its balance where the projection
+opens (the 1st of the current month), which may be a fortnight back; the engine
+tracks each balance forward to `balanceToday` and that is what "Debt today" and
+the debt cards show, so a figure the user quotes as of today lands on screen
+unchanged even though the file carries the earlier opening.
+
+**Cash, not accrual.** This is the part to hold on to: money counts on the day
+it lands, not the day it was earned. `payCycle` declares the earning periods
+(1–15 and 16–end), `netDays` and `transferWorkingDays`; a period closes, the net
+days elapse, the first working day on or after that is the Toptal payout, and one
+more working day puts it in Wise. Under net-20 that means **the income you see in
+October is September's work**, and a month's cash-in depends on the *previous*
+month's work-day count.
+
+Each debt declares `installments` — `[{ payPeriod, amount }]` — so a loan can be
+split across the two pays (Tani takes €1,000 from each). An instalment falls due
+on the day its pay lands. `payPeriod` may also be a **list** in preference order
+(Naim is `["first-half", "second-half"]`): the instalment then hangs a claim off
+every pay it could come from and the walk settles it against the earliest one
+that can still cover it, falling through to the last candidate regardless if
+none can. Because that depends on what a pay has left, pinned instalments are
+queued before flexible ones so a flexible claim sees the real remainder.
+`monthlyPayment` is only a fallback for a debt with no `installments`; the
+monthly total is otherwise derived by summing them. A rate that steps partway —
+a promotional period ending, a reset — goes in `rateSchedule`,
+`[{ from, annualRate }]`, and each month takes the last entry that has already
+started; `annualRate` is the rate before any of them. Rates are projected flat
+from today onward on purpose: a bank's own plan carries assumptions about future
+rates that can change, so the app does not import them.
+
+The figures were checked against the bank's annuity plans (Sep 2026): B100's
+balance after 31.08.2026 is €57,311.35 and its September interest €157.61, and
+B56's are 7,423,825 and 46,399 MKD — the engine reproduces all four exactly, and
+its payoff dates land within a month of the bank's final rows (Apr 2051 and
+Jan 2052).
+
+**The budget follows the pays, not the calendar.** It is not charged on a fixed
+day: each pay hands over whatever it still holds once its own instalments are
+met, and what the first pay could not cover rolls to the next one. The last pay
+of the month clears the remainder whether it can afford it or not — the money
+still has to be spent. Amounts therefore settle during the walk, not when the
+events are created. `chargeDay` is only the fallback for a month where no pay
+lands at all.
+
+**The engine.** `build()` walks the horizon month by month. Interest is charged at
+the top of each month on the opening balance (`balance × annualRate/12`);
+everything else is an event on a real date — pay arrivals, instalments, the budget
+charge on its `chargeDay`, unplanned expenses — applied in date order, income
+before outgoings on a shared day, so the running balance is what the account would
+actually show. All debts share the one simulation because they interact: a cleared
+debt's instalment becomes a pool that cascades down the `priority` order when
+`rollover` is on, or falls through to savings when it is off. `priority` is an
+integer, 1 first, unique across both lists. A debt whose instalments are below its
+monthly interest is flagged `stalled` rather than looping forever.
+
+**There is no overdraft.** An unplanned expense cannot go out before the money
+to cover it has landed: one that would push the running balance below zero is
+held, and released only once a pay has arrived *and* that day's instalments and
+budget are done with — pay first, then the expense. A held expense carries across
+months for as long as it needs to, and its row says which date it was held from.
+At the end of the visible window anything still held is forced out so the balance
+shows the shortfall rather than quietly losing the expense. Only extras defer;
+the budget does not, because it is what you live on.
+
+Savings are the residual: `income − fixed budget − debt payments − unplanned`,
+accumulated across the horizon. `startingSavings` in `meta.json` seeds the opening
+balance.
+
+**The Invest view** values the property projects. A project's `loanId` ties it
+to a debt in `loans.json`, and everything on the loan side — what is still owed
+(`balanceToday`), what is left to pay (the instalments still ahead, whose excess
+over the balance is the interest yet to come) — is read off the same simulation
+the timeline runs on, so the two views cannot drift apart. `costs` is the cash
+basis (deposit, parking); it does not include instalments paid before the
+forecast opens, so add those as a cost line if you want them counted. Sale value
+is `areaM2 × salePricePerM2` plus the `saleExtras`, and the target price is
+editable on the view as a session-only override like the budget field.
+
+**The Timeline is the home view** and it leads with what is still ahead rather
+than the first of the month. `build()` marks `model.nextPay` (the earliest pay
+arrival on or after today) and that headlines the view, but the list's floor is
+**today**, not the pay date — an expense falling between the two is still money
+to find, and hiding it would make the running balance jump without explanation.
+Months entirely behind are dropped and the one it starts mid-way through is
+totalled from what is left ("Rest of Sep"). The simulation itself still runs from
+the start of the month — the filter is presentation only, so the loan and budget
+bookkeeping behind the opening balance stays whole.
+
+**Adding entries.** Append to the relevant array — every item needs a unique `id`
+(used as the ledger toggle key) and `active`. Seed rows Claude invented carry
+`"sample": true`, which paints a "sample" tag and the banner; drop the flag as
+real numbers replace them. Nothing the user changes in the UI (currency, sliders,
+row toggles) persists — it is a session-only overlay on the committed data.
+
 ## Conventions worth preserving
 
+- **Every page kills double-tap-to-zoom.** Put `touch-action: manipulation` on
+  `html, body` — in the shell's `styles.css`, and in each sub-experience's own
+  `styles.css` *and* its critical inline block so it applies on the first frame.
+  It suppresses the browser's double-tap zoom (and the tap delay that rides with
+  it) while leaving pinch-zoom alone, so it costs nothing in accessibility. Two
+  quick taps on a stepper, a tab or a list row must never zoom the page. Prefer
+  this over `user-scalable=no` / `maximum-scale=1` in the viewport meta, which
+  also blocks pinch-zoom; the few experiences that own their gestures wholesale
+  (`crusaders`, `crusaders3d`, `terrain`, `buildtrack`) predate the rule and set
+  the viewport meta instead. A surface that drives its own drag gestures still
+  narrows further where it needs to — `touch-action: pan-y` on the shell's pager
+  and on Forecast's chart, `none` on a game canvas — and that wins over the
+  global rule for those elements.
 - `escapeHTML` in `app.js` is used for any user-supplied or registry-supplied string interpolated into innerHTML. Anything that ends up in `cardHtml`/`cardInner` MUST go through it.
 - Prefer adding `comingSoon: true` (with no `url`) over removing entries — the shell renders these as locked tiles with a shake animation on tap.
 - Tile colors come from CSS variables `--tile-<slug>` defined in `themes.css` — these are constant across themes so each card keeps its identity. Add a `--tile-<newslug>` when adding a tile.
