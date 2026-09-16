@@ -118,16 +118,92 @@ Two scheduled workflows publish open data to `gh-pages` under `/cdn/`, **decoupl
 
 Both workflows share a `concurrency: pages-deploy` group with `pages.yml` to serialize `gh-pages` writes.
 
+## Private data is encrypted (read this before touching apps/expenses or apps/forecast)
+
+Both of those apps hold real personal finances, and this repo is public with a
+static site — so anything the browser can fetch, anyone can fetch. A login
+screen would be theatre; only the encryption is real. **Their data is not in
+the repo in plaintext and a fresh clone cannot read it.**
+
+What is committed:
+
+| Path | What |
+|---|---|
+| `apps/<app>/data/vault.json` | the app's data, encrypted |
+| `apps/expenses/files/<guid>.<ext>.enc` | one attachment each, `iv‖ciphertext` |
+
+Everything else under `apps/forecast/data/`, `apps/expenses/data/` and
+`apps/expenses/files/` is gitignored. It exists only on a machine that has
+unlocked it, so **a fresh clone starts with no readable data — that is correct,
+not a broken checkout.**
+
+### Working on that data
+
+The secret is a passphrase and a PIN. **Ask the user for both; never invent
+them, and never commit them.** Then:
+
+```sh
+export FORECAST_PASSPHRASE='…' FORECAST_PIN='…'   # from the user, this session only
+node scripts/vault.mjs unlock       # vault -> plaintext working files
+#   … edit apps/<app>/data/** as usual …
+npm run build:data                  # expenses only: rebuild the aggregate first
+node scripts/vault.mjs lock         # plaintext -> vault + .enc
+node scripts/vault.mjs scrub        # optional: delete the plaintext again
+```
+
+`lock` reuses the data key already in the vault, so attachments encrypted
+earlier keep opening. Commit only `vault.json` and the `.enc` files — the
+gitignore already enforces this, so if plaintext ever shows up in
+`git status`, something is wrong; stop rather than committing it.
+
+### How it is built
+
+AES-256-GCM under a key from PBKDF2-SHA256 at 600k iterations. The secret is
+the passphrase and the PIN joined by `\u0000`, which neither can contain —
+`scripts/vault.mjs` and both apps do that join, and **all three must agree or
+nothing opens**.
+
+Envelope: a random data key encrypts the content and the passphrase only
+encrypts *that key*. So `rekey` changes a passphrase by rewriting ~100 bytes
+instead of every file, which is what stops each password change adding another
+copy of the attachments to a public repo's history forever (ciphertext does not
+compress). `rekey --full` mints a new data key and re-encrypts everything, which
+is the only thing that locks out someone who already has the old data key.
+
+Both vaults share a salt and a data key on purpose, so one unlock covers the
+whole site. In the browser the **wrapping** key is cached in localStorage under
+`forecast-key-v1` — never the passphrase — so it is asked for once per device,
+and a passphrase change still re-gates everyone because the new salt makes every
+cached key useless. The lock button clears it immediately.
+
+The crypto helpers are duplicated in each app rather than imported, because
+sub-experiences share no code by design (see above). They must stay in step.
+
+**Gotcha worth remembering:** a `[hidden]` lock screen with `display: flex` stays
+laid out and silently swallows every click on the app underneath. Both gates
+carry an explicit `#lock-screen[hidden] { display: none; }`.
+
+### Deploy and CI
+
+`pages.yml` no longer builds the expenses aggregate — it is inside the vault.
+CI's `--check` validation runs only when `apps/expenses/data/expenses/` exists,
+i.e. an unlocked checkout, and skips otherwise.
+
+**`keep_files: true` does not delete.** Removing a file from the source leaves
+it served on `gh-pages` forever. Taking something down means deleting it from
+`gh-pages` directly via a worktree, then confirming a 404 — merging is not
+enough.
+
 ## Expenses ledger (apps/expenses/)
 
-The Expenses app is a read-only construction-cost ledger whose writes happen through Claude Code sessions. Source of truth is committed per-expense files, aggregated at deploy time:
+The Expenses app is a read-only construction-cost ledger whose writes happen through Claude Code sessions. Source of truth is per-expense files, aggregated into one JSON — all of it encrypted into `data/vault.json` (see the section above; you need the passphrase and PIN from the user before any of the paths below exist):
 
 - `apps/expenses/data/meta.json` — `baseCurrency`, `fixedRates` (MKD pegged at 61.5 per EUR).
 - `apps/expenses/data/projects.json` — project registry (`id` slug, `name`, `icon`); the app shows one project at a time via the header picker.
 - `apps/expenses/data/categories.json` — category registry, **shared across projects**; each category declares its own `fields`, so new expense types need data changes only.
 - `apps/expenses/data/expenses/<project-id>/<yyyy>/<mm>/<id>.json` — one expense per file; the top folder is the project (must match a `projects.json` id), the date folders derive from the expense's ISO UTC `date`. Filename must equal the expense `id` (a GUID). When adding an expense, ask which project it belongs to if it isn't obvious.
 - `apps/expenses/files/<guid>.<ext>` — attachment originals; metadata keeps `originalName` (used as label and download name) and `size` (must match the file on disk).
-- `apps/expenses/data/expenses.json` is **generated** by `scripts/build-expenses-data.mjs` (run automatically by `pages.yml` on deploy and by `npm run dev` via `predev`). It is gitignored — never edit or commit it. CI runs the script with `--check` to block malformed data.
+- `apps/expenses/data/expenses.json` is **generated** by `scripts/build-expenses-data.mjs` (run by `npm run dev` via `predev`, and by hand before a `vault.mjs lock`). It is gitignored, and these days it rides inside the vault rather than being rebuilt at deploy time — never edit or commit it. CI runs the script with `--check` only on an unlocked checkout.
 
 Adding an expense from an uploaded document: store the file under a GUID in `files/`, transcribe **all readable text verbatim** (original script — e.g. Macedonian Cyrillic) into the attachment's `extractedText` field for future content search, compute the file's `sha256` (`sha256sum <file>`) into the attachment metadata, write the per-expense JSON, then land it on `main` via the normal PR + green CI flow. The user confirms extracted details before anything is committed.
 
