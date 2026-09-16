@@ -1,0 +1,68 @@
+{
+  "note": "Property projects. `loanId` ties a project to a debt in loans.json so the outstanding balance and the remaining instalments come from the same simulation as the timeline. `loanFacts` is reference only, taken from the bank's annuity plan dated 16.09.2026.",
+  "salePricePerM2": 3500,
+  "currency": "EUR",
+  "projects": [
+    {
+      "id": "b100",
+      "label": "B100",
+      "kind": "Apartment",
+      "areaM2": 49,
+      "loanId": "b100",
+      "loanFacts": {
+        "originalPrincipal": 64800,
+        "currency": "EUR",
+        "annualRate": 3.3,
+        "effectiveRate": 3.6702,
+        "disbursedOn": "21 May 2021",
+        "termEnds": "30 Apr 2051",
+        "instalmentsPaid": 64
+      },
+      "costs": [
+        { "id": "b100-down", "label": "Down payment", "amount": 15000, "currency": "EUR" },
+        { "id": "b100-parking", "label": "Parking lot", "amount": 10000, "currency": "EUR" },
+        {
+          "id": "b100-paid",
+          "label": "Instalments paid to Aug 2026",
+          "note": "64 instalments of EUR 283.25, of which EUR 10,639.35 interest",
+          "amount": 18128,
+          "currency": "EUR"
+        }
+      ],
+      "saleExtras": [
+        { "id": "b100-parking-sale", "label": "Parking place", "amount": 30000, "currency": "EUR" }
+      ]
+    },
+    {
+      "id": "b56",
+      "label": "B56",
+      "kind": "Apartment",
+      "areaM2": 78,
+      "loanId": "b56",
+      "loanFacts": {
+        "originalPrincipal": 8035000,
+        "currency": "MKD",
+        "annualRate": 7.5,
+        "effectiveRate": 7.1207,
+        "disbursedOn": "31 Jan 2022",
+        "termEnds": "31 Jan 2052",
+        "instalmentsPaid": 55,
+        "note": "First 36 months ran at a promotional 3.2%; that period ended in Jan 2025 and is already inside today's balance."
+      },
+      "costs": [
+        { "id": "b56-down", "label": "Down payment", "amount": 5000, "currency": "EUR" },
+        { "id": "b56-parking", "label": "Parking lot", "amount": 10000, "currency": "EUR" },
+        {
+          "id": "b56-paid",
+          "label": "Instalments paid to Aug 2026",
+          "note": "55 instalments, of which 1,783,152 MKD interest",
+          "amount": 2394327,
+          "currency": "MKD"
+        }
+      ],
+      "saleExtras": [
+        { "id": "b56-parking-sale", "label": "Parking place", "amount": 30000, "currency": "EUR" }
+      ]
+    }
+  ]
+}
