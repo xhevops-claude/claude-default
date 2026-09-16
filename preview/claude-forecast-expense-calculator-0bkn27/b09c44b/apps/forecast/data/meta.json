@@ -1,0 +1,11 @@
+{
+  "baseCurrency": "EUR",
+  "fixedRates": {
+    "MKD": 61.5,
+    "USD": 1.08
+  },
+  "startMonth": "auto",
+  "horizonMonths": 36,
+  "startingSavings": 0,
+  "rollover": false
+}

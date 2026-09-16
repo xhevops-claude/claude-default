@@ -1,0 +1,12 @@
+{
+  "budget": [
+    {
+      "id": "monthly-budget",
+      "label": "Monthly budget",
+      "note": "Everyday living costs",
+      "amount": 1000,
+      "currency": "EUR",
+      "active": true
+    }
+  ]
+}
