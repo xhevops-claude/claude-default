@@ -47,14 +47,6 @@ jobs:
             echo "is_preview=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build expenses data aggregate
-        # apps/expenses ships per-expense JSON files under
-        # data/expenses/<yyyy>/<mm>/; the frontend consumes a single
-        # generated data/expenses.json which is gitignored and exists
-        # only in the deploy output. Validation failures abort the
-        # deploy rather than publishing a broken ledger.
-        run: node scripts/build-expenses-data.mjs
-
       - name: Cache-bust local assets in deployed HTML
         # GitHub Pages serves `.js`/`.css` with `Cache-Control:
         # max-age=600`, so without a version token Chrome happily

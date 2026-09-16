@@ -4,7 +4,7 @@
   // The ledger is read-only in the browser: all writes happen through
   // Claude Code sessions that update data/expenses/** + files/ and push;
   // data/expenses.json is the deploy-time aggregate of those files.
-  const DATA_URL = 'data/expenses.json';
+  const VAULT_URL = 'data/vault.json';
 
   const $ = (id) => document.getElementById(id);
 
@@ -802,6 +802,25 @@
     if (head) head.parentElement.classList.toggle('open');
   });
 
+  /* The inline download arrow is a plain anchor that never goes through the
+   * lightbox, so catch it on the way down and give it a decrypted blob. */
+  document.addEventListener('click', async (ev) => {
+    const a = ev.target.closest('a.exp-dl');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || href.startsWith('blob:')) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    try {
+      a.setAttribute('href', await resolveFile(href));
+      a.click();
+    } catch (err) {
+      const banner = $('banner');
+      banner.hidden = false;
+      banner.textContent = 'Could not open that attachment (' + err.message + ').';
+    }
+  }, true);
+
   // ---- Attachment preview / document-text lightbox ----
   const lightbox = $('lightbox');
   let lbAtt = null;
@@ -831,8 +850,18 @@
     return '<div class="lb-fallback">No inline preview for this file type — use Download.</div>';
   }
 
-  function openLightbox(att, mode) {
+  async function openLightbox(att, mode) {
     if (!att) return;
+    // Swap the encrypted path for a decrypted blob once, so every downstream
+    // use — img, iframe, the download link — needs no special casing.
+    try {
+      att.file = await resolveFile(att.file);
+    } catch (err) {
+      const banner = $('banner');
+      banner.hidden = false;
+      banner.textContent = 'Could not open that attachment (' + err.message + ').';
+      return;
+    }
     lbAtt = att;
     if (mode === 'text' && !att.extractedText) mode = 'preview';
     $('lb-name').textContent = att.originalName;
@@ -949,8 +978,143 @@
     if (e.key === 'Escape' && !picker.hidden) closePicker();
   });
 
+  $('lock-btn').addEventListener('click', lockApp);
+
+  /* ------------------------------------------------------------ the vault */
+
+  /* The repo is public and the site static, so anything the browser can fetch
+   * anyone can fetch — invoices and scans included. The ledger therefore ships
+   * encrypted. This duplicates the few crypto helpers in apps/forecast rather
+   * than importing them, because sub-experiences share no code on purpose; the
+   * two must stay in step on the secret and the wire format.
+   *
+   * The wrapping key is cached, so one unlock covers both apps and a passphrase
+   * change still drops every device back to the gate. */
+  const KEY_STORE = 'forecast-key-v1';
+  let dataKey = null;                 // unwrapped, kept for the attachments
+  const fileCache = new Map();        // encrypted path -> object URL
+
+  const combineSecret = (pass, pin) => pass + '\u0000' + pin;
+
+  function b64ToBytes(s) {
+    const bin = atob(s);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function bytesToB64(bytes) {
+    let s = '';
+    const b = new Uint8Array(bytes);
+    for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return btoa(s);
+  }
+
+  const readStore = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+  const writeStore = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+  const clearStore = (k) => { try { localStorage.removeItem(k); } catch (_) {} };
+
+  function deriveKek(vault, secret) {
+    return crypto.subtle.importKey('raw', new TextEncoder().encode(secret), 'PBKDF2',
+      false, ['deriveKey']).then((material) => crypto.subtle.deriveKey({
+        name: 'PBKDF2',
+        salt: b64ToBytes(vault.kdf.salt),
+        iterations: vault.kdf.iterations,
+        hash: vault.kdf.hash,
+      }, material, { name: 'AES-GCM', length: 256 }, true, ['decrypt']));
+  }
+
+  // v2 wraps a data key; v1 hung the content off the passphrase key itself.
+  async function contentKey(vault, kek) {
+    if (!vault.wrappedKey) return kek;
+    const raw = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: b64ToBytes(vault.wrappedKey.iv) }, kek,
+      b64ToBytes(vault.wrappedKey.ct));
+    return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+  }
+
+  async function openVault(vault, kek) {
+    const key = await contentKey(vault, kek);
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: b64ToBytes(vault.iv) }, key, b64ToBytes(vault.ct));
+    dataKey = key;
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  /* Attachments are encrypted one per file as iv||ciphertext, so a scan is
+   * fetched and decrypted only when someone actually opens it rather than
+   * pulling megabytes nobody asked for at startup. */
+  async function resolveFile(url) {
+    if (!url || url.startsWith('blob:')) return url;
+    if (fileCache.has(url)) return fileCache.get(url);
+    const res = await fetch(url + '.enc', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const raw = new Uint8Array(await res.arrayBuffer());
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: raw.subarray(0, 12) }, dataKey, raw.subarray(12));
+    const objUrl = URL.createObjectURL(new Blob([plain]));
+    fileCache.set(url, objUrl);
+    return objUrl;
+  }
+
+  function promptUnlock(vault) {
+    return new Promise((resolve) => {
+      hideSplash();
+      const gateEl = $('lock-screen');
+      const pass = $('lock-pass');
+      const pin = $('lock-pin');
+      const error = $('lock-error');
+      gateEl.hidden = false;
+      setTimeout(() => pass.focus(), 60);
+
+      $('lock-form').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        if (!pass.value || !pin.value) {
+          error.textContent = 'Both the passphrase and the PIN are needed.';
+          return;
+        }
+        error.textContent = 'Unlocking…';
+        try {
+          const kek = await deriveKek(vault, combineSecret(pass.value, pin.value));
+          const bundle = await openVault(vault, kek);
+          writeStore(KEY_STORE, bytesToB64(await crypto.subtle.exportKey('raw', kek)));
+          gateEl.hidden = true;
+          pass.value = '';
+          pin.value = '';
+          error.textContent = '';
+          resolve(bundle);
+        } catch (_) {
+          error.textContent = 'That passphrase did not open it.';
+          pass.select();
+        }
+      });
+    });
+  }
+
+  async function unlockData(vault) {
+    const cached = readStore(KEY_STORE);
+    if (cached) {
+      try {
+        const kek = await crypto.subtle.importKey('raw', b64ToBytes(cached),
+          'AES-GCM', true, ['decrypt']);
+        return await openVault(vault, kek);
+      } catch (_) {
+        clearStore(KEY_STORE);
+      }
+    }
+    return promptUnlock(vault);
+  }
+
+  function lockApp() {
+    clearStore(KEY_STORE);
+    location.reload();
+  }
+
   function hideSplash() {
+    // Called once to reveal the lock screen and again when the data lands, by
+    // which point the element is gone.
     const splash = $('app-loading');
+    if (!splash) return;
     splash.classList.add('hidden');
     setTimeout(() => splash.remove(), 500);
   }
@@ -961,9 +1125,10 @@
       // ~10 minutes, so without this a freshly merged expense can take
       // that long to appear even though cache:'no-store' skips the
       // browser cache.
-      const res = await fetch(DATA_URL + '?t=' + Date.now(), { cache: 'no-store' });
+      const res = await fetch(VAULT_URL + '?t=' + Date.now(), { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      data = await res.json();
+      const bundle = await unlockData(await res.json());
+      data = bundle.aggregate;
       categoriesById = {};
       for (const c of data.categories) categoriesById[c.id] = c;
 
