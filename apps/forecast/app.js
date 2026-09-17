@@ -1331,24 +1331,39 @@
         toPay: toPay,
         interestLeft: Math.max(0, toPay - owed),
         equity: saleValue - owed,
+        // Net profit: sell at the target, clear the loan off the proceeds, and
+        // this is what is left over and above the cash already sunk in. It
+        // settles the balance, not the whole remaining plan — the interest on
+        // instalments you never make is not a cost of selling today.
         gain: saleValue - owed - cashIn,
+        returnPct: cashIn > 0 ? (saleValue - owed - cashIn) / cashIn * 100 : null,
       };
     });
 
     var sum = function (key) {
       return projects.reduce(function (a, b) { return a + b[key]; }, 0);
     };
+    var cashIn = sum('cashIn');
+    var gain = sum('gain');
     return {
       pricePerM2: pricePerM2,
       projects: projects,
-      cashIn: sum('cashIn'),
+      cashIn: cashIn,
       saleValue: sum('saleValue'),
       owed: sum('owed'),
       toPay: sum('toPay'),
       equity: sum('equity'),
-      gain: sum('gain'),
+      gain: gain,
+      returnPct: cashIn > 0 ? gain / cashIn * 100 : null,
       areaM2: sum('areaM2'),
     };
+  }
+
+  // "+38%" alongside a profit figure; nothing when there is no cash basis.
+  function returnTag(pct) {
+    if (pct == null || !isFinite(pct)) return '';
+    return '<span class="inv-pct">' + (pct > 0 ? '+' : '') +
+      Math.round(pct) + '%</span>';
   }
 
   function renderInvestments() {
@@ -1367,6 +1382,11 @@
       '<div class="sum-cell"><span>Worth at target</span><b>' + esc(money(inv.saleValue)) + '</b></div>' +
       '<div class="sum-cell"><span>Equity</span><b class="is-pos">' +
         esc(money(inv.equity)) + '</b></div>' +
+      '<div class="sum-net">' +
+        '<span>Net profit if sold at target</span>' +
+        '<b class="' + (inv.gain < 0 ? 'is-neg' : 'is-pos') + '">' +
+          esc(money(inv.gain, { signed: true })) + returnTag(inv.returnPct) + '</b>' +
+      '</div>' +
       '</div>';
 
     $('invest-list').innerHTML = inv.projects.map(function (p) {
@@ -1419,17 +1439,22 @@
             esc(money(-p.owed, { signed: true })) + '</b></div>' +
           '<div class="inv-row is-total"><span>Cash out</span><b class="' +
             (p.equity < 0 ? 'is-neg' : 'is-pos') + '">' + esc(money(p.equity)) + '</b></div>' +
-          '<div class="inv-row"><span>Against what you put in</span><b class="' +
+          '<div class="inv-row"><span>Less what you put in</span><b>' +
+            esc(money(-p.cashIn, { signed: true })) + '</b></div>' +
+          '<div class="inv-row is-total is-net"><span>Net profit</span><b class="' +
             (p.gain < 0 ? 'is-neg' : 'is-pos') + '">' +
-            esc(money(p.gain, { signed: true })) + '</b></div>' +
+            esc(money(p.gain, { signed: true })) + returnTag(p.returnPct) + '</b></div>' +
         '</div>' +
       '</div>';
     }).join('');
 
     $('invest-note').textContent = '"Put in" is the cash listed on each project — ' +
-      'deposit, parking and the instalments paid up to the forecast. What is left ' +
-      'to pay is projected at today’s rate held flat, so it will not match the ' +
-      'bank’s own plan, which carries its own assumptions about future rates.';
+      'deposit, parking and the instalments paid up to the forecast. Net profit is ' +
+      'the sale price less the loan balance and less that cash, i.e. selling at the ' +
+      'target today and clearing the loan off the proceeds — the interest on ' +
+      'instalments you never make is not counted against it, and neither is tax. ' +
+      'What is left to pay is projected at today’s rate held flat, so it will not ' +
+      'match the bank’s own plan, which carries its own assumptions about future rates.';
   }
 
   // Same treatment as the budget field: never rewritten mid-edit.
