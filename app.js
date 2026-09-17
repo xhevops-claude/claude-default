@@ -116,6 +116,14 @@
       url: 'apps/forecast/',
     },
     {
+      slug: 'houseplan',
+      name: 'House Wire',
+      meta: 'Wireframe',
+      tagline: 'A house as lines and dots.',
+      icon: '🏠',
+      url: 'apps/houseplan/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',
