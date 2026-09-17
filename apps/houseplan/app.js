@@ -142,6 +142,47 @@ async function boot() {
   grid.position.set(BOX.cx, BOX.y0, BOX.cz);
   scene.add(grid);
 
+  /* ── axis gizmo ─────────────────────────────────────── */
+
+  /* Drawn as a second pass into a square of the same canvas. It holds
+     no camera of its own beyond a fixed ortho view — the arms take the
+     inverse of the main camera's rotation, so they read as the world
+     axes seen from wherever you are standing. */
+  const AXES = [
+    { label: 'X', dir: [1, 0, 0], color: 0xff6b6b },
+    { label: null, dir: [-1, 0, 0], color: 0xff6b6b },
+    { label: 'Y', dir: [0, 1, 0], color: 0x7ce89a },
+    { label: null, dir: [0, -1, 0], color: 0x7ce89a },
+    { label: 'Z', dir: [0, 0, 1], color: 0x6ba8ff },
+    { label: null, dir: [0, 0, -1], color: 0x6ba8ff },
+  ];
+
+  const gizmoScene = new THREE.Scene();
+  const gizmoCam = new THREE.OrthographicCamera(-1.5, 1.5, 1.5, -1.5, 0.1, 10);
+  gizmoCam.position.set(0, 0, 4);
+  const gizmoRoot = new THREE.Group();
+  gizmoScene.add(gizmoRoot);
+
+  const tips = [];
+  for (const ax of AXES) {
+    const v = new THREE.Vector3(...ax.dir);
+    if (ax.label) {
+      gizmoRoot.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), v.clone().multiplyScalar(0.82)]),
+        new THREE.LineBasicMaterial({ color: ax.color, transparent: true, opacity: 0.9 }),
+      ));
+    }
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tipTexture(THREE, ax.color, ax.label),
+      transparent: true, alphaTest: 0.4,
+    }));
+    sprite.position.copy(v);
+    sprite.scale.setScalar(ax.label ? 0.62 : 0.4);
+    sprite.userData.dir = ax.dir;
+    gizmoRoot.add(sprite);
+    tips.push(sprite);
+  }
+
   /* ── chrome ─────────────────────────────────────────── */
 
   const toggle = (id, key, apply) => {
@@ -175,24 +216,118 @@ async function boot() {
     else window.location.href = '../../';
   });
 
+  /* Tap an axis ball to look straight down that axis. */
+  const hit = $('gizmo-hit');
+  let tween = null;
+
+  hit.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    const r = hit.getBoundingClientRect();
+    const nx = ((ev.clientX - r.left) / r.width) * 2 - 1;
+    const ny = -((((ev.clientY - r.top) / r.height) * 2) - 1);
+
+    gizmoRoot.updateMatrixWorld(true);
+    let best = null;
+    for (const s of tips) {
+      const p = s.getWorldPosition(new THREE.Vector3()).project(gizmoCam);
+      const d = Math.hypot(p.x - nx, p.y - ny);
+      if (d < 0.3 && (!best || p.z < best.z)) best = { z: p.z, dir: s.userData.dir };
+    }
+    if (best) snapTo(best.dir);
+  });
+
+  function snapTo(dir) {
+    if (state.spin) $('t-spin').click();
+    const dist = camera.position.distanceTo(controls.target);
+    camera.up.set(0, 1, 0);
+    if (Math.abs(dir[1]) > 0.9) camera.up.set(0, 0, dir[1] > 0 ? -1 : 1);
+    tween = {
+      from: camera.position.clone(),
+      to: controls.target.clone().addScaledVector(new THREE.Vector3(...dir), dist),
+      t0: performance.now(),
+    };
+  }
+
+  /* Where on the canvas the gizmo pass draws. Taken from the hit box so
+     the two can never drift apart. setViewport counts y from the bottom. */
+  const gz = { x: 0, y: 0, s: 0 };
+  let VW = 0, VH = 0;
+
   function resize() {
     const w = host.clientWidth, h = host.clientHeight;
     if (!w || !h) return;
+    VW = w; VH = h;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+
+    const hr = hit.getBoundingClientRect(), cr = host.getBoundingClientRect();
+    gz.x = hr.left - cr.left;
+    gz.y = cr.bottom - hr.bottom;
+    gz.s = hr.width;
   }
   new ResizeObserver(resize).observe(host);
   resize();
   fit();
 
+  renderer.autoClear = false;
+
   (function loop() {
     requestAnimationFrame(loop);
+
+    if (tween) {
+      const k = Math.min(1, (performance.now() - tween.t0) / 380);
+      const ease = k < 0.5 ? 2 * k * k : 1 - ((-2 * k + 2) ** 2) / 2;
+      camera.position.lerpVectors(tween.from, tween.to, ease);
+      if (k >= 1) tween = null;
+    }
     controls.update();
+
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, VW, VH);
+    renderer.clear();
     renderer.render(scene, camera);
+
+    gizmoRoot.quaternion.copy(camera.quaternion).invert();
+    renderer.clearDepth();
+    renderer.setViewport(gz.x, gz.y, gz.s, gz.s);
+    renderer.setScissor(gz.x, gz.y, gz.s, gz.s);
+    renderer.setScissorTest(true);
+    renderer.render(gizmoScene, gizmoCam);
+    renderer.setScissorTest(false);
   })();
 
   hideLoader();
+}
+
+/* A filled ball with its letter for +X/+Y/+Z, a hollow one for the
+   negative ends — the same read as Unity's scene gizmo. */
+function tipTexture(THREE, hex, label) {
+  const s = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+  const col = `#${hex.toString(16).padStart(6, '0')}`;
+  g.beginPath();
+  g.arc(s / 2, s / 2, s / 2 - 10, 0, Math.PI * 2);
+  if (label) {
+    g.fillStyle = col;
+    g.fill();
+    g.fillStyle = '#06101a';
+    g.font = `700 ${Math.round(s * 0.5)}px -apple-system, Inter, Helvetica, Arial, sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(label, s / 2, s / 2 + s * 0.03);
+  } else {
+    g.fillStyle = 'rgba(4, 10, 16, 0.75)';
+    g.fill();
+    g.strokeStyle = col;
+    g.lineWidth = 10;
+    g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
 /* A round sprite, so the vertices are dots rather than squares. */

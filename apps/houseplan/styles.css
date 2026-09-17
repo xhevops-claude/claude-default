@@ -88,3 +88,39 @@ button { font-family: inherit; color: inherit; border: none; background: none; c
 .ghost:active { background: rgba(143, 216, 255, 0.12); }
 
 #quit { padding: 7px 11px; }
+
+/* ── axis gizmo ───────────────────────────────────────── */
+
+/* The gizmo itself is drawn by the renderer into this same square of
+   canvas; this element only exists to catch the taps. --gizmo-size and
+   --gizmo-inset are read by app.js so both agree on one number. */
+.gizmo-hit {
+  --gizmo-size: 104px;
+  --gizmo-inset: 14px;
+  position: absolute;
+  right: var(--gizmo-inset);
+  top: calc(var(--gizmo-inset) + 46px + env(safe-area-inset-top));
+  width: var(--gizmo-size);
+  height: var(--gizmo-size);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.axis-key {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: rgba(143, 216, 255, 0.5);
+  white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+.axis-key b { font-weight: 700; }
+.ax-x { color: #ff6b6b; }
+.ax-y { color: #7ce89a; }
+.ax-z { color: #6ba8ff; }
+
+@media (max-width: 560px) {
+  .axis-key { display: none; }
+  .gizmo-hit { --gizmo-size: 86px; }
+}

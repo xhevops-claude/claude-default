@@ -53,6 +53,9 @@
       <div class="fail" id="fail" hidden>
         Could not start the 3D view — three.js did not load.
       </div>
+      <!-- Sits over the gizmo's corner of the canvas and takes its taps,
+           so snapping a view never fights the orbit drag underneath. -->
+      <div class="gizmo-hit" id="gizmo-hit" title="Snap to an axis"></div>
     </div>
 
     <header class="hud hud--top">
@@ -70,6 +73,9 @@
       <button type="button" class="ghost is-on" id="t-dots">Dots</button>
       <button type="button" class="ghost is-on" id="t-grid">Grid</button>
       <button type="button" class="ghost" id="t-spin">Spin</button>
+      <span class="axis-key" id="axis-key">
+        <b class="ax-x">X</b> east · <b class="ax-y">Y</b> up · <b class="ax-z">Z</b> south
+      </span>
     </footer>
   </main>
 
