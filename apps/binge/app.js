@@ -510,8 +510,9 @@
     baseVideosRaw().forEach((v) => { const y = videoYMD(v); if (y > cut && y <= ymd && !isWatched(v)) n++; });
     return n;
   }
-  // The gap read out loud: "the very next day", "9 days on", "a month on",
-  // "3 years on" — measured from the cutoff, which is what the user set.
+  // The gap read out loud: "the very next day", "a week on", "9 days on",
+  // "a month on", "3 years on" — measured from the cutoff, which is what the
+  // user set.
   function gapText(fromInt, toInt) {
     if (!monthDayEnabled()) {
       const yrs = Math.floor(toInt / 10000) - Math.floor(fromInt / 10000);
@@ -520,20 +521,21 @@
     const a = ymdToDate(fromInt), b = ymdToDate(toInt);
     const days = Math.round((b - a) / 86400000);
     if (days <= 1) return 'the very next day';
+    if (days === 7) return 'a week on';
     const months = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth());
     if (days < 14 || months < 1) return days + ' days on';
     if (months < 12) return months === 1 ? 'a month on' : months + ' months on';
     const years = Math.floor(months / 12);
     return years === 1 ? 'a year on' : years + ' years on';
   }
-  // The cutoff a day / month / year later, with the day clamped to the target
-  // month's length and the year to the slider's range (so a step can't offer
-  // to jump past the end of the data).
+  // The cutoff a day / week / month / year later, with the day clamped to the
+  // target month's length and the year to the slider's range (so a step can't
+  // offer to jump past the end of the data).
   function steppedCutoff(unit, n) {
     let y = cutoff.y, m = cutoff.m, d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
-    if (unit === 'day') {
+    if (unit === 'day' || unit === 'week') {
       const dt = ymdToDate(y * 10000 + m * 100 + d);
-      dt.setUTCDate(dt.getUTCDate() + n);
+      dt.setUTCDate(dt.getUTCDate() + n * (unit === 'week' ? 7 : 1));
       y = dt.getUTCFullYear(); m = dt.getUTCMonth() + 1; d = dt.getUTCDate();
     } else if (unit === 'month') {
       const total = (y * 12 + (m - 1)) + n;
@@ -561,9 +563,9 @@
     horizonJump.textContent = 'Skip to ' + when;
     horizonJump.onclick = () => jumpTo({ y: Math.floor(h.ymd / 10000), m: Math.floor(h.ymd / 100) % 100, d: h.ymd % 100 });
 
-    // Day and month steps only mean something when the videos carry full
+    // Day, week and month steps only mean something when the videos carry full
     // dates; without them the cutoff is a year and only the year step moves.
-    const units = monthDayEnabled() ? ['day', 'month', 'year'] : ['year'];
+    const units = monthDayEnabled() ? ['day', 'week', 'month', 'year'] : ['year'];
     horizonSteps.innerHTML = units.map((u) => {
       const c = steppedCutoff(u, 1);
       const target = c.y * 10000 + c.m * 100 + c.d;
