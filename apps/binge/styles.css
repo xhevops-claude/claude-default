@@ -377,6 +377,24 @@ html, body {
 .status-icon { font-size: 56px; opacity: 0.7; }
 .status-msg { color: var(--muted); font-size: 15px; max-width: 440px; line-height: 1.5; }
 
+/* The horizon block inside the empty panel: what's next, a skip button, and
+   the day / month / year steps with what each would unlock. */
+.status-horizon { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(440px, 100%); }
+.horizon-line { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); }
+.horizon-steps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.hstep {
+  font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 14px; border-radius: 10px; color: var(--ink);
+  background: var(--panel-2); border: 1px solid var(--line);
+  transition: transform 0.12s ease, border-color 0.18s ease;
+}
+.hstep:hover { border-color: rgba(255, 255, 255, 0.22); }
+.hstep:active { transform: scale(0.97); }
+.hstep-lab { font-size: 13px; font-weight: 700; }
+.hstep-n { font-size: 12px; font-weight: 700; color: var(--green); }
+.hstep.empty { opacity: 0.55; }
+.hstep.empty .hstep-n { color: var(--muted); font-weight: 600; }
+
 .foot-actions { display: flex; gap: 14px; }
 
 /* The videos page wraps its sections, so it lays them out like .binge does. */
