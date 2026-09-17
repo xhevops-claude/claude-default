@@ -337,8 +337,12 @@ bookkeeping behind the opening balance stays whole.
 **Adding entries.** Append to the relevant array — every item needs a unique `id`
 (used as the ledger toggle key) and `active`. Seed rows Claude invented carry
 `"sample": true`, which paints a "sample" tag and the banner; drop the flag as
-real numbers replace them. Nothing the user changes in the UI (currency, sliders,
-row toggles) persists — it is a session-only overlay on the committed data.
+real numbers replace them. What the user changes in the UI is an overlay on the
+committed data, never a write back to it: currency, sliders and the budget and
+target-price fields last only as long as the tab, and the ledger's row toggles
+are the one exception — the excluded ids are kept in localStorage under
+`forecast-ledger-off-v1` (ids only, no figures) so a view survives a reload, and
+Reset in the scenario sheet clears them.
 
 ## Conventions worth preserving
 
