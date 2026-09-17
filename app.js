@@ -117,9 +117,9 @@
     },
     {
       slug: 'houseplan',
-      name: 'House Plans',
-      meta: 'Drawing',
-      tagline: 'Walk three levels in 2D and 3D.',
+      name: 'House Wire',
+      meta: 'Wireframe',
+      tagline: 'A house as lines and dots.',
       icon: '🏠',
       url: 'apps/houseplan/',
     },

@@ -1,20 +1,10 @@
-/* House Plans — dark app chrome, paper-coloured drawing. */
+/* House Wireframe — black scene, HUD floats over it. */
 
 :root {
-  --bg: #10151c;
-  --bg-2: #161d27;
-  --line: #26303d;
-  --text: #e7edf5;
-  --text-2: #93a2b6;
-  --accent: #8ab4f8;
-  --accent-dk: #5b8de0;
-
-  --paper: #f4f1ea;
-  --paper-edge: #dcd6c9;
-  --ink: #1d2733;
-
-  --bar-h: 52px;
-  --rail-h: 46px;
+  --line: #8fd8ff;
+  --dim: rgba(143, 216, 255, 0.45);
+  --hud-bg: rgba(8, 12, 16, 0.6);
+  --hud-edge: rgba(143, 216, 255, 0.18);
   --font: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -24,8 +14,8 @@ html, body {
   margin: 0; padding: 0;
   height: 100%;
   touch-action: manipulation;
-  background: var(--bg);
-  color: var(--text);
+  background: #000;
+  color: var(--line);
   font-family: var(--font);
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
@@ -33,191 +23,68 @@ html, body {
 
 button { font-family: inherit; color: inherit; border: none; background: none; cursor: pointer; }
 
-.hp {
-  position: fixed; inset: 0;
-  display: flex; flex-direction: column;
-}
+.wf { position: fixed; inset: 0; }
 
-/* ── bars ─────────────────────────────────────────────── */
-
-.bar {
-  flex: 0 0 auto;
-  display: flex; align-items: center; gap: 10px;
-  padding: 0 12px;
-  min-height: var(--bar-h);
-  background: var(--bg-2);
-  border-bottom: 1px solid var(--line);
-}
-.bar--top { padding-top: env(safe-area-inset-top); }
-.bar--bottom {
-  border-bottom: none;
-  border-top: 1px solid var(--line);
-  padding-bottom: env(safe-area-inset-bottom);
-  position: relative;
-}
-
-.title { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
-.title-name { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.title-sub { font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.seg {
-  display: flex; flex: 0 0 auto;
-  background: #0d1218;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 2px;
-}
-.seg-btn {
-  padding: 6px 14px;
-  font-size: 13px; font-weight: 600;
-  color: var(--text-2);
-  border-radius: 999px;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.seg-btn.is-on { background: var(--accent); color: #0b1017; }
-
-.icon-btn {
-  flex: 0 0 auto;
-  width: 34px; height: 34px;
-  border-radius: 10px;
-  font-size: 15px; line-height: 1;
-  color: var(--text-2);
-  border: 1px solid var(--line);
-}
-.icon-btn:active { background: var(--line); }
-
-/* ── stage ────────────────────────────────────────────── */
-
-.stage { position: relative; flex: 1 1 auto; min-height: 0; }
-.pane { position: absolute; inset: 0; }
-.pane[hidden] { display: none; }
-
-.svg-host {
-  position: absolute; inset: 0;
-  background:
-    radial-gradient(120% 100% at 50% 0%, #182130 0%, #0d1219 70%);
-  touch-action: none;
-  overflow: hidden;
-}
-.svg-host svg { display: block; width: 100%; height: 100%; }
-
+.stage { position: absolute; inset: 0; }
 .canvas-host { position: absolute; inset: 0; touch-action: none; }
 .canvas-host canvas { display: block; width: 100%; height: 100%; }
 
-.webgl-fail {
-  position: absolute; inset: auto 16px 16px;
-  padding: 14px 16px;
-  font-size: 13px; line-height: 1.5;
-  color: var(--text-2);
-  background: var(--bg-2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+.fail {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--dim);
+  border: 1px solid var(--hud-edge);
+  border-radius: 10px;
 }
+.fail[hidden] { display: none; }
 
-.readout {
-  position: absolute;
-  left: 12px; top: 12px;
-  max-width: min(260px, calc(100% - 24px));
-  max-height: calc(100% - 24px);
-  overflow: auto;
-  padding: 10px 12px;
-  font-size: 12px; line-height: 1.55;
-  background: rgba(13, 18, 25, 0.9);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  backdrop-filter: blur(6px);
-}
-.readout[hidden] { display: none; }
-.readout h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
-.readout-row { display: flex; justify-content: space-between; gap: 14px; }
-.readout-row span:last-child { color: var(--text-2); font-variant-numeric: tabular-nums; }
-.readout-total { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); font-weight: 700; }
+/* ── HUD ──────────────────────────────────────────────── */
 
-/* ── level rail ───────────────────────────────────────── */
-
-.rail {
-  flex: 0 0 auto;
+.hud {
+  position: absolute; left: 0; right: 0;
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px;
-  min-height: var(--rail-h);
-  background: var(--bg-2);
-  border-top: 1px solid var(--line);
+  padding: 12px 14px;
+  pointer-events: none;
+}
+.hud > * { pointer-events: auto; }
+.hud--top { top: 0; padding-top: calc(12px + env(safe-area-inset-top)); }
+.hud--bottom {
+  bottom: 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
   overflow-x: auto;
   scrollbar-width: none;
 }
-.rail::-webkit-scrollbar { display: none; }
+.hud--bottom::-webkit-scrollbar { display: none; }
 
-.lvl {
-  flex: 0 0 auto;
-  display: flex; align-items: baseline; gap: 7px;
-  padding: 6px 12px;
-  font-size: 13px;
-  color: var(--text-2);
-  background: #0d1218;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  white-space: nowrap;
-}
-.lvl b { font-size: 12px; font-weight: 800; color: var(--text); }
-.lvl small { font-size: 10px; opacity: 0.7; font-variant-numeric: tabular-nums; }
-.lvl.is-on { background: var(--accent); border-color: var(--accent); color: #0b1017; }
-.lvl.is-on b, .lvl.is-on small { color: #0b1017; }
-
-/* ── bottom controls ──────────────────────────────────── */
-
-.chip {
-  flex: 0 0 auto;
-  padding: 7px 14px;
-  font-size: 13px; font-weight: 600;
-  color: var(--text);
-  background: #0d1218;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  list-style: none;
-}
-.chip::-webkit-details-marker { display: none; }
-.chip:active { background: var(--line); }
-
-.opts { position: relative; flex: 0 0 auto; }
-.opts[open] .chip--summary { background: var(--accent); border-color: var(--accent); color: #0b1017; }
-.opts-sheet {
-  position: absolute;
-  bottom: calc(100% + 10px); left: 0;
-  width: max-content; min-width: 190px;
-  padding: 8px;
-  background: var(--bg-2);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
-  z-index: 5;
-}
-.opts-group[hidden] { display: none; }
-.opt {
-  display: flex; align-items: center; gap: 10px;
-  padding: 7px 8px;
-  font-size: 13px;
-  border-radius: 9px;
-}
-.opt:active { background: #0d1218; }
-.opt input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); }
-.opt--range { flex-direction: column; align-items: stretch; gap: 6px; }
-.opt--range input { width: 100%; accent-color: var(--accent); }
-
-.hint {
+.hud-title {
   flex: 1 1 auto;
-  font-size: 11px;
-  color: var(--text-2);
-  text-align: right;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 0;
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+.hud-dim {
+  font-size: 11px; font-weight: 400;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Quit belongs to the shell only when standalone; inside the iframe the
-   shell already paints its own close affordance, but the button still
-   posts close-game, so it stays visible either way. */
-
-@media (max-width: 420px) {
-  .title-sub { display: none; }
-  .seg-btn { padding: 6px 12px; }
+.ghost {
+  flex: 0 0 auto;
+  padding: 7px 13px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--dim);
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-edge);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
+.ghost.is-on { color: var(--line); border-color: rgba(143, 216, 255, 0.55); }
+.ghost:active { background: rgba(143, 216, 255, 0.12); }
+
+#quit { padding: 7px 11px; }
