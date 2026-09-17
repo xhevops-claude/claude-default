@@ -43,7 +43,16 @@
   var chartPoints = null;
   var today = null;
 
-  // Session-only overrides. `off` holds ids the user has excluded.
+  // How far one tap of a −/+ arrow moves each field. Both are EUR so the arrows
+  // shift the same real money whichever currency the header is showing.
+  var BUDGET_STEP_EUR = 50;
+  var PRICE_STEP_EUR = 50;
+
+  /* Overrides on top of the committed data. Everything here is per-browser and
+   * lasts only as long as the tab, except `off` — the ledger's include/exclude
+   * ticks, which are kept in localStorage so a view of the forecast survives a
+   * reload. Reset in the scenario sheet clears them. */
+  var OFF_STORE = 'forecast-ledger-off-v1';
   var scenario = {
     pricePerM2: null,       // EUR/m² the sale figures are struck at
     rateKnob: null,
@@ -1173,9 +1182,8 @@
   }
 
   function nudgeBudget(dir) {
-    var stepEur = 50;
     var eur = scenario.budgetOverride != null ? scenario.budgetOverride : defaults.budget;
-    scenario.budgetOverride = Math.max(0, eur + (dir * stepEur));
+    scenario.budgetOverride = Math.max(0, eur + (dir * BUDGET_STEP_EUR));
     recompute();
   }
 
@@ -1457,13 +1465,21 @@
       'match the bank’s own plan, which carries its own assumptions about future rates.';
   }
 
-  // Same treatment as the budget field: never rewritten mid-edit.
+  // Same treatment as the budget field: never rewritten mid-edit. The step is
+  // held in EUR, so the arrows move the same real money in either currency.
   function syncPriceField(pricePerM2) {
     var input = $('inv-price');
     if (document.activeElement === input) return;
     input.value = String(Math.round(fromEur(pricePerM2, currency)));
-    input.step = String(currency === 'EUR' ? 50 : 3000);
+    input.step = String(Math.round(fromEur(PRICE_STEP_EUR, currency)));
     $('inv-cur').textContent = (currency === 'EUR' ? '€' : 'ден') + ' / m²';
+  }
+
+  function nudgePrice(dir) {
+    var eur = scenario.pricePerM2 == null
+      ? (data.investments.salePricePerM2 || 0) : scenario.pricePerM2;
+    scenario.pricePerM2 = Math.max(0, eur + (dir * PRICE_STEP_EUR));
+    recompute();
   }
 
   /* ---------------------------------------------------------------- ledger */
@@ -1573,6 +1589,28 @@
 
     $('ledger-list').innerHTML = incomeHtml + cycleHtml + debtHtml + budgetHtml +
       extrasHtml + adjHtml;
+  }
+
+  /* The excluded ids are stored as a plain array of strings — no figures, so
+   * nothing from the vault ever lands in localStorage. Anything unreadable is
+   * treated as "nothing excluded" rather than blocking the app. */
+  function loadOff() {
+    var raw = readStore(OFF_STORE);
+    var out = Object.create(null);
+    if (!raw) return out;
+    try {
+      var ids = JSON.parse(raw);
+      if (Array.isArray(ids)) {
+        ids.forEach(function (id) { if (typeof id === 'string') out[id] = true; });
+      }
+    } catch (e) { /* malformed: start clean */ }
+    return out;
+  }
+
+  function saveOff() {
+    var ids = Object.keys(scenario.off);
+    if (ids.length) writeStore(OFF_STORE, JSON.stringify(ids));
+    else clearStore(OFF_STORE);
   }
 
   /* ------------------------------------------------------------- scenario */
@@ -1687,6 +1725,7 @@
       var id = row.dataset.toggle;
       if (scenario.off[id]) delete scenario.off[id];
       else scenario.off[id] = true;
+      saveOff();
       renderLedger();
       recompute();
     });
@@ -1731,7 +1770,11 @@
     });
 
     Array.prototype.forEach.call(document.querySelectorAll('.np-step'), function (btn) {
-      btn.addEventListener('click', function () { nudgeBudget(Number(btn.dataset.step)); });
+      btn.addEventListener('click', function () {
+        var dir = Number(btn.dataset.step);
+        if (btn.dataset.nudge === 'price') nudgePrice(dir);
+        else nudgeBudget(dir);
+      });
     });
 
     $('sc-reset').addEventListener('click', function () {
@@ -1743,6 +1786,7 @@
       scenario.horizon = defaults.horizon;
       scenario.rollover = defaults.rollover;
       scenario.off = Object.create(null);
+      saveOff();
       renderLedger();
       recompute();
     });
@@ -1948,6 +1992,7 @@
     scenario.rateKnob = defaults.rateKnob;
     scenario.horizon = defaults.horizon;
     scenario.rollover = defaults.rollover;
+    scenario.off = loadOff();   // ledger ticks from the last visit
 
     // Slider spans zero to double the committed rate, in ~100 steps.
     var rateMax = Math.max(1, Math.ceil(defaults.rateKnob * 2));

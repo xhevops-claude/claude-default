@@ -170,10 +170,10 @@
           <div class="nextpay-budget">
             <label class="np-budget-label" for="np-budget">Monthly budget allowance</label>
             <div class="np-budget-field">
-              <button class="np-step" type="button" data-step="-1" aria-label="Lower the budget">−</button>
+              <button class="np-step" type="button" data-nudge="budget" data-step="-1" aria-label="Lower the budget">−</button>
               <input class="np-budget-input" id="np-budget" type="number" min="0" inputmode="numeric">
               <span class="np-cur" id="np-cur" aria-hidden="true">€</span>
-              <button class="np-step" type="button" data-step="1" aria-label="Raise the budget">+</button>
+              <button class="np-step" type="button" data-nudge="budget" data-step="1" aria-label="Raise the budget">+</button>
             </div>
           </div>
         </div>
@@ -193,8 +193,10 @@
         <div class="inv-price-bar">
           <label class="np-budget-label" for="inv-price">Target sale price</label>
           <div class="np-budget-field">
+            <button class="np-step" type="button" data-nudge="price" data-step="-1" aria-label="Lower the target price by €50">−</button>
             <input class="np-budget-input" id="inv-price" type="number" min="0" inputmode="numeric">
             <span class="np-cur" id="inv-cur" aria-hidden="true">€ / m²</span>
+            <button class="np-step" type="button" data-nudge="price" data-step="1" aria-label="Raise the target price by €50">+</button>
           </div>
         </div>
         <div id="invest-summary"></div>
@@ -204,8 +206,9 @@
 
       <section id="view-ledger" class="view" aria-label="Ledger">
         <p class="ledger-hint">
-          Tap a row to include or exclude it from the forecast. Changes stay in this
-          browser session only — the committed data files are never touched.
+          Tap a row to include or exclude it from the forecast. Your choices are kept
+          in this browser and come back next time — the committed data files are
+          never touched. Reset in the scenario sheet clears them.
         </p>
         <div id="ledger-list"></div>
       </section>
