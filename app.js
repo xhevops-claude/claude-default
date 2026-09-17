@@ -116,6 +116,14 @@
       url: 'apps/forecast/',
     },
     {
+      slug: 'houseplan',
+      name: 'House Plans',
+      meta: 'Drawing',
+      tagline: 'Walk three levels in 2D and 3D.',
+      icon: '🏠',
+      url: 'apps/houseplan/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',
