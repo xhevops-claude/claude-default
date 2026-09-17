@@ -75,6 +75,7 @@
   const viewBinge = $('view-binge'), viewSync = $('view-sync'), appbarTitle = $('appbar-title'), drawerSyncBtn = $('drawer-sync');
   const syncCopyBtn = $('sync-copy'), syncPaste = $('sync-paste'), syncApplyBtn = $('sync-apply'), syncNote = $('sync-note');
   const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
+  const horizonEl = $('status-horizon'), horizonLine = $('horizon-line'), horizonJump = $('horizon-jump'), horizonSteps = $('horizon-steps');
 
   // ---------------------------------------------------------------------------
   // Slotted slider — the track is divided into `n` equal slots and the knob is
@@ -429,18 +430,22 @@
 
     if (!total) {
       hideResults(true);
-      showStatus('🔍', 'Nothing published on or before that date.', 'Reset to today', resetCutoff);
+      showStatus('🔍', 'Nothing published on or before ' + cutoffLabel() + '.', 'Reset to today', resetCutoff);
+      demoteAction(showHorizon());
       return;
     }
     if (!showWatched && remaining === 0) {
       hideResults(true);
-      showStatus('🎉', 'All caught up — everything up to this date is watched.', 'Show watched', () => {
+      showStatus('🎉', 'All caught up — everything up to ' + cutoffLabel() + ' is watched.', 'Show watched', () => {
         showWatched = true; showWatchedChk.checked = true; saveShowWatched(); render();
       });
+      // Nothing ahead either: that really is the end of the channels.
+      if (!showHorizon()) statusMsg.textContent = 'That’s the lot — every video these channels have published is watched.';
+      else demoteAction(true);
       return;
     }
 
-    statusPanel.hidden = true;
+    statusPanel.hidden = true; horizonEl.hidden = true;
     resultsBar.hidden = false;
     renderSections(list);
   }
@@ -454,9 +459,129 @@
     statusPanel.hidden = false;
     statusPanel.querySelector('.status-icon').textContent = icon;
     statusMsg.textContent = msg;
+    horizonEl.hidden = true;   // the caller opts back in via showHorizon()
+    statusAction.classList.remove('ghost', 'small');
+    statusAction.classList.add('primary');
     if (actionLabel) { statusAction.hidden = false; statusAction.textContent = actionLabel; statusAction.onclick = actionFn || null; }
     else { statusAction.hidden = true; statusAction.onclick = null; }
   }
+
+  // ---------------------------------------------------------------------------
+  // The horizon — what's parked just past the cutoff. When the list runs dry
+  // the date slider is usually the reason, not the end of the channel, so the
+  // empty panel says when the next unwatched video landed, how far off that is
+  // in plain words, and offers to step the cutoff there (or by a day / month /
+  // year, each labelled with what it would actually unlock).
+  // ---------------------------------------------------------------------------
+  // With undated videos in play the cutoff is really just a year, so dates are
+  // named as years rather than a made-up "JAN 1".
+  function dateLabel(ymd) { return monthDayEnabled() ? fmtYMDInt(ymd) : String(Math.floor(ymd / 10000)); }
+  function cutoffLabel() { return dateLabel(cutoffInt()); }
+  // With a Skip button in the panel, the status panel's own action (Show
+  // watched / Reset to today) steps back to a quieter secondary.
+  function demoteAction(quiet) {
+    statusAction.classList.toggle('primary', !quiet);
+    statusAction.classList.toggle('ghost', !!quiet);
+    statusAction.classList.toggle('small', !!quiet);
+  }
+  function ymdToDate(ymd) {
+    return new Date(Date.UTC(Math.floor(ymd / 10000), Math.floor(ymd / 100) % 100 - 1, ymd % 100));
+  }
+  // Unwatched videos strictly after the cutoff: the nearest date, how many
+  // landed on it, and how many are out there in total.
+  function horizon() {
+    const cut = cutoffInt();
+    let next = 0, ahead = 0;
+    baseVideosRaw().forEach((v) => {
+      const y = videoYMD(v);
+      if (!y || y <= cut || isWatched(v)) return;
+      ahead++;
+      if (!next || y < next) next = y;
+    });
+    if (!next) return null;
+    let atNext = 0;
+    baseVideosRaw().forEach((v) => { if (videoYMD(v) === next && !isWatched(v)) atNext++; });
+    return { ymd: next, ahead: ahead, atNext: atNext };
+  }
+  // How many videos moving the cutoff to `ymd` would bring into the list.
+  function unlockedBy(ymd) {
+    const cut = cutoffInt();
+    let n = 0;
+    baseVideosRaw().forEach((v) => { const y = videoYMD(v); if (y > cut && y <= ymd && !isWatched(v)) n++; });
+    return n;
+  }
+  // The gap read out loud: "the very next day", "a week on", "9 days on",
+  // "a month on", "3 years on" — measured from the cutoff, which is what the
+  // user set.
+  function gapText(fromInt, toInt) {
+    if (!monthDayEnabled()) {
+      const yrs = Math.floor(toInt / 10000) - Math.floor(fromInt / 10000);
+      return yrs <= 1 ? 'the very next year' : yrs + ' years on';
+    }
+    const a = ymdToDate(fromInt), b = ymdToDate(toInt);
+    const days = Math.round((b - a) / 86400000);
+    if (days <= 1) return 'the very next day';
+    if (days === 7) return 'a week on';
+    const months = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth());
+    if (days < 14 || months < 1) return days + ' days on';
+    if (months < 12) return months === 1 ? 'a month on' : months + ' months on';
+    const years = Math.floor(months / 12);
+    return years === 1 ? 'a year on' : years + ' years on';
+  }
+  // The cutoff a day / week / month / year later, with the day clamped to the
+  // target month's length and the year to the slider's range (so a step can't
+  // offer to jump past the end of the data).
+  function steppedCutoff(unit, n) {
+    let y = cutoff.y, m = cutoff.m, d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
+    if (unit === 'day' || unit === 'week') {
+      const dt = ymdToDate(y * 10000 + m * 100 + d);
+      dt.setUTCDate(dt.getUTCDate() + n * (unit === 'week' ? 7 : 1));
+      y = dt.getUTCFullYear(); m = dt.getUTCMonth() + 1; d = dt.getUTCDate();
+    } else if (unit === 'month') {
+      const total = (y * 12 + (m - 1)) + n;
+      y = Math.floor(total / 12); m = total % 12 + 1;
+      d = Math.min(d, daysInMonth(y, m));
+    } else {
+      y += n;
+      d = Math.min(d, daysInMonth(y, m));
+    }
+    const maxY = yearRange.length ? yearRange[yearRange.length - 1] : y;
+    if (y > maxY) return { y: maxY, m: 12, d: 31 };
+    return { y: y, m: m, d: d };
+  }
+  function jumpTo(c) {
+    cutoff = { y: c.y, m: c.m, d: c.d };
+    commitCutoff();   // a picked date, so Today switches off
+  }
+  function showHorizon() {
+    const h = horizon();
+    if (!h) { horizonEl.hidden = true; return false; }
+    const cut = cutoffInt();
+    const when = dateLabel(h.ymd), drop = h.atNext === 1 ? '1 video' : h.atNext + ' videos';
+    const rest = h.ahead > h.atNext ? ', ' + (h.ahead - h.atNext) + ' more after it' : '';
+    horizonLine.textContent = 'Next drop lands ' + when + ' — ' + gapText(cut, h.ymd) + '. ' + drop + ' that day' + rest + '.';
+    horizonJump.textContent = 'Skip to ' + when;
+    horizonJump.onclick = () => jumpTo({ y: Math.floor(h.ymd / 10000), m: Math.floor(h.ymd / 100) % 100, d: h.ymd % 100 });
+
+    // Day, week and month steps only mean something when the videos carry full
+    // dates; without them the cutoff is a year and only the year step moves.
+    const units = monthDayEnabled() ? ['day', 'week', 'month', 'year'] : ['year'];
+    horizonSteps.innerHTML = units.map((u) => {
+      const c = steppedCutoff(u, 1);
+      const target = c.y * 10000 + c.m * 100 + c.d;
+      if (target <= cut) return '';
+      const n = unlockedBy(target);
+      return '<button type="button" class="hstep' + (n ? '' : ' empty') + '" data-step="' + u + '">'
+        + '<span class="hstep-lab">Next ' + u + '</span>'
+        + '<span class="hstep-n">' + (n ? '+' + n : 'nothing new') + '</span></button>';
+    }).join('');
+    horizonEl.hidden = false;
+    return true;
+  }
+  horizonSteps.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-step]');
+    if (b) jumpTo(steppedCutoff(b.getAttribute('data-step'), 1));
+  });
 
   // ---- group tabs ----
   // Same build-once/sync-after discipline as the switches: the pills are only
