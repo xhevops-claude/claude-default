@@ -83,68 +83,46 @@ function sampleProfile(prof, d) {
   return y0 + ((y1 - y0) * (d - d0)) / (d1 - d0);
 }
 
-/* Ground before the driveway is cut into it: the natural fall, and the
-   apron's cut in front of the house. */
-function groundBase(x, z) {
+/* The quarter-round cut into the inside corner where the apron turns
+   onto the ramp. The corner is where the ramp's uphill edge meets the
+   apron; the circle's centre sits `r` in from it both ways, so the arc
+   is tangent to both edges. Everything here is in (along, across). */
+const FILLET = (() => {
+  const f = CUT?.fillet, r = CUT?.ramp;
+  if (!f || !r) return null;
+  const corner = { along: FACE + FRONT.sign * (r.dFrom ?? 0), across: r.from };
+  return { r: f.r, corner, centre: { along: corner.along - FRONT.sign * f.r, across: corner.across + f.r } };
+})();
+
+function inFillet(along, across) {
+  if (!FILLET) return false;
+  const { r, corner, centre } = FILLET;
+  const da = (corner.along - along) * FRONT.sign;
+  if (da < 0 || da > r || across < corner.across || across > centre.across) return false;
+  return Math.hypot(along - centre.along, across - centre.across) >= r - 1e-9;
+}
+
+/* The ramp's floor at a position across the front: the apron level,
+   falling past ramp.from, never below the profile's last level. */
+function rampLevel(across) {
+  const r = CUT.ramp;
+  const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
+  const base = sampleProfile(CUT.profile, r.dFrom ?? 0);
+  return Math.max(base - r.drop * t, CUT.profile[CUT.profile.length - 1][1]);
+}
+
+function groundY(x, z) {
   if (!TER) return BOX.y0;
   const along = FRONT.axis === 'x' ? x : z;
   const across = FRONT.axis === 'x' ? z : x;
   const d = (along - FACE) * FRONT.sign;
   if (!CUT || across < CUT.from || across > CUT.to) return sampleProfile(PROFILE, d);
-  return sampleProfile(CUT.profile, d);
-}
-
-/* The driveway: a Catmull-Rom curve through plan.driveway.path, sampled
-   finely, each sample carrying its level and its direction. */
-const DRIVE = (() => {
-  const dw = PLAN.driveway;
-  if (!dw || !dw.path || dw.path.length < 2) return null;
-  const P = dw.path.map(([x, z, y]) => ({ x, y, z }));
-  const pts = [P[0], ...P, P[P.length - 1]];
-  const out = [];
-  const cr = (a, b, c, d, t) => 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
-  for (let i = 1; i < pts.length - 2; i++) {
-    const [a, b, c, d] = [pts[i - 1], pts[i], pts[i + 1], pts[i + 2]];
-    const len = Math.hypot(c.x - b.x, c.z - b.z);
-    const n = Math.max(4, Math.ceil(len / 0.4));
-    for (let k = 0; k < n; k++) {
-      const t = k / n;
-      out.push({ x: cr(a.x, b.x, c.x, d.x, t), y: cr(a.y, b.y, c.y, d.y, t), z: cr(a.z, b.z, c.z, d.z, t) });
-    }
-  }
-  out.push({ ...P[P.length - 1] });
-  for (let i = 0; i < out.length; i++) {
-    const p0 = out[Math.max(0, i - 1)], p1 = out[Math.min(out.length - 1, i + 1)];
-    const L = Math.hypot(p1.x - p0.x, p1.z - p0.z) || 1;
-    out[i].tx = (p1.x - p0.x) / L;
-    out[i].tz = (p1.z - p0.z) / L;
-  }
-  return { width: dw.width || 3, samples: out, control: P };
-})();
-
-/* Where a point stands relative to the driveway: its distance from the
-   centreline and the floor level there, from the nearest segment. */
-function nearestOnDrive(x, z) {
-  let best = { dist: Infinity, y: 0 };
-  const S = DRIVE.samples;
-  for (let i = 0; i < S.length - 1; i++) {
-    const a = S[i], b = S[i + 1];
-    const dx = b.x - a.x, dz = b.z - a.z;
-    const L2 = dx * dx + dz * dz || 1;
-    const t = Math.min(1, Math.max(0, ((x - a.x) * dx + (z - a.z) * dz) / L2));
-    const px = a.x + dx * t, pz = a.z + dz * t;
-    const dist = Math.hypot(x - px, z - pz);
-    if (dist < best.dist) best = { dist, y: a.y + (b.y - a.y) * t };
-  }
-  return best;
-}
-
-function groundY(x, z) {
-  if (DRIVE) {
-    const n = nearestOnDrive(x, z);
-    if (n.dist <= DRIVE.width / 2) return n.y;
-  }
-  return groundBase(x, z);
+  const base = sampleProfile(CUT.profile, d);
+  if (d < 0 || !CUT.ramp) return base;
+  const r = CUT.ramp;
+  const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
+  if (t > 0 && d < (r.dFrom ?? 0) && !inFillet(along, across)) return sampleProfile(PROFILE, d);
+  return Math.max(base - r.drop * t, CUT.profile[CUT.profile.length - 1][1]);
 }
 
 const pushed = PLAN.levels.find((l) => l.extendFront);
@@ -211,7 +189,7 @@ async function boot() {
      the rings are the plates, and the glass is the caps (triangulated,
      so a footprint may be concave — the fillet is) plus the sides. */
   const dotPos = [];
-  function addVolume(bottom, top, { dots: withDots = true, uprightEvery = 1 } = {}) {
+  function addVolume(bottom, top, withDots = true) {
     const n = bottom.length;
     const pos = [...bottom.flat(), ...top.flat()];
     const idx = [];
@@ -227,7 +205,7 @@ async function boot() {
     faces.add(new THREE.Mesh(geo, glassMat));
 
     const uprights = [];
-    for (let i = 0; i < n; i++) if (i % uprightEvery === 0) uprights.push(...bottom[i], ...top[i]);
+    for (let i = 0; i < n; i++) uprights.push(...bottom[i], ...top[i]);
     edges.add(segments(uprights, lineMat(0.95)));
 
     const rings = [];
@@ -249,67 +227,31 @@ async function boot() {
     );
   }
 
-  /* The driveway: a ribbon swept along the curve, and on each side a
-     wall wherever the ground disagrees with the floor — a cut wall
-     where the hill stands above it, a fill wall where the ground has
-     fallen below. Nothing is drawn where the edge runs over another
-     work (the road, the apron), which already own that ground. */
-  if (DRIVE) {
-    const { width, samples } = DRIVE;
-    const half = width / 2;
-    const worksXZ = (PLAN.works || []);
-    const insideWork = (x, z) => worksXZ.some((w) => x >= w.x0 && x <= w.x1 && z >= w.z0 && z <= w.z1);
-    const edgeAt = (p, side, off = half) => [p.x - side * p.tz * off, p.z + side * p.tx * off];
+  /* The fillet: its floor is the sliver between the corner and the arc,
+     at the ramp's level; its wall is a 30 cm band along the arc, on the
+     hill side, from the ramp's floor up to the natural ground. */
+  if (FILLET) {
+    const { r, corner, centre } = FILLET;
+    const toXZ = (along, across) => (FRONT.axis === 'x' ? [along, across] : [across, along]);
+    const natural = (along) => sampleProfile(PROFILE, (along - FACE) * FRONT.sign);
+    const arc = (rad, N = 12) => Array.from({ length: N + 1 }, (_, i) => {
+      const th = (i / N) * (Math.PI / 2);
+      return [centre.along + FRONT.sign * rad * Math.sin(th), centre.across - rad * Math.cos(th)];
+    });
 
-    const left = samples.map((p) => edgeAt(p, 1));
-    const right = samples.map((p) => edgeAt(p, -1));
-    const ring = [...left.map((e, i) => [e, samples[i].y]), ...right.map((e, i) => [e, samples[i].y]).reverse()];
+    const floorRing = [[corner.along, corner.across], ...arc(r)];
     addVolume(
-      ring.map(([[x, z], y]) => [x, y - 0.1, z]),
-      ring.map(([[x, z], y]) => [x, y + 0.1, z]),
-      { dots: false, uprightEvery: 4 },
+      floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
+      floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) + 0.1, toXZ(a, c)[1]]),
+      false,
     );
 
-    for (const side of [1, -1]) {
-      let run = [];
-      const flush = () => {
-        if (run.length >= 2) {
-          const inner = run.map((r) => r.inner), outer = run.map((r) => r.outer);
-          const ringXZ = [...inner, ...outer.slice().reverse()];
-          const bottoms = [...run.map((r) => r.bottom), ...run.map((r) => r.bottom).reverse()];
-          const tops = [...run.map((r) => r.top), ...run.map((r) => r.top).reverse()];
-          addVolume(
-            ringXZ.map(([x, z], i) => [x, bottoms[i], z]),
-            ringXZ.map(([x, z], i) => [x, tops[i], z]),
-            { dots: false, uprightEvery: 3 },
-          );
-        }
-        run = [];
-      };
-      let kind = null;
-      for (const p of samples) {
-        const [ex, ez] = edgeAt(p, side);
-        const natural = groundBase(ex, ez);
-        let k = null;
-        if (!insideWork(ex, ez)) {
-          if (natural > p.y + 0.05) k = 'cut';
-          else if (natural < p.y - 0.05) k = 'fill';
-        }
-        if (k !== kind) { flush(); kind = k; }
-        if (k) {
-          run.push({
-            inner: [ex, ez],
-            outer: edgeAt(p, side, half + 0.3),
-            bottom: k === 'cut' ? p.y - 0.1 : natural,
-            top: k === 'cut' ? natural : p.y + 0.1,
-          });
-        }
-      }
-      flush();
-    }
-
-    /* The control points are the handles you edit, so they get dots. */
-    for (const c of DRIVE.control) dotPos.push(c.x, c.y + 0.1, c.z);
+    const wallRing = [...arc(r), ...arc(r - 0.3).reverse()];
+    addVolume(
+      wallRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
+      wallRing.map(([a, c]) => [toXZ(a, c)[0], natural(a), toXZ(a, c)[1]]),
+      false,
+    );
   }
   scene.add(faces, edges, floors);
 
@@ -345,6 +287,11 @@ async function boot() {
       });
     }
     if (CUT) across.push(CUT.from - 0.001, CUT.from, CUT.to, CUT.to + 0.001);
+    if (CUT?.ramp) {
+      across.push(CUT.ramp.from, CUT.ramp.to);
+      const p = FACE + FRONT.sign * (CUT.ramp.dFrom ?? 0);
+      along.push(p - FRONT.sign * 0.001, p);
+    }
   }
   xs.sort((a, b) => a - b);
   zs.sort((a, b) => a - b);
