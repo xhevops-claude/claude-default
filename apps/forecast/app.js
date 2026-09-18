@@ -48,11 +48,13 @@
   var BUDGET_STEP_EUR = 50;
   var PRICE_STEP_EUR = 50;
 
-  /* Overrides on top of the committed data. Everything here is per-browser and
-   * lasts only as long as the tab, except `off` — the ledger's include/exclude
-   * ticks, which are kept in localStorage so a view of the forecast survives a
-   * reload. Reset in the scenario sheet clears them. */
-  var OFF_STORE = 'forecast-ledger-off-v1';
+  /* Overrides on top of the committed data — never a write back to it. The
+   * whole set, and the display currency, is kept in localStorage so a reload
+   * (or the next visit) picks up where the last one left off; every change
+   * passes through recompute(), which is where the save happens. Reset in the
+   * scenario sheet puts everything back to the committed data. */
+  var SCENARIO_STORE = 'forecast-scenario-v1';
+  var LEGACY_OFF_STORE = 'forecast-ledger-off-v1';   // ticks only, pre-v1; migrated once
   var scenario = {
     pricePerM2: null,       // EUR/m² the sale figures are struck at
     rateKnob: null,
@@ -1591,26 +1593,69 @@
       extrasHtml + adjHtml;
   }
 
-  /* The excluded ids are stored as a plain array of strings — no figures, so
-   * nothing from the vault ever lands in localStorage. Anything unreadable is
-   * treated as "nothing excluded" rather than blocking the app. */
-  function loadOff() {
-    var raw = readStore(OFF_STORE);
-    var out = Object.create(null);
-    if (!raw) return out;
-    try {
-      var ids = JSON.parse(raw);
-      if (Array.isArray(ids)) {
-        ids.forEach(function (id) { if (typeof id === 'string') out[id] = true; });
-      }
-    } catch (e) { /* malformed: start clean */ }
-    return out;
+  /* ----------------------------------------------------- remembered state */
+
+  /* What is stored is the user's own overrides and nothing out of the vault:
+   * the ids they ticked off, the figures they typed, the slider positions and
+   * the currency. A slider the user never moved is stored as null rather than
+   * as its current value, so when the committed data changes the untouched
+   * knobs follow it instead of pinning the old default. Anything unreadable
+   * falls back to the committed data rather than blocking the app. */
+  function saveScenario() {
+    var same = function (key) { return scenario[key] === defaults[key]; };
+    writeStore(SCENARIO_STORE, JSON.stringify({
+      currency: currency,
+      budgetOverride: scenario.budgetOverride,
+      pricePerM2: scenario.pricePerM2,
+      rateKnob: same('rateKnob') ? null : scenario.rateKnob,
+      dayAdjust: scenario.dayAdjust,
+      extraToDebt: scenario.extraToDebt,
+      horizon: same('horizon') ? null : scenario.horizon,
+      rollover: same('rollover') ? null : scenario.rollover,
+      off: Object.keys(scenario.off),
+    }));
   }
 
-  function saveOff() {
-    var ids = Object.keys(scenario.off);
-    if (ids.length) writeStore(OFF_STORE, JSON.stringify(ids));
-    else clearStore(OFF_STORE);
+  function loadScenario() {
+    var saved = null;
+    try { saved = JSON.parse(readStore(SCENARIO_STORE) || 'null'); } catch (e) { /* malformed */ }
+
+    // The first version only remembered the ledger ticks, under its own key.
+    if (!saved) {
+      try {
+        var ids = JSON.parse(readStore(LEGACY_OFF_STORE) || 'null');
+        if (Array.isArray(ids)) saved = { off: ids };
+      } catch (e) { /* malformed */ }
+    }
+    clearStore(LEGACY_OFF_STORE);
+    if (!saved || typeof saved !== 'object') return;
+
+    var num = function (v, lo, hi) {
+      return (typeof v === 'number' && isFinite(v) && v >= lo && v <= hi) ? v : null;
+    };
+    var v;
+    if ((v = num(saved.budgetOverride, 0, Infinity)) != null) scenario.budgetOverride = v;
+    if ((v = num(saved.pricePerM2, 0, Infinity)) != null) scenario.pricePerM2 = v;
+    if ((v = num(saved.rateKnob, 0, Number($('sc-rate').max))) != null) scenario.rateKnob = v;
+    if ((v = num(saved.dayAdjust, -6, 6)) != null) scenario.dayAdjust = v;
+    if ((v = num(saved.extraToDebt, 0, 1000)) != null) scenario.extraToDebt = v;
+    if ((v = num(saved.horizon, 6, 120)) != null) scenario.horizon = v;
+    if (typeof saved.rollover === 'boolean') scenario.rollover = saved.rollover;
+    if (Array.isArray(saved.off)) {
+      saved.off.forEach(function (id) { if (typeof id === 'string') scenario.off[id] = true; });
+    }
+    if (typeof saved.currency === 'string' &&
+        document.querySelector('.cur-btn[data-cur="' + saved.currency + '"]')) {
+      currency = saved.currency;
+    }
+  }
+
+  function syncCurrencyButtons() {
+    Array.prototype.forEach.call(document.querySelectorAll('.cur-btn'), function (b) {
+      var on = b.dataset.cur === currency;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
   }
 
   /* ------------------------------------------------------------- scenario */
@@ -1656,6 +1701,7 @@
     else renderLedger();
     renderFoot();
     syncScenarioUi();
+    saveScenario();
   }
 
   function renderFoot() {
@@ -1711,11 +1757,7 @@
       var btn = ev.target.closest('.cur-btn');
       if (!btn || btn.dataset.cur === currency) return;
       currency = btn.dataset.cur;
-      Array.prototype.forEach.call(document.querySelectorAll('.cur-btn'), function (b) {
-        var on = b.dataset.cur === currency;
-        b.classList.toggle('is-on', on);
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
+      syncCurrencyButtons();
       recompute();
     });
 
@@ -1725,7 +1767,6 @@
       var id = row.dataset.toggle;
       if (scenario.off[id]) delete scenario.off[id];
       else scenario.off[id] = true;
-      saveOff();
       renderLedger();
       recompute();
     });
@@ -1786,7 +1827,6 @@
       scenario.horizon = defaults.horizon;
       scenario.rollover = defaults.rollover;
       scenario.off = Object.create(null);
-      saveOff();
       renderLedger();
       recompute();
     });
@@ -1992,13 +2032,16 @@
     scenario.rateKnob = defaults.rateKnob;
     scenario.horizon = defaults.horizon;
     scenario.rollover = defaults.rollover;
-    scenario.off = loadOff();   // ledger ticks from the last visit
 
     // Slider spans zero to double the committed rate, in ~100 steps.
     var rateMax = Math.max(1, Math.ceil(defaults.rateKnob * 2));
     $('sc-rate').max = String(rateMax);
     $('sc-rate').step = rateMax <= 200 ? '1' : '5';
     $('sc-rate-label').textContent = w.hourlyRate != null ? 'Hourly rate' : 'Day rate';
+
+    // After the slider bounds, which the saved values are checked against.
+    loadScenario();
+    syncCurrencyButtons();
 
     bind();
     renderLedger();
