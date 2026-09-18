@@ -34,7 +34,7 @@
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=d4141f3" />
+  <link rel="stylesheet" href="styles.css?v=846d955" />
   <script type="importmap">
   {
     "imports": {
@@ -53,6 +53,9 @@
       <div class="fail" id="fail" hidden>
         Could not start the 3D view — three.js did not load.
       </div>
+      <!-- Sits over the gizmo's corner of the canvas and takes its taps,
+           so snapping a view never fights the orbit drag underneath. -->
+      <div class="gizmo-hit" id="gizmo-hit" title="Snap to an axis"></div>
     </div>
 
     <header class="hud hud--top">
@@ -68,12 +71,15 @@
       <button type="button" class="ghost is-on" id="t-faces">Faces</button>
       <button type="button" class="ghost is-on" id="t-floors">Floors</button>
       <button type="button" class="ghost is-on" id="t-dots">Dots</button>
-      <button type="button" class="ghost is-on" id="t-grid">Grid</button>
+      <button type="button" class="ghost is-on" id="t-grid">Ground</button>
       <button type="button" class="ghost" id="t-spin">Spin</button>
+      <span class="axis-key" id="axis-key">
+        <b class="ax-x">X</b> east · <b class="ax-y">Y</b> up · <b class="ax-z">Z</b> south
+      </span>
     </footer>
   </main>
 
-  <script src="plan.js?v=d4141f3"></script>
-  <script type="module" src="app.js?v=d4141f3"></script>
+  <script src="plan.js?v=846d955"></script>
+  <script type="module" src="app.js?v=846d955"></script>
 </body>
 </html>
