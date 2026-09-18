@@ -37,30 +37,41 @@ window.HOUSE_PLAN = {
     ],
     /* In front of the house only — between `from` and `to` across the
      * front — the ground is cut to this profile instead: dropped to the
-     * garage floor at the door, level out to the wall, then down. */
+     * garage floor at the door, level out to the wall, then down. That
+     * is the apron; the driveway beyond it is the swept path below. */
     cut: {
       from: -2,
-      to: 18,
+      to: 6,
       profile: [
         [0, -3],   // straight down at the door, to the garage floor
-        [6, -3],   // the driveway, level out to the wall
+        [6, -3],   // the apron, level out to the wall
         [6, -6],   // the retaining wall: straight down 3 m
         [9, -6],   // and level beyond
       ],
-      /* Past `from` across the front the cut floor descends, reaching
-       * `drop` lower at `to` — the driveway running on along the house
-       * and down the hill — but never below the profile's last level,
-       * so the wall at its edge shrinks to nothing as the two meet. The
-       * ramp is only `dFrom` metres out and beyond; nearer the house the
-       * natural slope stands, which is the face the driveway is carved
-       * into. */
-      ramp: { from: 6, to: 15, drop: 3, dFrom: 2.7 },
-      /* The inside corner where the apron turns onto the ramp is cut
-       * back in a quarter-round of this radius, so a car can swing out
-       * of the garage without clipping the hill. The floor and the wall
-       * along it are derived from the terrain, not listed as works. */
-      fillet: { r: 2.7 },
     },
+  },
+
+  /* The driveway, as the route a car takes: a smooth curve through
+   * these [x, z, level] points, `width` wide. The floor is swept along
+   * it, the level eases between the points, and the walls come from
+   * the ground itself — a cut wall wherever the hill stands above the
+   * floor, a fill wall wherever the ground falls below it — so moving
+   * a point moves everything. Runs from the road, up the hill, and
+   * swings onto the apron in front of the door. */
+  driveway: {
+    width: 3,
+    path: [
+      [18, 23, -6],     // on the road, heading toward the house
+      [17.5, 19.5, -6],
+      [15.5, 17, -6],   // leaving the road
+      [14.5, 15, -6],   // foot of the climb
+      [14.5, 12.5, -5.3],
+      [14.5, 10, -4.4],
+      [14.5, 7.5, -3.5],
+      [14, 5.5, -3],    // top: swinging toward the door
+      [12.5, 3.8, -3],
+      [11, 3, -3],      // in front of the garage door
+    ],
   },
 
   /* Built things that are not a level, drawn the same way as the levels.
@@ -69,19 +80,8 @@ window.HOUSE_PLAN = {
    * lower than the z0 end — a sloping slab, a tapering wall. */
   works: [
     { id: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
-    { id: 'driveway', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 6 },
-    { id: 'driveway-ramp', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 6, z1: 15, y0: -3.1, y1: -2.9, y0End: -6.1, y1End: -5.9 },
-    { id: 'retainer', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: -2, z1: 6 },
-    { id: 'retainer-ramp', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 15, y0: -6, y1: -2.9, y1End: -5.9 },
-    /* The uphill side of the ramp is the opposite shape: the cut face
-     * beside the driveway grows from nothing to 3 m, so this wall's top
-     * stays at the natural ground while its foot goes down with the
-     * driveway. It stands in the 30 cm the cut is widened by. */
-    { id: 'retainer-uphill', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 8.7, z1: 15, y0: -4.0, y1: -2.7, y0End: -6.1 },
-    /* At the foot of the ramp a 3 × 3 pad to turn on, at road level, and
-     * the uphill wall carries on beside it at its full 3 m. */
-    { id: 'turning-pad', name: 'Turning pad', x0: 13, x1: 16, z0: 15, z1: 18, y0: -6.1, y1: -5.9 },
-    { id: 'retainer-uphill-pad', name: 'Mini retaining wall, beside the pad', x0: 12.7, x1: 13, z0: 15, z1: 18, y0: -6.1, y1: -2.7 },
+    { id: 'apron', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 6 },
+    { id: 'retainer', name: 'Retaining wall, along the apron', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: -2, z1: 6 },
     /* The road, parallel to the wall along its outer face. `frame: false`
      * keeps its 30 m out of the camera's Fit, so the house stays the
      * subject. */
