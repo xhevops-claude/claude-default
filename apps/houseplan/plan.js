@@ -32,15 +32,15 @@ window.HOUSE_PLAN = {
     front: '+X',
     backLevel: 0,
     profile: [
-      [3, -3],   // 45° down across the pushed-out garage, corner to corner
-      [6, -3],   // level fill under the apron
-      [6, -6],   // the retaining wall: straight down 3 m
+      [6, -6],   // one 45° fall: across the garage corner to corner, on under the apron, to the foot of the wall
       [9, -6],   // and level beyond
     ],
   },
 
-  /* Built ground that is not a level, drawn the same way as the levels.
-   * World coordinates: x0..x1 along X, z0..z1 along Z, y0..y1 up. */
+  /* Built things that are not a level, drawn the same way as the levels.
+   * The apron carries the garage floor on out over the slope, and the
+   * wall at its end stands on the ground 3 m below it. World
+   * coordinates: x0..x1 along X, z0..z1 along Z, y0..y1 up. */
   works: [
     { id: 'apron', name: 'Garage apron', x0: 13, x1: 16, y0: -3.1, y1: -2.9, z0: 0, z1: 6 },
     { id: 'retainer', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: 0, z1: 6 },
