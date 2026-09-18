@@ -18,12 +18,11 @@ const fmt = (n) => n.toFixed(2).replace(/\.?0+$/, '');
 /* ── what the box is ──────────────────────────────────── */
 
 const levels = PLAN.levels;
-const extT = PLAN.extWall ?? 0.3;
 const e = PLAN.envelope;
 
 const BOX = {
-  x0: e.x0 - extT / 2, x1: e.x1 + extT / 2,
-  z0: e.y0 - extT / 2, z1: e.y1 + extT / 2,
+  x0: e.x0, x1: e.x1,
+  z0: e.y0, z1: e.y1,
   y0: levels[0].elevation - SLAB,
   y1: levels[levels.length - 1].elevation + levels[levels.length - 1].height,
 };
@@ -41,8 +40,20 @@ const plates = [
   BOX.y1,
 ].filter((y, i, a) => a.indexOf(y) === i).sort((a, b) => a - b);
 
+/* Ground level at a given z. Flat behind the house, a straight fall
+   across its depth, flat again in front — a cut-and-fill site rather
+   than a hillside that keeps going down forever. */
+const TER = PLAN.terrain;
+function groundY(z) {
+  if (!TER) return BOX.y0;
+  const raw = (z - BOX.z0) / (BOX.z1 - BOX.z0);
+  const t = TER.front === '-Z' ? 1 - raw : raw;
+  return TER.backLevel - TER.drop * Math.min(1, Math.max(0, t));
+}
+
 $('wf-name').textContent = PLAN.name;
-$('wf-dims').textContent = `${fmt(BOX.w)} × ${fmt(BOX.d)} × ${fmt(BOX.h)} m · ${levels.length} levels`;
+$('wf-dims').textContent = `${fmt(BOX.w)} × ${fmt(BOX.d)} × ${fmt(BOX.h)} m · ${levels.length} levels`
+  + (TER ? ` · site falls ${fmt(TER.drop)} m to ${TER.front}` : '');
 
 /* ── scene ────────────────────────────────────────────── */
 
@@ -136,11 +147,53 @@ async function boot() {
   );
   scene.add(dots);
 
-  /* ── ground ─────────────────────────────────────────── */
+  /* ── the site ───────────────────────────────────────── */
 
-  const grid = new THREE.GridHelper(60, 60, 0x2a4450, 0x14242c);
-  grid.position.set(BOX.cx, BOX.y0, BOX.cz);
-  scene.add(grid);
+  /* A grid of lines laid on groundY(), so the slope is something you
+     can read rather than something you have to be told about. */
+  const ground = new THREE.Group();
+  const EXT = 20, STEP = 1;
+  const xs = [], zs = [];
+  for (let x = Math.round(BOX.cx - EXT); x <= BOX.cx + EXT; x += STEP) xs.push(x);
+  for (let z = Math.round(BOX.cz - EXT); z <= BOX.cz + EXT; z += STEP) zs.push(z);
+  /* Sample the breakpoints too, or the ramp's shoulders get rounded off. */
+  for (const z of [BOX.z0, BOX.z1]) if (!zs.includes(z)) zs.push(z);
+  zs.sort((a, b) => a - b);
+
+  const gridPts = [];
+  for (const z of zs) {
+    gridPts.push(xs[0], groundY(z), z, xs[xs.length - 1], groundY(z), z);
+  }
+  for (const x of xs) {
+    for (let i = 0; i < zs.length - 1; i++) {
+      gridPts.push(x, groundY(zs[i]), zs[i], x, groundY(zs[i + 1]), zs[i + 1]);
+    }
+  }
+  ground.add(new THREE.LineSegments(
+    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gridPts, 3)),
+    new THREE.LineBasicMaterial({ color: 0x2a4450, transparent: true, opacity: 0.55 }),
+  ));
+
+  /* Where the ground meets the walls — the line the garage rises out of.
+     groundY is linear across the house, so this is four straight edges. */
+  const gradeCorners = [
+    [BOX.x0, groundY(BOX.z0), BOX.z0], [BOX.x1, groundY(BOX.z0), BOX.z0],
+    [BOX.x1, groundY(BOX.z1), BOX.z1], [BOX.x0, groundY(BOX.z1), BOX.z1],
+  ];
+  const gradePts = [];
+  for (let i = 0; i < 4; i++) gradePts.push(...gradeCorners[i], ...gradeCorners[(i + 1) % 4]);
+  ground.add(new THREE.LineSegments(
+    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gradePts, 3)),
+    new THREE.LineBasicMaterial({ color: 0xffb454, transparent: true, opacity: 0.95 }),
+  ));
+  ground.add(new THREE.Points(
+    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gradeCorners.flat(), 3)),
+    new THREE.PointsMaterial({
+      color: 0xffcf8a, size: 7, sizeAttenuation: false,
+      map: dotTexture(THREE), transparent: true, alphaTest: 0.35, depthWrite: false,
+    }),
+  ));
+  scene.add(ground);
 
   /* ── axis gizmo ─────────────────────────────────────── */
 
@@ -198,7 +251,7 @@ async function boot() {
   toggle('t-faces', 'faces', (v) => { faces.visible = v; });
   toggle('t-floors', 'floors', (v) => { floors.visible = v; });
   toggle('t-dots', 'dots', (v) => { dots.visible = v; });
-  toggle('t-grid', 'grid', (v) => { grid.visible = v; });
+  toggle('t-grid', 'grid', (v) => { ground.visible = v; });
   toggle('t-spin', 'spin', (v) => { controls.autoRotate = v; });
 
   function fit() {
