@@ -46,7 +46,11 @@ const VOLS = PLAN.levels.map((l) => {
 
 for (const w of PLAN.works || []) VOLS.push({ ...w });
 
-const span = (key, fn) => fn(...VOLS.flatMap((v) => [v[key], v[`${key}End`] ?? v[key]]));
+/* The camera frames everything except volumes that ask to be left out
+   of it — a road that runs off the edge of the site would otherwise
+   shrink the house to a speck. */
+const FRAMED = VOLS.filter((v) => v.frame !== false);
+const span = (key, fn) => fn(...FRAMED.flatMap((v) => [v[key], v[`${key}End`] ?? v[key]]));
 const BOX = {
   x0: span('x0', Math.min), x1: span('x1', Math.max),
   z0: span('z0', Math.min), z1: span('z1', Math.max),
