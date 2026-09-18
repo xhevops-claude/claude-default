@@ -59,12 +59,18 @@
         inputmode="numeric" spellcheck="false" placeholder="PIN" aria-label="PIN">
       <button class="lock-btn-go" type="submit">Unlock</button>
       <p class="lock-error" id="lock-error" role="status"></p>
+      <button class="lock-quit" id="lock-quit" type="button">Leave without unlocking</button>
     </form>
   </div>
 
   <div id="app">
     <header id="top-header">
       <div class="hdr-brand">
+        <button id="quit-btn" class="icon-btn" type="button" aria-label="Quit — back to the arcade, data stays unlocked">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7"/>
+          </svg>
+        </button>
         <span class="hdr-icon" aria-hidden="true">📈</span>
         <span class="hdr-title">Forecast</span>
       </div>

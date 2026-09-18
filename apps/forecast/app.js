@@ -1995,6 +1995,18 @@
     location.reload();
   }
 
+  /* Quit just leaves — the cached key and the remembered scenario stay, so the
+   * next open lands straight back in the numbers. Forgetting is the lock
+   * button's job. Inside the shell the parent closes the frame; standalone,
+   * this is a plain link home. */
+  function quitApp() {
+    if (window.self !== window.top) {
+      try { window.parent.postMessage({ type: 'close-game' }, '*'); } catch (e) { /* no parent */ }
+    } else {
+      location.href = '../../';
+    }
+  }
+
   function load() {
     if (!window.crypto || !crypto.subtle) {
       return Promise.reject(new Error(
@@ -2009,6 +2021,10 @@
       });
     });
   }
+
+  // Both ways out are live before the data is — the lock screen has one too.
+  $('quit-btn').addEventListener('click', quitApp);
+  $('lock-quit').addEventListener('click', quitApp);
 
   load().then(function (loaded) {
     data = loaded;
