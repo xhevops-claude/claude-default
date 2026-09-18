@@ -54,7 +54,7 @@ window.HOUSE_PLAN = {
        * ramp is only `dFrom` metres out and beyond; nearer the house the
        * natural slope stands, which is the face the driveway is carved
        * into. */
-      ramp: { from: 6, to: 15, drop: 3, dFrom: 3 },
+      ramp: { from: 6, to: 15, drop: 3, dFrom: 2.7 },
     },
   },
 
@@ -68,5 +68,10 @@ window.HOUSE_PLAN = {
     { id: 'driveway-ramp', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 6, z1: 15, y0: -3.1, y1: -2.9, y0End: -6.1, y1End: -5.9 },
     { id: 'retainer', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: 0, z1: 6 },
     { id: 'retainer-ramp', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 15, y0: -6, y1: -2.9, y1End: -5.9 },
+    /* The uphill side of the ramp is the opposite shape: the cut face
+     * beside the driveway grows from nothing to 3 m, so this wall's top
+     * stays at the natural ground while its foot goes down with the
+     * driveway. It stands in the 30 cm the cut is widened by. */
+    { id: 'retainer-uphill', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 6, z1: 15, y0: -3.1, y1: -2.9, y0End: -6.1 },
   ],
 };
