@@ -61,21 +61,31 @@ BOX.r = Math.hypot(BOX.x1 - BOX.x0, BOX.y1 - BOX.y0, BOX.z1 - BOX.z0) / 2;
    the downhill face it follows terrain.profile: straight runs between
    its points, and a vertical step where two points share a distance.
    At a step the lower side wins, so a sample on the line lands at the
-   foot of the wall, not the top. */
+   foot of the wall, not the top. Inside terrain.cut's band across the
+   front, the cut's own profile is used instead — that is the driveway
+   dug into the slope in front of the garage, and only there. */
 const FACE = !TER ? 0 : FRONT.axis === 'x'
   ? (FRONT.sign > 0 ? e.x1 : e.x0)
   : (FRONT.sign > 0 ? e.y1 : e.y0);
 const PROFILE = TER ? [[0, TER.backLevel], ...TER.profile] : [];
+const CUT = TER?.cut ? { ...TER.cut, profile: [[0, TER.backLevel], ...TER.cut.profile] } : null;
+
+function sampleProfile(prof, d) {
+  let i = 0;
+  while (i + 1 < prof.length && prof[i + 1][0] <= d) i++;
+  const [d0, y0] = prof[i];
+  if (i + 1 >= prof.length || d <= d0) return y0;
+  const [d1, y1] = prof[i + 1];
+  return y0 + ((y1 - y0) * (d - d0)) / (d1 - d0);
+}
 
 function groundY(x, z) {
   if (!TER) return BOX.y0;
-  const d = ((FRONT.axis === 'x' ? x : z) - FACE) * FRONT.sign;
-  let i = 0;
-  while (i + 1 < PROFILE.length && PROFILE[i + 1][0] <= d) i++;
-  const [d0, y0] = PROFILE[i];
-  if (i + 1 >= PROFILE.length || d <= d0) return y0;
-  const [d1, y1] = PROFILE[i + 1];
-  return y0 + ((y1 - y0) * (d - d0)) / (d1 - d0);
+  const along = FRONT.axis === 'x' ? x : z;
+  const across = FRONT.axis === 'x' ? z : x;
+  const d = (along - FACE) * FRONT.sign;
+  const inCut = CUT && across >= CUT.from && across <= CUT.to;
+  return sampleProfile(inCut ? CUT.profile : PROFILE, d);
 }
 
 const pushed = PLAN.levels.find((l) => l.extendFront);
@@ -179,15 +189,20 @@ async function boot() {
   const xs = [], zs = [];
   for (let x = Math.round(BOX.cx - EXT); x <= BOX.cx + EXT; x += 1) xs.push(x);
   for (let z = Math.round(BOX.cz - EXT); z <= BOX.cz + EXT; z += 1) zs.push(z);
-  /* Sample every bend of the profile too, or the shoulders get rounded
-     off — and a hair before each step, so the drop is drawn as a wall. */
+  /* Sample every bend of the profiles too, or the shoulders get rounded
+     off — and a hair before each step, so a drop is drawn as a wall.
+     The cut's edges across the front get the same treatment. */
   if (TER) {
     const along = FRONT.axis === 'x' ? xs : zs;
-    PROFILE.forEach(([d], i) => {
-      const p = FACE + FRONT.sign * d;
-      if (i && PROFILE[i - 1][0] === d) along.push(p - FRONT.sign * 0.001);
-      if (!along.includes(p)) along.push(p);
-    });
+    const across = FRONT.axis === 'x' ? zs : xs;
+    for (const prof of [PROFILE, CUT ? CUT.profile : []]) {
+      prof.forEach(([d], i) => {
+        const p = FACE + FRONT.sign * d;
+        if (i && prof[i - 1][0] === d) along.push(p - FRONT.sign * 0.001);
+        if (!along.includes(p)) along.push(p);
+      });
+    }
+    if (CUT) across.push(CUT.from - 0.001, CUT.from, CUT.to, CUT.to + 0.001);
   }
   xs.sort((a, b) => a - b);
   zs.sort((a, b) => a - b);
