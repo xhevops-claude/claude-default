@@ -22,12 +22,13 @@ window.HOUSE_PLAN = {
     { id: 'first', name: 'First floor', elevation: 2.9, height: 2.7 },
   ],
 
-  /* The site falls across the depth of the house: earth up to the ground
-   * floor at the back, three metres lower at the front, so the garage is
-   * buried on one side and stands clear on the other. `front` is the
-   * downhill face — flip it to '-Z' to put the slope the other way. */
+  /* The site falls across the house: earth up to the ground floor at
+   * the back, three metres lower at the front, so the garage is buried
+   * on one side and stands clear on the other. `front` is the downhill
+   * face — '+X', '-X', '+Z' or '-Z' — and `extendFront` pushes out of
+   * that same face. */
   terrain: {
-    front: '+Z',
+    front: '+X',
     backLevel: 0,
     drop: 3,
   },

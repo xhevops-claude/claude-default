@@ -19,19 +19,29 @@ const fmt = (n) => n.toFixed(2).replace(/\.?0+$/, '');
 
 /* ── what the box is ──────────────────────────────────── */
 
+/* The downhill face: which world axis the site falls along, and which
+   way. '+X' means the ground is lowest at the x1 end. */
+const FRONT = {
+  axis: (TER?.front || '+Z').toUpperCase().includes('X') ? 'x' : 'z',
+  sign: (TER?.front || '+Z').startsWith('-') ? -1 : 1,
+};
+
 /* One solid per level, stacked without gaps: a level owns the slab
-   under it, so its underside meets the top of the level below. */
+   under it, so its underside meets the top of the level below. A level
+   with `extendFront` is pushed out of the downhill face by that much. */
 const VOLS = PLAN.levels.map((l) => {
   const out = l.extendFront || 0;
-  const back = TER && TER.front === '-Z';
-  return {
+  const v = {
     name: l.name,
-    x0: e.x0, x1: e.x1,
-    z0: back ? e.y0 - out : e.y0,
-    z1: back ? e.y1 : e.y1 + out,
+    x0: e.x0, x1: e.x1, z0: e.y0, z1: e.y1,
     y0: l.elevation - SLAB,
     y1: l.elevation + l.height,
   };
+  if (out) {
+    const lo = FRONT.axis === 'x' ? 'x0' : 'z0', hi = FRONT.axis === 'x' ? 'x1' : 'z1';
+    if (FRONT.sign > 0) v[hi] += out; else v[lo] -= out;
+  }
+  return v;
 });
 
 const span = (key, fn) => fn(...VOLS.map((v) => v[key]));
@@ -45,14 +55,16 @@ BOX.cy = (BOX.y0 + BOX.y1) / 2;
 BOX.cz = (BOX.z0 + BOX.z1) / 2;
 BOX.r = Math.hypot(BOX.x1 - BOX.x0, BOX.y1 - BOX.y0, BOX.z1 - BOX.z0) / 2;
 
-/* Ground level at a given z. Flat behind the house, a straight fall
-   across the envelope's depth, flat again in front — a cut-and-fill
-   site rather than a hillside that keeps going down forever. Anything
-   a level pushes out past the envelope lands on that lower flat. */
-function groundY(z) {
+/* Ground level at a point. Flat behind the house, a straight fall
+   across the envelope along the front axis, flat again in front — a
+   cut-and-fill site rather than a hillside that keeps going down
+   forever. Anything a level pushes out past the envelope lands on
+   that lower flat. */
+function groundY(x, z) {
   if (!TER) return BOX.y0;
-  const raw = (z - e.y0) / (e.y1 - e.y0);
-  const t = TER.front === '-Z' ? 1 - raw : raw;
+  const [p, p0, p1] = FRONT.axis === 'x' ? [x, e.x0, e.x1] : [z, e.y0, e.y1];
+  const raw = (p - p0) / (p1 - p0);
+  const t = FRONT.sign < 0 ? 1 - raw : raw;
   return TER.backLevel - TER.drop * Math.min(1, Math.max(0, t));
 }
 
@@ -158,50 +170,27 @@ async function boot() {
   for (let x = Math.round(BOX.cx - EXT); x <= BOX.cx + EXT; x += 1) xs.push(x);
   for (let z = Math.round(BOX.cz - EXT); z <= BOX.cz + EXT; z += 1) zs.push(z);
   /* Sample the ramp's shoulders too, or they get rounded off. */
+  for (const x of [e.x0, e.x1]) if (!xs.includes(x)) xs.push(x);
   for (const z of [e.y0, e.y1]) if (!zs.includes(z)) zs.push(z);
+  xs.sort((a, b) => a - b);
   zs.sort((a, b) => a - b);
 
+  /* Every line is walked sample by sample in both directions, so the
+     grid bends with the ground whichever axis the fall is on. */
   const gridPts = [];
-  for (const z of zs) gridPts.push(xs[0], groundY(z), z, xs[xs.length - 1], groundY(z), z);
+  for (const z of zs) {
+    for (let i = 0; i < xs.length - 1; i++) {
+      gridPts.push(xs[i], groundY(xs[i], z), z, xs[i + 1], groundY(xs[i + 1], z), z);
+    }
+  }
   for (const x of xs) {
     for (let i = 0; i < zs.length - 1; i++) {
-      gridPts.push(x, groundY(zs[i]), zs[i], x, groundY(zs[i + 1]), zs[i + 1]);
+      gridPts.push(x, groundY(x, zs[i]), zs[i], x, groundY(x, zs[i + 1]), zs[i + 1]);
     }
   }
   ground.add(segments(gridPts, new THREE.LineBasicMaterial({
     color: 0x2a4450, transparent: true, opacity: 0.55,
   })));
-
-  /* Where the earth meets the building: the outline of everything that
-     touches the ground, laid on groundY(). Broken at the ramp's
-     shoulders so the line follows the slope rather than cutting it. */
-  const outline = [[BOX.x0, BOX.z0], [BOX.x1, BOX.z0], [BOX.x1, BOX.z1], [BOX.x0, BOX.z1]];
-  const gradePts = [];
-  for (let i = 0; i < 4; i++) {
-    const [ax, az] = outline[i], [bx, bz] = outline[(i + 1) % 4];
-    const cuts = [e.y0, e.y1]
-      .filter((z) => z > Math.min(az, bz) && z < Math.max(az, bz))
-      .sort((p, q) => (bz > az ? p - q : q - p));
-    let [px, pz] = [ax, az];
-    for (const z of [...cuts, bz]) {
-      const x = az === bz ? bx : ax;
-      gradePts.push(px, groundY(pz), pz, x, groundY(z), z);
-      [px, pz] = [x, z];
-    }
-  }
-  ground.add(segments(gradePts, new THREE.LineBasicMaterial({
-    color: 0xffb454, transparent: true, opacity: 0.95,
-  })));
-  ground.add(new THREE.Points(
-    new THREE.BufferGeometry().setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(outline.flatMap(([x, z]) => [x, groundY(z), z]), 3),
-    ),
-    new THREE.PointsMaterial({
-      color: 0xffcf8a, size: 7, sizeAttenuation: false,
-      map: dotTexture(THREE), transparent: true, alphaTest: 0.35, depthWrite: false,
-    }),
-  ));
   scene.add(ground);
 
   /* ── axis gizmo ─────────────────────────────────────── */
