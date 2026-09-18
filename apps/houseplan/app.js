@@ -89,6 +89,7 @@ function groundY(x, z) {
   if (d < 0 || !CUT.ramp) return base;
   const r = CUT.ramp;
   const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
+  if (t > 0 && d < (r.dFrom ?? 0)) return sampleProfile(PROFILE, d);
   return Math.max(base - r.drop * t, CUT.profile[CUT.profile.length - 1][1]);
 }
 
@@ -210,7 +211,11 @@ async function boot() {
       });
     }
     if (CUT) across.push(CUT.from - 0.001, CUT.from, CUT.to, CUT.to + 0.001);
-    if (CUT?.ramp) across.push(CUT.ramp.from, CUT.ramp.to);
+    if (CUT?.ramp) {
+      across.push(CUT.ramp.from, CUT.ramp.to);
+      const p = FACE + FRONT.sign * (CUT.ramp.dFrom ?? 0);
+      along.push(p - FRONT.sign * 0.001, p);
+    }
   }
   xs.sort((a, b) => a - b);
   zs.sort((a, b) => a - b);

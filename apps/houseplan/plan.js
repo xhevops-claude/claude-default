@@ -50,8 +50,11 @@ window.HOUSE_PLAN = {
       /* Past `from` across the front the cut floor descends, reaching
        * `drop` lower at `to` — the driveway running on along the house
        * and down the hill — but never below the profile's last level,
-       * so the wall at its edge shrinks to nothing as the two meet. */
-      ramp: { from: 6, to: 15, drop: 3 },
+       * so the wall at its edge shrinks to nothing as the two meet. The
+       * ramp is only `dFrom` metres out and beyond; nearer the house the
+       * natural slope stands, which is the face the driveway is carved
+       * into. */
+      ramp: { from: 6, to: 15, drop: 3, dFrom: 3 },
     },
   },
 
@@ -62,7 +65,7 @@ window.HOUSE_PLAN = {
   works: [
     { id: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
     { id: 'driveway', name: 'Driveway, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: 0, z1: 6 },
-    { id: 'driveway-ramp', name: 'Driveway, down the hill', x0: 10, x1: 16, z0: 6, z1: 15, y0: -3.1, y1: -2.9, y0End: -6.1, y1End: -5.9 },
+    { id: 'driveway-ramp', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 6, z1: 15, y0: -3.1, y1: -2.9, y0End: -6.1, y1End: -5.9 },
     { id: 'retainer', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: 0, z1: 6 },
     { id: 'retainer-ramp', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 15, y0: -6, y1: -2.9, y1End: -5.9 },
   ],
