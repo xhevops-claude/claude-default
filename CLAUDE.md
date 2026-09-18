@@ -338,11 +338,14 @@ bookkeeping behind the opening balance stays whole.
 (used as the ledger toggle key) and `active`. Seed rows Claude invented carry
 `"sample": true`, which paints a "sample" tag and the banner; drop the flag as
 real numbers replace them. What the user changes in the UI is an overlay on the
-committed data, never a write back to it: currency, sliders and the budget and
-target-price fields last only as long as the tab, and the ledger's row toggles
-are the one exception — the excluded ids are kept in localStorage under
-`forecast-ledger-off-v1` (ids only, no figures) so a view survives a reload, and
-Reset in the scenario sheet clears them.
+committed data, never a write back to it — but it does persist: the currency,
+the budget and target-price overrides, the what-if sliders and the ledger's
+excluded ids are kept in localStorage under `forecast-scenario-v1`, saved from
+`recompute()` (every change passes through it) and restored at boot. A slider
+the user never moved is stored as `null`, not its value, so untouched knobs keep
+following the committed data when it changes. Only the user's own overrides go
+in there, never a figure from the vault. Reset in the scenario sheet puts
+everything but the currency back.
 
 ## Conventions worth preserving
 
