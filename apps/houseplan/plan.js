@@ -40,21 +40,30 @@ window.HOUSE_PLAN = {
      * garage floor at the door, level out to the wall, then down. */
     cut: {
       from: 0,
-      to: 6,
+      to: 15,
       profile: [
         [0, -3],   // straight down at the door, to the garage floor
         [6, -3],   // the driveway, level out to the wall
         [6, -6],   // the retaining wall: straight down 3 m
         [9, -6],   // and level beyond
       ],
+      /* Past `from` across the front the cut floor descends, reaching
+       * `drop` lower at `to` — the driveway running on along the house
+       * and down the hill — but never below the profile's last level,
+       * so the wall at its edge shrinks to nothing as the two meet. */
+      ramp: { from: 6, to: 15, drop: 3 },
     },
   },
 
   /* Built things that are not a level, drawn the same way as the levels.
-   * World coordinates: x0..x1 along X, z0..z1 along Z, y0..y1 up. */
+   * World coordinates: x0..x1 along X, z0..z1 along Z, y0..y1 up.
+   * `y0End` / `y1End` set the bottom / top at the z1 end when it sits
+   * lower than the z0 end — a sloping slab, a tapering wall. */
   works: [
     { id: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
-    { id: 'driveway', name: 'Driveway', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: 0, z1: 6 },
+    { id: 'driveway', name: 'Driveway, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: 0, z1: 6 },
+    { id: 'driveway-ramp', name: 'Driveway, down the hill', x0: 10, x1: 16, z0: 6, z1: 15, y0: -3.1, y1: -2.9, y0End: -6.1, y1End: -5.9 },
     { id: 'retainer', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: 0, z1: 6 },
+    { id: 'retainer-ramp', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 15, y0: -6, y1: -2.9, y1End: -5.9 },
   ],
 };

@@ -46,7 +46,7 @@ const VOLS = PLAN.levels.map((l) => {
 
 for (const w of PLAN.works || []) VOLS.push({ ...w });
 
-const span = (key, fn) => fn(...VOLS.map((v) => v[key]));
+const span = (key, fn) => fn(...VOLS.flatMap((v) => [v[key], v[`${key}End`] ?? v[key]]));
 const BOX = {
   x0: span('x0', Math.min), x1: span('x1', Math.max),
   z0: span('z0', Math.min), z1: span('z1', Math.max),
@@ -84,8 +84,12 @@ function groundY(x, z) {
   const along = FRONT.axis === 'x' ? x : z;
   const across = FRONT.axis === 'x' ? z : x;
   const d = (along - FACE) * FRONT.sign;
-  const inCut = CUT && across >= CUT.from && across <= CUT.to;
-  return sampleProfile(inCut ? CUT.profile : PROFILE, d);
+  if (!CUT || across < CUT.from || across > CUT.to) return sampleProfile(PROFILE, d);
+  const base = sampleProfile(CUT.profile, d);
+  if (d < 0 || !CUT.ramp) return base;
+  const r = CUT.ramp;
+  const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
+  return Math.max(base - r.drop * t, CUT.profile[CUT.profile.length - 1][1]);
 }
 
 const pushed = PLAN.levels.find((l) => l.extendFront);
@@ -147,27 +151,30 @@ async function boot() {
     side: THREE.DoubleSide, depthWrite: false,
   });
 
+  /* A volume's z1 end may sit lower than its z0 end (y0End / y1End),
+     so every corner carries its own bottom and top. */
   const dotPos = [];
   for (const v of VOLS) {
     const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
+    const bot = corners.map(([, z]) => (z === v.z1 ? v.y0End ?? v.y0 : v.y0));
+    const top = corners.map(([, z]) => (z === v.z1 ? v.y1End ?? v.y1 : v.y1));
 
-    const glass = new THREE.Mesh(new THREE.BoxGeometry(v.x1 - v.x0, v.y1 - v.y0, v.z1 - v.z0), glassMat);
-    glass.position.set((v.x0 + v.x1) / 2, (v.y0 + v.y1) / 2, (v.z0 + v.z1) / 2);
-    faces.add(glass);
+    faces.add(new THREE.Mesh(hexa(THREE, corners, bot, top), glassMat));
 
     const uprights = [];
-    for (const [x, z] of corners) uprights.push(x, v.y0, z, x, v.y1, z);
+    corners.forEach(([x, z], i) => uprights.push(x, bot[i], z, x, top[i], z));
     edges.add(segments(uprights, lineMat(0.95)));
 
     const plates = [];
-    for (const y of [v.y0, v.y1]) {
+    for (const ys of [bot, top]) {
       for (let i = 0; i < 4; i++) {
-        plates.push(corners[i][0], y, corners[i][1], corners[(i + 1) % 4][0], y, corners[(i + 1) % 4][1]);
+        const j = (i + 1) % 4;
+        plates.push(corners[i][0], ys[i], corners[i][1], corners[j][0], ys[j], corners[j][1]);
       }
     }
     floors.add(segments(plates, lineMat(0.6)));
 
-    for (const y of [v.y0, v.y1]) for (const [x, z] of corners) dotPos.push(x, y, z);
+    for (const ys of [bot, top]) corners.forEach(([x, z], i) => dotPos.push(x, ys[i], z));
   }
   scene.add(faces, edges, floors);
 
@@ -203,6 +210,7 @@ async function boot() {
       });
     }
     if (CUT) across.push(CUT.from - 0.001, CUT.from, CUT.to, CUT.to + 0.001);
+    if (CUT?.ramp) across.push(CUT.ramp.from, CUT.ramp.to);
   }
   xs.sort((a, b) => a - b);
   zs.sort((a, b) => a - b);
@@ -380,6 +388,27 @@ async function boot() {
   })();
 
   hideLoader();
+}
+
+/* Six faces over four bottom and four top corners — a box whose ends
+   need not be level. Winding is irrelevant: the glass is double-sided
+   and unlit. */
+function hexa(THREE, corners, bot, top) {
+  const v = [];
+  corners.forEach(([x, z], i) => v.push(x, bot[i], z));
+  corners.forEach(([x, z], i) => v.push(x, top[i], z));
+  const idx = [
+    0, 1, 2, 0, 2, 3,   // bottom
+    4, 5, 6, 4, 6, 7,   // top
+  ];
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    idx.push(i, j, j + 4, i, j + 4, i + 4);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  geo.setIndex(idx);
+  return geo;
 }
 
 /* A round sprite, so the vertices are dots rather than squares. */
