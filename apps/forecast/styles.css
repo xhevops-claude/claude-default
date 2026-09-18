@@ -127,6 +127,21 @@ body.sheet-open { overflow: hidden; }
   margin: 10px 0 0;
 }
 
+/* The way out for someone who opened the app and does not want to unlock. */
+.lock-quit {
+  margin-top: 6px;
+  padding: 8px;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 /* ------------------------------------------------------------------ header */
 
 #top-header {
@@ -147,7 +162,13 @@ body.sheet-open { overflow: hidden; }
   font-size: 19px;
   font-weight: 800;
   letter-spacing: -0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+/* Quit sits with the brand so the header stays two groups: name left, tools right. */
+.hdr-brand .icon-btn { flex: none; margin-right: 2px; }
 
 .hdr-actions { display: flex; align-items: center; gap: 8px; }
 
