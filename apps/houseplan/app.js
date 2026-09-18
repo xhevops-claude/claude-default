@@ -1,9 +1,9 @@
 /* House Wireframe.
  *
- * Deliberately almost nothing: the house as one box, its floor plates,
- * the vertices as dots, and barely-there glass for the walls. Every
- * dimension comes from window.HOUSE_PLAN, so the box grows into the
- * real thing one primitive at a time.
+ * Deliberately almost nothing: a box per level, the vertices as dots,
+ * barely-there glass, and the ground it is cut into. Every dimension
+ * comes from window.HOUSE_PLAN, so the box grows into the real thing
+ * one primitive at a time.
  *
  * Plan coordinates are (x, y) with y running south; three.js gets
  * (x, elevation, y) — plan y becomes world z throughout.
@@ -11,49 +11,56 @@
 
 const PLAN = window.HOUSE_PLAN;
 const SLAB = PLAN.slab || 0.2;
+const TER = PLAN.terrain;
+const e = PLAN.envelope;
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n.toFixed(2).replace(/\.?0+$/, '');
 
 /* ── what the box is ──────────────────────────────────── */
 
-const levels = PLAN.levels;
-const e = PLAN.envelope;
+/* One solid per level, stacked without gaps: a level owns the slab
+   under it, so its underside meets the top of the level below. */
+const VOLS = PLAN.levels.map((l) => {
+  const out = l.extendFront || 0;
+  const back = TER && TER.front === '-Z';
+  return {
+    name: l.name,
+    x0: e.x0, x1: e.x1,
+    z0: back ? e.y0 - out : e.y0,
+    z1: back ? e.y1 : e.y1 + out,
+    y0: l.elevation - SLAB,
+    y1: l.elevation + l.height,
+  };
+});
 
+const span = (key, fn) => fn(...VOLS.map((v) => v[key]));
 const BOX = {
-  x0: e.x0, x1: e.x1,
-  z0: e.y0, z1: e.y1,
-  y0: levels[0].elevation - SLAB,
-  y1: levels[levels.length - 1].elevation + levels[levels.length - 1].height,
+  x0: span('x0', Math.min), x1: span('x1', Math.max),
+  z0: span('z0', Math.min), z1: span('z1', Math.max),
+  y0: span('y0', Math.min), y1: span('y1', Math.max),
 };
-BOX.w = BOX.x1 - BOX.x0;
-BOX.d = BOX.z1 - BOX.z0;
-BOX.h = BOX.y1 - BOX.y0;
 BOX.cx = (BOX.x0 + BOX.x1) / 2;
 BOX.cy = (BOX.y0 + BOX.y1) / 2;
 BOX.cz = (BOX.z0 + BOX.z1) / 2;
-
-/* Every horizontal plate: the underside, each finished floor, the top. */
-const plates = [
-  BOX.y0,
-  ...levels.map((l) => l.elevation),
-  BOX.y1,
-].filter((y, i, a) => a.indexOf(y) === i).sort((a, b) => a - b);
+BOX.r = Math.hypot(BOX.x1 - BOX.x0, BOX.y1 - BOX.y0, BOX.z1 - BOX.z0) / 2;
 
 /* Ground level at a given z. Flat behind the house, a straight fall
-   across its depth, flat again in front — a cut-and-fill site rather
-   than a hillside that keeps going down forever. */
-const TER = PLAN.terrain;
+   across the envelope's depth, flat again in front — a cut-and-fill
+   site rather than a hillside that keeps going down forever. Anything
+   a level pushes out past the envelope lands on that lower flat. */
 function groundY(z) {
   if (!TER) return BOX.y0;
-  const raw = (z - BOX.z0) / (BOX.z1 - BOX.z0);
+  const raw = (z - e.y0) / (e.y1 - e.y0);
   const t = TER.front === '-Z' ? 1 - raw : raw;
   return TER.backLevel - TER.drop * Math.min(1, Math.max(0, t));
 }
 
+const pushed = PLAN.levels.find((l) => l.extendFront);
 $('wf-name').textContent = PLAN.name;
-$('wf-dims').textContent = `${fmt(BOX.w)} × ${fmt(BOX.d)} × ${fmt(BOX.h)} m · ${levels.length} levels`
-  + (TER ? ` · site falls ${fmt(TER.drop)} m to ${TER.front}` : '');
+$('wf-dims').textContent = `${fmt(e.x1 - e.x0)} × ${fmt(e.y1 - e.y0)} × ${fmt(BOX.y1 - BOX.y0)} m`
+  + (pushed ? ` · ${pushed.name.toLowerCase()} out ${fmt(pushed.extendFront)} m to ${TER.front}` : '')
+  + (TER ? ` · site falls ${fmt(TER.drop)} m` : '');
 
 /* ── scene ────────────────────────────────────────────── */
 
@@ -86,58 +93,52 @@ async function boot() {
   controls.dampingFactor = 0.075;
   controls.rotateSpeed = 0.8;
   controls.minDistance = 4;
-  controls.maxDistance = 140;
+  controls.maxDistance = 160;
   controls.autoRotateSpeed = 0.6;
   controls.target.set(BOX.cx, BOX.cy, BOX.cz);
 
   const LINE = 0x8fd8ff;
-
-  /* ── glass ──────────────────────────────────────────── */
-
-  const faces = new THREE.Mesh(
-    new THREE.BoxGeometry(BOX.w, BOX.h, BOX.d),
-    new THREE.MeshBasicMaterial({
-      color: 0xbfe9ff, transparent: true, opacity: 0.045,
-      side: THREE.DoubleSide, depthWrite: false,
-    }),
+  const lineMat = (opacity) => new THREE.LineBasicMaterial({ color: LINE, transparent: true, opacity });
+  const segments = (pts, mat) => new THREE.LineSegments(
+    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)), mat,
   );
-  faces.position.set(BOX.cx, BOX.cy, BOX.cz);
-  scene.add(faces);
 
-  /* ── edges of the box ───────────────────────────────── */
+  /* ── one box per level ──────────────────────────────── */
 
-  const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(faces.geometry),
-    new THREE.LineBasicMaterial({ color: LINE, transparent: true, opacity: 0.95 }),
-  );
-  edges.position.copy(faces.position);
-  scene.add(edges);
-
-  /* ── floor plates ───────────────────────────────────── */
-
-  const floorPts = [];
-  for (const y of plates) {
-    if (y === BOX.y0 || y === BOX.y1) continue; // already drawn as box edges
-    const c = [
-      [BOX.x0, y, BOX.z0], [BOX.x1, y, BOX.z0],
-      [BOX.x1, y, BOX.z1], [BOX.x0, y, BOX.z1],
-    ];
-    for (let i = 0; i < 4; i++) floorPts.push(...c[i], ...c[(i + 1) % 4]);
-  }
-  const floors = new THREE.LineSegments(
-    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(floorPts, 3)),
-    new THREE.LineBasicMaterial({ color: LINE, transparent: true, opacity: 0.4 }),
-  );
-  scene.add(floors);
-
-  /* ── dots at every vertex ───────────────────────────── */
+  /* Uprights and plates go into separate groups: dropping the plates
+     leaves the bare corner sticks, which is a useful thing to look at. */
+  const faces = new THREE.Group();
+  const edges = new THREE.Group();
+  const floors = new THREE.Group();
+  const glassMat = new THREE.MeshBasicMaterial({
+    color: 0xbfe9ff, transparent: true, opacity: 0.045,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
 
   const dotPos = [];
-  for (const y of plates) {
-    for (const [x, z] of [[BOX.x0, BOX.z0], [BOX.x1, BOX.z0], [BOX.x1, BOX.z1], [BOX.x0, BOX.z1]]) {
-      dotPos.push(x, y, z);
+  for (const v of VOLS) {
+    const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
+
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(v.x1 - v.x0, v.y1 - v.y0, v.z1 - v.z0), glassMat);
+    glass.position.set((v.x0 + v.x1) / 2, (v.y0 + v.y1) / 2, (v.z0 + v.z1) / 2);
+    faces.add(glass);
+
+    const uprights = [];
+    for (const [x, z] of corners) uprights.push(x, v.y0, z, x, v.y1, z);
+    edges.add(segments(uprights, lineMat(0.95)));
+
+    const plates = [];
+    for (const y of [v.y0, v.y1]) {
+      for (let i = 0; i < 4; i++) {
+        plates.push(corners[i][0], y, corners[i][1], corners[(i + 1) % 4][0], y, corners[(i + 1) % 4][1]);
+      }
     }
+    floors.add(segments(plates, lineMat(0.6)));
+
+    for (const y of [v.y0, v.y1]) for (const [x, z] of corners) dotPos.push(x, y, z);
   }
+  scene.add(faces, edges, floors);
+
   const dots = new THREE.Points(
     new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(dotPos, 3)),
     new THREE.PointsMaterial({
@@ -152,42 +153,50 @@ async function boot() {
   /* A grid of lines laid on groundY(), so the slope is something you
      can read rather than something you have to be told about. */
   const ground = new THREE.Group();
-  const EXT = 20, STEP = 1;
+  const EXT = 22;
   const xs = [], zs = [];
-  for (let x = Math.round(BOX.cx - EXT); x <= BOX.cx + EXT; x += STEP) xs.push(x);
-  for (let z = Math.round(BOX.cz - EXT); z <= BOX.cz + EXT; z += STEP) zs.push(z);
-  /* Sample the breakpoints too, or the ramp's shoulders get rounded off. */
-  for (const z of [BOX.z0, BOX.z1]) if (!zs.includes(z)) zs.push(z);
+  for (let x = Math.round(BOX.cx - EXT); x <= BOX.cx + EXT; x += 1) xs.push(x);
+  for (let z = Math.round(BOX.cz - EXT); z <= BOX.cz + EXT; z += 1) zs.push(z);
+  /* Sample the ramp's shoulders too, or they get rounded off. */
+  for (const z of [e.y0, e.y1]) if (!zs.includes(z)) zs.push(z);
   zs.sort((a, b) => a - b);
 
   const gridPts = [];
-  for (const z of zs) {
-    gridPts.push(xs[0], groundY(z), z, xs[xs.length - 1], groundY(z), z);
-  }
+  for (const z of zs) gridPts.push(xs[0], groundY(z), z, xs[xs.length - 1], groundY(z), z);
   for (const x of xs) {
     for (let i = 0; i < zs.length - 1; i++) {
       gridPts.push(x, groundY(zs[i]), zs[i], x, groundY(zs[i + 1]), zs[i + 1]);
     }
   }
-  ground.add(new THREE.LineSegments(
-    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gridPts, 3)),
-    new THREE.LineBasicMaterial({ color: 0x2a4450, transparent: true, opacity: 0.55 }),
-  ));
+  ground.add(segments(gridPts, new THREE.LineBasicMaterial({
+    color: 0x2a4450, transparent: true, opacity: 0.55,
+  })));
 
-  /* Where the ground meets the walls — the line the garage rises out of.
-     groundY is linear across the house, so this is four straight edges. */
-  const gradeCorners = [
-    [BOX.x0, groundY(BOX.z0), BOX.z0], [BOX.x1, groundY(BOX.z0), BOX.z0],
-    [BOX.x1, groundY(BOX.z1), BOX.z1], [BOX.x0, groundY(BOX.z1), BOX.z1],
-  ];
+  /* Where the earth meets the building: the outline of everything that
+     touches the ground, laid on groundY(). Broken at the ramp's
+     shoulders so the line follows the slope rather than cutting it. */
+  const outline = [[BOX.x0, BOX.z0], [BOX.x1, BOX.z0], [BOX.x1, BOX.z1], [BOX.x0, BOX.z1]];
   const gradePts = [];
-  for (let i = 0; i < 4; i++) gradePts.push(...gradeCorners[i], ...gradeCorners[(i + 1) % 4]);
-  ground.add(new THREE.LineSegments(
-    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gradePts, 3)),
-    new THREE.LineBasicMaterial({ color: 0xffb454, transparent: true, opacity: 0.95 }),
-  ));
+  for (let i = 0; i < 4; i++) {
+    const [ax, az] = outline[i], [bx, bz] = outline[(i + 1) % 4];
+    const cuts = [e.y0, e.y1]
+      .filter((z) => z > Math.min(az, bz) && z < Math.max(az, bz))
+      .sort((p, q) => (bz > az ? p - q : q - p));
+    let [px, pz] = [ax, az];
+    for (const z of [...cuts, bz]) {
+      const x = az === bz ? bx : ax;
+      gradePts.push(px, groundY(pz), pz, x, groundY(z), z);
+      [px, pz] = [x, z];
+    }
+  }
+  ground.add(segments(gradePts, new THREE.LineBasicMaterial({
+    color: 0xffb454, transparent: true, opacity: 0.95,
+  })));
   ground.add(new THREE.Points(
-    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gradeCorners.flat(), 3)),
+    new THREE.BufferGeometry().setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(outline.flatMap(([x, z]) => [x, groundY(z), z]), 3),
+    ),
     new THREE.PointsMaterial({
       color: 0xffcf8a, size: 7, sizeAttenuation: false,
       map: dotTexture(THREE), transparent: true, alphaTest: 0.35, depthWrite: false,
@@ -255,8 +264,7 @@ async function boot() {
   toggle('t-spin', 'spin', (v) => { controls.autoRotate = v; });
 
   function fit() {
-    const r = Math.hypot(BOX.w, BOX.d, BOX.h) / 2;
-    const dist = (r / Math.sin((camera.fov * Math.PI / 180) / 2)) * 1.25;
+    const dist = (BOX.r / Math.sin((camera.fov * Math.PI / 180) / 2)) * 1.25;
     const dir = new THREE.Vector3(0.75, 0.42, 1).normalize();
     controls.target.set(BOX.cx, BOX.cy, BOX.cz);
     camera.position.copy(controls.target).addScaledVector(dir, dist);
@@ -353,6 +361,21 @@ async function boot() {
   hideLoader();
 }
 
+/* A round sprite, so the vertices are dots rather than squares. */
+function dotTexture(THREE) {
+  const s = 64;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+  g.beginPath();
+  g.arc(s / 2, s / 2, s / 2 - 4, 0, Math.PI * 2);
+  g.fillStyle = '#fff';
+  g.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 /* A filled ball with its letter for +X/+Y/+Z, a hollow one for the
    negative ends — the same read as Unity's scene gizmo. */
 function tipTexture(THREE, hex, label) {
@@ -378,21 +401,6 @@ function tipTexture(THREE, hex, label) {
     g.lineWidth = 10;
     g.stroke();
   }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
-/* A round sprite, so the vertices are dots rather than squares. */
-function dotTexture(THREE) {
-  const s = 64;
-  const c = document.createElement('canvas');
-  c.width = c.height = s;
-  const g = c.getContext('2d');
-  g.beginPath();
-  g.arc(s / 2, s / 2, s / 2 - 4, 0, Math.PI * 2);
-  g.fillStyle = '#fff';
-  g.fill();
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

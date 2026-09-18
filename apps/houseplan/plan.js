@@ -13,8 +13,11 @@ window.HOUSE_PLAN = {
   envelope: { x0: 0, y0: 0, x1: 10, y1: 6 },
   slab: 0.2,
 
+  /* `envelope` is the upper floors. A level can push past it on the
+   * downhill face with `extendFront` — the garage is dug into the back
+   * of the slope and pushed 3 m out of the front of it. */
   levels: [
-    { id: 'garage', name: 'Garage', elevation: -2.9, height: 2.7 },
+    { id: 'garage', name: 'Garage', elevation: -2.9, height: 2.7, extendFront: 3 },
     { id: 'ground', name: 'Ground floor', elevation: 0, height: 2.7 },
     { id: 'first', name: 'First floor', elevation: 2.9, height: 2.7 },
   ],
