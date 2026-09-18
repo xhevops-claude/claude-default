@@ -22,14 +22,17 @@ window.HOUSE_PLAN = {
     { id: 'first', name: 'First floor', elevation: 2.9, height: 2.7 },
   ],
 
-  /* The site falls across the house: earth up to the ground floor at
-   * the back, three metres lower at the front, so the garage is buried
-   * on one side and stands clear on the other. `front` is the downhill
-   * face — '+X', '-X', '+Z' or '-Z' — and `extendFront` pushes out of
-   * that same face. */
+  /* The site is level at the ground floor under the whole house, then
+   * breaks at the downhill face and falls at `angle` until it is `drop`
+   * lower. At 45° that run is 3 m — the same as the garage's push — so
+   * the slope cuts the pushed-out part corner to corner: the earth ends
+   * exactly at the outer edge of the garage floor, and the ceiling
+   * stands 3 m out over it. `front` is the downhill face — '+X', '-X',
+   * '+Z' or '-Z' — and `extendFront` pushes out of that same face. */
   terrain: {
     front: '+X',
     backLevel: 0,
     drop: 3,
+    angle: 45,
   },
 };
