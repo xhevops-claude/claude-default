@@ -44,6 +44,8 @@ const VOLS = PLAN.levels.map((l) => {
   return v;
 });
 
+for (const w of PLAN.works || []) VOLS.push({ ...w });
+
 const span = (key, fn) => fn(...VOLS.map((v) => v[key]));
 const BOX = {
   x0: span('x0', Math.min), x1: span('x1', Math.max),
@@ -55,33 +57,32 @@ BOX.cy = (BOX.y0 + BOX.y1) / 2;
 BOX.cz = (BOX.z0 + BOX.z1) / 2;
 BOX.r = Math.hypot(BOX.x1 - BOX.x0, BOX.y1 - BOX.y0, BOX.z1 - BOX.z0) / 2;
 
-/* Ground level at a point. Level under the whole envelope, then it
-   breaks at the downhill face and falls at `angle` until it has
-   dropped `drop`, then level again. At 45° a 3 m drop runs 3 m — the
-   width of what the garage pushes out — so the fall cuts that part
-   diagonally: earth meets the outer edge of its floor, and its ceiling
-   stands the full 3 m out in the air. */
-const RAMP = (() => {
-  if (!TER) return null;
-  const run = TER.drop / Math.tan((TER.angle ?? 45) * Math.PI / 180);
-  const face = FRONT.axis === 'x'
-    ? (FRONT.sign > 0 ? e.x1 : e.x0)
-    : (FRONT.sign > 0 ? e.y1 : e.y0);
-  return { face, run, toe: face + FRONT.sign * run };
-})();
+/* Ground level at a point. Level under the whole envelope, then from
+   the downhill face it follows terrain.profile: straight runs between
+   its points, and a vertical step where two points share a distance.
+   At a step the lower side wins, so a sample on the line lands at the
+   foot of the wall, not the top. */
+const FACE = !TER ? 0 : FRONT.axis === 'x'
+  ? (FRONT.sign > 0 ? e.x1 : e.x0)
+  : (FRONT.sign > 0 ? e.y1 : e.y0);
+const PROFILE = TER ? [[0, TER.backLevel], ...TER.profile] : [];
 
 function groundY(x, z) {
   if (!TER) return BOX.y0;
-  const p = FRONT.axis === 'x' ? x : z;
-  const t = ((p - RAMP.face) * FRONT.sign) / RAMP.run;
-  return TER.backLevel - TER.drop * Math.min(1, Math.max(0, t));
+  const d = ((FRONT.axis === 'x' ? x : z) - FACE) * FRONT.sign;
+  let i = 0;
+  while (i + 1 < PROFILE.length && PROFILE[i + 1][0] <= d) i++;
+  const [d0, y0] = PROFILE[i];
+  if (i + 1 >= PROFILE.length || d <= d0) return y0;
+  const [d1, y1] = PROFILE[i + 1];
+  return y0 + ((y1 - y0) * (d - d0)) / (d1 - d0);
 }
 
 const pushed = PLAN.levels.find((l) => l.extendFront);
 $('wf-name').textContent = PLAN.name;
 $('wf-dims').textContent = `${fmt(e.x1 - e.x0)} × ${fmt(e.y1 - e.y0)} × ${fmt(BOX.y1 - BOX.y0)} m`
   + (pushed ? ` · ${pushed.name.toLowerCase()} out ${fmt(pushed.extendFront)} m to ${TER.front}` : '')
-  + (TER ? ` · site falls ${fmt(TER.drop)} m at ${fmt(TER.angle ?? 45)}°` : '');
+  + (TER ? ` · site falls ${fmt(TER.backLevel - PROFILE[PROFILE.length - 1][1])} m` : '');
 
 /* ── scene ────────────────────────────────────────────── */
 
@@ -178,10 +179,15 @@ async function boot() {
   const xs = [], zs = [];
   for (let x = Math.round(BOX.cx - EXT); x <= BOX.cx + EXT; x += 1) xs.push(x);
   for (let z = Math.round(BOX.cz - EXT); z <= BOX.cz + EXT; z += 1) zs.push(z);
-  /* Sample the ramp's shoulders too, or they get rounded off. */
-  if (RAMP) {
+  /* Sample every bend of the profile too, or the shoulders get rounded
+     off — and a hair before each step, so the drop is drawn as a wall. */
+  if (TER) {
     const along = FRONT.axis === 'x' ? xs : zs;
-    for (const p of [RAMP.face, RAMP.toe]) if (!along.includes(p)) along.push(p);
+    PROFILE.forEach(([d], i) => {
+      const p = FACE + FRONT.sign * d;
+      if (i && PROFILE[i - 1][0] === d) along.push(p - FRONT.sign * 0.001);
+      if (!along.includes(p)) along.push(p);
+    });
   }
   xs.sort((a, b) => a - b);
   zs.sort((a, b) => a - b);

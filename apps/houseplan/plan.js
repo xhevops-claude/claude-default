@@ -23,16 +23,26 @@ window.HOUSE_PLAN = {
   ],
 
   /* The site is level at the ground floor under the whole house, then
-   * breaks at the downhill face and falls at `angle` until it is `drop`
-   * lower. At 45° that run is 3 m — the same as the garage's push — so
-   * the slope cuts the pushed-out part corner to corner: the earth ends
-   * exactly at the outer edge of the garage floor, and the ceiling
-   * stands 3 m out over it. `front` is the downhill face — '+X', '-X',
-   * '+Z' or '-Z' — and `extendFront` pushes out of that same face. */
+   * cascades down ahead of the downhill face. `profile` is that ground
+   * as [metres out from the face, level], straight between points,
+   * starting from [0, backLevel]; two points at the same distance make
+   * a vertical step. `front` is the downhill face — '+X', '-X', '+Z' or
+   * '-Z' — and `extendFront` pushes out of that same face. */
   terrain: {
     front: '+X',
     backLevel: 0,
-    drop: 3,
-    angle: 45,
+    profile: [
+      [3, -3],   // 45° down across the pushed-out garage, corner to corner
+      [6, -3],   // level fill under the apron
+      [6, -6],   // the retaining wall: straight down 3 m
+      [9, -6],   // and level beyond
+    ],
   },
+
+  /* Built ground that is not a level, drawn the same way as the levels.
+   * World coordinates: x0..x1 along X, z0..z1 along Z, y0..y1 up. */
+  works: [
+    { id: 'apron', name: 'Garage apron', x0: 13, x1: 16, y0: -3.1, y1: -2.9, z0: 0, z1: 6 },
+    { id: 'retainer', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: 0, z1: 6 },
+  ],
 };
