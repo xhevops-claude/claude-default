@@ -46,7 +46,11 @@ const VOLS = PLAN.levels.map((l) => {
 
 for (const w of PLAN.works || []) VOLS.push({ ...w });
 
-const span = (key, fn) => fn(...VOLS.flatMap((v) => [v[key], v[`${key}End`] ?? v[key]]));
+/* The camera frames everything except volumes that ask to be left out
+   of it — a road that runs off the edge of the site would otherwise
+   shrink the house to a speck. */
+const FRAMED = VOLS.filter((v) => v.frame !== false);
+const span = (key, fn) => fn(...FRAMED.flatMap((v) => [v[key], v[`${key}End`] ?? v[key]]));
 const BOX = {
   x0: span('x0', Math.min), x1: span('x1', Math.max),
   z0: span('z0', Math.min), z1: span('z1', Math.max),
@@ -79,6 +83,34 @@ function sampleProfile(prof, d) {
   return y0 + ((y1 - y0) * (d - d0)) / (d1 - d0);
 }
 
+/* The quarter-round cut into the inside corner where the apron turns
+   onto the ramp. The corner is where the ramp's uphill edge meets the
+   apron; the circle's centre sits `r` in from it both ways, so the arc
+   is tangent to both edges. Everything here is in (along, across). */
+const FILLET = (() => {
+  const f = CUT?.fillet, r = CUT?.ramp;
+  if (!f || !r) return null;
+  const corner = { along: FACE + FRONT.sign * (r.dFrom ?? 0), across: r.from };
+  return { r: f.r, corner, centre: { along: corner.along - FRONT.sign * f.r, across: corner.across + f.r } };
+})();
+
+function inFillet(along, across) {
+  if (!FILLET) return false;
+  const { r, corner, centre } = FILLET;
+  const da = (corner.along - along) * FRONT.sign;
+  if (da < 0 || da > r || across < corner.across || across > centre.across) return false;
+  return Math.hypot(along - centre.along, across - centre.across) >= r - 1e-9;
+}
+
+/* The ramp's floor at a position across the front: the apron level,
+   falling past ramp.from, never below the profile's last level. */
+function rampLevel(across) {
+  const r = CUT.ramp;
+  const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
+  const base = sampleProfile(CUT.profile, r.dFrom ?? 0);
+  return Math.max(base - r.drop * t, CUT.profile[CUT.profile.length - 1][1]);
+}
+
 function groundY(x, z) {
   if (!TER) return BOX.y0;
   const along = FRONT.axis === 'x' ? x : z;
@@ -89,7 +121,7 @@ function groundY(x, z) {
   if (d < 0 || !CUT.ramp) return base;
   const r = CUT.ramp;
   const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
-  if (t > 0 && d < (r.dFrom ?? 0)) return sampleProfile(PROFILE, d);
+  if (t > 0 && d < (r.dFrom ?? 0) && !inFillet(along, across)) return sampleProfile(PROFILE, d);
   return Math.max(base - r.drop * t, CUT.profile[CUT.profile.length - 1][1]);
 }
 
@@ -152,30 +184,74 @@ async function boot() {
     side: THREE.DoubleSide, depthWrite: false,
   });
 
-  /* A volume's z1 end may sit lower than its z0 end (y0End / y1End),
-     so every corner carries its own bottom and top. */
+  /* Every solid is a prism over a footprint: a bottom ring and a top
+     ring of [x, y, z], same length, same order. Uprights join them,
+     the rings are the plates, and the glass is the caps (triangulated,
+     so a footprint may be concave — the fillet is) plus the sides. */
   const dotPos = [];
-  for (const v of VOLS) {
-    const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
-    const bot = corners.map(([, z]) => (z === v.z1 ? v.y0End ?? v.y0 : v.y0));
-    const top = corners.map(([, z]) => (z === v.z1 ? v.y1End ?? v.y1 : v.y1));
-
-    faces.add(new THREE.Mesh(hexa(THREE, corners, bot, top), glassMat));
+  function addVolume(bottom, top, withDots = true) {
+    const n = bottom.length;
+    const pos = [...bottom.flat(), ...top.flat()];
+    const idx = [];
+    const tris = THREE.ShapeUtils.triangulateShape(bottom.map(([x, , z]) => new THREE.Vector2(x, z)), []);
+    for (const [a, b, c] of tris) idx.push(a, b, c, a + n, b + n, c + n);
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      idx.push(i, j, j + n, i, j + n, i + n);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setIndex(idx);
+    faces.add(new THREE.Mesh(geo, glassMat));
 
     const uprights = [];
-    corners.forEach(([x, z], i) => uprights.push(x, bot[i], z, x, top[i], z));
+    for (let i = 0; i < n; i++) uprights.push(...bottom[i], ...top[i]);
     edges.add(segments(uprights, lineMat(0.95)));
 
-    const plates = [];
-    for (const ys of [bot, top]) {
-      for (let i = 0; i < 4; i++) {
-        const j = (i + 1) % 4;
-        plates.push(corners[i][0], ys[i], corners[i][1], corners[j][0], ys[j], corners[j][1]);
-      }
+    const rings = [];
+    for (const ring of [bottom, top]) {
+      for (let i = 0; i < n; i++) rings.push(...ring[i], ...ring[(i + 1) % n]);
     }
-    floors.add(segments(plates, lineMat(0.6)));
+    floors.add(segments(rings, lineMat(0.6)));
 
-    for (const ys of [bot, top]) corners.forEach(([x, z], i) => dotPos.push(x, ys[i], z));
+    if (withDots) for (const ring of [bottom, top]) for (const p of ring) dotPos.push(...p);
+  }
+
+  /* A box volume's z1 end may sit lower than its z0 end (y0End / y1End),
+     so every corner carries its own bottom and top. */
+  for (const v of VOLS) {
+    const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
+    addVolume(
+      corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]),
+      corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]),
+    );
+  }
+
+  /* The fillet: its floor is the sliver between the corner and the arc,
+     at the ramp's level; its wall is a 30 cm band along the arc, on the
+     hill side, from the ramp's floor up to the natural ground. */
+  if (FILLET) {
+    const { r, corner, centre } = FILLET;
+    const toXZ = (along, across) => (FRONT.axis === 'x' ? [along, across] : [across, along]);
+    const natural = (along) => sampleProfile(PROFILE, (along - FACE) * FRONT.sign);
+    const arc = (rad, N = 12) => Array.from({ length: N + 1 }, (_, i) => {
+      const th = (i / N) * (Math.PI / 2);
+      return [centre.along + FRONT.sign * rad * Math.sin(th), centre.across - rad * Math.cos(th)];
+    });
+
+    const floorRing = [[corner.along, corner.across], ...arc(r)];
+    addVolume(
+      floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
+      floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) + 0.1, toXZ(a, c)[1]]),
+      false,
+    );
+
+    const wallRing = [...arc(r), ...arc(r - 0.3).reverse()];
+    addVolume(
+      wallRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
+      wallRing.map(([a, c]) => [toXZ(a, c)[0], natural(a), toXZ(a, c)[1]]),
+      false,
+    );
   }
   scene.add(faces, edges, floors);
 
@@ -393,27 +469,6 @@ async function boot() {
   })();
 
   hideLoader();
-}
-
-/* Six faces over four bottom and four top corners — a box whose ends
-   need not be level. Winding is irrelevant: the glass is double-sided
-   and unlit. */
-function hexa(THREE, corners, bot, top) {
-  const v = [];
-  corners.forEach(([x, z], i) => v.push(x, bot[i], z));
-  corners.forEach(([x, z], i) => v.push(x, top[i], z));
-  const idx = [
-    0, 1, 2, 0, 2, 3,   // bottom
-    4, 5, 6, 4, 6, 7,   // top
-  ];
-  for (let i = 0; i < 4; i++) {
-    const j = (i + 1) % 4;
-    idx.push(i, j, j + 4, i, j + 4, i + 4);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
-  geo.setIndex(idx);
-  return geo;
 }
 
 /* A round sprite, so the vertices are dots rather than squares. */
