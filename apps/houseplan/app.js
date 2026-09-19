@@ -118,6 +118,28 @@ function rampT(across) {
   return s * (e / 2 + (t - e));
 }
 
+/* The entrance at the foot of the ramp: a quarter-ellipse cut into the
+   hill, its centre on the outer wall line at the ramp's end, one
+   semi-axis the ramp's width and the other `flare` along the road.
+   Inside it the ground is the ramp's floor; its far edge is the wall.
+   In (d, across), where d is metres out from the house face. */
+const MOUTH = (() => {
+  const m = CUT?.mouth, r = CUT?.ramp;
+  if (!m || !r) return null;
+  /* The outer wall stands at the cut profile's first vertical step. */
+  const step = CUT.profile.find(([d], i) => i && d === CUT.profile[i - 1][0]);
+  const wallD = step ? step[0] : CUT.profile[CUT.profile.length - 1][0];
+  return { a: wallD - (r.dFrom ?? 0), b: m.flare, d0: wallD, across0: r.to };
+})();
+
+function inMouth(d, across) {
+  if (!MOUTH) return false;
+  const u = (across - MOUTH.across0) / MOUTH.b;
+  if (u < 0 || u > 1 || d > MOUTH.d0) return false;
+  const edge = MOUTH.d0 - MOUTH.a * Math.sqrt(Math.max(0, 1 - u * u));
+  return d >= edge;
+}
+
 /* The ramp's floor at a position across the front: the apron level,
    falling past ramp.from, never below the profile's last level. */
 function rampLevel(across) {
@@ -135,9 +157,11 @@ function groundY(x, z) {
   const base = sampleProfile(CUT.profile, d);
   if (d < 0 || !CUT.ramp) return base;
   const r = CUT.ramp;
-  const t = rampT(across);
-  if (across > r.from && d < (r.dFrom ?? 0) && !inFillet(along, across)) return sampleProfile(PROFILE, d);
-  return Math.max(base - r.drop * t, CUT.profile[CUT.profile.length - 1][1]);
+  if (across <= r.from) return base;
+  const floor = CUT.profile[CUT.profile.length - 1][1];
+  if (across > r.to) return inMouth(d, across) ? floor : sampleProfile(PROFILE, d);
+  if (d < (r.dFrom ?? 0) && !inFillet(along, across)) return sampleProfile(PROFILE, d);
+  return Math.max(base - r.drop * rampT(across), floor);
 }
 
 const pushed = PLAN.levels.find((l) => l.extendFront);
@@ -291,6 +315,37 @@ async function boot() {
       wallRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
       wallRing.map(([a, c]) => [toXZ(a, c)[0], natural(a), toXZ(a, c)[1]]),
       { dots: false },
+    );
+  }
+  /* The mouth: its floor is the quarter-ellipse itself, at the ramp's
+     bottom level; its wall a 30 cm band along the arc on the hill side,
+     from the floor up to the natural ground — full height where it
+     leaves the ramp, nothing where it meets the road. */
+  if (MOUTH) {
+    const { a, b, d0, across0 } = MOUTH;
+    const floor = CUT.profile[CUT.profile.length - 1][1];
+    const toXZ = (d, across) => {
+      const along = FACE + FRONT.sign * d;
+      return FRONT.axis === 'x' ? [along, across] : [across, along];
+    };
+    const natural = (d) => sampleProfile(PROFILE, d);
+    const arc = (ra, rb, N = 14) => Array.from({ length: N + 1 }, (_, i) => {
+      const th = (i / N) * (Math.PI / 2);
+      return [d0 - ra * Math.cos(th), across0 + rb * Math.sin(th)];
+    });
+
+    const floorRing = [[d0, across0], ...arc(a, b)];
+    addVolume(
+      floorRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
+      floorRing.map(([d, c]) => [toXZ(d, c)[0], floor + 0.1, toXZ(d, c)[1]]),
+      { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
+    );
+
+    const wallRing = [...arc(a, b), ...arc(a + 0.3, b + 0.3).reverse()];
+    addVolume(
+      wallRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
+      wallRing.map(([d, c]) => [toXZ(d, c)[0], natural(d), toXZ(d, c)[1]]),
+      { dots: false, uprightAt: [0, wallRing.length - 1] },
     );
   }
   scene.add(faces, edges, floors);
