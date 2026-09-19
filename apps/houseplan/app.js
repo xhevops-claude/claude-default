@@ -50,7 +50,7 @@ for (const w of PLAN.works || []) VOLS.push({ ...w });
    of it — a road that runs off the edge of the site would otherwise
    shrink the house to a speck. */
 const FRAMED = VOLS.filter((v) => v.frame !== false);
-const span = (key, fn) => fn(...FRAMED.flatMap((v) => [v[key], v[`${key}End`] ?? v[key]]));
+const span = (key, fn) => fn(...FRAMED.flatMap((v) => [v[key], v[`${key}End`] ?? v[key]]).filter((n) => typeof n === 'number'));
 const BOX = {
   x0: span('x0', Math.min), x1: span('x1', Math.max),
   z0: span('z0', Math.min), z1: span('z1', Math.max),
@@ -102,13 +102,57 @@ function inFillet(along, across) {
   return Math.hypot(along - centre.along, across - centre.across) >= r - 1e-9;
 }
 
+/* How far down the ramp a position across the front is, 0 at the top
+   and 1 at the bottom — with the grade easing in and out over `ease`
+   of the run at each end, so the floor curves into the flats rather
+   than hinging. Between, the grade is constant and steeper by 1/(1-e)
+   to make up the same drop. */
+function rampT(across) {
+  const r = CUT.ramp;
+  const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
+  const e = Math.min(0.5, Math.max(0, r.ease || 0));
+  if (!e) return t;
+  const s = 1 / (1 - e);
+  if (t < e) return (s * t * t) / (2 * e);
+  if (t > 1 - e) return 1 - (s * (1 - t) * (1 - t)) / (2 * e);
+  return s * (e / 2 + (t - e));
+}
+
+/* The entrance at the foot of the ramp: the hill is cut back along a
+   quarter-ellipse centred on the outer wall line at the ramp's end,
+   one semi-axis the ramp's width and the other `flare` along the road.
+   The arc leaves the ramp's uphill edge tangentially, so the wall
+   beside it stays at full height for a while, then sweeps out to meet
+   the road's edge `flare` metres on. Everything between the arc and
+   the outer wall line is the ramp's floor. In (d, across), where d is
+   metres out from the house face. */
+const MOUTH = (() => {
+  const m = CUT?.mouth, r = CUT?.ramp;
+  if (!m || !r) return null;
+  /* The outer wall stands at the cut profile's first vertical step
+     beyond the ramp's uphill edge (the step at the door does not
+     count). */
+  const dFrom = r.dFrom ?? 0;
+  const step = CUT.profile.find(([d], i) => i && d > dFrom && d === CUT.profile[i - 1][0]);
+  const wallD = step ? step[0] : CUT.profile[CUT.profile.length - 1][0];
+  return { a: wallD - dFrom, b: m.flare, d0: wallD, dFrom, across0: r.to };
+})();
+
+function inMouth(d, across) {
+  if (!MOUTH) return false;
+  const { a, b, d0, across0 } = MOUTH;
+  const u = (across - across0) / b;
+  if (u < 0 || u > 1 || d > d0) return false;
+  const edge = d0 - a * Math.sqrt(Math.max(0, 1 - u * u));
+  return d >= edge;
+}
+
 /* The ramp's floor at a position across the front: the apron level,
    falling past ramp.from, never below the profile's last level. */
 function rampLevel(across) {
   const r = CUT.ramp;
-  const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
   const base = sampleProfile(CUT.profile, r.dFrom ?? 0);
-  return Math.max(base - r.drop * t, CUT.profile[CUT.profile.length - 1][1]);
+  return Math.max(base - r.drop * rampT(across), CUT.profile[CUT.profile.length - 1][1]);
 }
 
 function groundY(x, z) {
@@ -120,9 +164,11 @@ function groundY(x, z) {
   const base = sampleProfile(CUT.profile, d);
   if (d < 0 || !CUT.ramp) return base;
   const r = CUT.ramp;
-  const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
-  if (t > 0 && d < (r.dFrom ?? 0) && !inFillet(along, across)) return sampleProfile(PROFILE, d);
-  return Math.max(base - r.drop * t, CUT.profile[CUT.profile.length - 1][1]);
+  if (across <= r.from) return base;
+  const floor = CUT.profile[CUT.profile.length - 1][1];
+  if (across > r.to) return inMouth(d, across) ? floor : sampleProfile(PROFILE, d);
+  if (d < (r.dFrom ?? 0) && !inFillet(along, across)) return sampleProfile(PROFILE, d);
+  return Math.max(base - r.drop * rampT(across), floor);
 }
 
 const pushed = PLAN.levels.find((l) => l.extendFront);
@@ -189,7 +235,7 @@ async function boot() {
      the rings are the plates, and the glass is the caps (triangulated,
      so a footprint may be concave — the fillet is) plus the sides. */
   const dotPos = [];
-  function addVolume(bottom, top, withDots = true) {
+  function addVolume(bottom, top, { dots: withDots = true, uprightAt = null } = {}) {
     const n = bottom.length;
     const pos = [...bottom.flat(), ...top.flat()];
     const idx = [];
@@ -205,7 +251,7 @@ async function boot() {
     faces.add(new THREE.Mesh(geo, glassMat));
 
     const uprights = [];
-    for (let i = 0; i < n; i++) uprights.push(...bottom[i], ...top[i]);
+    for (let i = 0; i < n; i++) if (!uprightAt || uprightAt.includes(i)) uprights.push(...bottom[i], ...top[i]);
     edges.add(segments(uprights, lineMat(0.95)));
 
     const rings = [];
@@ -218,8 +264,33 @@ async function boot() {
   }
 
   /* A box volume's z1 end may sit lower than its z0 end (y0End / y1End),
-     so every corner carries its own bottom and top. */
+     so every corner carries its own bottom and top. A bottom or top
+     given as { floor } follows the ramp, so that volume is walked along
+     the ramp in half-metre steps and drawn as a bent prism — uprights
+     and dots only at its four real corners. */
+  const followsRamp = (v) => typeof v.y0 === 'object' || typeof v.y1 === 'object';
+  const yAt = (spec, across) => (typeof spec === 'number' ? spec : rampLevel(across) + (spec.floor || 0));
   for (const v of VOLS) {
+    if (followsRamp(v) && CUT?.ramp) {
+      const [a0, a1] = FRONT.axis === 'x' ? [v.z0, v.z1] : [v.x0, v.x1];
+      const n = Math.max(2, Math.ceil((a1 - a0) / 0.5) + 1);
+      const steps = Array.from({ length: n }, (_, i) => a0 + ((a1 - a0) * i) / (n - 1));
+      const side = (fixed, list) => list.map((a) => (FRONT.axis === 'x' ? [fixed, a] : [a, fixed]));
+      const lo = FRONT.axis === 'x' ? v.x0 : v.z0, hi = FRONT.axis === 'x' ? v.x1 : v.z1;
+      const ring = [...side(lo, steps), ...side(hi, steps.slice().reverse())];
+      const acrossOf = ([x, z]) => (FRONT.axis === 'x' ? z : x);
+      const cornersAt = [0, n - 1, n, 2 * n - 1];
+      addVolume(
+        ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z])), z]),
+        ring.map(([x, z]) => [x, yAt(v.y1, acrossOf([x, z])), z]),
+        { dots: false, uprightAt: cornersAt },
+      );
+      for (const i of cornersAt) {
+        const [x, z] = ring[i];
+        dotPos.push(x, yAt(v.y0, acrossOf([x, z])), z, x, yAt(v.y1, acrossOf([x, z])), z);
+      }
+      continue;
+    }
     const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
     addVolume(
       corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]),
@@ -243,14 +314,45 @@ async function boot() {
     addVolume(
       floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
       floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) + 0.1, toXZ(a, c)[1]]),
-      false,
+      { dots: false },
     );
 
     const wallRing = [...arc(r), ...arc(r - 0.3).reverse()];
     addVolume(
       wallRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
       wallRing.map(([a, c]) => [toXZ(a, c)[0], natural(a), toXZ(a, c)[1]]),
-      false,
+      { dots: false },
+    );
+  }
+  /* The mouth: its floor is the quarter-ellipse itself, at the ramp's
+     bottom level; its wall a 30 cm band along the arc on the hill side,
+     from the floor up to the natural ground — full height where it
+     leaves the ramp, nothing where it meets the road. */
+  if (MOUTH) {
+    const { a, b, d0, across0 } = MOUTH;
+    const floor = CUT.profile[CUT.profile.length - 1][1];
+    const toXZ = (d, across) => {
+      const along = FACE + FRONT.sign * d;
+      return FRONT.axis === 'x' ? [along, across] : [across, along];
+    };
+    const natural = (d) => sampleProfile(PROFILE, d);
+    const arc = (ra, rb, N = 14) => Array.from({ length: N + 1 }, (_, i) => {
+      const th = (i / N) * (Math.PI / 2);
+      return [d0 - ra * Math.cos(th), across0 + rb * Math.sin(th)];
+    });
+
+    const floorRing = [[d0, across0], ...arc(a, b)];
+    addVolume(
+      floorRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
+      floorRing.map(([d, c]) => [toXZ(d, c)[0], floor + 0.1, toXZ(d, c)[1]]),
+      { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
+    );
+
+    const wallRing = [...arc(a, b), ...arc(a + 0.3, b + 0.3).reverse()];
+    addVolume(
+      wallRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
+      wallRing.map(([d, c]) => [toXZ(d, c)[0], natural(d), toXZ(d, c)[1]]),
+      { dots: false, uprightAt: [0, wallRing.length - 1] },
     );
   }
   scene.add(faces, edges, floors);
