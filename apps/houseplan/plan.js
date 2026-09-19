@@ -63,11 +63,11 @@ window.HOUSE_PLAN = {
        * of the garage without clipping the hill. The floor and the wall
        * along it are derived from the terrain, not listed as works. */
       fillet: { r: 2.7 },
-      /* The entrance at the foot: past the ramp the cut into the hill
-       * opens out in a quarter-ellipse `flare` metres long, from the
-       * ramp's full width down to nothing at the road's edge, so a car
-       * drifts in off the road along a curve instead of turning into a
-       * square. Floor and wall are derived, as for the fillet. */
+      /* The entrance at the foot: past the ramp the hill is cut back
+       * along a quarter-ellipse `flare` metres long, hugging the road's
+       * edge and swinging in to the ramp's full width at its foot — the
+       * way a car peels off the road. Floor and wall are derived, as
+       * for the fillet. */
       mouth: { flare: 6 },
     },
   },

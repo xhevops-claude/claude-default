@@ -118,25 +118,32 @@ function rampT(across) {
   return s * (e / 2 + (t - e));
 }
 
-/* The entrance at the foot of the ramp: a quarter-ellipse cut into the
-   hill, its centre on the outer wall line at the ramp's end, one
-   semi-axis the ramp's width and the other `flare` along the road.
-   Inside it the ground is the ramp's floor; its far edge is the wall.
-   In (d, across), where d is metres out from the house face. */
+/* The entrance at the foot of the ramp: the hill is cut back along a
+   quarter-ellipse whose centre is the far corner on the hill side —
+   `flare` metres past the ramp's end, on the ramp's uphill line — with
+   one semi-axis the ramp's width and the other `flare`. The ground
+   between that arc and the outer wall line is the ramp's floor: the
+   full width at the ramp's foot, closing to nothing at the road's edge,
+   the way a car peels off the road and swings in. In (d, across),
+   where d is metres out from the house face. */
 const MOUTH = (() => {
   const m = CUT?.mouth, r = CUT?.ramp;
   if (!m || !r) return null;
-  /* The outer wall stands at the cut profile's first vertical step. */
-  const step = CUT.profile.find(([d], i) => i && d === CUT.profile[i - 1][0]);
+  /* The outer wall stands at the cut profile's first vertical step
+     beyond the ramp's uphill edge (the step at the door does not
+     count). */
+  const dFrom = r.dFrom ?? 0;
+  const step = CUT.profile.find(([d], i) => i && d > dFrom && d === CUT.profile[i - 1][0]);
   const wallD = step ? step[0] : CUT.profile[CUT.profile.length - 1][0];
-  return { a: wallD - (r.dFrom ?? 0), b: m.flare, d0: wallD, across0: r.to };
+  return { a: wallD - dFrom, b: m.flare, d0: wallD, dFrom, across0: r.to };
 })();
 
 function inMouth(d, across) {
   if (!MOUTH) return false;
-  const u = (across - MOUTH.across0) / MOUTH.b;
-  if (u < 0 || u > 1 || d > MOUTH.d0) return false;
-  const edge = MOUTH.d0 - MOUTH.a * Math.sqrt(Math.max(0, 1 - u * u));
+  const { a, b, d0, dFrom, across0 } = MOUTH;
+  const v = (across0 + b - across) / b;
+  if (v < 0 || v > 1 || d > d0) return false;
+  const edge = dFrom + a * Math.sqrt(Math.max(0, 1 - v * v));
   return d >= edge;
 }
 
@@ -317,12 +324,14 @@ async function boot() {
       { dots: false },
     );
   }
-  /* The mouth: its floor is the quarter-ellipse itself, at the ramp's
-     bottom level; its wall a 30 cm band along the arc on the hill side,
-     from the floor up to the natural ground — full height where it
-     leaves the ramp, nothing where it meets the road. */
+  /* The mouth: its floor is the box between the arc and the outer wall
+     line, at the ramp's bottom level; its wall a 30 cm band along the
+     arc on the hill side, from the floor up to the natural ground —
+     full height where it leaves the ramp, nothing where it meets the
+     road. The arc runs from the ramp's uphill edge at its foot round
+     to the road's edge `flare` metres on. */
   if (MOUTH) {
-    const { a, b, d0, across0 } = MOUTH;
+    const { a, b, d0, dFrom, across0 } = MOUTH;
     const floor = CUT.profile[CUT.profile.length - 1][1];
     const toXZ = (d, across) => {
       const along = FACE + FRONT.sign * d;
@@ -330,8 +339,8 @@ async function boot() {
     };
     const natural = (d) => sampleProfile(PROFILE, d);
     const arc = (ra, rb, N = 14) => Array.from({ length: N + 1 }, (_, i) => {
-      const th = (i / N) * (Math.PI / 2);
-      return [d0 - ra * Math.cos(th), across0 + rb * Math.sin(th)];
+      const th = (Math.PI / 2) * (1 - i / N);
+      return [dFrom + ra * Math.cos(th), across0 + b - rb * Math.sin(th)];
     });
 
     const floorRing = [[d0, across0], ...arc(a, b)];
@@ -341,7 +350,7 @@ async function boot() {
       { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
     );
 
-    const wallRing = [...arc(a, b), ...arc(a + 0.3, b + 0.3).reverse()];
+    const wallRing = [...arc(a, b), ...arc(a - 0.3, b - 0.3).reverse()];
     addVolume(
       wallRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
       wallRing.map(([d, c]) => [toXZ(d, c)[0], natural(d), toXZ(d, c)[1]]),
