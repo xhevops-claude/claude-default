@@ -64,10 +64,10 @@ window.HOUSE_PLAN = {
        * along it are derived from the terrain, not listed as works. */
       fillet: { r: 2.7 },
       /* The entrance at the foot: past the ramp the hill is cut back
-       * along a quarter-ellipse `flare` metres long, hugging the road's
-       * edge and swinging in to the ramp's full width at its foot — the
-       * way a car peels off the road. Floor and wall are derived, as
-       * for the fillet. */
+       * along a quarter-ellipse `flare` metres long, leaving the ramp's
+       * uphill edge tangentially and sweeping out to the road's edge, so
+       * the wall beside it stays high and then falls away to nothing.
+       * Floor and wall are derived, as for the fillet. */
       mouth: { flare: 6 },
     },
   },
