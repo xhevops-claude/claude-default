@@ -53,8 +53,11 @@ window.HOUSE_PLAN = {
        * so the wall at its edge shrinks to nothing as the two meet. The
        * ramp is only `dFrom` metres out and beyond; nearer the house the
        * natural slope stands, which is the face the driveway is carved
-       * into. */
-      ramp: { from: 6, to: 15, drop: 3, dFrom: 2.7 },
+       * into. `ease` is the share of the run at each end over which the
+       * grade builds up and tails off, so the floor bends into the pad
+       * and the apron instead of hinging onto them — the middle is
+       * correspondingly steeper. */
+      ramp: { from: 6, to: 15, drop: 3, dFrom: 2.7, ease: 0.25 },
       /* The inside corner where the apron turns onto the ramp is cut
        * back in a quarter-round of this radius, so a car can swing out
        * of the garage without clipping the hill. The floor and the wall
@@ -64,20 +67,21 @@ window.HOUSE_PLAN = {
   },
 
   /* Built things that are not a level, drawn the same way as the levels.
-   * World coordinates: x0..x1 along X, z0..z1 along Z, y0..y1 up.
-   * `y0End` / `y1End` set the bottom / top at the z1 end when it sits
-   * lower than the z0 end — a sloping slab, a tapering wall. */
+   * World coordinates: x0..x1 along X, z0..z1 along Z, y0..y1 up. A
+   * bottom or top given as `{ floor: offset }` follows the ramp's floor
+   * along Z, that much above or below it — which is how the ramp slab
+   * and the walls beside it bend with the eased grade. */
   works: [
     { id: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
     { id: 'driveway', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 6 },
-    { id: 'driveway-ramp', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 6, z1: 15, y0: -3.1, y1: -2.9, y0End: -6.1, y1End: -5.9 },
+    { id: 'driveway-ramp', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 6, z1: 15, y0: { floor: -0.1 }, y1: { floor: 0.1 } },
     { id: 'retainer', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: -2, z1: 6 },
-    { id: 'retainer-ramp', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 15, y0: -6, y1: -2.9, y1End: -5.9 },
+    { id: 'retainer-ramp', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 15, y0: -6, y1: { floor: 0.1 } },
     /* The uphill side of the ramp is the opposite shape: the cut face
      * beside the driveway grows from nothing to 3 m, so this wall's top
      * stays at the natural ground while its foot goes down with the
      * driveway. It stands in the 30 cm the cut is widened by. */
-    { id: 'retainer-uphill', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 8.7, z1: 15, y0: -4.0, y1: -2.7, y0End: -6.1 },
+    { id: 'retainer-uphill', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 8.7, z1: 15, y0: { floor: -0.1 }, y1: -2.7 },
     /* At the foot of the ramp a 3 × 3 pad to turn on, at road level, and
      * the uphill wall carries on beside it at its full 3 m. */
     { id: 'turning-pad', name: 'Turning pad', x0: 13, x1: 16, z0: 15, z1: 18, y0: -6.1, y1: -5.9 },
