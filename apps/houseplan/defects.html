@@ -84,7 +84,7 @@
       <span class="chip" style="--c: #8fd8ff"><i></i>House — garage, ground, first</span>
       <span class="chip" style="--c: #ff8c5a"><i></i>Cantilever — canopy</span>
       <span class="chip" style="--c: #f5e663"><i></i>Driveway — apron, ramp (one slab from the apron to the road, fillet and mouth included)</span>
-      <span class="chip" style="--c: #d28cff"><i></i>Retaining walls — garage south wall, outer wall, its taper, fillet wall, uphill wall, mouth wall</span>
+      <span class="chip" style="--c: #d28cff"><i></i>Retaining walls — garage walls (south, west, north), outer wall, its taper, fillet wall, uphill wall, mouth wall</span>
       <span class="chip" style="--c: #9aa4b2"><i></i>Road</span>
     </div>
     <div class="shots"><figure><img src="defects/00-overview.png" alt="Overview of the model with each group in its colour" /><figcaption>Overview, each group in its colour.</figcaption></figure></div>
@@ -187,6 +187,18 @@
       <div class="shots">
         <figure><img src="defects/09-entrance-walled.png" alt="The entrance, circled by the user" /><figcaption>Before, as spotted: wall on the road side, right to the tip.</figcaption></figure>
         <figure><img src="defects/09-entrance-plan.png" alt="Plan view of the entrance" /><figcaption>After: straight down on the entrance — the outer wall ends, the landing meets the road.</figcaption></figure>
+      </div>
+    </section>
+
+    <section class="card" id="d10">
+      <div class="head"><span class="num">10</span><span class="title">The apron's north edge has no wall</span><span class="where">z −2, x 10–16, and x 10, z −2 to 0</span><span class="status open">open</span></div>
+      <div class="body">
+        <p><b>Wrong:</b> the cut in front of the house is bounded to the north by a bare vertical face — 2.9 m of hill at x 10, falling to nothing at about x 13, and from there to the outer wall the apron sits <em>above</em> the natural ground with nothing under its edge. The strip of the house's east face line north of the garage (x 10, z −2 to 0) is bare too.</p>
+        <p><b>Fix:</b> carry the wall line on from the garage's north band: a band on the hill side of x 10 from z −0.3 to −2.3, then a band on the north side of z −2 from x 9.7 to the outer wall — a cut wall while the ground is above the apron, a fill wall down to the natural ground beyond — meeting the outer wall at the corner.</p>
+      </div>
+      <div class="shots">
+        <figure><img src="defects/10-apron-north-plan.png" alt="Plan view of the apron's north edge" /><figcaption>Straight down on the apron's north-west corner: the garage's north band ends at the house face, and the apron's north edge (top of the yellow) has no wall.</figcaption></figure>
+        <figure><img src="defects/garage-walls-corner.png" alt="The garage walls at the south-east corner" /><figcaption>For reference: the garage's bands outside the envelope, the south one running into the fillet wall at the corner.</figcaption></figure>
       </div>
     </section>
 

@@ -18,7 +18,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | House | cyan | garage, ground, first |
 | Cantilever | orange | canopy |
 | Driveway | yellow | driveway (apron), driveway-ramp (one slab from the apron to the road, fillet and mouth included) |
-| Retaining walls | violet | garage-wall-south, retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
+| Retaining walls | violet | garage-wall-south / -west / -north, retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
 
 ## Rules agreed so far
@@ -58,6 +58,7 @@ fix.
 | 7 | Ramp, z 6–22 | Grid at 1 m, slabs at 0.5 m: lines that should coincide did not. | R5: one `STEP` (0.5 m) for walked volumes and for the grid over the driveway, stations from `ramp.from`, so slab edges and grid lines are the same polyline. | shipped | (19, −1.6, 9.6) → (14.5, −4.2, 10.5) |
 | 8 | Whole ramp | 27 % average, ~36 % mid. | D2 brought it to 12.5 % — but D3's landing shortens the run again: 2.17 m over 12 m (z 6–18) is **18 % average, ~23 % mid** (`ease` 0.2). Trade-off between the landing's length and the grade; see D4. | open — decision D4 | (34, −2.5, 10) → (14.5, −4.5, 10) |
 | 9 | The entrance, z 16–22 | The outer wall ran to the tip and the floor met the road only over the last 1.5 m. | D3: the driveway reaches the road at z 18 and from there *is* the road's surface (a 4 m landing that follows the road's own fall, with the mouth's flare opening onto it); the outer wall runs out at z ≈ 16.1, so the road side is open for 6 m, the first 2 m with a kerb of at most 24 cm. | shipped | plan view (15.5, 6, 19) → (15.5, −5, 19), up −Z |
+| 10 | Apron's north edge, z −2, x 10–16, and the house face x 10, z −2…0 | The cut in front of the house is bounded to the north by a bare vertical face: 2.9 m of hill at x 10 falling to nothing at x ≈ 12.95, and from there to the outer wall the apron sits *above* the natural ground with no wall under its edge. The strip of the house's east face line north of the garage (x 10, z −2…0) is bare too. | Carry the wall line on: garage north band → a band on the hill side of x 10 from z −0.3 to −2.3 → a band on the north side of z −2 from x 9.7 to 16, cut wall as far as the ground is above the apron, fill wall (down to natural ground) beyond, meeting the outer wall at (16, −2). | open | plan view (12.5, 8, −1) → (12.5, −3, −1), up −Z |
 
 ## Decisions
 
@@ -98,7 +99,7 @@ fix.
 - The whole driveway — ramp, fillet, mouth and landing — is one strip built
   station by station, so the entrance surface follows the grade and the road
   exactly instead of spanning them with flat triangles (shipped, PR #139).
-- The garage's south wall drawn as the retaining wall carried on into the
-  house: inside the envelope, garage slab to ground level, meeting the
-  fillet wall's top at the corner (branch, unmerged). West and north garage
-  walls retain the same way, not drawn yet.
+- The garage's buried sides get their structural wall: 30 cm bands outside
+  the envelope on the south, west and north, garage slab to ground level,
+  the south one ending where the fillet band's hill edge begins (branch,
+  unmerged).
