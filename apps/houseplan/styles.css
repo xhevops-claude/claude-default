@@ -50,11 +50,18 @@ button { font-family: inherit; color: inherit; border: none; background: none; c
 }
 .hud > * { pointer-events: auto; }
 .hud--top { top: 0; padding-top: calc(12px + env(safe-area-inset-top)); }
+/* The two bottom rows scroll sideways, so unlike the top HUD they take
+   the touches themselves — pointer-events on the row, and pan-x so the
+   browser handles the swipe instead of the canvas underneath. */
 .hud--bottom {
   bottom: 0;
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
   overflow-x: auto;
   scrollbar-width: none;
+  pointer-events: auto;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .hud--bottom::-webkit-scrollbar { display: none; }
 
@@ -106,6 +113,10 @@ a.ghost { text-decoration: none; line-height: 1.15; }
   padding-top: 0; padding-bottom: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  pointer-events: auto;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .hud--legend::-webkit-scrollbar { display: none; }
 .chip {
