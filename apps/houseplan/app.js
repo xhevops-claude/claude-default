@@ -83,14 +83,20 @@ function sampleProfile(prof, d) {
   return y0 + ((y1 - y0) * (d - d0)) / (d1 - d0);
 }
 
+/* Where the house ends across the front, on the ramp's side. In front
+   of the house the apron's cut runs the full width whatever the ramp
+   is doing; the hill only begins past this line. */
+const HOUSE_EDGE = FRONT.axis === 'x' ? e.y1 : e.x1;
+
 /* The quarter-round cut into the inside corner where the apron turns
-   onto the ramp. The corner is where the ramp's uphill edge meets the
-   apron; the circle's centre sits `r` in from it both ways, so the arc
-   is tangent to both edges. Everything here is in (along, across). */
+   onto the ramp. The corner is where the ramp's uphill edge passes the
+   house's corner; the circle's centre sits `r` in from it both ways,
+   so the arc is tangent to the house's edge line and to the ramp's
+   uphill edge. Everything here is in (along, across). */
 const FILLET = (() => {
   const f = CUT?.fillet, r = CUT?.ramp;
   if (!f || !r) return null;
-  const corner = { along: FACE + FRONT.sign * (r.dFrom ?? 0), across: r.from };
+  const corner = { along: FACE + FRONT.sign * (r.dFrom ?? 0), across: Math.max(r.from, HOUSE_EDGE) };
   return { r: f.r, corner, centre: { along: corner.along - FRONT.sign * f.r, across: corner.across + f.r } };
 })();
 
@@ -167,7 +173,10 @@ function groundY(x, z) {
   if (across <= r.from) return base;
   const floor = CUT.profile[CUT.profile.length - 1][1];
   if (across > r.to) return inMouth(d, across) ? floor : sampleProfile(PROFILE, d);
-  if (d < (r.dFrom ?? 0) && !inFillet(along, across)) return sampleProfile(PROFILE, d);
+  if (d < (r.dFrom ?? 0)) {
+    if (across <= HOUSE_EDGE) return base;
+    if (!inFillet(along, across)) return sampleProfile(PROFILE, d);
+  }
   return Math.max(base - r.drop * rampT(across), floor);
 }
 
@@ -314,14 +323,15 @@ async function boot() {
     addVolume(
       floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
       floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) + 0.1, toXZ(a, c)[1]]),
-      { dots: false },
+      { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
     );
 
     const wallRing = [...arc(r), ...arc(r - 0.3).reverse()];
+    const n = wallRing.length / 2;
     addVolume(
       wallRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
       wallRing.map(([a, c]) => [toXZ(a, c)[0], natural(a), toXZ(a, c)[1]]),
-      { dots: false },
+      { dots: false, uprightAt: [0, n - 1, n, 2 * n - 1] },
     );
   }
   /* The mouth: its floor is the quarter-ellipse itself, at the ramp's

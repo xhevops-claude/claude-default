@@ -82,6 +82,7 @@ window.HOUSE_PLAN = {
     /* The apron gives its last metre to the ramp, so the grade starts
      * bending before the junction rather than at it. */
     { id: 'driveway', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 5 },
+    { id: 'driveway-door', name: 'Apron, the last metre under the canopy', x0: 10, x1: 13, y0: -3.1, y1: -2.9, z0: 5, z1: 6 },
     { id: 'driveway-ramp', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 5, z1: 16, y0: { floor: -0.1 }, y1: { floor: 0.1 } },
     { id: 'retainer', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: -2, z1: 5 },
     { id: 'retainer-ramp', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 5, z1: 16, y0: -6, y1: { floor: 0.1 } },
@@ -89,7 +90,7 @@ window.HOUSE_PLAN = {
      * beside the driveway grows from nothing to 3 m, so this wall's top
      * stays at the natural ground while its foot goes down with the
      * driveway. It stands in the 30 cm the cut is widened by. */
-    { id: 'retainer-uphill', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 7.7, z1: 16, y0: { floor: -0.1 }, y1: -2.7 },
+    { id: 'retainer-uphill', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 8.7, z1: 16, y0: { floor: -0.1 }, y1: -2.7 },
     /* The road, parallel to the wall along its outer face. `frame: false`
      * keeps its 30 m out of the camera's Fit, so the house stays the
      * subject. */
