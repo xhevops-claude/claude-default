@@ -731,6 +731,8 @@ async function boot() {
      dimension lines ignore depth so they read through the glass. */
   const dimGroup = new THREE.Group();
   scene.add(dimGroup);
+  const labelGeo = new THREE.PlaneGeometry(1, 1);
+  const labels = [];
   const dimLineMat = new THREE.LineBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.95, depthTest: false });
   const dimDotMat = new THREE.PointsMaterial({
     color: 0xfff3b0, size: 6, sizeAttenuation: false, map: dotMap,
@@ -741,9 +743,15 @@ async function boot() {
 
   function paintSelection(o, on) {
     o.node.traverse((n) => {
-      if (n.userData.layer === 'edges' || n.userData.layer === 'floors') {
+      const layer = n.userData.layer;
+      if (layer === 'edges' || layer === 'floors') {
         n.material.color.copy(on ? o.col.clone().lerp(WHITE, 0.6) : o.col);
-        n.material.opacity = on ? 1 : (n.userData.layer === 'edges' ? 0.95 : 0.6);
+        n.material.opacity = on ? 1 : (layer === 'edges' ? 0.95 : 0.6);
+      } else if (layer === 'faces') {
+        n.material.color.copy(o.col.clone().lerp(WHITE, on ? 0.2 : 0.35));
+        n.material.opacity = on ? 0.22 : 0.05;
+      } else if (layer === 'dots') {
+        n.material.color.copy(on ? WHITE : o.col.clone().lerp(WHITE, 0.55));
       }
     });
   }
@@ -752,10 +760,9 @@ async function boot() {
     if (selected) paintSelection(selected, false);
     while (dimGroup.children.length) {
       const c = dimGroup.children.pop();
-      if (c.geometry) c.geometry.dispose();
-      if (c.material?.map && c.isSprite) c.material.map.dispose();
-      if (c.isSprite) c.material.dispose();
+      if (c.isMesh) { c.material.map.dispose(); c.material.dispose(); } else c.geometry.dispose();
     }
+    labels.length = 0;
     selected = o && o !== selected ? o : null;
     $('wf-sel').textContent = selected ? selected.name : '';
     if (!selected) return;
@@ -766,15 +773,46 @@ async function boot() {
         new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([...d.a, ...d.b], 3)),
         dimDotMat,
       ));
-      const label = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: labelTexture(THREE, d.label), transparent: true, depthTest: false, sizeAttenuation: false,
+      /* The label lies along its line, in metres, sized to fit inside
+         it — small on a small thing, so you zoom in to read it, like
+         letters on a grain of rice. It turns about the line to face
+         you (see orientLabels), never off it. */
+      const tex = labelTexture(THREE, d.label);
+      const aspect = tex.image.width / tex.image.height;
+      const len = dist3(d.a, d.b);
+      const h = Math.max(0.04, Math.min(0.35, Math.max(0.06, len * 0.05), (0.85 * len) / aspect));
+      const label = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({
+        map: tex, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
       }));
+      label.scale.set(h * aspect, h, 1);
       const t = d.at ?? 0.5;
       label.position.set(d.a[0] + (d.b[0] - d.a[0]) * t, d.a[1] + (d.b[1] - d.a[1]) * t, d.a[2] + (d.b[2] - d.a[2]) * t);
-      const aspect = label.material.map.image.width / label.material.map.image.height;
-      label.scale.set(0.05 * aspect, 0.05, 1);
       label.renderOrder = 10;
+      label.userData.dim = d;
       dimGroup.add(label);
+      labels.push(label);
+    }
+  }
+
+  /* Each label keeps its X along its line and rotates about it to face
+     the camera, flipped so the text reads left to right (or bottom to
+     top on an upright line) from wherever you are. */
+  const camR = new THREE.Vector3(), camU = new THREE.Vector3(), lx = new THREE.Vector3(), ly = new THREE.Vector3(), lz = new THREE.Vector3(), basis = new THREE.Matrix4();
+  function orientLabels() {
+    if (!labels.length) return;
+    camR.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    camU.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    for (const m of labels) {
+      const { a, b } = m.userData.dim;
+      lx.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]).normalize();
+      const along = lx.dot(camR);
+      if (along < -1e-3 || (Math.abs(along) <= 1e-3 && lx.dot(camU) < 0)) lx.negate();
+      lz.copy(camera.position).sub(m.position);
+      lz.addScaledVector(lx, -lz.dot(lx));
+      if (lz.lengthSq() < 1e-9) continue;
+      lz.normalize();
+      ly.crossVectors(lz, lx);
+      m.quaternion.setFromRotationMatrix(basis.makeBasis(lx, ly, lz));
     }
   }
 
@@ -879,6 +917,7 @@ async function boot() {
       if (k >= 1) tween = null;
     }
     controls.update();
+    orientLabels();
 
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, VW, VH);
