@@ -11,6 +11,11 @@
 
 const PLAN = window.HOUSE_PLAN;
 const SLAB = PLAN.slab || 0.2;
+const WALL = PLAN.wall || 0.3;
+/* Everything that follows the ground across the front — slabs, walls,
+   the ground grid over the driveway — is sampled at these intervals, so
+   lines that should coincide do. */
+const STEP = 0.5;
 const TER = PLAN.terrain;
 const e = PLAN.envelope;
 
@@ -26,13 +31,28 @@ const FRONT = {
   sign: (TER?.front || '+Z').startsWith('-') ? -1 : 1,
 };
 
+/* The road's level across the front — the foot of the hill — from
+   terrain.road, straight between its points and held beyond them. A
+   profile level written as 'road' resolves to this at that position. */
+const ROAD = TER?.road ? TER.road.slice().sort((a, b) => a[0] - b[0]) : null;
+const ROAD_MIN = ROAD ? Math.min(...ROAD.map(([, y]) => y)) : (TER ? TER.profile[TER.profile.length - 1][1] : 0);
+function roadLevel(across) {
+  if (!ROAD) return ROAD_MIN;
+  if (across <= ROAD[0][0]) return ROAD[0][1];
+  for (let i = 1; i < ROAD.length; i++) {
+    const [a0, y0] = ROAD[i - 1], [a1, y1] = ROAD[i];
+    if (across <= a1) return y0 + ((y1 - y0) * (across - a0)) / (a1 - a0);
+  }
+  return ROAD[ROAD.length - 1][1];
+}
+
 /* One solid per level, stacked without gaps: a level owns the slab
    under it, so its underside meets the top of the level below. A level
    with `extendFront` is pushed out of the downhill face by that much. */
 const VOLS = PLAN.levels.map((l) => {
   const out = l.extendFront || 0;
   const v = {
-    name: l.name,
+    id: l.id, name: l.name, group: l.group || 'house',
     x0: e.x0, x1: e.x1, z0: e.y0, z1: e.y1,
     y0: l.elevation - SLAB,
     y1: l.elevation + l.height,
@@ -56,6 +76,9 @@ const BOX = {
   z0: span('z0', Math.min), z1: span('z1', Math.max),
   y0: span('y0', Math.min), y1: span('y1', Math.max),
 };
+/* Volumes that ride the road or the ramp carry no number to span, so
+   the road's low point stands in for their bottoms. */
+if (TER) BOX.y0 = Math.min(BOX.y0, ROAD_MIN);
 BOX.cx = (BOX.x0 + BOX.x1) / 2;
 BOX.cy = (BOX.y0 + BOX.y1) / 2;
 BOX.cz = (BOX.z0 + BOX.z1) / 2;
@@ -74,24 +97,47 @@ const FACE = !TER ? 0 : FRONT.axis === 'x'
 const PROFILE = TER ? [[0, TER.backLevel], ...TER.profile] : [];
 const CUT = TER?.cut ? { ...TER.cut, profile: [[0, TER.backLevel], ...TER.cut.profile] } : null;
 
-function sampleProfile(prof, d) {
+function sampleProfile(prof, d, across) {
+  const lv = (y) => (y === 'road' ? roadLevel(across) : y);
   let i = 0;
   while (i + 1 < prof.length && prof[i + 1][0] <= d) i++;
   const [d0, y0] = prof[i];
-  if (i + 1 >= prof.length || d <= d0) return y0;
+  if (i + 1 >= prof.length || d <= d0) return lv(y0);
   const [d1, y1] = prof[i + 1];
-  return y0 + ((y1 - y0) * (d - d0)) / (d1 - d0);
+  return lv(y0) + ((lv(y1) - lv(y0)) * (d - d0)) / (d1 - d0);
 }
 
+/* The natural hill, `d` metres out from the face at `across`. */
+const natural = (d, across) => sampleProfile(PROFILE, d, across);
+
+/* Where the outer retaining wall stands: the cut profile's first
+   vertical step beyond the ramp's uphill edge (the step at the door
+   does not count). Beyond it the cut is the road, whatever the ramp
+   is doing. */
+const WALL_D = (() => {
+  if (!CUT) return Infinity;
+  const dFrom = CUT.ramp?.dFrom ?? 0;
+  const step = CUT.profile.find(([d], i) => i && d > dFrom && d === CUT.profile[i - 1][0]);
+  return step ? step[0] : CUT.profile[CUT.profile.length - 1][0];
+})();
+
+/* Where the house ends across the front, on the ramp's side. In front
+   of the house the apron's cut runs the full width whatever the ramp
+   is doing; the hill only begins past this line. */
+const HOUSE_EDGE = FRONT.axis === 'x' ? e.y1 : e.x1;
+
 /* The quarter-round cut into the inside corner where the apron turns
-   onto the ramp. The corner is where the ramp's uphill edge meets the
-   apron; the circle's centre sits `r` in from it both ways, so the arc
-   is tangent to both edges. Everything here is in (along, across). */
+   onto the ramp. The corner is where the ramp's uphill edge passes the
+   house's corner; the circle's centre sits `r` in from it both ways,
+   so the arc is tangent to the house's edge line and to the ramp's
+   uphill edge. Everything here is in (along, across). */
 const FILLET = (() => {
   const f = CUT?.fillet, r = CUT?.ramp;
   if (!f || !r) return null;
-  const corner = { along: FACE + FRONT.sign * (r.dFrom ?? 0), across: r.from };
-  return { r: f.r, corner, centre: { along: corner.along - FRONT.sign * f.r, across: corner.across + f.r } };
+  const dFrom = r.dFrom ?? 0;
+  const rad = f.r ?? dFrom;
+  const corner = { along: FACE + FRONT.sign * dFrom, across: Math.max(r.from, HOUSE_EDGE) };
+  return { r: rad, corner, centre: { along: corner.along - FRONT.sign * rad, across: corner.across + rad } };
 })();
 
 function inFillet(along, across) {
@@ -118,24 +164,19 @@ function rampT(across) {
   return s * (e / 2 + (t - e));
 }
 
-/* The entrance at the foot of the ramp: the hill is cut back along a
-   quarter-ellipse centred on the outer wall line at the ramp's end,
-   one semi-axis the ramp's width and the other `flare` along the road.
-   The arc leaves the ramp's uphill edge tangentially, so the wall
-   beside it stays at full height for a while, then sweeps out to meet
-   the road's edge `flare` metres on. Everything between the arc and
-   the outer wall line is the ramp's floor. In (d, across), where d is
-   metres out from the house face. */
+/* The entrance, over the property's last `flare` metres: the hill is
+   cut back along a quarter-ellipse centred on the outer wall line at
+   the property's end, one semi-axis the ramp's width and the other
+   `flare` back along the road. The arc leaves the ramp's uphill edge
+   tangentially, so the wall beside it stays at full height for a
+   while, then sweeps out to meet the road's edge. Everything between
+   the arc and the outer wall line is the driveway's floor. In
+   (d, across), where d is metres out from the house face. */
 const MOUTH = (() => {
   const m = CUT?.mouth, r = CUT?.ramp;
   if (!m || !r) return null;
-  /* The outer wall stands at the cut profile's first vertical step
-     beyond the ramp's uphill edge (the step at the door does not
-     count). */
   const dFrom = r.dFrom ?? 0;
-  const step = CUT.profile.find(([d], i) => i && d > dFrom && d === CUT.profile[i - 1][0]);
-  const wallD = step ? step[0] : CUT.profile[CUT.profile.length - 1][0];
-  return { a: wallD - dFrom, b: m.flare, d0: wallD, dFrom, across0: r.to };
+  return { a: WALL_D - dFrom, b: m.flare, d0: WALL_D, dFrom, across0: CUT.to - m.flare };
 })();
 
 function inMouth(d, across) {
@@ -147,35 +188,79 @@ function inMouth(d, across) {
   return d >= edge;
 }
 
-/* The ramp's floor at a position across the front: the apron level,
-   falling past ramp.from, never below the profile's last level. */
+/* The driveway's surface at a position across the front: the apron's
+   level up to ramp.from, the road's own surface from ramp.to on (the
+   landing), and between them the eased grade from the one to the
+   other. */
 function rampLevel(across) {
   const r = CUT.ramp;
-  const base = sampleProfile(CUT.profile, r.dFrom ?? 0);
-  return Math.max(base - r.drop * rampT(across), CUT.profile[CUT.profile.length - 1][1]);
+  const base = sampleProfile(CUT.profile, r.dFrom ?? 0, across);
+  if (across <= r.from) return base;
+  if (across >= r.to) return roadLevel(across);
+  return base - (base - roadLevel(r.to)) * rampT(across);
 }
+
+/* The driveway's outline, station by station across the front from the
+   apron's edge to the property's end: `edge(c)` is the cut line — the
+   fillet's arc, then the straight run `dFrom` out, then the mouth's arc
+   — and `edge(c, off)` the same line `off` metres into the hill, which is
+   where a wall's far face goes. The stations are every STEP plus every
+   bend of both arcs, and everything that follows the driveway (its slab,
+   the walls beside it, the ground grid) is built on exactly these, so
+   their lines coincide. */
+const DRIVE = (() => {
+  if (!CUT?.ramp) return null;
+  const r = CUT.ramp, dFrom = r.dFrom ?? 0;
+  const set = new Set();
+  for (let a = r.from; a < CUT.to - 1e-6; a += STEP) set.add(+a.toFixed(6));
+  set.add(CUT.to);
+  set.add(r.to);
+  if (FILLET) {
+    set.add(FILLET.centre.across);
+    for (let i = 0; i <= 12; i++) set.add(+(FILLET.centre.across - FILLET.r * Math.cos((i / 12) * (Math.PI / 2))).toFixed(6));
+  }
+  if (MOUTH) {
+    set.add(MOUTH.across0);
+    for (let i = 0; i <= 14; i++) set.add(+(MOUTH.across0 + MOUTH.b * Math.sin((i / 14) * (Math.PI / 2))).toFixed(6));
+  }
+  const stations = [...set].filter((c) => c >= r.from - 1e-9 && c <= CUT.to + 1e-9).sort((a, b) => a - b);
+  const edge = (c, off = 0) => {
+    if (FILLET && c < FILLET.centre.across) {
+      const rad = FILLET.r - off, dc = dFrom - FILLET.r;
+      return dc + Math.sqrt(Math.max(0, rad * rad - (c - FILLET.centre.across) ** 2));
+    }
+    if (MOUTH && c > MOUTH.across0) {
+      const u = (c - MOUTH.across0) / (MOUTH.b + off);
+      return MOUTH.d0 - (MOUTH.a + off) * Math.sqrt(Math.max(0, 1 - u * u));
+    }
+    return dFrom - off;
+  };
+  return { stations, edge, outer: WALL_D, dFrom };
+})();
 
 function groundY(x, z) {
   if (!TER) return BOX.y0;
   const along = FRONT.axis === 'x' ? x : z;
   const across = FRONT.axis === 'x' ? z : x;
   const d = (along - FACE) * FRONT.sign;
-  if (!CUT || across < CUT.from || across > CUT.to) return sampleProfile(PROFILE, d);
-  const base = sampleProfile(CUT.profile, d);
+  if (!CUT || across < CUT.from || across > CUT.to) return natural(d, across);
+  const base = sampleProfile(CUT.profile, d, across);
   if (d < 0 || !CUT.ramp) return base;
   const r = CUT.ramp;
-  if (across <= r.from) return base;
-  const floor = CUT.profile[CUT.profile.length - 1][1];
-  if (across > r.to) return inMouth(d, across) ? floor : sampleProfile(PROFILE, d);
-  if (d < (r.dFrom ?? 0) && !inFillet(along, across)) return sampleProfile(PROFILE, d);
-  return Math.max(base - r.drop * rampT(across), floor);
+  if (across <= r.from || d >= WALL_D) return base;
+  if (MOUTH && across >= MOUTH.across0) return inMouth(d, across) ? rampLevel(across) : natural(d, across);
+  if (d < (r.dFrom ?? 0)) {
+    if (across <= HOUSE_EDGE) return base;
+    if (!inFillet(along, across)) return natural(d, across);
+  }
+  return rampLevel(across);
 }
 
 const pushed = PLAN.levels.find((l) => l.extendFront);
 $('wf-name').textContent = PLAN.name;
 $('wf-dims').textContent = `${fmt(e.x1 - e.x0)} × ${fmt(e.y1 - e.y0)} × ${fmt(BOX.y1 - BOX.y0)} m`
   + (pushed ? ` · ${pushed.name.toLowerCase()} out ${fmt(pushed.extendFront)} m to ${TER.front}` : '')
-  + (TER ? ` · site falls ${fmt(TER.backLevel - PROFILE[PROFILE.length - 1][1])} m` : '');
+  + (TER ? ` · site falls ${fmt(TER.backLevel - ROAD_MIN)} m` : '');
 
 /* ── scene ────────────────────────────────────────────── */
 
@@ -212,34 +297,60 @@ async function boot() {
   controls.autoRotateSpeed = 0.6;
   controls.target.set(BOX.cx, BOX.cy, BOX.cz);
 
-  const LINE = 0x8fd8ff;
-  const lineMat = (opacity) => new THREE.LineBasicMaterial({ color: LINE, transparent: true, opacity });
   const segments = (pts, mat) => new THREE.LineSegments(
     new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)), mat,
   );
 
-  /* ── one box per level ──────────────────────────────── */
+  /* ── one object per built thing ─────────────────────── */
 
-  /* Uprights and plates go into separate groups: dropping the plates
-     leaves the bare corner sticks, which is a useful thing to look at. */
-  const faces = new THREE.Group();
-  const edges = new THREE.Group();
-  const floors = new THREE.Group();
-  const glassMat = new THREE.MeshBasicMaterial({
-    color: 0xbfe9ff, transparent: true, opacity: 0.045,
-    side: THREE.DoubleSide, depthWrite: false,
-  });
+  /* Every built thing — a level, a slab, a wall — is its own node in
+     the scene, named by its id and coloured by its group, so a part
+     can be pointed at, hidden with the rest of its group, and told
+     apart from what it meets. Inside a node the uprights, the plates
+     (rings), the glass and the dots are separate children tagged with
+     a `layer`, which is what the Faces / Floors / Dots toggles flip. */
+  const GROUPS = PLAN.groups || {};
+  const WHITE = new THREE.Color(0xffffff);
+  const parts = new THREE.Group();
+  const objects = [];
+  function makeObject({ id, name, group }) {
+    const col = new THREE.Color(GROUPS[group]?.color || '#8fd8ff');
+    const node = new THREE.Group();
+    node.name = id;
+    node.userData = { id, name, group };
+    const o = {
+      id, name, group, node, col, dotPos: [],
+      glass: new THREE.MeshBasicMaterial({
+        color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity: 0.05,
+        side: THREE.DoubleSide, depthWrite: false,
+      }),
+      line: (opacity) => new THREE.LineBasicMaterial({ color: col, transparent: true, opacity }),
+    };
+    objects.push(o);
+    parts.add(node);
+    return o;
+  }
+  const tagged = (obj, layer) => { obj.userData.layer = layer; return obj; };
 
   /* Every solid is a prism over a footprint: a bottom ring and a top
      ring of [x, y, z], same length, same order. Uprights join them,
      the rings are the plates, and the glass is the caps (triangulated,
      so a footprint may be concave — the fillet is) plus the sides. */
-  const dotPos = [];
-  function addVolume(bottom, top, { dots: withDots = true, uprightAt = null } = {}) {
+  function addVolume(o, bottom, top, { dots: withDots = true, uprightAt = null, strip = false } = {}) {
     const n = bottom.length;
     const pos = [...bottom.flat(), ...top.flat()];
     const idx = [];
-    const tris = THREE.ShapeUtils.triangulateShape(bottom.map(([x, , z]) => new THREE.Vector2(x, z)), []);
+    /* A `strip` ring is two chains of equal length, the second reversed,
+       and its caps are the quads between matching stations — so a
+       surface that bends along the chains is drawn band by band, not
+       as whatever triangles happen to span the outline. */
+    const tris = [];
+    if (strip) {
+      const m = n / 2;
+      for (let j = 0; j < m - 1; j++) tris.push([j, j + 1, n - 2 - j], [j, n - 2 - j, n - 1 - j]);
+    } else {
+      tris.push(...THREE.ShapeUtils.triangulateShape(bottom.map(([x, , z]) => new THREE.Vector2(x, z)), []));
+    }
     for (const [a, b, c] of tris) idx.push(a, b, c, a + n, b + n, c + n);
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
@@ -248,123 +359,171 @@ async function boot() {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setIndex(idx);
-    faces.add(new THREE.Mesh(geo, glassMat));
+    o.node.add(tagged(new THREE.Mesh(geo, o.glass), 'faces'));
 
     const uprights = [];
     for (let i = 0; i < n; i++) if (!uprightAt || uprightAt.includes(i)) uprights.push(...bottom[i], ...top[i]);
-    edges.add(segments(uprights, lineMat(0.95)));
+    o.node.add(tagged(segments(uprights, o.line(0.95)), 'edges'));
 
     const rings = [];
     for (const ring of [bottom, top]) {
       for (let i = 0; i < n; i++) rings.push(...ring[i], ...ring[(i + 1) % n]);
     }
-    floors.add(segments(rings, lineMat(0.6)));
+    o.node.add(tagged(segments(rings, o.line(0.6)), 'floors'));
 
-    if (withDots) for (const ring of [bottom, top]) for (const p of ring) dotPos.push(...p);
+    if (withDots) for (const ring of [bottom, top]) for (const p of ring) o.dotPos.push(...p);
   }
 
   /* A box volume's z1 end may sit lower than its z0 end (y0End / y1End),
      so every corner carries its own bottom and top. A bottom or top
-     given as { floor } follows the ramp, so that volume is walked along
-     the ramp in half-metre steps and drawn as a bent prism — uprights
-     and dots only at its four real corners. */
-  const followsRamp = (v) => typeof v.y0 === 'object' || typeof v.y1 === 'object';
-  const yAt = (spec, across) => (typeof spec === 'number' ? spec : rampLevel(across) + (spec.floor || 0));
+     given as { floor } / { road } / { ground } follows that surface, so
+     the volume is walked across the front in half-metre steps and drawn
+     as a bent prism — uprights and dots only at its four real corners.
+     `ground` is the natural hill at the volume's house-side face, one
+     height across its thickness. */
+  const followsGround = (v) => typeof v.y0 === 'object' || typeof v.y1 === 'object';
+  const yAt = (spec, across, dFace) => {
+    if (typeof spec === 'number') return spec;
+    if ('road' in spec) return roadLevel(across) + (spec.road || 0);
+    if ('ground' in spec) return natural(dFace, across) + (spec.ground || 0);
+    return rampLevel(across) + (spec.floor || 0);
+  };
+  /* The stations a walked volume is sampled at: every STEP from its
+     start, then its end. The ground grid uses the same, so a slab's
+     edge and the grid line under it are the same polyline. */
+  const stationsBetween = (a0, a1) => {
+    const s = [];
+    for (let a = a0; a < a1 - 1e-6; a += STEP) s.push(a);
+    s.push(a1);
+    return s;
+  };
+  /* A wall whose top would pass under its foot ends where they meet:
+     the last station is moved to that crossing, found by bisection. */
+  const runOut = (steps, height) => {
+    let last = steps.length - 1;
+    while (last > 0 && height(steps[last]) < 0) last--;
+    if (last === steps.length - 1) return steps;
+    let lo = steps[last], hi = steps[last + 1];
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      if (height(mid) < 0) hi = mid; else lo = mid;
+    }
+    return [...steps.slice(0, last + 1), lo];
+  };
   for (const v of VOLS) {
-    if (followsRamp(v) && CUT?.ramp) {
+    const o = makeObject(v);
+    if (followsGround(v) && TER) {
       const [a0, a1] = FRONT.axis === 'x' ? [v.z0, v.z1] : [v.x0, v.x1];
-      const n = Math.max(2, Math.ceil((a1 - a0) / 0.5) + 1);
-      const steps = Array.from({ length: n }, (_, i) => a0 + ((a1 - a0) * i) / (n - 1));
-      const side = (fixed, list) => list.map((a) => (FRONT.axis === 'x' ? [fixed, a] : [a, fixed]));
       const lo = FRONT.axis === 'x' ? v.x0 : v.z0, hi = FRONT.axis === 'x' ? v.x1 : v.z1;
+      const dFace = ((FRONT.sign > 0 ? lo : hi) - FACE) * FRONT.sign;
+      const steps = runOut(stationsBetween(a0, a1), (a) => yAt(v.y1, a, dFace) - yAt(v.y0, a, dFace));
+      const n = steps.length;
+      const side = (fixed, list) => list.map((a) => (FRONT.axis === 'x' ? [fixed, a] : [a, fixed]));
       const ring = [...side(lo, steps), ...side(hi, steps.slice().reverse())];
       const acrossOf = ([x, z]) => (FRONT.axis === 'x' ? z : x);
       const cornersAt = [0, n - 1, n, 2 * n - 1];
-      addVolume(
-        ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z])), z]),
-        ring.map(([x, z]) => [x, yAt(v.y1, acrossOf([x, z])), z]),
-        { dots: false, uprightAt: cornersAt },
-      );
-      for (const i of cornersAt) {
-        const [x, z] = ring[i];
-        dotPos.push(x, yAt(v.y0, acrossOf([x, z])), z, x, yAt(v.y1, acrossOf([x, z])), z);
-      }
+      const bottom = ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z]), dFace), z]);
+      const top = ring.map(([x, z]) => [x, yAt(v.y1, acrossOf([x, z]), dFace), z]);
+      addVolume(o, bottom, top, { dots: false, uprightAt: cornersAt });
+      for (const i of cornersAt) o.dotPos.push(...bottom[i], ...top[i]);
       continue;
     }
     const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
     addVolume(
+      o,
       corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]),
       corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]),
     );
   }
 
-  /* The fillet: its floor is the sliver between the corner and the arc,
-     at the ramp's level; its wall is a 30 cm band along the arc, on the
-     hill side, from the ramp's floor up to the natural ground. */
-  if (FILLET) {
-    const { r, corner, centre } = FILLET;
-    const toXZ = (along, across) => (FRONT.axis === 'x' ? [along, across] : [across, along]);
-    const natural = (along) => sampleProfile(PROFILE, (along - FACE) * FRONT.sign);
-    const arc = (rad, N = 12) => Array.from({ length: N + 1 }, (_, i) => {
-      const th = (i / N) * (Math.PI / 2);
-      return [centre.along + FRONT.sign * rad * Math.sin(th), centre.across - rad * Math.cos(th)];
-    });
+  /* ── the driveway, derived ──────────────────────────── */
 
-    const floorRing = [[corner.along, corner.across], ...arc(r)];
-    addVolume(
-      floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
-      floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) + 0.1, toXZ(a, c)[1]]),
-      { dots: false },
-    );
+  /* One slab from the apron's edge to the road, built station by
+     station on DRIVE: its outer edge along the retaining wall, its inner
+     edge the cut line — the fillet's arc round from the house's corner,
+     the straight run, the mouth's arc out to the road. Each band between
+     two stations is drawn as its own quad, so the slab bends exactly
+     with the grade and the road under it. The uphill wall is the same
+     line in three pieces — fillet, straight run, mouth — each a
+     WALL-thick band on the hill side, its foot at the slab's underside
+     and its top the natural ground read at the hill-side face, so it is
+     level across its thickness. */
+  const toXZ = (along, across) => (FRONT.axis === 'x' ? [along, across] : [across, along]);
+  const atD = (d, across) => toXZ(FACE + FRONT.sign * d, across);
+  const pt = (xz, y) => [xz[0], y, xz[1]];
 
-    const wallRing = [...arc(r), ...arc(r - 0.3).reverse()];
-    addVolume(
-      wallRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
-      wallRing.map(([a, c]) => [toXZ(a, c)[0], natural(a), toXZ(a, c)[1]]),
-      { dots: false },
-    );
+  if (DRIVE) {
+    const { stations, edge, outer } = DRIVE;
+    const m = stations.length;
+    const ring = [...stations.map((c) => [outer, c]), ...stations.slice().reverse().map((c) => [edge(c), c])];
+    const at = (c) => stations.indexOf(c);
+    const corners = [0, m - 1, 2 * m - 1];
+    if (FILLET) corners.push(2 * m - 1 - at(FILLET.centre.across));
+    if (MOUTH) corners.push(2 * m - 1 - at(MOUTH.across0));
+    const o = makeObject({ id: 'driveway-ramp', name: 'Driveway, down to the road', group: 'drive' });
+    const bottom = ring.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB));
+    const top = ring.map(([d, c]) => pt(atD(d, c), rampLevel(c)));
+    addVolume(o, bottom, top, { dots: false, uprightAt: corners, strip: true });
+    for (const i of corners) o.dotPos.push(...bottom[i], ...top[i]);
+
+    /* The wall, in its three pieces, over the stations each one spans. */
+    const pieces = [];
+    const arcEnd = FILLET ? FILLET.centre.across : null;
+    const mouthStart = MOUTH ? MOUTH.across0 : null;
+    if (FILLET) pieces.push(['fillet-wall', 'Corner fillet, wall', (c) => c <= arcEnd]);
+    pieces.push(['ramp-wall', 'Retaining wall, uphill side', (c) => (arcEnd == null || c >= arcEnd) && (mouthStart == null || c <= mouthStart)]);
+    if (MOUTH) pieces.push(['mouth-wall', 'Entrance mouth, wall', (c) => c >= mouthStart]);
+    for (const [id, name, within] of pieces) {
+      const st = stations.filter(within);
+      if (st.length < 2) continue;
+      const n = st.length;
+      const cut = st.map((c) => [edge(c), c]);
+      const hill = st.map((c) => [edge(c, WALL), c]);
+      const wallRing = [...cut, ...hill.slice().reverse()];
+      const topAt = (k) => { const [d, c] = hill[k < n ? k : 2 * n - 1 - k]; return natural(d, c); };
+      addVolume(
+        makeObject({ id, name, group: 'wall' }),
+        wallRing.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB)),
+        wallRing.map(([d, c], k) => pt(atD(d, c), topAt(k))),
+        { dots: false, uprightAt: [0, n - 1, n, 2 * n - 1], strip: true },
+      );
+    }
   }
-  /* The mouth: its floor is the quarter-ellipse itself, at the ramp's
-     bottom level; its wall a 30 cm band along the arc on the hill side,
-     from the floor up to the natural ground — full height where it
-     leaves the ramp, nothing where it meets the road. */
-  if (MOUTH) {
-    const { a, b, d0, across0 } = MOUTH;
-    const floor = CUT.profile[CUT.profile.length - 1][1];
-    const toXZ = (d, across) => {
-      const along = FACE + FRONT.sign * d;
-      return FRONT.axis === 'x' ? [along, across] : [across, along];
-    };
-    const natural = (d) => sampleProfile(PROFILE, d);
-    const arc = (ra, rb, N = 14) => Array.from({ length: N + 1 }, (_, i) => {
-      const th = (i / N) * (Math.PI / 2);
-      return [d0 - ra * Math.cos(th), across0 + rb * Math.sin(th)];
-    });
 
-    const floorRing = [[d0, across0], ...arc(a, b)];
-    addVolume(
-      floorRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
-      floorRing.map(([d, c]) => [toXZ(d, c)[0], floor + 0.1, toXZ(d, c)[1]]),
-      { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
-    );
-
-    const wallRing = [...arc(a, b), ...arc(a + 0.3, b + 0.3).reverse()];
-    addVolume(
-      wallRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
-      wallRing.map(([d, c]) => [toXZ(d, c)[0], natural(d), toXZ(d, c)[1]]),
-      { dots: false, uprightAt: [0, wallRing.length - 1] },
-    );
+  /* The dots ride with their object, a shade lighter than its lines. */
+  const dotMap = dotTexture(THREE);
+  for (const o of objects) {
+    if (!o.dotPos.length) continue;
+    o.node.add(tagged(new THREE.Points(
+      new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(o.dotPos, 3)),
+      new THREE.PointsMaterial({
+        color: o.col.clone().lerp(WHITE, 0.55), size: 7, sizeAttenuation: false,
+        map: dotMap, transparent: true, alphaTest: 0.35, depthWrite: false,
+      }),
+    ), 'dots'));
   }
-  scene.add(faces, edges, floors);
+  scene.add(parts);
 
-  const dots = new THREE.Points(
-    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(dotPos, 3)),
-    new THREE.PointsMaterial({
-      color: 0xe8f7ff, size: 7, sizeAttenuation: false,
-      map: dotTexture(THREE), transparent: true, alphaTest: 0.35, depthWrite: false,
-    }),
-  );
-  scene.add(dots);
+  const setLayer = (layer, on) => parts.traverse((n) => { if (n.userData.layer === layer) n.visible = on; });
+
+  /* The legend: one chip per group that has something in it, in the
+     group's colour; tap to hide or show the whole group. */
+  const legend = $('legend');
+  const hidden = new Set();
+  for (const [key, g] of Object.entries(GROUPS)) {
+    if (!objects.some((o) => o.group === key)) continue;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.style.setProperty('--c', g.color);
+    chip.innerHTML = `<i></i>${g.name}`;
+    chip.addEventListener('click', () => {
+      if (hidden.has(key)) hidden.delete(key); else hidden.add(key);
+      chip.classList.toggle('is-off', hidden.has(key));
+      for (const o of objects) if (o.group === key) o.node.visible = !hidden.has(key);
+    });
+    legend.appendChild(chip);
+  }
 
   /* ── the site ───────────────────────────────────────── */
 
@@ -390,10 +549,13 @@ async function boot() {
     }
     if (CUT) across.push(CUT.from - 0.001, CUT.from, CUT.to, CUT.to + 0.001);
     if (CUT?.ramp) {
-      across.push(CUT.ramp.from, CUT.ramp.to);
+      /* Over the driveway the grid runs at the slab's own stations, so
+         its lines and the slab's edges are one polyline. */
+      for (const a of DRIVE.stations) if (!across.includes(a)) across.push(a);
       const p = FACE + FRONT.sign * (CUT.ramp.dFrom ?? 0);
       along.push(p - FRONT.sign * 0.001, p);
     }
+    if (ROAD) for (const [a] of ROAD) if (!across.includes(a)) across.push(a);
   }
   xs.sort((a, b) => a - b);
   zs.sort((a, b) => a - b);
@@ -469,9 +631,9 @@ async function boot() {
     apply(state[key]);
     btn.classList.toggle('is-on', state[key]);
   };
-  toggle('t-faces', 'faces', (v) => { faces.visible = v; });
-  toggle('t-floors', 'floors', (v) => { floors.visible = v; });
-  toggle('t-dots', 'dots', (v) => { dots.visible = v; });
+  toggle('t-faces', 'faces', (v) => setLayer('faces', v));
+  toggle('t-floors', 'floors', (v) => setLayer('floors', v));
+  toggle('t-dots', 'dots', (v) => setLayer('dots', v));
   toggle('t-grid', 'grid', (v) => { ground.visible = v; });
   toggle('t-spin', 'spin', (v) => { controls.autoRotate = v; });
 
@@ -542,6 +704,9 @@ async function boot() {
   new ResizeObserver(resize).observe(host);
   resize();
   fit();
+
+  /* For scripts that drive the view — screenshots of a corner, say. */
+  window.houseWire = { THREE, camera, controls, objects, fit };
 
   renderer.autoClear = false;
 

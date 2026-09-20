@@ -84,10 +84,45 @@ button { font-family: inherit; color: inherit; border: none; background: none; c
   backdrop-filter: blur(8px);
   transition: color 0.15s ease, border-color 0.15s ease;
 }
+a.ghost { text-decoration: none; line-height: 1.15; }
 .ghost.is-on { color: var(--line); border-color: rgba(143, 216, 255, 0.55); }
 .ghost:active { background: rgba(143, 216, 255, 0.12); }
 
 #quit { padding: 7px 11px; }
+
+/* ── object legend ────────────────────────────────────── */
+
+/* Sits just above the bottom bar. Each chip carries its group's colour
+   in --c, set by app.js from plan.js. */
+.hud--legend {
+  bottom: calc(50px + env(safe-area-inset-bottom));
+  gap: 6px;
+  padding-top: 0; padding-bottom: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hud--legend::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 7px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--c, var(--line));
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-edge);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.15s ease;
+}
+.chip i {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--c, var(--line));
+  box-shadow: 0 0 6px var(--c, var(--line));
+}
+.chip.is-off { opacity: 0.35; }
+.chip.is-off i { background: transparent; box-shadow: none; border: 1px solid var(--c, var(--line)); }
 
 /* ── axis gizmo ───────────────────────────────────────── */
 
