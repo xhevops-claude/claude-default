@@ -87,6 +87,7 @@
       <span class="chip" style="--c: #d28cff"><i></i>Retaining walls — garage walls (south, west, north), outer wall, its taper, fillet wall, uphill wall, mouth wall</span>
       <span class="chip" style="--c: #9aa4b2"><i></i>Road</span>
       <span class="chip" style="--c: #ff4d3d"><i></i>Parcel — the surveyed boundary (705 m²) and the existing building</span>
+      <span class="chip" style="--c: #6fbf9a"><i></i>Relief — the surveyed ground, 12,765 points tinted by height</span>
     </div>
     <div class="shots"><figure><img src="defects/00-overview.png" alt="Overview of the model with each group in its colour" /><figcaption>Overview, each group in its colour.</figcaption></figure></div>
 
@@ -174,7 +175,7 @@
       <div class="head"><span class="num">8</span><span class="title">The grade is too steep</span><span class="where">whole ramp</span><span class="status open">open — decision D4</span></div>
       <div class="body">
         <p><b>Was wrong:</b> 27 % average and about 36 % through the middle.</p>
-        <p><b>Fixed:</b> D2 brought it to 12.5 % — but D3's landing takes 4 m off the run again: 2.17 m over 12 m (z 6 to 18) is <b>18 % average, about 23 % in the middle</b>. It is a trade-off between the landing's length and the grade — see D4.</p>
+        <p><b>Now:</b> D2 brought it to 12.5 % and D3's landing to 18 % — and the surveyed frontage, ending at z 16.17, leaves only z 6 to 14 for the grade: <b>1.76 m over 8 m, 22 % average, about 27 % in the middle</b>, with a 2.2 m landing. The frontage is the hard limit now; see D4.</p>
       </div>
       <div class="shots"><figure><img src="defects/08-grade-side.png" alt="Side elevation of the ramp" /><figcaption>Side elevation looking west: the grade from the landing (left) to the apron.</figcaption></figure></div>
     </section>
@@ -204,14 +205,15 @@
     </section>
 
     <section class="card" id="d11">
-      <div class="head"><span class="num">11</span><span class="title">The house sits across the parcel's boundary</span><span class="where">north-east boundary, z 2–3</span><span class="status open">open — decision D5</span></div>
+      <div class="head"><span class="num">11</span><span class="title">The house sits across the parcel's boundary</span><span class="where">north-east boundary, z 2–3</span><span class="status fixed">fixed</span></div>
       <div class="body">
-        <p><b>Wrong:</b> with the surveyed parcel overlaid — its road frontage along x 16 with the midpoint at z 10, the real road meeting the model's road there — the house's north edge at z 0 lies <em>outside</em> the parcel: the north-east boundary crosses the footprint at about z 2–3, and the apron's north end at z −2 is outside too. The frontage is 19.3 m (z 0.3 to 19.7), not the 24 m the cut assumes.</p>
-        <p><b>Fix:</b> move the house and its cut about 3 m south (or shorten the cut to the real frontage) so everything sits inside the boundary. The real ground under the house runs +1.5 to −0.5 and falls to −5.4 at the road, close to the model, but keeps rising to +11.7 m at the back of the parcel — the synthetic hill could be replaced with it.</p>
+        <p><b>Was wrong:</b> with the surveyed parcel overlaid, the house's north edge lay outside the north-east boundary, and the cut assumed a 24 m frontage where the survey gives 19.3 m.</p>
+        <p><b>Fixed (D5):</b> the parcel is placed 3.5 m further north relative to the house, so the north wall clears the boundary by half a metre at its north-west corner and the apron's corner stays inside. The cut, the road's fall and the ramp now follow the surveyed frontage (z −3.17 to 16.17, road −6.08 rising to −4.48). The surveyed ground is shown as the Relief group.</p>
       </div>
       <div class="shots">
-        <figure><img src="defects/11-house-over-boundary-plan.png" alt="Plan view of the house on the parcel" /><figcaption>Straight down: the red boundary passes through the house; the frontage is the right-hand edge.</figcaption></figure>
-        <figure><img src="defects/parcel-iso.png" alt="The parcel and the house from the south-east" /><figcaption>The parcel at its real heights, 17.8 m of rise from the road to the top corner where the existing building stands.</figcaption></figure>
+        <figure><img src="defects/11-house-over-boundary-plan.png" alt="Plan view of the house on the parcel" /><figcaption>Before: straight down, the red boundary passing through the house; the frontage is the right-hand edge.</figcaption></figure>
+        <figure><img src="defects/11-house-inside-boundary-plan.png" alt="Plan view after the shift" /><figcaption>After: the house and apron inside the boundary, the relief dots behind.</figcaption></figure>
+        <figure><img src="defects/parcel-iso.png" alt="The parcel, the relief and the house from the south-east" /><figcaption>The parcel on the surveyed ground, 17.8 m of rise from the road to the top corner where the existing building stands.</figcaption></figure>
       </div>
     </section>
 
@@ -221,8 +223,8 @@
       <li><b>D2 — decided:</b> the driveway climbs from the very entrance; no flat pad. The mouth is the ramp's last 6 m and its floor is on the grade.</li>
       <li><b>D3 — decided:</b> a road-level landing. The ramp reaches the road at z 18; from there to the property's end the driveway is the road's own surface, and the outer wall runs out where the slab meets the road.</li>
       <li><b>Site fact (survey):</b> the parcel is 705 m², 44 m deep from the road, 19.3 m wide at the road and 10 m at the back, rising 17.8 m from its lowest road corner to the top corner. The frontage rises 1.6 m from its east corner to its south corner.</li>
-      <li><b>D5 — waiting:</b> shift the house and its cut south to sit inside the boundary, and whether to replace the synthetic hill with the real ground.</li>
-      <li><b>D4 — waiting:</b> the grade is back to 18 % (23 % mid) because the landing takes 4 m off the run. Options: a shorter landing (3 m gives 16 %), a flatter ease, starting the grade inside the apron again, or accept it.</li>
+      <li><b>D5 — decided:</b> the house sits 3.5 m further south within the parcel, inside the boundary. The surveyed ground is shown as the Relief group; the synthetic hill stays the model's terrain for now.</li>
+      <li><b>D4 — waiting:</b> the grade is 22 % (27 % mid) because the surveyed frontage leaves 8 m for the ramp. Options: start the grade inside the apron, a shorter landing, a flatter ease, a different driveway layout, or accept it.</li>
       <li><b>Site fact:</b> the road is not level — it rises 1 m along the property, so the entrance (south end, z 22) is 2 m below the garage floor, not 3. Assumed: the north end of the property (z −2) is the 3 m-below end.</li>
     </ul>
   </main>

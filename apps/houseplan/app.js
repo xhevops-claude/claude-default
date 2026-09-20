@@ -44,6 +44,7 @@ const DE = {
   'Entrance mouth, wall': 'Einfahrtstrichter, Mauer',
   run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über', rise: 'Anstieg',
   Parcel: 'Parzelle', 'Parcel boundary, 705 m²': 'Parzellengrenze, 705 m²', 'Existing building': 'Bestandsgebäude',
+  Relief: 'Relief',
 };
 let LANG = (() => {
   try { const v = localStorage.getItem('houseplan-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
@@ -647,6 +648,33 @@ async function boot() {
     let lo = 0, hi = 0;
     pts.forEach((p, k) => { if (p[1] < pts[lo][1]) lo = k; if (p[1] > pts[hi][1]) hi = k; });
     if (hi !== lo) o.dims.push({ a: pts[lo], b: [pts[lo][0], pts[hi][1], pts[lo][2]], label: `rise ${mLabel(pts[hi][1] - pts[lo][1])}` });
+  }
+
+  /* ── the relief: the surveyed ground as dots ────────── */
+
+  /* Every surveyed point, tinted by height from the group's colour at
+     the bottom of the sample to near white at the top, so the lie of
+     the land reads at a glance. Not framed, not tappable — it is the
+     backdrop the model sits in. */
+  if (window.HOUSE_RELIEF?.points?.length) {
+    const R = window.HOUSE_RELIEF;
+    const o = makeObject({ id: 'relief', name: R.name || 'Relief', group: 'relief' });
+    const pts = R.points;
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 1; i < pts.length; i += 3) { lo = Math.min(lo, pts[i]); hi = Math.max(hi, pts[i]); }
+    const colors = new Float32Array(pts.length);
+    const c = new THREE.Color();
+    for (let i = 0; i < pts.length; i += 3) {
+      c.copy(o.col).lerp(WHITE, 0.15 + 0.7 * ((pts[i + 1] - lo) / (hi - lo || 1)));
+      colors[i] = c.r; colors[i + 1] = c.g; colors[i + 2] = c.b;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    o.node.add(tagged(new THREE.Points(geo, new THREE.PointsMaterial({
+      size: 3.5, sizeAttenuation: false, vertexColors: true, map: dotTexture(THREE),
+      transparent: true, opacity: 0.85, alphaTest: 0.35, depthWrite: false,
+    })), 'relief'));
   }
 
   /* The dots ride with their object, a shade lighter than its lines. */

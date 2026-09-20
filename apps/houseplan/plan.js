@@ -31,6 +31,7 @@ window.HOUSE_PLAN = {
     wall: { name: 'Retaining walls', color: '#d28cff' },
     road: { name: 'Road', color: '#9aa4b2' },
     parcel: { name: 'Parcel', color: '#ff4d3d' },
+    relief: { name: 'Relief', color: '#6fbf9a' },
   },
 
   /* The real parcel, from the surveyor's DXF in apps/terrain (layer
@@ -39,51 +40,53 @@ window.HOUSE_PLAN = {
    * this frame so its road-side edge — the 19.3 m frontage that rises
    * 1.6 m from its east corner to its south corner, which is the road
    * fall the model already carries — runs along +Z at x 16, its midpoint
-   * at z 10, and so uphill into the parcel is −X. Heights are metres
+   * at z 6.5 (the house sits 3.5 m in from where a centred frontage would
+   * put it, so its north wall clears the north-east boundary by half a
+   * metre), and so uphill into the parcel is −X. Heights are metres
    * above the model's datum: real 991.11 m a.s.l. is y 0, chosen so the
    * real road at the frontage's midpoint meets the model's road there.
    * Points are [x, y, z]; `sides` are vertex spans measured along the
-   * loop when the parcel is tapped. */
+   * loop when the parcel is tapped. relief.js carries the surveyed
+   * ground in the same frame. */
   parcel: {
     id: 'parcel', group: 'parcel', name: 'Parcel boundary, 705 m²',
     sides: [[0, 3], [3, 11], [11, 16], [16, 0]],
     points: [
-      [ -27.62,  11.63,  20.44],
-      [ -27.43,  11.75,  19.03],
-      [ -26.84,  10.44,  13.01],
-      [ -26.65,  10.31,  10.46],
-      [ -20.25,   9.08,   8.39],
-      [ -13.80,   6.89,   6.31],
-      [  -7.25,   4.84,   4.13],
-      [   1.21,   0.67,   2.80],
-      [   7.59,  -0.26,   2.09],
-      [  10.25,  -2.02,   1.52],
-      [  12.52,  -3.50,   1.21],
-      [  16.00,  -6.08,   0.33],
-      [  16.19,  -5.70,   2.83],
-      [  16.21,  -5.28,   7.86],
-      [  16.11,  -4.87,  15.62],
-      [  16.06,  -4.91,  17.62],
-      [  16.00,  -4.48,  19.67],
-      [  12.73,  -2.58,  20.63],
-      [   9.95,  -0.86,  20.17],
-      [   7.25,   0.47,  20.05],
-      [  -9.80,   7.22,  22.12],
-      [ -14.53,   9.69,  21.63],
-      [ -21.47,  10.58,  21.00],
+      [ -27.62,  11.63,  16.94],
+      [ -27.43,  11.75,  15.53],
+      [ -26.84,  10.44,   9.51],
+      [ -26.65,  10.31,   6.96],
+      [ -20.25,   9.08,   4.89],
+      [ -13.80,   6.89,   2.81],
+      [  -7.25,   4.84,   0.63],
+      [   1.21,   0.67,  -0.70],
+      [   7.59,  -0.26,  -1.41],
+      [  10.25,  -2.02,  -1.98],
+      [  12.52,  -3.50,  -2.29],
+      [  16.00,  -6.08,  -3.17],
+      [  16.19,  -5.70,  -0.67],
+      [  16.21,  -5.28,   4.36],
+      [  16.11,  -4.87,  12.12],
+      [  16.06,  -4.91,  14.12],
+      [  16.00,  -4.48,  16.17],
+      [  12.73,  -2.58,  17.13],
+      [   9.95,  -0.86,  16.67],
+      [   7.25,   0.47,  16.55],
+      [  -9.80,   7.22,  18.62],
+      [ -14.53,   9.69,  18.13],
+      [ -21.47,  10.58,  17.50],
     ],
   },
   existing: {
     id: 'existing', group: 'parcel', name: 'Existing building',
     sides: [[0, 1], [1, 2]],
     points: [
-      [ -26.84,  10.44,  13.01],
-      [ -18.88,   9.23,  13.65],
-      [ -19.24,  10.08,  19.68],
-      [ -27.43,  11.75,  19.03],
+      [ -26.84,  10.44,   9.51],
+      [ -18.88,   9.23,  10.15],
+      [ -19.24,  10.08,  16.18],
+      [ -27.43,  11.75,  15.53],
     ],
   },
-
 
   /* `envelope` is the house. A level can push past it on the downhill
    * face with `extendFront`; none does at the moment — the garage sits
@@ -103,14 +106,13 @@ window.HOUSE_PLAN = {
   terrain: {
     front: '+X',
     backLevel: 0,
-    /* The road at the foot of the hill is not level: it rises 1 m along
-     * the property, from 3 m below the garage floor at the north end to
-     * 2 m below it at the entrance. [across the front, level], straight
-     * between, held beyond. Wherever a profile says 'road' it means
-     * this level, here. */
+    /* The road at the foot of the hill is not level: along the surveyed
+     * frontage it rises 1.6 m, from the parcel's east corner to its south
+     * corner. [across the front, level], straight between, held beyond.
+     * Wherever a profile says 'road' it means this level, here. */
     road: [
-      [-2, -5.9],
-      [22, -4.9],
+      [-3.17, -6.08],
+      [16.17, -4.48],
     ],
     profile: [
       [6, 'road'],   // one fall from the house face to the road's edge
@@ -119,9 +121,12 @@ window.HOUSE_PLAN = {
     /* In front of the house only — between `from` and `to` across the
      * front — the ground is cut to this profile instead: dropped to the
      * garage floor at the door, level out to the wall, then down. */
+    /* The cut spans the frontage the survey gives — z −3.17 to 16.17 —
+     * less a little at the north end, where the boundary runs at an
+     * angle and the apron's corner at x 10 must stay inside it. */
     cut: {
-      from: -2,
-      to: 22,
+      from: -1.5,
+      to: 16.17,
       profile: [
         [0, -2.9],     // straight down at the door, to the garage floor
         [6, -2.9],     // the driveway, level out to the wall
@@ -137,7 +142,7 @@ window.HOUSE_PLAN = {
        * the run at each end over which the grade builds up and tails
        * off, so the floor bends into the landing and the apron instead
        * of hinging onto them — the middle is correspondingly steeper. */
-      ramp: { from: 6, to: 18, dFrom: 3, ease: 0.2 },
+      ramp: { from: 6, to: 14, dFrom: 3, ease: 0.2 },
       /* The inside corner where the apron turns onto the ramp is cut
        * back in a quarter-round, so a car can swing out of the garage
        * without clipping the hill. Its radius is `dFrom` — house face to
@@ -167,7 +172,7 @@ window.HOUSE_PLAN = {
    * foot simply ends where the two meet. */
   works: [
     { id: 'canopy', group: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
-    { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 6 },
+    { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -1.5, z1: 6 },
     /* The ramp itself is derived from `terrain.cut` — one slab from the
      * apron's edge to the mouth, the fillet's corner included — as are
      * the walls along its uphill side and the mouth. */
@@ -185,8 +190,8 @@ window.HOUSE_PLAN = {
     { id: 'garage-wall-south', group: 'wall', name: 'Garage wall, south', x0: -0.3, x1: 10, z0: 6, z1: 6.3, y0: -3.1, y1: 0 },
     { id: 'garage-wall-west', group: 'wall', name: 'Garage wall, west', x0: -0.3, x1: 0, z0: 0, z1: 6, y0: -3.1, y1: 0 },
     { id: 'garage-wall-north', group: 'wall', name: 'Garage wall, north', x0: -0.3, x1: 10, z0: -0.3, z1: 0, y0: -3.1, y1: 0 },
-    { id: 'retainer', group: 'wall', name: 'Retaining wall', x0: 15.7, x1: 16, y0: { road: 0 }, y1: -3.1, z0: -2, z1: 6 },
-    { id: 'retainer-ramp', group: 'wall', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 18, y0: { road: 0 }, y1: { floor: -0.2 } },
+    { id: 'retainer', group: 'wall', name: 'Retaining wall', x0: 15.7, x1: 16, y0: { road: 0 }, y1: -3.1, z0: -1.5, z1: 6 },
+    { id: 'retainer-ramp', group: 'wall', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 14, y0: { road: 0 }, y1: { floor: -0.2 } },
     /* The road, parallel to the wall along its outer face. `frame: false`
      * keeps its 30 m out of the camera's Fit, so the house stays the
      * subject. */
