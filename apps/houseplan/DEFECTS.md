@@ -57,6 +57,7 @@ fix.
 | 6 | Fillet wall and mouth wall tops | The band's top is evaluated per vertex, so the inner and outer arcs get different natural-ground heights and the top tilts across the 30 cm. | Evaluate the natural ground once, at the outer (hill-side) face, and use it for both edges. | open | (14.6, 0.2, 10.6) → (11.3, −1.4, 8.2) |
 | 7 | Ramp, z 5–16 | The ground grid is sampled at 1 m, the ramp slabs and walls at 0.5 m, so the grid's ramp lines and the slab's edges do not coincide along the eased curve. The slab and the wall also overlap (see 4). | R5: sample the grid across the ramp at the slab's stations (0.5 m), or both at the same list of breakpoints. | open | (19, −1.6, 9.6) → (14.5, −4.2, 10.5) |
 | 8 | Whole ramp | 3 m drop over 11 m was 27 % average, ~36 % in the eased middle — too steep for a car in the wet. | D2: the grade starts at the entrance itself, not at the end of a flat pad — ramp z 6…22 (16 m) through the mouth. With the road 2 m below the garage at the entrance the drop is 2 m: 12.5 % average, ~17 % mid. | fixed | (34, −2.5, 10) → (14.5, −4.5, 10) |
+| 9 | The entrance, z 16–22 | You cannot drive in. The outer wall (`retainer-ramp`) now runs through the mouth to z 22, so the only way off the road is at the very tip; and the floor is within a kerb's height of the road only over the last ~1.5 m (floor above road: 0.92 m at z 16, 0.50 at z 18, 0.17 at z 20, 0.06 at z 21, 0 at z 22). A car turning in from the road needs an opening of 4–5 m at road level. | Give the entrance a landing: the ramp's grade ends at about z 17–18 and the last 4–5 m sit at road level (+ a dropped kerb); the outer wall stops where the landing starts, and the mouth's flare opens onto the landing. The ramp becomes 2 m over ~11–12 m, 17–18 % average — or keep the grade flatter by starting it before the house edge (D1 revisited). | open — decision D3 | plan view (15.5, 6, 19) → (15.5, −5, 19), up −Z |
 
 ## Decisions
 
@@ -69,6 +70,9 @@ fix.
   floor, not 3. `terrain.road` holds it as [across, level] and a profile
   level written `'road'` follows it; the walls' feet ride it too.
   Assumed: the north end of the property (z −2) is the 3 m-below end.
+- **D3 — waiting:** how the entrance opens onto the road (defect 9): a
+  road-level landing of 4–5 m at the foot with the grade ending at z ~17–18,
+  or something else?
 
 ## Done
 
