@@ -41,9 +41,11 @@ Every built thing is its own object, coloured by group (`plan.js` →
 
 ## Defects
 
-Screenshots are `defects/NN-*.png` in the session's scratchpad, rendered
-with the camera settings below (`window.houseWire.camera` / `.controls`),
-so they can be retaken after a fix.
+Screenshots are `defects/NN-*.png` beside this file, shown with the notes
+on `defects.html` (the Defects button in the app opens it — keep that page
+in step with this one). They were rendered with the camera settings below
+(`window.houseWire.camera` / `.controls`), so they can be retaken after a
+fix.
 
 | # | Where | What is wrong | Proposed fix | Status | Camera (pos → target) |
 |---|---|---|---|---|---|

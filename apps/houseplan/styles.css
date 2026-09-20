@@ -84,6 +84,7 @@ button { font-family: inherit; color: inherit; border: none; background: none; c
   backdrop-filter: blur(8px);
   transition: color 0.15s ease, border-color 0.15s ease;
 }
+a.ghost { text-decoration: none; line-height: 1.15; }
 .ghost.is-on { color: var(--line); border-color: rgba(143, 216, 255, 0.55); }
 .ghost:active { background: rgba(143, 216, 255, 0.12); }
 
