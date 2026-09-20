@@ -107,4 +107,4 @@ fix.
   thickness, plan length and the height at each end for walked walls;
   run, width, grade, slab depth, fillet radius and mouth flare for the
   driveway; thickness, arc length and end heights for the wall bands
-  (branch, unmerged).
+  (shipped, PR #141).
