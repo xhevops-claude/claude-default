@@ -233,8 +233,8 @@
           "originalPrincipal": 64000,
           "currency": "EUR",
           "annualRate": 3.9,
-          "disbursedOn": "2024-03-15",
-          "termEnds": "2044-03-15",
+          "disbursedOn": "15 Mar 2024",
+          "termEnds": "15 Mar 2044",
           "note": "Invented plan for the guest tour — balances as of Sep 2026."
         },
         "costs": [
@@ -258,6 +258,15 @@
             "id": "b12-fees",
             "label": "Notary and fees",
             "amount": 900,
+            "currency": "EUR",
+            "active": true,
+            "sample": true
+          },
+          {
+            "id": "b12-paid",
+            "label": "Instalments paid to Aug 2026",
+            "kind": "instalments",
+            "amount": 16530,
             "currency": "EUR",
             "active": true,
             "sample": true

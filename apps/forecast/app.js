@@ -1310,9 +1310,13 @@
       }
 
       var costs = (pr.costs || []).filter(isOn).map(function (c) {
-        return { label: c.label, eur: toEur(c.amount, c.currency || cur) };
+        return { label: c.label, eur: toEur(c.amount, c.currency || cur), instalments: isInstalmentCost(c) };
       });
       var cashIn = costs.reduce(function (a, b) { return a + b.eur; }, 0);
+      // The instalment lines are the loan's history, not the down payment —
+      // "Paid so far" sets interest against the two separately.
+      var instalmentCosts = costs.reduce(function (a, b) { return a + (b.instalments ? b.eur : 0); }, 0);
+      var downPayment = cashIn - instalmentCosts;
 
       var extras = (pr.saleExtras || []).filter(isOn).map(function (x) {
         return { label: x.label, eur: toEur(x.amount, x.currency || cur) };
@@ -1335,7 +1339,7 @@
         });
       }
 
-      var soFar = debt ? interestSoFar(pr.loanFacts, debt, owed, paidInSim) : null;
+      var soFar = debt ? interestSoFar(pr.loanFacts, debt, owed, paidInSim, instalmentCosts) : null;
 
       return {
         id: pr.id,
@@ -1346,6 +1350,7 @@
         debt: debt,
         costs: costs,
         cashIn: cashIn,
+        downPayment: downPayment,
         extras: extras,
         pricePerM2: pricePerM2,
         floorValue: floorValue,
@@ -1404,7 +1409,7 @@
    * has it, otherwise one monthly instalment for every whole month between
    * disbursement and the forecast opening, plus whatever the simulation has
    * already paid this month. That estimate is flagged so the view can say so. */
-  function interestSoFar(facts, debt, owed, paidInSim) {
+  function interestSoFar(facts, debt, owed, paidInSim, instalmentCosts) {
     if (!facts || !(facts.originalPrincipal > 0)) return null;
     var cur = facts.currency || debt.currency;
     var borrowed = toEur(facts.originalPrincipal, cur);
@@ -1413,6 +1418,8 @@
     var estimated = false;
     if (facts.paidToDate != null) {
       paidBefore = toEur(facts.paidToDate, cur);
+    } else if (instalmentCosts > 0) {
+      paidBefore = instalmentCosts;
     } else {
       var disbursed = ymLoose(facts.disbursedOn);
       if (!disbursed) return null;
@@ -1436,14 +1443,30 @@
     };
   }
 
-  // "2024-03-15", "2024-03" or "15.03.2024" → "2024-03"; null when unreadable.
+  // The month of a date written any of the ways the data has been written:
+  // "2024-03-15", "2024-03", "15.03.2024", "15/03/2024", "21 May 2021",
+  // "May 2021" → "2024-03" / "2021-05"; null when unreadable.
   function ymLoose(s) {
     if (!s) return null;
-    var m = String(s).match(/^(\d{4})-(\d{2})/);
+    var str = String(s).trim();
+    var m = str.match(/^(\d{4})-(\d{2})/);
     if (m) return m[1] + '-' + m[2];
-    m = String(s).match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+    m = str.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
     if (m) return m[3] + '-' + pad2(parseInt(m[2], 10));
+    m = str.match(/^(?:\d{1,2}\s+)?([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{4})$/);
+    if (m) {
+      var mi = MONTHS_SHORT.map(function (n) { return n.toLowerCase(); })
+        .indexOf(m[1].toLowerCase());
+      if (mi >= 0) return m[2] + '-' + pad2(mi + 1);
+    }
     return null;
+  }
+
+  // A cost line that is really the instalments paid before the forecast
+  // opened — "Instalments paid to Aug 2026" — carries the exact paid-so-far
+  // figure. Flag it with kind: "instalments"; the label is the fallback.
+  function isInstalmentCost(c) {
+    return c.kind === 'instalments' || /instal/i.test(c.label || '');
   }
 
   // "+38%" alongside a profit figure; nothing when there is no cash basis.
@@ -1525,7 +1548,7 @@
 
         (p.soFar ? '<div class="inv-block"><div class="inv-head">Paid so far</div>' +
           '<div class="inv-row"><span>Down payment and costs</span><b>' +
-            esc(money(p.cashIn)) + '</b></div>' +
+            esc(money(p.downPayment)) + '</b></div>' +
           '<div class="inv-row"><span>Instalments' +
             (p.facts && p.facts.disbursedOn ? ' since ' + esc(p.facts.disbursedOn) : '') +
             (p.soFar.estimated ? ' <em>≈ estimated</em>' : '') + '</span><b>' +
@@ -1535,7 +1558,7 @@
           '<div class="inv-row is-total is-net"><span>Interest paid</span><b class="is-neg">' +
             esc(money(p.soFar.interest)) + returnTag(p.soFar.interestShare) + '</b></div>' +
           '<div class="inv-row"><span>As a share of the down payment</span><b>' +
-            (p.cashIn > 0 ? esc(Math.round(p.soFar.interest / p.cashIn * 100) + '%') : '—') +
+            (p.downPayment > 0 ? esc(Math.round(p.soFar.interest / p.downPayment * 100) + '%') : '—') +
             '</b></div>' +
         '</div>' : '') +
 

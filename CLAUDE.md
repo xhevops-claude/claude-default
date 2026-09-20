@@ -339,9 +339,13 @@ below). A project's optional `loanFacts` — `originalPrincipal`, `currency`,
 `annualRate`, `disbursedOn`, `termEnds`, `note` — is the bank's own summary of
 the loan and also feeds the "Paid so far" block: interest paid to date is the
 identity `instalments paid − (originalPrincipal − balance today)`, with the
-instalments counted as one a month since `disbursedOn` unless `loanFacts`
-carries `paidToDate` (native currency, from a statement), which is exact and
-turns the ≈ off. Add `paidToDate` when the user quotes a figure.
+instalments counted as one a month since `disbursedOn` unless an exact figure
+is in the data — `loanFacts.paidToDate` (native currency, from a statement), or
+a cost line that *is* the instalments paid before the forecast (the real data
+has "Instalments paid to Aug 2026"; flag such a line `kind: "instalments"`,
+the label matching /instal/i is the fallback). Either turns the ≈ off, and the
+instalment lines are kept out of the "down payment" the interest is compared
+with. `disbursedOn` is read loosely — ISO, `dd.mm.yyyy`, or "21 May 2021".
 
 **The Timeline is the home view** and it leads with what is still ahead rather
 than the first of the month. `build()` marks `model.nextPay` (the earliest pay
