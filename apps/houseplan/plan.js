@@ -115,9 +115,9 @@ window.HOUSE_PLAN = {
   works: [
     { id: 'canopy', group: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
     { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 6 },
-    /* The straight run of the ramp, up to where the mouth takes over
-     * (the property's end less the mouth's flare). */
-    { id: 'driveway-ramp', group: 'drive', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 6, z1: 16, y0: { floor: -0.2 }, y1: { floor: 0 } },
+    /* The ramp itself is derived from `terrain.cut` — one slab from the
+     * apron's edge to the mouth, the fillet's corner included — as are
+     * the walls along its uphill side and the mouth. */
     /* The outer wall holds the driveway up over the road: its top is the
      * slab's underside, its foot the road, and it runs out where the
      * slab comes down to meet the road. */

@@ -413,32 +413,40 @@ async function boot() {
     );
   }
 
-  if (FILLET) {
-    const { r, corner, centre } = FILLET;
-    const dOf = (along) => (along - FACE) * FRONT.sign;
-    const arc = (rad, N = 12) => Array.from({ length: N + 1 }, (_, i) => {
-      const th = (i / N) * (Math.PI / 2);
-      return [dOf(centre.along + FRONT.sign * rad * Math.sin(th)), centre.across - rad * Math.cos(th)];
-    });
+  /* The fillet's arc in (d, across), from the house's corner round to
+     the ramp's uphill edge. */
+  const filletArc = (rad, N = 12) => Array.from({ length: N + 1 }, (_, i) => {
+    const th = (i / N) * (Math.PI / 2);
+    const { centre } = FILLET;
+    return [(centre.along + FRONT.sign * rad * Math.sin(th) - FACE) * FRONT.sign, centre.across - rad * Math.cos(th)];
+  });
 
-    const floorRing = [[dOf(corner.along), corner.across], ...arc(r)];
-    addVolume(
-      makeObject({ id: 'fillet-floor', name: 'Corner fillet, floor', group: 'drive' }),
-      floorRing.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB)),
-      floorRing.map(([d, c]) => pt(atD(d, c), rampLevel(c))),
-      { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
-    );
-    addBand('fillet-wall', 'Corner fillet, wall', arc(r), arc(r - WALL));
-  }
-
-  /* The straight run, from the fillet's end (or the house's corner) to
-     the mouth's start (or the property's end). */
+  /* The ramp is one slab: the straight run from the apron to the
+     mouth, with the fillet's corner as part of its own outline — its
+     outer edge along the wall, its inner edge along the uphill wall
+     down to where the fillet's arc takes over and swings back to the
+     house's corner, then the apron's edge closes it. */
   if (CUT?.ramp) {
     const dFrom = CUT.ramp.dFrom ?? 0;
-    const from = FILLET ? FILLET.centre.across : Math.max(CUT.ramp.from, HOUSE_EDGE);
+    const from = CUT.ramp.from;
     const to = MOUTH ? MOUTH.across0 : CUT.to;
-    if (to > from + 1e-6) {
-      const steps = stationsBetween(from, to);
+    const outer = stationsBetween(from, to).map((c) => [WALL_D, c]);
+    const inner = stationsBetween(FILLET ? FILLET.centre.across : from, to).reverse().map((c) => [dFrom, c]);
+    const bend = FILLET ? filletArc(FILLET.r).reverse().slice(1) : [];
+    const ring = [...outer, ...inner, ...bend];
+    addVolume(
+      makeObject({ id: 'driveway-ramp', name: 'Driveway, down the hill', group: 'drive' }),
+      ring.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB)),
+      ring.map(([d, c]) => pt(atD(d, c), rampLevel(c))),
+      { dots: false, uprightAt: [0, outer.length - 1, outer.length, outer.length + inner.length - 1, ring.length - 1] },
+    );
+
+    /* The uphill wall line: the fillet's arc, then the straight run to
+       the mouth's start (or the property's end). */
+    if (FILLET) addBand('fillet-wall', 'Corner fillet, wall', filletArc(FILLET.r), filletArc(FILLET.r - WALL));
+    const wallFrom = FILLET ? FILLET.centre.across : Math.max(from, HOUSE_EDGE);
+    if (to > wallFrom + 1e-6) {
+      const steps = stationsBetween(wallFrom, to);
       addBand(
         'ramp-wall', 'Retaining wall, uphill side',
         steps.map((c) => [dFrom, c]),

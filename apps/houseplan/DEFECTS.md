@@ -17,7 +17,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 |---|---|---|
 | House | cyan | garage, ground, first |
 | Cantilever | orange | canopy |
-| Driveway | yellow | driveway (apron), driveway-ramp, fillet-floor, mouth-floor |
+| Driveway | yellow | driveway (apron), driveway-ramp (one slab, the fillet corner included), mouth-floor |
 | Retaining walls | violet | retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
 
@@ -93,3 +93,5 @@ fix.
   levels, one derived wall line on the uphill side, slabs on walls, walls
   that run out, flat wall tops, shared sampling, a road-level landing
   (branch, unmerged).
+- The ramp is one derived slab, the fillet's corner part of its outline
+  rather than a separate sliver (branch, unmerged).
