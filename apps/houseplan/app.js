@@ -18,6 +18,17 @@ const WALL = PLAN.wall || 0.3;
 const STEP = 0.5;
 const TER = PLAN.terrain;
 const e = PLAN.envelope;
+/* The house turned about its south-east corner — the corner the fillet
+   hangs off — by `turn` degrees, clockwise seen from above. H() takes
+   a point in the house's own frame (the envelope's axes) to the
+   model's; everything else in the model lies on the frontage's axes. */
+const TURN = ((PLAN.turn || 0) * Math.PI) / 180;
+const PIVOT = [e.x1, e.y1];
+const H = (x, z) => {
+  if (!TURN) return [x, z];
+  const dx = x - PIVOT[0], dz = z - PIVOT[1];
+  return [PIVOT[0] + dx * Math.cos(TURN) + dz * Math.sin(TURN), PIVOT[1] - dx * Math.sin(TURN) + dz * Math.cos(TURN)];
+};
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n.toFixed(2).replace(/\.?0+$/, '');
@@ -91,7 +102,7 @@ function roadLevel(across) {
 const VOLS = PLAN.levels.map((l) => {
   const out = l.extendFront || 0;
   const v = {
-    id: l.id, name: l.name, group: l.group || 'house',
+    id: l.id, name: l.name, group: l.group || 'house', house: true,
     x0: e.x0, x1: e.x1, z0: e.y0, z1: e.y1,
     y0: l.elevation - SLAB,
     y1: l.elevation + l.height,
@@ -185,11 +196,26 @@ const FILLET = (() => {
   const f = CUT?.fillet, r = CUT?.ramp;
   if (!f || !r) return null;
   const dFrom = r.dFrom ?? 0;
-  const rad = f.r ?? dFrom;
+  /* With the house turned, its south edge line leaves the corner at
+     -TURN, so the circle tangent to it there and to the ramp's edge is
+     smaller: r (1 + sin TURN) = dFrom. Its centre is r along the turned
+     edge's normal from the corner, and the arc runs from the corner
+     (at -TURN from the centre's north) round to the ramp's edge. */
+  const rad = f.r ?? dFrom / (1 + Math.sin(TURN));
   const corner = { along: FACE + FRONT.sign * dFrom, across: Math.max(r.from, HOUSE_EDGE) };
-  return { r: rad, corner, centre: { along: corner.along - FRONT.sign * rad, across: corner.across + rad } };
+  const centre = { along: corner.along - FRONT.sign * rad, across: corner.across + rad * Math.cos(TURN) };
+  return { r: rad, corner, centre };
 })();
 
+/* Inside the rounded hill corner: the part of the fillet's circle that
+   is still hill (its centre's side of the arc), within the cut. */
+function insideFillet(along, across) {
+  if (!FILLET) return false;
+  const { r, corner, centre } = FILLET;
+  const da = (corner.along - along) * FRONT.sign;
+  if (da < 0 || across > centre.across) return false;
+  return Math.hypot(along - centre.along, across - centre.across) < r - 1e-9;
+}
 function inFillet(along, across) {
   if (!FILLET) return false;
   const { r, corner, centre } = FILLET;
@@ -313,9 +339,14 @@ function groundY(x, z) {
   const across = FRONT.axis === 'x' ? z : x;
   const d = (along - FACE) * FRONT.sign;
   if (!CUT || across < cutFrom(d) || across > CUT.to) return natural(d, across);
-  const base = sampleProfile(CUT.profile, d, across);
-  if (d < 0 || !CUT.ramp) return base;
+  /* The turned house's east face runs west of the face line north of
+     the corner; the cut's floor reaches it. */
+  const dFace = faceD(across);
+  if (d < dFace) return sampleProfile(CUT.profile, d, across);
+  const base = sampleProfile(CUT.profile, Math.max(d, 0), across);
+  if (!CUT.ramp) return base;
   const r = CUT.ramp;
+  if (insideFillet(along, across)) return natural(d, across);
   if (across <= r.from || d >= WALL_D) return base;
   if (MOUTH && across >= MOUTH.across0) return inMouth(d, across) ? rampLevel(across) : natural(d, across);
   if (d < (r.dFrom ?? 0)) {
@@ -323,6 +354,14 @@ function groundY(x, z) {
     if (!inFillet(along, across)) return natural(d, across);
   }
   return rampLevel(across);
+}
+/* Where the house's east face stands, in d, at a position across the
+   front: on the face line for a house that is not turned; for one that
+   is, west of it by the turn north of the corner, and nowhere south of
+   the corner (there the house's own south edge line takes over). */
+function faceD(across) {
+  if (!TURN || across > HOUSE_EDGE) return 0;
+  return -(HOUSE_EDGE - across) * Math.tan(TURN);
 }
 
 $('wf-name').textContent = PLAN.name;
@@ -495,11 +534,14 @@ async function boot() {
   const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
   const plan2 = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
   const mLabel = (n) => `${fmt(n)} m`;
-  const boxDims = (v) => [
-    { a: [v.x0, v.y1, v.z1], b: [v.x1, v.y1, v.z1], label: mLabel(v.x1 - v.x0) },
-    { a: [v.x1, v.y1, v.z0], b: [v.x1, v.y1, v.z1], label: mLabel(v.z1 - v.z0) },
-    { a: [v.x1, v.y0, v.z1], b: [v.x1, v.y1, v.z1], label: `h ${mLabel(v.y1 - v.y0)}` },
-  ];
+  const boxDims = (v, turn = null) => {
+    const P = (x, y, z) => { const [px, pz] = turn ? turn(x, z) : [x, z]; return [px, y, pz]; };
+    return [
+      { a: P(v.x0, v.y1, v.z1), b: P(v.x1, v.y1, v.z1), label: mLabel(v.x1 - v.x0) },
+      { a: P(v.x1, v.y1, v.z0), b: P(v.x1, v.y1, v.z1), label: mLabel(v.z1 - v.z0) },
+      { a: P(v.x1, v.y0, v.z1), b: P(v.x1, v.y1, v.z1), label: `h ${mLabel(v.y1 - v.y0)}` },
+    ];
+  };
   /* A walked volume: thickness and length read off its top, and the
      height it stands at each end — the second may differ from the first
      or be nothing at all, which is the point of showing both. */
@@ -543,25 +585,65 @@ async function boot() {
       continue;
     }
     let corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
+    /* A part of the house is drawn in the house's frame, turned. */
+    if (v.house) corners = corners.map(([x, z]) => H(x, z));
     if (onCut) {
       /* The near edge is the cut line itself: its end points at the
-         volume's two sides, and every bend of the line between them. */
+         volume's two sides, and every bend of the line between them.
+         With the house turned, the west side is its east face, from
+         the corner north to where it meets the cut line — and the
+         south-east corner is rounded by the fillet's arc, which dips a
+         touch north of the corner's line before it swings out. */
+      const westX = TURN ? faceMeetsCut() : null;
+      const west = westX ? westX[0] : v.x0;
       const bends = typeof CUT.from === 'number' ? [] : CUT.from
         .map(([d, a]) => [FACE + FRONT.sign * d, a])
-        .filter(([x]) => x > v.x0 + 1e-6 && x < v.x1 - 1e-6)
+        .filter(([x]) => x > west + 1e-6 && x < v.x1 - 1e-6)
         .sort((p, q) => q[0] - p[0]);
-      corners = [[v.x0, v.z1], [v.x1, v.z1], [v.x1, cutAt(v.x1)], ...bends, [v.x0, cutAt(v.x0)]];
+      const dip = [];
+      if (FILLET && TURN) {
+        const { r: rad, centre } = FILLET;
+        const n = 6;
+        for (let i = 1; i <= n; i++) {
+          const phi = -TURN + (2 * TURN * i) / n;
+          dip.push([centre.along + rad * Math.sin(phi), centre.across - rad * Math.cos(phi)]);
+        }
+      }
+      corners = [[v.x0, v.z1], ...dip, [v.x1, v.z1], [v.x1, cutAt(v.x1)], ...bends, westX || [v.x0, cutAt(v.x0)]];
     }
     const bottom = corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]);
     const top = corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]);
     addVolume(o, bottom, top);
     if (onCut) {
-      /* Every side of the footprint, and the height. */
-      o.dims = top.map((a, i) => ({ a, b: top[(i + 1) % top.length], label: mLabel(plan2(a, top[(i + 1) % top.length])) }));
+      /* Every straight side of the footprint, and the height. */
+      o.dims = [];
+      top.forEach((a, i) => {
+        const b = top[(i + 1) % top.length];
+        if (plan2(a, b) < 0.5) return;
+        o.dims.push({ a, b, label: mLabel(plan2(a, b)) });
+      });
       o.dims.push({ a: bottom[1], b: top[1], label: `h ${mLabel(top[1][1] - bottom[1][1])}` });
     } else {
-      o.dims = boxDims(v);
+      o.dims = boxDims(v, v.house ? H : null);
     }
+  }
+  /* Where the turned house's east face line meets the cut's near edge:
+     the apron's north-west corner. */
+  function faceMeetsCut() {
+    if (typeof CUT.from === 'number') return [FACE + FRONT.sign * faceD(CUT.from), CUT.from];
+    const t = Math.tan(TURN);
+    for (let i = 1; i < CUT.from.length; i++) {
+      const [d0, a0] = CUT.from[i - 1], [d1, a1] = CUT.from[i];
+      /* d0 + u (d1 - d0) = -(E - a0 - u (a1 - a0)) t */
+      const den = d1 - d0 - (a1 - a0) * t;
+      if (Math.abs(den) < 1e-9) continue;
+      const u = (-(HOUSE_EDGE - a0) * t - d0) / den;
+      if (u >= -1e-9 && u <= 1 + 1e-9) {
+        const a = a0 + u * (a1 - a0);
+        return [FACE + FRONT.sign * faceD(a), a];
+      }
+    }
+    return null;
   }
 
   /* ── the driveway, derived ──────────────────────────── */
@@ -631,9 +713,25 @@ async function boot() {
     for (const [id, name, within] of pieces) {
       const st = stations.filter(within);
       if (st.length < 2) continue;
-      const n = st.length;
-      const cut = st.map((c) => [edge(c), c]);
-      const far = st.map(hill);
+      let cut = st.map((c) => [edge(c), c]);
+      let far = st.map(hill);
+      if (id === 'fillet-wall' && TURN) {
+        /* The arc starts at the house's corner, which with the house
+           turned lies before the arc's northernmost point, where a
+           station's across would be ambiguous — so this band is walked
+           by angle about the centre instead: from -TURN up to where the
+           stations take over, then at the stations' own angles. */
+        const { r: rad, centre } = FILLET;
+        const dc = rad - WALL;
+        const phis = [-TURN, -TURN / 2, 0];
+        for (const c of st) {
+          const phi = Math.acos(Math.min(1, Math.max(-1, (centre.across - c) / rad)));
+          if (phi > 1e-9) phis.push(phi);
+        }
+        cut = phis.map((phi) => [centre.along - FACE + rad * Math.sin(phi), centre.across - rad * Math.cos(phi)]);
+        far = phis.map((phi) => [centre.along - FACE + dc * Math.sin(phi), centre.across - dc * Math.cos(phi)]);
+      }
+      const n = cut.length;
       const wallRing = [...cut, ...far.slice().reverse()];
       const topAt = (k) => { const [d, c] = far[k < n ? k : 2 * n - 1 - k]; return natural(d, c); };
       const wo = makeObject({ id, name, group: 'wall' });
@@ -953,9 +1051,20 @@ async function boot() {
     }
     return out;
   };
-  const zCrossings = (x) => (slanted && (x - FACE) * FRONT.sign >= 0 ? [cutFrom((x - FACE) * FRONT.sign)] : []);
+  const zCrossings = (x) => {
+    const d = (x - FACE) * FRONT.sign;
+    const out = slanted && d >= faceD(cutFrom(d)) ? [cutFrom(d)] : [];
+    /* the turned house's east face, between the cut's edge and the corner */
+    if (TURN && d < 0 && d >= faceD(cutFrom(d))) out.push(HOUSE_EDGE + d / Math.tan(TURN));
+    return out;
+  };
+  const faceXCrossing = (z) => {
+    if (!TURN || z > HOUSE_EDGE) return [];
+    const d = faceD(z);
+    return z >= cutFrom(d) ? [FACE + FRONT.sign * d] : [];
+  };
   for (const z of zs) {
-    const line = withCrossings(xs, xCrossings(z));
+    const line = withCrossings(xs, [...xCrossings(z), ...faceXCrossing(z)]);
     for (let i = 0; i < line.length - 1; i++) {
       gridPts.push(line[i], groundY(line[i], z), z, line[i + 1], groundY(line[i + 1], z), z);
     }
