@@ -45,6 +45,10 @@ const DE = {
   run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über', rise: 'Anstieg',
   Parcel: 'Parzelle', 'Parcel boundary, 705 m²': 'Parzellengrenze, 705 m²', 'Existing building': 'Bestandsgebäude',
   Relief: 'Relief',
+  Layers: 'Ebenen', 'All layers': 'Alle Ebenen', Save: 'Speichern', Reset: 'Zurücksetzen',
+  Drawing: 'Zeichnung', Objects: 'Objekte', 'Ground grid': 'Bodenraster',
+  'Relief points': 'Reliefpunkte', 'Relief surface': 'Reliefoberfläche', 'Contours 10 cm': 'Höhenlinien 10 cm',
+  'Contours 1 m': 'Höhenlinien 1 m', 'Contour labels': 'Höhenbeschriftung', 'Relief grid': 'Reliefraster',
 };
 let LANG = (() => {
   try { const v = localStorage.getItem('houseplan-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
@@ -329,7 +333,7 @@ paintHeader();
 
 /* ── scene ────────────────────────────────────────────── */
 
-const state = { faces: true, floors: true, dots: true, grid: true, spin: false, mode: 'object' };
+const state = { spin: false, mode: 'object' };
 
 boot();
 
@@ -650,32 +654,170 @@ async function boot() {
     if (hi !== lo) o.dims.push({ a: pts[lo], b: [pts[lo][0], pts[hi][1], pts[lo][2]], label: `rise ${mLabel(pts[hi][1] - pts[lo][1])}` });
   }
 
-  /* ── the relief: the surveyed ground as dots ────────── */
+  /* ── the relief: the surveyed ground ────────────────── */
 
-  /* Every surveyed point, tinted by height from the group's colour at
-     the bottom of the sample to near white at the top, so the lie of
-     the land reads at a glance. Not framed, not tappable — it is the
-     backdrop the model sits in. */
-  if (window.HOUSE_RELIEF?.points?.length) {
+  /* The terrain app's layers, in this frame. relief.js carries the
+     survey as a height field — one cell per metre of the survey grid —
+     and from it come: every surveyed point, tinted by height from the
+     group's colour at the bottom of the sample to near white at the
+     top; the ground as a surface, dimmed outside the parcel; contours
+     every 10 cm of real height with a heavier line at each metre, as
+     the terrain app draws them; a height label wherever a parcel edge
+     crosses a metre line; and the survey's own lattice draped on the
+     ground every 5 m. Each is a layer of one Relief object, hidden
+     with the group or on its own from Settings. Not framed, not
+     tappable — it is the backdrop the model sits in. */
+  const reliefLabels = [];
+  const RELIEF_INK = '#bff2d6';
+  if (window.HOUSE_RELIEF?.heights && window.HOUSE_RELIEF.frame) {
     const R = window.HOUSE_RELIEF;
     const o = makeObject({ id: 'relief', name: R.name || 'Relief', group: 'relief' });
-    const pts = R.points;
+    const [nx, ny] = R.size;
+    const { mid, ex, ez, org } = R.frame;
+    const H = R.heights;
+    const has = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && H[j * nx + i] != null;
+    const place = (i, j) => {
+      const dX = R.origin[0] + i - mid[0], dY = R.origin[1] + j - mid[1];
+      return [org[0] + dX * ex[0] + dY * ex[1], H[j * nx + i] - R.datum, org[1] + dX * ez[0] + dY * ez[1]];
+    };
+    /* One vertex per sampled cell, shared by the points, the surface
+       and the contours, so they cannot disagree. */
+    const vid = new Int32Array(nx * ny).fill(-1);
+    const pos = [];
     let lo = Infinity, hi = -Infinity;
-    for (let i = 1; i < pts.length; i += 3) { lo = Math.min(lo, pts[i]); hi = Math.max(hi, pts[i]); }
-    const colors = new Float32Array(pts.length);
-    const c = new THREE.Color();
-    for (let i = 0; i < pts.length; i += 3) {
-      c.copy(o.col).lerp(WHITE, 0.15 + 0.7 * ((pts[i + 1] - lo) / (hi - lo || 1)));
-      colors[i] = c.r; colors[i + 1] = c.g; colors[i + 2] = c.b;
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        if (!has(i, j)) continue;
+        vid[j * nx + i] = pos.length / 3;
+        const p = place(i, j);
+        pos.push(...p);
+        lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]);
+      }
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    o.node.add(tagged(new THREE.Points(geo, new THREE.PointsMaterial({
-      size: 3.5, sizeAttenuation: false, vertexColors: true, map: dotTexture(THREE),
-      transparent: true, opacity: 0.85, alphaTest: 0.35, depthWrite: false,
-    })), 'relief'));
+    /* Tinted by height; and outside the parcel — a ray cast from the
+       point against the boundary in plan — dimmed, as the terrain app
+       masks its parcels. */
+    const poly = PLAN.parcel?.points?.map(([x, , z]) => [x, z]);
+    const inside = (x, z) => {
+      let inn = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, zi] = poly[i], [xj, zj] = poly[j];
+        if ((zi > z) !== (zj > z) && x < xi + ((xj - xi) * (z - zi)) / (zj - zi)) inn = !inn;
+      }
+      return inn;
+    };
+    const colors = new Float32Array(pos.length);
+    const c = new THREE.Color();
+    for (let k = 0; k < pos.length; k += 3) {
+      c.copy(o.col).lerp(WHITE, 0.15 + 0.7 * ((pos[k + 1] - lo) / (hi - lo || 1)));
+      if (poly?.length && !inside(pos[k], pos[k + 2])) c.multiplyScalar(0.4);
+      colors[k] = c.r; colors[k + 1] = c.g; colors[k + 2] = c.b;
+    }
+    const posAttr = new THREE.Float32BufferAttribute(pos, 3);
+    const colAttr = new THREE.BufferAttribute(colors, 3);
+
+    o.node.add(tagged(new THREE.Points(
+      new THREE.BufferGeometry().setAttribute('position', posAttr).setAttribute('color', colAttr),
+      new THREE.PointsMaterial({
+        size: 3.5, sizeAttenuation: false, vertexColors: true, map: dotTexture(THREE),
+        transparent: true, opacity: 0.85, alphaTest: 0.35, depthWrite: false,
+      }),
+    ), 'relief-points'));
+
+    /* The surface: two triangles per cell whose four corners were all
+       sampled, translucent so the model still reads through it. */
+    const tri = [];
+    for (let j = 0; j < ny - 1; j++) {
+      for (let i = 0; i < nx - 1; i++) {
+        if (!(has(i, j) && has(i + 1, j) && has(i, j + 1) && has(i + 1, j + 1))) continue;
+        const a = vid[j * nx + i], b = vid[j * nx + i + 1], d = vid[(j + 1) * nx + i], e = vid[(j + 1) * nx + i + 1];
+        tri.push(a, b, e, a, e, d);
+      }
+    }
+    const surf = new THREE.BufferGeometry();
+    surf.setAttribute('position', posAttr);
+    surf.setAttribute('color', colAttr);
+    surf.setIndex(tri);
+    const surfMesh = new THREE.Mesh(surf, new THREE.MeshBasicMaterial({
+      vertexColors: true, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false,
+    }));
+    surfMesh.renderOrder = -1;
+    o.node.add(tagged(surfMesh, 'relief-surface'));
+
+    /* Contours, walked per triangle over the 10 cm levels it spans —
+       levels of real height, so a metre line is a metre above sea
+       level, as on the survey. */
+    const minorSegs = [], majorSegs = [];
+    const LIFT = 0.02;
+    const cross = (a, b, y, out) => {
+      const ya = pos[a * 3 + 1], yb = pos[b * 3 + 1];
+      if ((ya < y) === (yb < y)) return;
+      const f = (y - ya) / (yb - ya);
+      out.push(pos[a * 3] + (pos[b * 3] - pos[a * 3]) * f, pos[a * 3 + 2] + (pos[b * 3 + 2] - pos[a * 3 + 2]) * f);
+    };
+    for (let k = 0; k < tri.length; k += 3) {
+      const a = tri[k], b = tri[k + 1], d = tri[k + 2];
+      const ya = pos[a * 3 + 1], yb = pos[b * 3 + 1], yd = pos[d * 3 + 1];
+      const s0 = Math.ceil((Math.min(ya, yb, yd) + R.datum) * 10 - 1e-6);
+      const s1 = Math.floor((Math.max(ya, yb, yd) + R.datum) * 10 + 1e-6);
+      for (let st = s0; st <= s1; st++) {
+        const y = st / 10 - R.datum;
+        const xz = [];
+        cross(a, b, y, xz); cross(b, d, y, xz); cross(d, a, y, xz);
+        if (xz.length >= 4) (st % 10 === 0 ? majorSegs : minorSegs).push(xz[0], y + LIFT, xz[1], xz[2], y + LIFT, xz[3]);
+      }
+    }
+    o.node.add(tagged(segments(minorSegs, new THREE.LineBasicMaterial({ color: o.col, transparent: true, opacity: 0.3 })), 'relief-minor'));
+    o.node.add(tagged(segments(majorSegs, new THREE.LineBasicMaterial({ color: o.col.clone().lerp(WHITE, 0.45), transparent: true, opacity: 0.9 })), 'relief-major'));
+
+    /* A label at every point where a parcel edge crosses a metre line:
+       the real height, and the model's (above the garage-floor datum)
+       beside it. Sprites, so they face you from anywhere. */
+    const labelsNode = tagged(new THREE.Group(), 'relief-labels');
+    const pts = PLAN.parcel?.points || [];
+    for (let k = 0; k < pts.length; k++) {
+      const p = pts[k], q = pts[(k + 1) % pts.length];
+      const ya = p[1] + R.datum, yb = q[1] + R.datum;
+      if (ya === yb) continue;
+      for (let m = Math.ceil(Math.min(ya, yb)); m <= Math.floor(Math.max(ya, yb)); m++) {
+        const f = (m - ya) / (yb - ya);
+        const rel = m - R.datum;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
+        sprite.userData.text = `${m} m · ${rel >= 0 ? '+' : '−'}${Math.abs(rel).toFixed(1)}`;
+        sprite.position.set(p[0] + (q[0] - p[0]) * f, rel + 0.05, p[2] + (q[2] - p[2]) * f);
+        sprite.renderOrder = 5;
+        labelsNode.add(sprite);
+        reliefLabels.push(sprite);
+      }
+    }
+    o.node.add(labelsNode);
+
+    /* The survey's lattice, every 5 m of its own easting and northing,
+       drawn cell by cell so it lies on the ground. */
+    const EVERY = 5;
+    const gridSegs = [];
+    const lift = (p) => [p[0], p[1] + LIFT, p[2]];
+    for (let j = 0; j < ny; j++) {
+      if ((R.origin[1] + j) % EVERY) continue;
+      for (let i = 0; i < nx - 1; i++) if (has(i, j) && has(i + 1, j)) gridSegs.push(...lift(place(i, j)), ...lift(place(i + 1, j)));
+    }
+    for (let i = 0; i < nx; i++) {
+      if ((R.origin[0] + i) % EVERY) continue;
+      for (let j = 0; j < ny - 1; j++) if (has(i, j) && has(i, j + 1)) gridSegs.push(...lift(place(i, j)), ...lift(place(i, j + 1)));
+    }
+    o.node.add(tagged(segments(gridSegs, new THREE.LineBasicMaterial({ color: o.col.clone().lerp(WHITE, 0.25), transparent: true, opacity: 0.45 })), 'relief-grid'));
   }
+  /* A contour label's text, in the language of the moment. */
+  function paintReliefLabels() {
+    for (const s of reliefLabels) {
+      s.material.map?.dispose();
+      const tex = labelTexture(THREE, tDim(s.userData.text), RELIEF_INK);
+      s.material.map = tex;
+      s.material.needsUpdate = true;
+      s.scale.set(0.5 * (tex.image.width / tex.image.height), 0.5, 1);
+    }
+  }
+  paintReliefLabels();
 
   /* The dots ride with their object, a shade lighter than its lines. */
   const dotMap = dotTexture(THREE);
@@ -693,25 +835,7 @@ async function boot() {
 
   const setLayer = (layer, on) => parts.traverse((n) => { if (n.userData.layer === layer) n.visible = on; });
 
-  /* The legend: one chip per group that has something in it, in the
-     group's colour; tap to hide or show the whole group. */
   const legend = $('legend');
-  const hidden = new Set();
-  for (const [key, g] of Object.entries(GROUPS)) {
-    if (!objects.some((o) => o.group === key)) continue;
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'chip';
-    chip.style.setProperty('--c', g.color);
-    chip.dataset.name = g.name;
-    chip.innerHTML = `<i></i>${t(g.name)}`;
-    chip.addEventListener('click', () => {
-      if (hidden.has(key)) hidden.delete(key); else hidden.add(key);
-      chip.classList.toggle('is-off', hidden.has(key));
-      for (const o of objects) if (o.group === key) o.node.visible = !hidden.has(key);
-    });
-    legend.appendChild(chip);
-  }
 
   /* ── the site ───────────────────────────────────────── */
 
@@ -809,7 +933,126 @@ async function boot() {
     tips.push(sprite);
   }
 
-  /* ── chrome ─────────────────────────────────────────── */
+  /* ── layers, and the settings that keep them ────────── */
+
+  /* Everything that can be shown or hidden is a layer: the drawing's
+     own parts, each object group, and the relief's layers from the
+     terrain app. The bottom bar's buttons, the legend's chips and the
+     checkboxes in Settings are three faces of the same switch. The set
+     can be saved on the device and reset to how it ships, as in the
+     terrain app. */
+  const LAYERS = [];
+  const layer = (id, name, def, apply, section, extra = {}) => { LAYERS.push({ id, name, def, on: def, apply, section, ...extra }); };
+  layer('faces', 'Faces', true, (v) => setLayer('faces', v), 'Drawing');
+  layer('floors', 'Floors', true, (v) => setLayer('floors', v), 'Drawing');
+  layer('dots', 'Dots', true, (v) => setLayer('dots', v), 'Drawing');
+  layer('grid', 'Ground grid', true, (v) => { ground.visible = v; }, 'Drawing');
+  for (const [key, g] of Object.entries(GROUPS)) {
+    if (!objects.some((o) => o.group === key)) continue;
+    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v; }, 'Objects', { color: g.color });
+  }
+  if (reliefLabels.length || objects.some((o) => o.id === 'relief')) {
+    layer('relief-points', 'Relief points', true, (v) => setLayer('relief-points', v), 'Relief');
+    layer('relief-surface', 'Relief surface', true, (v) => setLayer('relief-surface', v), 'Relief');
+    layer('relief-minor', 'Contours 10 cm', true, (v) => setLayer('relief-minor', v), 'Relief');
+    layer('relief-major', 'Contours 1 m', true, (v) => setLayer('relief-major', v), 'Relief');
+    layer('relief-labels', 'Contour labels', true, (v) => setLayer('relief-labels', v), 'Relief');
+    layer('relief-grid', 'Relief grid', false, (v) => setLayer('relief-grid', v), 'Relief');
+  }
+
+  const SETTINGS_KEY = 'houseplan-settings';
+  let saved = (() => {
+    try {
+      const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');
+      return s?.layers && typeof s.layers === 'object' ? s.layers : null;
+    } catch (err) { return null; }
+  })();
+  const savedOr = (L) => (typeof saved?.[L.id] === 'boolean' ? saved[L.id] : L.def);
+  for (const L of LAYERS) L.on = savedOr(L);
+
+  /* The checkboxes, in their sections. */
+  const layersList = $('layers');
+  let section = null;
+  for (const L of LAYERS) {
+    if (L.section !== section) {
+      section = L.section;
+      const head = document.createElement('li');
+      head.className = 'layers-head';
+      head.dataset.i18n = section;
+      head.textContent = t(section);
+      layersList.appendChild(head);
+    }
+    const li = document.createElement('li');
+    li.className = 'layer';
+    if (L.color) li.style.setProperty('--c', L.color);
+    const lab = document.createElement('label');
+    lab.className = 'check';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    const span = document.createElement('span');
+    span.dataset.i18n = L.name;
+    span.textContent = t(L.name);
+    lab.append(cb, span);
+    li.appendChild(lab);
+    layersList.appendChild(li);
+    L.checkbox = cb;
+    cb.addEventListener('change', () => setLayerOn(L, cb.checked));
+  }
+  const layersAll = $('layers-all');
+  const layersSave = $('layers-save');
+
+  /* The bottom bar's buttons and the legend's chips. */
+  for (const [id, key] of [['t-faces', 'faces'], ['t-floors', 'floors'], ['t-dots', 'dots'], ['t-grid', 'grid']]) {
+    const L = LAYERS.find((l) => l.id === key);
+    L.btn = $(id);
+    L.btn.addEventListener('click', () => setLayerOn(L, !L.on));
+  }
+  for (const L of LAYERS) {
+    if (!L.id.startsWith('group:')) continue;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.style.setProperty('--c', L.color);
+    chip.dataset.name = L.name;
+    chip.innerHTML = `<i></i>${t(L.name)}`;
+    chip.addEventListener('click', () => setLayerOn(L, !L.on));
+    legend.appendChild(chip);
+    L.chip = chip;
+  }
+
+  function paintLayers() {
+    for (const L of LAYERS) {
+      L.checkbox.checked = L.on;
+      if (L.btn) L.btn.classList.toggle('is-on', L.on);
+      if (L.chip) L.chip.classList.toggle('is-off', !L.on);
+    }
+    const on = LAYERS.filter((L) => L.on).length;
+    layersAll.checked = on === LAYERS.length;
+    layersAll.indeterminate = on > 0 && on < LAYERS.length;
+    layersSave.disabled = LAYERS.every((L) => L.on === savedOr(L));
+  }
+  function setLayerOn(L, v) {
+    L.on = v;
+    L.apply(v);
+    paintLayers();
+  }
+  /* All: on if any is off, else off. */
+  layersAll.addEventListener('change', () => {
+    const v = !LAYERS.every((L) => L.on);
+    for (const L of LAYERS) { L.on = v; L.apply(v); }
+    paintLayers();
+  });
+  $('layers-reset').addEventListener('click', () => {
+    for (const L of LAYERS) { L.on = L.def; L.apply(L.def); }
+    paintLayers();
+  });
+  layersSave.addEventListener('click', () => {
+    saved = Object.fromEntries(LAYERS.map((L) => [L.id, L.on]));
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ layers: saved })); } catch (err) { /* private mode */ }
+    paintLayers();
+  });
+  for (const L of LAYERS) L.apply(L.on);
+  paintLayers();
 
   const toggle = (id, key, apply) => {
     const btn = $(id);
@@ -821,10 +1064,6 @@ async function boot() {
     apply(state[key]);
     btn.classList.toggle('is-on', state[key]);
   };
-  toggle('t-faces', 'faces', (v) => setLayer('faces', v));
-  toggle('t-floors', 'floors', (v) => setLayer('floors', v));
-  toggle('t-dots', 'dots', (v) => setLayer('dots', v));
-  toggle('t-grid', 'grid', (v) => { ground.visible = v; });
   toggle('t-spin', 'spin', (v) => { controls.autoRotate = v; });
 
   /* ── tap an object for its dimensions ───────────────── */
@@ -1048,6 +1287,7 @@ async function boot() {
     for (const chip of legend.children) chip.innerHTML = `<i></i>${t(chip.dataset.name)}`;
     for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.classList.toggle('is-on', b.dataset.lang === LANG);
     setMode(state.mode);
+    paintReliefLabels();
     if (selected) { const o = selected; select(null); select(o); }
   }
   for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.addEventListener('click', () => {
@@ -1189,7 +1429,7 @@ function dotTexture(THREE) {
 }
 
 /* A dimension's label: the text on a dark pill, sized to fit it. */
-function labelTexture(THREE, text) {
+function labelTexture(THREE, text, ink = '#fff3b0') {
   const h = 96, pad = 28;
   const c = document.createElement('canvas');
   const g = c.getContext('2d');
@@ -1202,10 +1442,12 @@ function labelTexture(THREE, text) {
   g.beginPath();
   if (g.roundRect) g.roundRect(2, 8, w - 4, h - 16, (h - 16) / 2); else g.rect(2, 8, w - 4, h - 16);
   g.fill();
-  g.strokeStyle = 'rgba(255, 243, 176, 0.55)';
+  g.strokeStyle = ink;
+  g.globalAlpha = 0.55;
   g.lineWidth = 3;
   g.stroke();
-  g.fillStyle = '#fff3b0';
+  g.globalAlpha = 1;
+  g.fillStyle = ink;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText(text, w / 2, h / 2 + 2);

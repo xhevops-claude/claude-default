@@ -21,7 +21,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | Retaining walls | violet | garage-wall-south / -west / -north, retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
 | Parcel | red | parcel (boundary, 705 m²), existing (the 6 × 8 m building at the top corner) |
-| Relief | green | relief — the surveyed ground, 12,765 points from the terrain app's 1 m sample (`relief.js`), tinted by height |
+| Relief | green | relief — the surveyed ground from the terrain app's 1 m sample (`relief.js`, a 166 × 147 height field, 12,405 cells), as the terrain app's layers: points tinted by height, a translucent surface dimmed outside the parcel, contours every 10 cm with a heavier line each metre, a height label where a parcel edge crosses a metre line, and the survey's own 5 m lattice draped on the ground (off by default). Each is a layer in Settings |
 
 ## Rules agreed so far
 
@@ -134,3 +134,9 @@ fix.
 - The surveyed ground as a Relief group, and the parcel re-placed so the
   house clears the boundary; cut, road fall and ramp follow the surveyed
   frontage (branch, unmerged).
+- The terrain app's other layers — surface, 10 cm and 1 m contours,
+  contour labels at the parcel's edges, the draped survey lattice — and a
+  Layers section in Settings with a checkbox for every layer (drawing
+  parts, object groups, relief layers), an All switch, and Save / Reset
+  that keep the set on the device; the bottom bar and the legend are the
+  same switches (branch, unmerged).
