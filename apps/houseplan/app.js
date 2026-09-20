@@ -429,6 +429,36 @@ async function boot() {
     }
     return [...steps.slice(0, last + 1), lo];
   };
+  /* ── dimensions ──────────────────────────────────────── */
+
+  /* Every object carries its own list of dimensions — `{ a, b, label }`,
+     a measured line between two world points with its label (placed
+     `at` that fraction along it, halfway unless said) — shown on it when
+     it is tapped. They are written per kind of object, because
+     a bent slab and a box do not have the same three numbers. */
+  const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const plan2 = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
+  const mLabel = (n) => `${fmt(n)} m`;
+  const boxDims = (v) => [
+    { a: [v.x0, v.y1, v.z1], b: [v.x1, v.y1, v.z1], label: mLabel(v.x1 - v.x0) },
+    { a: [v.x1, v.y1, v.z0], b: [v.x1, v.y1, v.z1], label: mLabel(v.z1 - v.z0) },
+    { a: [v.x1, v.y0, v.z1], b: [v.x1, v.y1, v.z1], label: `h ${mLabel(v.y1 - v.y0)}` },
+  ];
+  /* A walked volume: thickness and length read off its top, and the
+     height it stands at each end — the second may differ from the first
+     or be nothing at all, which is the point of showing both. */
+  const walkedDims = (bottom, top, n) => {
+    const dims = [
+      { a: top[0], b: top[2 * n - 1], label: mLabel(dist3(top[0], top[2 * n - 1])) },
+      { a: top[0], b: top[n - 1], label: mLabel(plan2(top[0], top[n - 1])), at: 0.6 },
+    ];
+    for (const i of [0, n - 1]) {
+      const h = top[i][1] - bottom[i][1];
+      if (h > 0.05) dims.push({ a: bottom[i], b: top[i], label: `h ${mLabel(h)}` });
+    }
+    return dims;
+  };
+
   for (const v of VOLS) {
     const o = makeObject(v);
     if (followsGround(v) && TER) {
@@ -445,6 +475,7 @@ async function boot() {
       const top = ring.map(([x, z]) => [x, yAt(v.y1, acrossOf([x, z]), dFace), z]);
       addVolume(o, bottom, top, { dots: false, uprightAt: cornersAt });
       for (const i of cornersAt) o.dotPos.push(...bottom[i], ...top[i]);
+      o.dims = walkedDims(bottom, top, n);
       continue;
     }
     const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
@@ -453,6 +484,7 @@ async function boot() {
       corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]),
       corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]),
     );
+    o.dims = boxDims(v);
   }
 
   /* ── the driveway, derived ──────────────────────────── */
@@ -485,6 +517,33 @@ async function boot() {
     addVolume(o, bottom, top, { dots: false, uprightAt: corners, strip: true });
     for (const i of corners) o.dotPos.push(...bottom[i], ...top[i]);
 
+    /* The slab's own numbers: its run along the outer edge, its width
+       across the straight, the grade from the apron to where it meets
+       the road, the slab's depth, and the two arcs' sizes. */
+    {
+      const r = CUT.ramp;
+      const straightMid = stations.reduce((best, c) => {
+        const target = ((FILLET ? FILLET.centre.across : r.from) + (MOUTH ? MOUTH.across0 : CUT.to)) / 2;
+        return Math.abs(c - target) < Math.abs(best - target) ? c : best;
+      });
+      const outerAt = (c) => pt(atD(outer, c), rampLevel(c));
+      const innerAt = (c) => pt(atD(edge(c), c), rampLevel(c));
+      const drop = rampLevel(r.from) - rampLevel(r.to);
+      o.dims = [
+        { a: outerAt(r.from), b: outerAt(CUT.to), label: `run ${mLabel(CUT.to - r.from)}`, at: 0.9 },
+        { a: innerAt(straightMid), b: outerAt(straightMid), label: mLabel(outer - edge(straightMid)), at: 0.35 },
+        { a: outerAt(r.from), b: outerAt(r.to), label: `↓ ${mLabel(drop)} over ${mLabel(r.to - r.from)} · ${Math.round((drop / (r.to - r.from)) * 100)} %`, at: 0.3 },
+        { a: bottom[0], b: top[0], label: mLabel(SLAB) },
+      ];
+      if (FILLET) {
+        const { centre, r: rad } = FILLET;
+        const th = Math.PI / 4;
+        const c = centre.across - rad * Math.cos(th);
+        o.dims.push({ a: pt(atD(r.dFrom - rad, centre.across), rampLevel(c)), b: innerAt(stations.reduce((b2, s) => (Math.abs(s - c) < Math.abs(b2 - c) ? s : b2))), label: `r ${mLabel(rad)}` });
+      }
+      if (MOUTH) o.dims.push({ a: innerAt(MOUTH.across0), b: innerAt(CUT.to), label: `flare ${mLabel(MOUTH.b)}`, at: 0.3 });
+    }
+
     /* The wall, in its three pieces, over the stations each one spans. */
     const pieces = [];
     const arcEnd = FILLET ? FILLET.centre.across : null;
@@ -500,12 +559,20 @@ async function boot() {
       const far = st.map(hill);
       const wallRing = [...cut, ...far.slice().reverse()];
       const topAt = (k) => { const [d, c] = far[k < n ? k : 2 * n - 1 - k]; return natural(d, c); };
-      addVolume(
-        makeObject({ id, name, group: 'wall' }),
-        wallRing.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB)),
-        wallRing.map(([d, c], k) => pt(atD(d, c), topAt(k))),
-        { dots: false, uprightAt: [0, n - 1, n, 2 * n - 1], strip: true },
-      );
+      const wo = makeObject({ id, name, group: 'wall' });
+      const wb = wallRing.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB));
+      const wt = wallRing.map(([d, c], k) => pt(atD(d, c), topAt(k)));
+      addVolume(wo, wb, wt, { dots: false, uprightAt: [0, n - 1, n, 2 * n - 1], strip: true });
+      /* Thickness at its start, its length along the cut edge (the
+         arc's, not the chord's), and its height at each end. */
+      let along = 0;
+      for (let k = 1; k < n; k++) along += Math.hypot(wt[k][0] - wt[k - 1][0], wt[k][2] - wt[k - 1][2]);
+      wo.dims = [
+        { a: wt[0], b: wt[2 * n - 1], label: mLabel(WALL) },
+        { a: wt[0], b: wt[n - 1], label: `${mLabel(along)} along`, at: 0.65 },
+        { a: wb[0], b: wt[0], label: `h ${mLabel(wt[0][1] - wb[0][1])}` },
+        { a: wb[n - 1], b: wt[n - 1], label: `h ${mLabel(wt[n - 1][1] - wb[n - 1][1])}` },
+      ];
     }
   }
 
@@ -656,6 +723,117 @@ async function boot() {
   toggle('t-grid', 'grid', (v) => { ground.visible = v; });
   toggle('t-spin', 'spin', (v) => { controls.autoRotate = v; });
 
+  /* ── tap an object for its dimensions ───────────────── */
+
+  /* A tap (not a drag) is cast against every visible object's glass;
+     the nearest hit is selected: its lines brighten and its dimensions
+     are drawn on it. Tap it again, or empty space, to clear. The
+     dimension lines ignore depth so they read through the glass. */
+  const dimGroup = new THREE.Group();
+  scene.add(dimGroup);
+  const labelGeo = new THREE.PlaneGeometry(1, 1);
+  const labels = [];
+  const dimLineMat = new THREE.LineBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.95, depthTest: false });
+  const dimDotMat = new THREE.PointsMaterial({
+    color: 0xfff3b0, size: 6, sizeAttenuation: false, map: dotMap,
+    transparent: true, alphaTest: 0.35, depthTest: false, depthWrite: false,
+  });
+  const raycaster = new THREE.Raycaster();
+  let selected = null;
+
+  function paintSelection(o, on) {
+    o.node.traverse((n) => {
+      const layer = n.userData.layer;
+      if (layer === 'edges' || layer === 'floors') {
+        n.material.color.copy(on ? o.col.clone().lerp(WHITE, 0.6) : o.col);
+        n.material.opacity = on ? 1 : (layer === 'edges' ? 0.95 : 0.6);
+      } else if (layer === 'faces') {
+        n.material.color.copy(o.col.clone().lerp(WHITE, on ? 0.2 : 0.35));
+        n.material.opacity = on ? 0.22 : 0.05;
+      } else if (layer === 'dots') {
+        n.material.color.copy(on ? WHITE : o.col.clone().lerp(WHITE, 0.55));
+      }
+    });
+  }
+
+  function select(o) {
+    if (selected) paintSelection(selected, false);
+    while (dimGroup.children.length) {
+      const c = dimGroup.children.pop();
+      if (c.isMesh) { c.material.map.dispose(); c.material.dispose(); } else c.geometry.dispose();
+    }
+    labels.length = 0;
+    selected = o && o !== selected ? o : null;
+    $('wf-sel').textContent = selected ? selected.name : '';
+    if (!selected) return;
+    paintSelection(selected, true);
+    for (const d of selected.dims || []) {
+      dimGroup.add(segments([...d.a, ...d.b], dimLineMat));
+      dimGroup.add(new THREE.Points(
+        new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([...d.a, ...d.b], 3)),
+        dimDotMat,
+      ));
+      /* The label lies along its line, in metres, sized to fit inside
+         it — small on a small thing, so you zoom in to read it, like
+         letters on a grain of rice. It turns about the line to face
+         you (see orientLabels), never off it. */
+      const tex = labelTexture(THREE, d.label);
+      const aspect = tex.image.width / tex.image.height;
+      const len = dist3(d.a, d.b);
+      const h = Math.max(0.04, Math.min(0.35, Math.max(0.06, len * 0.05), (0.85 * len) / aspect));
+      const label = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({
+        map: tex, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
+      }));
+      label.scale.set(h * aspect, h, 1);
+      const t = d.at ?? 0.5;
+      label.position.set(d.a[0] + (d.b[0] - d.a[0]) * t, d.a[1] + (d.b[1] - d.a[1]) * t, d.a[2] + (d.b[2] - d.a[2]) * t);
+      label.renderOrder = 10;
+      label.userData.dim = d;
+      dimGroup.add(label);
+      labels.push(label);
+    }
+  }
+
+  /* Each label keeps its X along its line and rotates about it to face
+     the camera, flipped so the text reads left to right (or bottom to
+     top on an upright line) from wherever you are. */
+  const camR = new THREE.Vector3(), camU = new THREE.Vector3(), lx = new THREE.Vector3(), ly = new THREE.Vector3(), lz = new THREE.Vector3(), basis = new THREE.Matrix4();
+  function orientLabels() {
+    if (!labels.length) return;
+    camR.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    camU.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    for (const m of labels) {
+      const { a, b } = m.userData.dim;
+      lx.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]).normalize();
+      const along = lx.dot(camR);
+      if (along < -1e-3 || (Math.abs(along) <= 1e-3 && lx.dot(camU) < 0)) lx.negate();
+      lz.copy(camera.position).sub(m.position);
+      lz.addScaledVector(lx, -lz.dot(lx));
+      if (lz.lengthSq() < 1e-9) continue;
+      lz.normalize();
+      ly.crossVectors(lz, lx);
+      m.quaternion.setFromRotationMatrix(basis.makeBasis(lx, ly, lz));
+    }
+  }
+
+  const tap = { x: 0, y: 0, t: 0, id: -1 };
+  renderer.domElement.addEventListener('pointerdown', (ev) => {
+    tap.x = ev.clientX; tap.y = ev.clientY; tap.t = performance.now(); tap.id = ev.pointerId;
+  });
+  renderer.domElement.addEventListener('pointerup', (ev) => {
+    if (ev.pointerId !== tap.id) return;
+    if (Math.hypot(ev.clientX - tap.x, ev.clientY - tap.y) > 8 || performance.now() - tap.t > 500) return;
+    const r = renderer.domElement.getBoundingClientRect();
+    raycaster.setFromCamera(new THREE.Vector2(
+      ((ev.clientX - r.left) / r.width) * 2 - 1,
+      -(((ev.clientY - r.top) / r.height) * 2 - 1),
+    ), camera);
+    const glass = [];
+    for (const o of objects) if (o.node.visible) o.node.traverse((n) => { if (n.userData.layer === 'faces') { n.userData.owner = o; glass.push(n); } });
+    const hit = raycaster.intersectObjects(glass, false)[0];
+    select(hit ? hit.object.userData.owner : null);
+  });
+
   function fit() {
     const dist = (BOX.r / Math.sin((camera.fov * Math.PI / 180) / 2)) * 1.25;
     const dir = new THREE.Vector3(0.75, 0.42, 1).normalize();
@@ -725,7 +903,7 @@ async function boot() {
   fit();
 
   /* For scripts that drive the view — screenshots of a corner, say. */
-  window.houseWire = { THREE, camera, controls, objects, fit };
+  window.houseWire = { THREE, camera, controls, objects, fit, select };
 
   renderer.autoClear = false;
 
@@ -739,6 +917,7 @@ async function boot() {
       if (k >= 1) tween = null;
     }
     controls.update();
+    orientLabels();
 
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, VW, VH);
@@ -767,6 +946,32 @@ function dotTexture(THREE) {
   g.arc(s / 2, s / 2, s / 2 - 4, 0, Math.PI * 2);
   g.fillStyle = '#fff';
   g.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/* A dimension's label: the text on a dark pill, sized to fit it. */
+function labelTexture(THREE, text) {
+  const h = 96, pad = 28;
+  const c = document.createElement('canvas');
+  const g = c.getContext('2d');
+  const font = `700 ${Math.round(h * 0.5)}px -apple-system, Inter, Helvetica, Arial, sans-serif`;
+  g.font = font;
+  const w = Math.ceil(g.measureText(text).width) + pad * 2;
+  c.width = w; c.height = h;
+  g.font = font;
+  g.fillStyle = 'rgba(6, 10, 16, 0.82)';
+  g.beginPath();
+  if (g.roundRect) g.roundRect(2, 8, w - 4, h - 16, (h - 16) / 2); else g.rect(2, 8, w - 4, h - 16);
+  g.fill();
+  g.strokeStyle = 'rgba(255, 243, 176, 0.55)';
+  g.lineWidth = 3;
+  g.stroke();
+  g.fillStyle = '#fff3b0';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, w / 2, h / 2 + 2);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

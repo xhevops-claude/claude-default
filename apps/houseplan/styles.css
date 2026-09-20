@@ -71,6 +71,12 @@ button { font-family: inherit; color: inherit; border: none; background: none; c
   color: var(--dim);
   font-variant-numeric: tabular-nums;
 }
+/* The tapped object's name, in the dimensions' colour. */
+.hud-sel {
+  font-size: 11px; font-weight: 600;
+  color: #fff3b0;
+}
+.hud-sel:empty { display: none; }
 
 .ghost {
   flex: 0 0 auto;
