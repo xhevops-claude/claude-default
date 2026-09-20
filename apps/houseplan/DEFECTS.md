@@ -108,3 +108,7 @@ fix.
   run, width, grade, slab depth, fillet radius and mouth flare for the
   driveway; thickness, arc length and end heights for the wall bands
   (shipped, PR #141).
+- Two ways to move: Object (orbit the scene, as before) and Camera (drag
+  turns the camera in place, pinch or wheel walks it along its facing, two
+  fingers or a right-drag slide it). A toggle in the bottom bar; the axis
+  gizmo turns the camera in place in Camera mode (branch, unmerged).
