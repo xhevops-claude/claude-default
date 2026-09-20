@@ -121,6 +121,14 @@ window.HOUSE_PLAN = {
     /* The outer wall holds the driveway up over the road: its top is the
      * slab's underside, its foot the road, and it runs out where the
      * slab comes down to meet the road. */
+    /* The uphill wall does not stop at the house's corner: the ground
+     * along the south face is at 0 and the garage floor 3 m down, so the
+     * garage's south wall is the same retaining wall carried on as the
+     * house's own structure — inside the envelope, `wall` thick, from
+     * the garage slab up to ground level where it meets the fillet's
+     * top. The west and north walls of the garage retain the same way
+     * but are not drawn yet. */
+    { id: 'garage-wall-south', group: 'wall', name: 'Garage south wall, the retaining wall carried on', x0: 0, x1: 10, z0: 5.7, z1: 6, y0: -3.1, y1: 0 },
     { id: 'retainer', group: 'wall', name: 'Retaining wall', x0: 15.7, x1: 16, y0: { road: 0 }, y1: -3.1, z0: -2, z1: 6 },
     { id: 'retainer-ramp', group: 'wall', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 18, y0: { road: 0 }, y1: { floor: -0.2 } },
     /* The road, parallel to the wall along its outer face. `frame: false`

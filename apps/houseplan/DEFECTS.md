@@ -18,7 +18,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | House | cyan | garage, ground, first |
 | Cantilever | orange | canopy |
 | Driveway | yellow | driveway (apron), driveway-ramp (one slab from the apron to the road, fillet and mouth included) |
-| Retaining walls | violet | retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
+| Retaining walls | violet | garage-wall-south, retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
 
 ## Rules agreed so far
@@ -98,3 +98,7 @@ fix.
 - The whole driveway — ramp, fillet, mouth and landing — is one strip built
   station by station, so the entrance surface follows the grade and the road
   exactly instead of spanning them with flat triangles (shipped, PR #139).
+- The garage's south wall drawn as the retaining wall carried on into the
+  house: inside the envelope, garage slab to ground level, meeting the
+  fillet wall's top at the corner (branch, unmerged). West and north garage
+  walls retain the same way, not drawn yet.
