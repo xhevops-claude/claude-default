@@ -22,6 +22,39 @@ const e = PLAN.envelope;
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n.toFixed(2).replace(/\.?0+$/, '');
 
+/* ── language ─────────────────────────────────────────── */
+
+/* English is the source; German is looked up by the English string, so
+   plan.js keeps its names and anything without an entry falls back. The
+   choice is remembered on the device. */
+const DE = {
+  Settings: 'Einstellungen', Close: 'Schließen', Navigation: 'Navigation', Object: 'Objekt', Camera: 'Kamera',
+  Language: 'Sprache',
+  'Drag orbits the scene, pinch or wheel zooms, two fingers pan.': 'Ziehen kreist um die Szene, Kneifen oder Rad zoomt, zwei Finger verschieben.',
+  'Drag turns the camera, pinch or wheel walks it, two fingers slide it.': 'Ziehen dreht die Kamera, Kneifen oder Rad bewegt sie vor und zurück, zwei Finger verschieben sie.',
+  Fit: 'Einpassen', Faces: 'Flächen', Floors: 'Böden', Dots: 'Punkte', Ground: 'Gelände', Spin: 'Drehen', Defects: 'Mängel',
+  east: 'Ost', up: 'oben', south: 'Süd', 'site falls': 'Gelände fällt',
+  House: 'Haus', Cantilever: 'Auskragung', Driveway: 'Einfahrt', 'Retaining walls': 'Stützmauern', Road: 'Straße',
+  Garage: 'Garage', 'Ground floor': 'Erdgeschoss', 'First floor': 'Obergeschoss',
+  'Cantilever over the door': 'Auskragung über dem Tor', 'Apron, in front of the door': 'Vorplatz vor dem Tor',
+  'Driveway, down to the road': 'Einfahrt hinunter zur Straße',
+  'Garage wall, south': 'Garagenwand Süd', 'Garage wall, west': 'Garagenwand West', 'Garage wall, north': 'Garagenwand Nord',
+  'Retaining wall': 'Stützmauer', 'Retaining wall, tapering out': 'Stützmauer, auslaufend',
+  'Corner fillet, wall': 'Eckrundung, Mauer', 'Retaining wall, uphill side': 'Stützmauer bergseitig',
+  'Entrance mouth, wall': 'Einfahrtstrichter, Mauer',
+  run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über',
+};
+let LANG = (() => {
+  try { const v = localStorage.getItem('houseplan-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
+  return (navigator.language || '').toLowerCase().startsWith('de') ? 'de' : 'en';
+})();
+const t = (key) => (LANG === 'de' ? DE[key] ?? key : key);
+/* A dimension label: its words translated, and a decimal comma. */
+const tDim = (label) => {
+  if (LANG !== 'de') return label;
+  return label.replace(/\b(run|flare|along|over)\b/g, (w) => DE[w]).replace(/(\d)\.(\d)/g, '$1,$2');
+};
+
 /* ── what the box is ──────────────────────────────────── */
 
 /* The downhill face: which world axis the site falls along, and which
@@ -275,15 +308,17 @@ function groundY(x, z) {
   return rampLevel(across);
 }
 
-const pushed = PLAN.levels.find((l) => l.extendFront);
 $('wf-name').textContent = PLAN.name;
-$('wf-dims').textContent = `${fmt(e.x1 - e.x0)} × ${fmt(e.y1 - e.y0)} × ${fmt(BOX.y1 - BOX.y0)} m`
-  + (pushed ? ` · ${pushed.name.toLowerCase()} out ${fmt(pushed.extendFront)} m to ${TER.front}` : '')
-  + (TER ? ` · site falls ${fmt(TER.backLevel - ROAD_MIN)} m` : '');
+function paintHeader() {
+  const num = (n) => (LANG === 'de' ? fmt(n).replace('.', ',') : fmt(n));
+  $('wf-dims').textContent = `${num(e.x1 - e.x0)} × ${num(e.y1 - e.y0)} × ${num(BOX.y1 - BOX.y0)} m`
+    + (TER ? ` · ${t('site falls')} ${num(TER.backLevel - ROAD_MIN)} m` : '');
+}
+paintHeader();
 
 /* ── scene ────────────────────────────────────────────── */
 
-const state = { faces: true, floors: true, dots: true, grid: true, spin: false };
+const state = { faces: true, floors: true, dots: true, grid: true, spin: false, mode: 'object' };
 
 boot();
 
@@ -602,7 +637,8 @@ async function boot() {
     chip.type = 'button';
     chip.className = 'chip';
     chip.style.setProperty('--c', g.color);
-    chip.innerHTML = `<i></i>${g.name}`;
+    chip.dataset.name = g.name;
+    chip.innerHTML = `<i></i>${t(g.name)}`;
     chip.addEventListener('click', () => {
       if (hidden.has(key)) hidden.delete(key); else hidden.add(key);
       chip.classList.toggle('is-off', hidden.has(key));
@@ -764,7 +800,7 @@ async function boot() {
     }
     labels.length = 0;
     selected = o && o !== selected ? o : null;
-    $('wf-sel').textContent = selected ? selected.name : '';
+    $('wf-sel').textContent = selected ? t(selected.name) : '';
     if (!selected) return;
     paintSelection(selected, true);
     for (const d of selected.dims || []) {
@@ -777,7 +813,7 @@ async function boot() {
          it — small on a small thing, so you zoom in to read it, like
          letters on a grain of rice. It turns about the line to face
          you (see orientLabels), never off it. */
-      const tex = labelTexture(THREE, d.label);
+      const tex = labelTexture(THREE, tDim(d.label));
       const aspect = tex.image.width / tex.image.height;
       const len = dist3(d.a, d.b);
       const h = Math.max(0.04, Math.min(0.35, Math.max(0.06, len * 0.05), (0.85 * len) / aspect));
@@ -816,8 +852,18 @@ async function boot() {
     }
   }
 
+  const glassMeshes = () => {
+    const glass = [];
+    for (const o of objects) if (o.node.visible) o.node.traverse((n) => { if (n.userData.layer === 'faces') { n.userData.owner = o; glass.push(n); } });
+    return glass;
+  };
+
+  /* Pointers currently down on the canvas, kept by the camera-mode
+     handlers below; a tap that overlaps another finger is no tap. */
+  const flyPointers = new Map();
   const tap = { x: 0, y: 0, t: 0, id: -1 };
   renderer.domElement.addEventListener('pointerdown', (ev) => {
+    if (flyPointers.size) { tap.id = -1; return; }
     tap.x = ev.clientX; tap.y = ev.clientY; tap.t = performance.now(); tap.id = ev.pointerId;
   });
   renderer.domElement.addEventListener('pointerup', (ev) => {
@@ -828,18 +874,129 @@ async function boot() {
       ((ev.clientX - r.left) / r.width) * 2 - 1,
       -(((ev.clientY - r.top) / r.height) * 2 - 1),
     ), camera);
-    const glass = [];
-    for (const o of objects) if (o.node.visible) o.node.traverse((n) => { if (n.userData.layer === 'faces') { n.userData.owner = o; glass.push(n); } });
-    const hit = raycaster.intersectObjects(glass, false)[0];
+    const hit = raycaster.intersectObjects(glassMeshes(), false)[0];
     select(hit ? hit.object.userData.owner : null);
   });
+
+  /* ── two ways to move ───────────────────────────────── */
+
+  /* Object: the scene stays put and the camera goes round it — drag
+     orbits, pinch or wheel moves in and out, two fingers pan (that is
+     OrbitControls). Camera: you are the camera — drag turns it in place
+     like turning your head, pinch or wheel walks it forward and back
+     along where it looks, two fingers (or a right-button or shift drag)
+     slide it sideways and up. Switching back to Object re-anchors the
+     orbit on whatever the camera is looking at. */
+  const LOOK = 0.0045, TRUCK = 0.02, WHEEL = 0.012, PINCH = 0.03;
+  const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+  const camR2 = new THREE.Vector3(), camU2 = new THREE.Vector3(), camF = new THREE.Vector3();
+  const look = (dx, dy) => {
+    euler.setFromQuaternion(camera.quaternion, 'YXZ');
+    euler.y -= dx * LOOK;
+    euler.x = Math.max(-1.55, Math.min(1.55, euler.x - dy * LOOK));
+    euler.z = 0;
+    camera.quaternion.setFromEuler(euler);
+  };
+  const truck = (dx, dy) => {
+    camR2.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    camU2.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    camera.position.addScaledVector(camR2, -dx * TRUCK).addScaledVector(camU2, dy * TRUCK);
+  };
+  const dolly = (m) => {
+    camF.set(0, 0, -1).applyQuaternion(camera.quaternion);
+    camera.position.addScaledVector(camF, m);
+  };
+  let pinchDist = 0;
+  const el = renderer.domElement;
+  el.addEventListener('pointerdown', (ev) => {
+    flyPointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (flyPointers.size === 2) {
+      const [a, b] = [...flyPointers.values()];
+      pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+    }
+  });
+  el.addEventListener('pointermove', (ev) => {
+    const p = flyPointers.get(ev.pointerId);
+    if (!p) return;
+    const dx = ev.clientX - p.x, dy = ev.clientY - p.y;
+    p.x = ev.clientX; p.y = ev.clientY;
+    if (state.mode !== 'camera') return;
+    if (flyPointers.size === 1) {
+      if (ev.pointerType === 'mouse' && !(ev.buttons & 1)) { if (ev.buttons & 6) truck(dx, dy); return; }
+      if (ev.shiftKey) truck(dx, dy); else look(dx, dy);
+    } else if (flyPointers.size === 2) {
+      const [a, b] = [...flyPointers.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      dolly((d - pinchDist) * PINCH);
+      pinchDist = d;
+      truck(dx / 2, dy / 2);
+    }
+  });
+  const endPointer = (ev) => { flyPointers.delete(ev.pointerId); };
+  el.addEventListener('pointerup', endPointer);
+  el.addEventListener('pointercancel', endPointer);
+  el.addEventListener('wheel', (ev) => {
+    if (state.mode !== 'camera') return;
+    ev.preventDefault();
+    dolly(-ev.deltaY * WHEEL);
+  }, { passive: false });
+  el.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  function setMode(mode) {
+    state.mode = mode;
+    if (mode === 'object') {
+      camF.set(0, 0, -1).applyQuaternion(camera.quaternion);
+      raycaster.set(camera.position, camF);
+      const hit = raycaster.intersectObjects(glassMeshes(), false)[0];
+      controls.target.copy(camera.position).addScaledVector(camF, hit ? hit.distance : 12);
+      camera.up.set(0, 1, 0);
+      controls.enabled = true;
+      controls.update();
+    } else {
+      if (state.spin) $('t-spin').click();
+      controls.enabled = false;
+    }
+    for (const b of document.querySelectorAll('#seg-mode .seg-btn')) b.classList.toggle('is-on', b.dataset.mode === mode);
+    $('mode-hint').textContent = t(mode === 'object'
+      ? 'Drag orbits the scene, pinch or wheel zooms, two fingers pan.'
+      : 'Drag turns the camera, pinch or wheel walks it, two fingers slide it.');
+  }
+  for (const b of document.querySelectorAll('#seg-mode .seg-btn')) b.addEventListener('click', () => setMode(b.dataset.mode));
+
+  /* ── settings sheet and language ────────────────────── */
+
+  const sheet = $('settings');
+  $('settings-open').addEventListener('click', () => { sheet.hidden = false; });
+  $('settings-close').addEventListener('click', () => { sheet.hidden = true; });
+  $('settings-backdrop').addEventListener('click', () => { sheet.hidden = true; });
+
+  /* Everything with a data-i18n key, the header, the legend, the axis
+     key, the selection and its labels are repainted in the language. */
+  function applyLang() {
+    document.documentElement.lang = LANG;
+    for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+    $('axis-key').innerHTML = `<b class="ax-x">X</b> ${t('east')} · <b class="ax-y">Y</b> ${t('up')} · <b class="ax-z">Z</b> ${t('south')}`;
+    paintHeader();
+    for (const chip of legend.children) chip.innerHTML = `<i></i>${t(chip.dataset.name)}`;
+    for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.classList.toggle('is-on', b.dataset.lang === LANG);
+    setMode(state.mode);
+    if (selected) { const o = selected; select(null); select(o); }
+  }
+  for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.addEventListener('click', () => {
+    LANG = b.dataset.lang;
+    try { localStorage.setItem('houseplan-lang', LANG); } catch (err) { /* private mode */ }
+    applyLang();
+  });
+  applyLang();
 
   function fit() {
     const dist = (BOX.r / Math.sin((camera.fov * Math.PI / 180) / 2)) * 1.25;
     const dir = new THREE.Vector3(0.75, 0.42, 1).normalize();
     controls.target.set(BOX.cx, BOX.cy, BOX.cz);
     camera.position.copy(controls.target).addScaledVector(dir, dist);
-    controls.update();
+    camera.up.set(0, 1, 0);
+    camera.lookAt(controls.target);
+    if (state.mode === 'object') controls.update();
   }
   $('fit').addEventListener('click', fit);
 
@@ -850,7 +1007,7 @@ async function boot() {
 
   /* Tap an axis ball to look straight down that axis. */
   const hit = $('gizmo-hit');
-  let tween = null;
+  let tween = null, turn = null;
 
   hit.addEventListener('pointerdown', (ev) => {
     ev.preventDefault();
@@ -870,9 +1027,15 @@ async function boot() {
 
   function snapTo(dir) {
     if (state.spin) $('t-spin').click();
-    const dist = camera.position.distanceTo(controls.target);
     camera.up.set(0, 1, 0);
     if (Math.abs(dir[1]) > 0.9) camera.up.set(0, 0, dir[1] > 0 ? -1 : 1);
+    if (state.mode === 'camera') {
+      /* As the camera: stay put and turn to look down that axis. */
+      const m = new THREE.Matrix4().lookAt(camera.position, camera.position.clone().sub(new THREE.Vector3(...dir)), camera.up);
+      turn = { from: camera.quaternion.clone(), to: new THREE.Quaternion().setFromRotationMatrix(m), t0: performance.now() };
+      return;
+    }
+    const dist = camera.position.distanceTo(controls.target);
     tween = {
       from: camera.position.clone(),
       to: controls.target.clone().addScaledVector(new THREE.Vector3(...dir), dist),
@@ -916,7 +1079,13 @@ async function boot() {
       camera.position.lerpVectors(tween.from, tween.to, ease);
       if (k >= 1) tween = null;
     }
-    controls.update();
+    if (turn) {
+      const k = Math.min(1, (performance.now() - turn.t0) / 380);
+      const ease = k < 0.5 ? 2 * k * k : 1 - ((-2 * k + 2) ** 2) / 2;
+      camera.quaternion.slerpQuaternions(turn.from, turn.to, ease);
+      if (k >= 1) turn = null;
+    }
+    if (state.mode === 'object') controls.update();
     orientLabels();
 
     renderer.setScissorTest(false);

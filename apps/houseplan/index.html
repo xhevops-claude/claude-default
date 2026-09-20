@@ -64,20 +64,49 @@
         <span class="hud-dim" id="wf-dims"></span>
         <span class="hud-sel" id="wf-sel"></span>
       </div>
+      <button type="button" class="ghost ghost--icon" id="settings-open" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.7 7.7 0 0 0-1.7-1L15 3.3H9l-.4 2.6a7.7 7.7 0 0 0-1.7 1l-2.5-1-2 3.5L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.7 7.7 0 0 0 1.7 1l.4 2.6h6l.4-2.6a7.7 7.7 0 0 0 1.7-1l2.5 1 2-3.5L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+      </button>
       <button type="button" class="ghost" id="quit" aria-label="Quit">&#10005;</button>
     </header>
+
+    <!-- Settings: how the view moves, and the language. Opened by the gear. -->
+    <div class="sheet" id="settings" hidden>
+      <div class="sheet-backdrop" id="settings-backdrop"></div>
+      <div class="sheet-panel" role="dialog" aria-labelledby="settings-title">
+        <div class="sheet-head">
+          <span class="sheet-title" id="settings-title" data-i18n="Settings">Settings</span>
+          <button type="button" class="ghost" id="settings-close" data-i18n="Close">Close</button>
+        </div>
+        <div class="setting">
+          <div class="setting-label" data-i18n="Navigation">Navigation</div>
+          <div class="seg" id="seg-mode">
+            <button type="button" class="seg-btn is-on" data-mode="object" data-i18n="Object">Object</button>
+            <button type="button" class="seg-btn" data-mode="camera" data-i18n="Camera">Camera</button>
+          </div>
+          <div class="setting-hint" id="mode-hint"></div>
+        </div>
+        <div class="setting">
+          <div class="setting-label" data-i18n="Language">Language</div>
+          <div class="seg" id="seg-lang">
+            <button type="button" class="seg-btn is-on" data-lang="en">EN</button>
+            <button type="button" class="seg-btn" data-lang="de">DE</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- One chip per object group, in its colour; tap to hide the group. -->
     <nav class="hud hud--legend" id="legend" aria-label="Object groups"></nav>
 
     <footer class="hud hud--bottom">
-      <button type="button" class="ghost" id="fit">Fit</button>
-      <button type="button" class="ghost is-on" id="t-faces">Faces</button>
-      <button type="button" class="ghost is-on" id="t-floors">Floors</button>
-      <button type="button" class="ghost is-on" id="t-dots">Dots</button>
-      <button type="button" class="ghost is-on" id="t-grid">Ground</button>
-      <button type="button" class="ghost" id="t-spin">Spin</button>
-      <a class="ghost" href="defects.html" target="_blank" rel="noopener">Defects</a>
+      <button type="button" class="ghost" id="fit" data-i18n="Fit">Fit</button>
+      <button type="button" class="ghost is-on" id="t-faces" data-i18n="Faces">Faces</button>
+      <button type="button" class="ghost is-on" id="t-floors" data-i18n="Floors">Floors</button>
+      <button type="button" class="ghost is-on" id="t-dots" data-i18n="Dots">Dots</button>
+      <button type="button" class="ghost is-on" id="t-grid" data-i18n="Ground">Ground</button>
+      <button type="button" class="ghost" id="t-spin" data-i18n="Spin">Spin</button>
+      <a class="ghost" href="defects.html" target="_blank" rel="noopener" data-i18n="Defects">Defects</a>
       <span class="axis-key" id="axis-key">
         <b class="ax-x">X</b> east · <b class="ax-y">Y</b> up · <b class="ax-z">Z</b> south
       </span>
