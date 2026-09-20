@@ -11,6 +11,11 @@
 
 const PLAN = window.HOUSE_PLAN;
 const SLAB = PLAN.slab || 0.2;
+const WALL = PLAN.wall || 0.3;
+/* Everything that follows the ground across the front — slabs, walls,
+   the ground grid over the driveway — is sampled at these intervals, so
+   lines that should coincide do. */
+const STEP = 0.5;
 const TER = PLAN.terrain;
 const e = PLAN.envelope;
 
@@ -129,8 +134,10 @@ const HOUSE_EDGE = FRONT.axis === 'x' ? e.y1 : e.x1;
 const FILLET = (() => {
   const f = CUT?.fillet, r = CUT?.ramp;
   if (!f || !r) return null;
-  const corner = { along: FACE + FRONT.sign * (r.dFrom ?? 0), across: Math.max(r.from, HOUSE_EDGE) };
-  return { r: f.r, corner, centre: { along: corner.along - FRONT.sign * f.r, across: corner.across + f.r } };
+  const dFrom = r.dFrom ?? 0;
+  const rad = f.r ?? dFrom;
+  const corner = { along: FACE + FRONT.sign * dFrom, across: Math.max(r.from, HOUSE_EDGE) };
+  return { r: rad, corner, centre: { along: corner.along - FRONT.sign * rad, across: corner.across + rad } };
 })();
 
 function inFillet(along, across) {
@@ -157,20 +164,19 @@ function rampT(across) {
   return s * (e / 2 + (t - e));
 }
 
-/* The entrance, over the ramp's last `flare` metres: the hill is cut
-   back along a quarter-ellipse centred on the outer wall line at the
-   ramp's end, one semi-axis the ramp's width and the other `flare`
-   back along the road. The arc leaves the ramp's uphill edge
+/* The entrance, over the property's last `flare` metres: the hill is
+   cut back along a quarter-ellipse centred on the outer wall line at
+   the property's end, one semi-axis the ramp's width and the other
+   `flare` back along the road. The arc leaves the ramp's uphill edge
    tangentially, so the wall beside it stays at full height for a
-   while, then sweeps out to meet the road's edge at the ramp's end.
-   Everything between the arc and the outer wall line is the ramp's
-   floor, still climbing. In (d, across), where d is metres out from
-   the house face. */
+   while, then sweeps out to meet the road's edge. Everything between
+   the arc and the outer wall line is the driveway's floor. In
+   (d, across), where d is metres out from the house face. */
 const MOUTH = (() => {
   const m = CUT?.mouth, r = CUT?.ramp;
   if (!m || !r) return null;
   const dFrom = r.dFrom ?? 0;
-  return { a: WALL_D - dFrom, b: m.flare, d0: WALL_D, dFrom, across0: r.to - m.flare };
+  return { a: WALL_D - dFrom, b: m.flare, d0: WALL_D, dFrom, across0: CUT.to - m.flare };
 })();
 
 function inMouth(d, across) {
@@ -182,12 +188,16 @@ function inMouth(d, across) {
   return d >= edge;
 }
 
-/* The ramp's floor at a position across the front: the apron level,
-   falling past ramp.from, never below the road. */
+/* The driveway's surface at a position across the front: the apron's
+   level up to ramp.from, the road's own surface from ramp.to on (the
+   landing), and between them the eased grade from the one to the
+   other. */
 function rampLevel(across) {
   const r = CUT.ramp;
   const base = sampleProfile(CUT.profile, r.dFrom ?? 0, across);
-  return Math.max(base - r.drop * rampT(across), roadLevel(across));
+  if (across <= r.from) return base;
+  if (across >= r.to) return roadLevel(across);
+  return base - (base - roadLevel(r.to)) * rampT(across);
 }
 
 function groundY(x, z) {
@@ -199,7 +209,7 @@ function groundY(x, z) {
   const base = sampleProfile(CUT.profile, d, across);
   if (d < 0 || !CUT.ramp) return base;
   const r = CUT.ramp;
-  if (across <= r.from || across > r.to || d >= WALL_D) return base;
+  if (across <= r.from || d >= WALL_D) return base;
   if (MOUTH && across >= MOUTH.across0) return inMouth(d, across) ? rampLevel(across) : natural(d, across);
   if (d < (r.dFrom ?? 0)) {
     if (across <= HOUSE_EDGE) return base;
@@ -330,15 +340,37 @@ async function boot() {
     if ('ground' in spec) return natural(dFace, across) + (spec.ground || 0);
     return rampLevel(across) + (spec.floor || 0);
   };
+  /* The stations a walked volume is sampled at: every STEP from its
+     start, then its end. The ground grid uses the same, so a slab's
+     edge and the grid line under it are the same polyline. */
+  const stationsBetween = (a0, a1) => {
+    const s = [];
+    for (let a = a0; a < a1 - 1e-6; a += STEP) s.push(a);
+    s.push(a1);
+    return s;
+  };
+  /* A wall whose top would pass under its foot ends where they meet:
+     the last station is moved to that crossing, found by bisection. */
+  const runOut = (steps, height) => {
+    let last = steps.length - 1;
+    while (last > 0 && height(steps[last]) < 0) last--;
+    if (last === steps.length - 1) return steps;
+    let lo = steps[last], hi = steps[last + 1];
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      if (height(mid) < 0) hi = mid; else lo = mid;
+    }
+    return [...steps.slice(0, last + 1), lo];
+  };
   for (const v of VOLS) {
     const o = makeObject(v);
     if (followsGround(v) && TER) {
       const [a0, a1] = FRONT.axis === 'x' ? [v.z0, v.z1] : [v.x0, v.x1];
-      const n = Math.max(2, Math.ceil((a1 - a0) / 0.5) + 1);
-      const steps = Array.from({ length: n }, (_, i) => a0 + ((a1 - a0) * i) / (n - 1));
-      const side = (fixed, list) => list.map((a) => (FRONT.axis === 'x' ? [fixed, a] : [a, fixed]));
       const lo = FRONT.axis === 'x' ? v.x0 : v.z0, hi = FRONT.axis === 'x' ? v.x1 : v.z1;
       const dFace = ((FRONT.sign > 0 ? lo : hi) - FACE) * FRONT.sign;
+      const steps = runOut(stationsBetween(a0, a1), (a) => yAt(v.y1, a, dFace) - yAt(v.y0, a, dFace));
+      const n = steps.length;
+      const side = (fixed, list) => list.map((a) => (FRONT.axis === 'x' ? [fixed, a] : [a, fixed]));
       const ring = [...side(lo, steps), ...side(hi, steps.slice().reverse())];
       const acrossOf = ([x, z]) => (FRONT.axis === 'x' ? z : x);
       const cornersAt = [0, n - 1, n, 2 * n - 1];
@@ -356,45 +388,68 @@ async function boot() {
     );
   }
 
-  /* The fillet: its floor is the sliver between the corner and the arc,
-     at the ramp's level; its wall is a 30 cm band along the arc, on the
-     hill side, from the ramp's floor up to the natural ground. */
-  if (FILLET) {
-    const { r, corner, centre } = FILLET;
-    const toXZ = (along, across) => (FRONT.axis === 'x' ? [along, across] : [across, along]);
-    const hill = (along, across) => natural((along - FACE) * FRONT.sign, across);
-    const arc = (rad, N = 12) => Array.from({ length: N + 1 }, (_, i) => {
-      const th = (i / N) * (Math.PI / 2);
-      return [centre.along + FRONT.sign * rad * Math.sin(th), centre.across - rad * Math.cos(th)];
-    });
+  /* ── the driveway's derived pieces ──────────────────── */
 
-    const floorRing = [[corner.along, corner.across], ...arc(r)];
+  /* The uphill side of the driveway is one wall line from the house's
+     corner to the road: the fillet's arc, a straight run, the mouth's
+     arc. Each piece is a WALL-thick band on the hill side of the cut
+     line, its foot at the slab's underside and its top at the natural
+     ground — read once, at the hill-side face, so the top is level
+     across the thickness. The floors are the cut itself, SLAB deep. */
+  const toXZ = (along, across) => (FRONT.axis === 'x' ? [along, across] : [across, along]);
+  const atD = (d, across) => toXZ(FACE + FRONT.sign * d, across);
+  const pt = (xz, y) => [xz[0], y, xz[1]];
+  /* A band between the cut edge and its hill-side twin, both lists of
+     (d, across) in the same order. */
+  function addBand(id, name, cutEdge, hillEdge, uprights) {
+    const n = cutEdge.length;
+    const ring = [...cutEdge, ...hillEdge.slice().reverse()];
+    const top = (i) => natural(hillEdge[i][0], hillEdge[i][1]);
     addVolume(
-      makeObject({ id: 'fillet-floor', name: 'Corner fillet, floor', group: 'drive' }),
-      floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
-      floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) + 0.1, toXZ(a, c)[1]]),
-      { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
-    );
-
-    const wallRing = [...arc(r), ...arc(r - 0.3).reverse()];
-    const n = wallRing.length / 2;
-    addVolume(
-      makeObject({ id: 'fillet-wall', name: 'Corner fillet, wall', group: 'wall' }),
-      wallRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
-      wallRing.map(([a, c]) => [toXZ(a, c)[0], hill(a, c), toXZ(a, c)[1]]),
-      { dots: false, uprightAt: [0, n - 1, n, 2 * n - 1] },
+      makeObject({ id, name, group: 'wall' }),
+      ring.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB)),
+      ring.map(([d, c], k) => pt(atD(d, c), top(k < n ? k : 2 * n - 1 - k))),
+      { dots: false, uprightAt: uprights ?? [0, n - 1, n, 2 * n - 1] },
     );
   }
-  /* The mouth: its floor is the quarter-ellipse itself, still on the
-     ramp's grade; its wall a 30 cm band along the arc on the hill side,
-     from the floor up to the natural ground — full height where it
-     leaves the ramp, nothing where it meets the road. */
+
+  if (FILLET) {
+    const { r, corner, centre } = FILLET;
+    const dOf = (along) => (along - FACE) * FRONT.sign;
+    const arc = (rad, N = 12) => Array.from({ length: N + 1 }, (_, i) => {
+      const th = (i / N) * (Math.PI / 2);
+      return [dOf(centre.along + FRONT.sign * rad * Math.sin(th)), centre.across - rad * Math.cos(th)];
+    });
+
+    const floorRing = [[dOf(corner.along), corner.across], ...arc(r)];
+    addVolume(
+      makeObject({ id: 'fillet-floor', name: 'Corner fillet, floor', group: 'drive' }),
+      floorRing.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB)),
+      floorRing.map(([d, c]) => pt(atD(d, c), rampLevel(c))),
+      { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
+    );
+    addBand('fillet-wall', 'Corner fillet, wall', arc(r), arc(r - WALL));
+  }
+
+  /* The straight run, from the fillet's end (or the house's corner) to
+     the mouth's start (or the property's end). */
+  if (CUT?.ramp) {
+    const dFrom = CUT.ramp.dFrom ?? 0;
+    const from = FILLET ? FILLET.centre.across : Math.max(CUT.ramp.from, HOUSE_EDGE);
+    const to = MOUTH ? MOUTH.across0 : CUT.to;
+    if (to > from + 1e-6) {
+      const steps = stationsBetween(from, to);
+      addBand(
+        'ramp-wall', 'Retaining wall, uphill side',
+        steps.map((c) => [dFrom, c]),
+        steps.map((c) => [dFrom - WALL, c]),
+        [0, steps.length - 1, steps.length, 2 * steps.length - 1],
+      );
+    }
+  }
+
   if (MOUTH) {
     const { a, b, d0, across0 } = MOUTH;
-    const toXZ = (d, across) => {
-      const along = FACE + FRONT.sign * d;
-      return FRONT.axis === 'x' ? [along, across] : [across, along];
-    };
     const arc = (ra, rb, N = 14) => Array.from({ length: N + 1 }, (_, i) => {
       const th = (i / N) * (Math.PI / 2);
       return [d0 - ra * Math.cos(th), across0 + rb * Math.sin(th)];
@@ -403,18 +458,12 @@ async function boot() {
     const floorRing = [[d0, across0], ...arc(a, b)];
     addVolume(
       makeObject({ id: 'mouth-floor', name: 'Entrance mouth, floor', group: 'drive' }),
-      floorRing.map(([d, c]) => [toXZ(d, c)[0], rampLevel(c) - 0.1, toXZ(d, c)[1]]),
-      floorRing.map(([d, c]) => [toXZ(d, c)[0], rampLevel(c) + 0.1, toXZ(d, c)[1]]),
+      floorRing.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB)),
+      floorRing.map(([d, c]) => pt(atD(d, c), rampLevel(c))),
       { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
     );
-
-    const wallRing = [...arc(a, b), ...arc(a + 0.3, b + 0.3).reverse()];
-    addVolume(
-      makeObject({ id: 'mouth-wall', name: 'Entrance mouth, wall', group: 'wall' }),
-      wallRing.map(([d, c]) => [toXZ(d, c)[0], rampLevel(c) - 0.1, toXZ(d, c)[1]]),
-      wallRing.map(([d, c]) => [toXZ(d, c)[0], natural(d, c), toXZ(d, c)[1]]),
-      { dots: false, uprightAt: [0, wallRing.length - 1] },
-    );
+    const edge = arc(a, b);
+    addBand('mouth-wall', 'Entrance mouth, wall', edge, arc(a + WALL, b + WALL), [0, edge.length - 1, edge.length, 2 * edge.length - 1]);
   }
 
   /* The dots ride with their object, a shade lighter than its lines. */
@@ -476,8 +525,10 @@ async function boot() {
     }
     if (CUT) across.push(CUT.from - 0.001, CUT.from, CUT.to, CUT.to + 0.001);
     if (CUT?.ramp) {
-      across.push(CUT.ramp.from, CUT.ramp.to);
-      if (MOUTH) across.push(MOUTH.across0);
+      /* Over the driveway the grid runs at the slabs' own stations, so
+         its lines and the slab edges are one polyline. */
+      for (let a = CUT.ramp.from; a < CUT.to + 1e-6; a += STEP) if (!across.includes(a)) across.push(a);
+      for (const a of [CUT.ramp.to, MOUTH?.across0]) if (a != null && !across.includes(a)) across.push(a);
       const p = FACE + FRONT.sign * (CUT.ramp.dFrom ?? 0);
       along.push(p - FRONT.sign * 0.001, p);
     }

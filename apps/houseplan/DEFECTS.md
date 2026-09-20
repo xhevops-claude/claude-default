@@ -18,7 +18,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | House | cyan | garage, ground, first |
 | Cantilever | orange | canopy |
 | Driveway | yellow | driveway (apron), driveway-ramp, fillet-floor, mouth-floor |
-| Retaining walls | violet | retainer, retainer-ramp, retainer-uphill, fillet-wall, mouth-wall |
+| Retaining walls | violet | retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
 
 ## Rules agreed so far
@@ -47,17 +47,17 @@ in step with this one). They were rendered with the camera settings below
 (`window.houseWire.camera` / `.controls`), so they can be retaken after a
 fix.
 
-| # | Where | What is wrong | Proposed fix | Status | Camera (pos → target) |
+| # | Where | What was wrong | Fix | Status | Camera (pos → target) |
 |---|---|---|---|---|---|
-| 1 | Uphill wall ends, z 8.7 and z 16 | The straight uphill wall (`retainer-uphill`, x 12.7–13) stands *inside* the cut, while the fillet wall and the mouth wall are bands in the *hill* (arc → arc − 0.3). At both ends the wall line jogs 30 cm. | R2: put all three on the hill side of the cut line. Uphill wall x 12.4–12.7 (or `dFrom` 3 with the wall at 12.7–13 and the ramp 3 m wide from x 13). | open | (16.5, −1.2, 5.5) → (12.85, −3.6, 8.7); (16.5, −3.2, 12.2) → (12.85, −5.4, 16) |
-| 2 | Fillet at the house corner (10, 6) | Fillet radius 2.7 = distance house face → ramp's uphill edge (12.7), so the arc *does* end tangent at both ends — but the wall band (r − 0.3) starts at the house corner and its inner edge sits on the house's east face line. With 1 fixed (ramp edge at 13, band outside) r must become 3 for the arc to stay tangent; the straight wall then starts at z 9. | Tie `fillet.r` to `ramp.dFrom` (r = dFrom + wall thickness) rather than hand-typing both. | open | plan view (11.6, 6, 7.4) → (11.6, −3, 7.4), up −Z |
-| 3 | x 13, z 5–6 | The ramp eased from z 5 but the door strip beside it stayed flat, so along x 13 there was a 7 cm lip between the two slabs for that metre. | D1: the ramp starts at z 6, the house edge; the apron is one slab z −2…6 and the door strip is gone. | fixed | (15.2, −1.9, 8.6) → (13, −2.95, 5.5) |
-| 4 | Outer wall, z −2…16 | `retainer` and `retainer-ramp` are drawn from y −6 up to the slab's *top* (−2.9 / floor + 0.1), so the wall occupies the slab's volume; at the ramp foot (z 16) the wall's top ends *below* its foot and the stub inverts. | R3: wall top = slab underside (floor − 0.1); at the foot the wall runs out where the slab underside meets −6, not 10 cm above it. | open | (12.4, −4.2, 19.6) → (15.85, −5.8, 15.6); (19.2, −1.6, 7.6) → (15.85, −3.2, 3.5) |
-| 5 | Apron, walls, road | "Level" means three things: cut profile −3 (apron), apron slab top −2.9, road slab −6.1…−5.9 on ground −6. The wall tops at −2.9 sit 10 cm above the profile they are meant to hold. | R1: cut profile becomes −2.9 / −6 (finished surfaces); road slab y −6.2…−6; wall tops at slab underside (R3). | open | (19.5, −2.4, 10.5) → (16, −4.4, 2.5) |
-| 6 | Fillet wall and mouth wall tops | The band's top is evaluated per vertex, so the inner and outer arcs get different natural-ground heights and the top tilts across the 30 cm. | Evaluate the natural ground once, at the outer (hill-side) face, and use it for both edges. | open | (14.6, 0.2, 10.6) → (11.3, −1.4, 8.2) |
-| 7 | Ramp, z 5–16 | The ground grid is sampled at 1 m, the ramp slabs and walls at 0.5 m, so the grid's ramp lines and the slab's edges do not coincide along the eased curve. The slab and the wall also overlap (see 4). | R5: sample the grid across the ramp at the slab's stations (0.5 m), or both at the same list of breakpoints. | open | (19, −1.6, 9.6) → (14.5, −4.2, 10.5) |
-| 8 | Whole ramp | 3 m drop over 11 m was 27 % average, ~36 % in the eased middle — too steep for a car in the wet. | D2: the grade starts at the entrance itself, not at the end of a flat pad — ramp z 6…22 (16 m) through the mouth. With the road 2 m below the garage at the entrance the drop is 2 m: 12.5 % average, ~17 % mid. | fixed | (34, −2.5, 10) → (14.5, −4.5, 10) |
-| 9 | The entrance, z 16–22 | You cannot drive in. The outer wall (`retainer-ramp`) now runs through the mouth to z 22, so the only way off the road is at the very tip; and the floor is within a kerb's height of the road only over the last ~1.5 m (floor above road: 0.92 m at z 16, 0.50 at z 18, 0.17 at z 20, 0.06 at z 21, 0 at z 22). A car turning in from the road needs an opening of 4–5 m at road level. | Give the entrance a landing: the ramp's grade ends at about z 17–18 and the last 4–5 m sit at road level (+ a dropped kerb); the outer wall stops where the landing starts, and the mouth's flare opens onto the landing. The ramp becomes 2 m over ~11–12 m, 17–18 % average — or keep the grade flatter by starting it before the house edge (D1 revisited). | open — decision D3 | plan view (15.5, 6, 19) → (15.5, −5, 19), up −Z |
+| 1 | Uphill wall ends, z 9 and z 16 | The straight uphill wall stood *inside* the cut while the fillet wall and the mouth wall were bands in the *hill*; at both ends the wall line jogged 30 cm. | R2: the uphill side is one derived wall line — fillet arc, straight run (`ramp-wall`), mouth arc — every piece a `wall`-thick band on the hill side of the cut line at `dFrom` 3; the straight run is derived from the fillet's end to the mouth's start, so it cannot jog. | fixed | (16.5, −1.2, 5.5) → (12.85, −3.6, 8.7); (16.5, −3.2, 12.2) → (12.85, −5.4, 16) |
+| 2 | Fillet at the house corner (10, 6) | The radius was typed by hand and had to match `dFrom` to stay tangent. | R4: the radius *is* `dFrom` unless overridden, so the arc leaves the house face at the corner and meets the ramp's edge tangentially by construction. | fixed | plan view (11.6, 6, 7.4) → (11.6, −3, 7.4), up −Z |
+| 3 | x 13, z 5–6 | A 7 cm lip between the flat door strip and the eased ramp. | D1: the ramp starts at z 6, the apron is one slab. | fixed | (15.2, −1.9, 8.6) → (13, −2.95, 5.5) |
+| 4 | Outer wall, z −2…16 | The wall was drawn up to the slab's *top*, so it occupied the slab; at the ramp foot its top ended below its foot. | R3: wall top = slab underside (`{ floor: -0.2 }` / −3.1), foot on the road; a walked wall now *runs out* where top meets foot (bisection), so the outer wall ends at z ≈ 16.1 where the slab's underside reaches the road. | fixed | (12.4, −4.2, 19.6) → (15.85, −5.8, 15.6); (19.2, −1.6, 7.6) → (15.85, −3.2, 3.5) |
+| 5 | Apron, walls, road | "Level" meant three things (profile −3, slab top −2.9, road slab straddling −6). | R1: every profile number is a finished surface — cut profile −2.9 (the garage floor), road −5.9 → −4.9; slabs are `slab` deep *under* their surface (`{ road: -0.2 }`…`{ road: 0 }`, `{ floor: -0.2 }`…`{ floor: 0 }`). | fixed | (19.5, −2.4, 10.5) → (16, −4.4, 2.5) |
+| 6 | Fillet wall and mouth wall tops | The top was read per vertex, so it tilted across the thickness. | The top is the natural ground at the hill-side face, used for both edges of the band. | fixed | (14.6, 0.2, 10.6) → (11.3, −1.4, 8.2) |
+| 7 | Ramp, z 6–22 | Grid at 1 m, slabs at 0.5 m: lines that should coincide did not. | R5: one `STEP` (0.5 m) for walked volumes and for the grid over the driveway, stations from `ramp.from`, so slab edges and grid lines are the same polyline. | fixed | (19, −1.6, 9.6) → (14.5, −4.2, 10.5) |
+| 8 | Whole ramp | 27 % average, ~36 % mid. | D2 brought it to 12.5 % — but D3's landing shortens the run again: 2.17 m over 12 m (z 6–18) is **18 % average, ~23 % mid** (`ease` 0.2). Trade-off between the landing's length and the grade; see D4. | open — decision D4 | (34, −2.5, 10) → (14.5, −4.5, 10) |
+| 9 | The entrance, z 16–22 | The outer wall ran to the tip and the floor met the road only over the last 1.5 m. | D3: the driveway reaches the road at z 18 and from there *is* the road's surface (a 4 m landing that follows the road's own fall, with the mouth's flare opening onto it); the outer wall runs out at z ≈ 16.1, so the road side is open for 6 m, the first 2 m with a kerb of at most 24 cm. | fixed | plan view (15.5, 6, 19) → (15.5, −5, 19), up −Z |
 
 ## Decisions
 
@@ -70,9 +70,13 @@ fix.
   floor, not 3. `terrain.road` holds it as [across, level] and a profile
   level written `'road'` follows it; the walls' feet ride it too.
   Assumed: the north end of the property (z −2) is the 3 m-below end.
-- **D3 — waiting:** how the entrance opens onto the road (defect 9): a
-  road-level landing of 4–5 m at the foot with the grade ending at z ~17–18,
-  or something else?
+- **D3 — decided:** a road-level landing. The ramp reaches the road at
+  z 18; from there to the property's end the driveway is the road's own
+  surface, and the outer wall runs out where the slab meets the road.
+- **D4 — waiting:** the grade is back to 18 % (23 % mid) because the
+  landing takes 4 m off the run. Options: a shorter landing (3 m → 16 %),
+  a flatter `ease`, starting the grade inside the apron again, or accept
+  it.
 
 ## Done
 
@@ -85,3 +89,7 @@ fix.
   (branch, unmerged).
 - D1, D2 and the sloping road: ramp z 6–22 on the grade from the entrance,
   road 1 m rise, walls following the road (branch, unmerged).
+- Defects 1, 2, 4, 5, 6, 7, 9 fixed in one pass: finished-surface
+  levels, one derived wall line on the uphill side, slabs on walls, walls
+  that run out, flat wall tops, shared sampling, a road-level landing
+  (branch, unmerged).
