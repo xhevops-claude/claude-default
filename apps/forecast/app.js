@@ -55,6 +55,14 @@
    * scenario sheet puts everything back to the committed data. */
   var SCENARIO_STORE = 'forecast-scenario-v1';
   var LEGACY_OFF_STORE = 'forecast-ledger-off-v1';   // ticks only, pre-v1; migrated once
+
+  /* Guest mode opens sample-data.json instead of the vault: invented numbers,
+   * no passphrase, nothing cached. It is a tour of the app for someone without
+   * the secret, and a fixed dataset to check a change against. Its overrides
+   * live under their own key so they never bleed into the real ones. */
+  var guest = false;
+  var GUEST_STORE = 'forecast-scenario-guest-v1';
+  function scenarioStore() { return guest ? GUEST_STORE : SCENARIO_STORE; }
   var scenario = {
     pricePerM2: null,       // EUR/m² the sale figures are struck at
     rateKnob: null,
@@ -1697,7 +1705,7 @@
    * falls back to the committed data rather than blocking the app. */
   function saveScenario() {
     var same = function (key) { return scenario[key] === defaults[key]; };
-    writeStore(SCENARIO_STORE, JSON.stringify({
+    writeStore(scenarioStore(), JSON.stringify({
       currency: currency,
       budgetOverride: scenario.budgetOverride,
       pricePerM2: scenario.pricePerM2,
@@ -1712,10 +1720,10 @@
 
   function loadScenario() {
     var saved = null;
-    try { saved = JSON.parse(readStore(SCENARIO_STORE) || 'null'); } catch (e) { /* malformed */ }
+    try { saved = JSON.parse(readStore(scenarioStore()) || 'null'); } catch (e) { /* malformed */ }
 
     // The first version only remembered the ledger ticks, under its own key.
-    if (!saved) {
+    if (!saved && !guest) {
       try {
         var ids = JSON.parse(readStore(LEGACY_OFF_STORE) || 'null');
         if (Array.isArray(ids)) saved = { off: ids };
@@ -1814,7 +1822,11 @@
       ' · cash basis, net ' + payCycle().netDays;
 
     var banner = $('banner');
-    if (samples > 0) {
+    if (guest) {
+      banner.hidden = false;
+      banner.textContent = 'Guest mode — every number here is invented. ' +
+        'Tap the lock to go back to the real thing.';
+    } else if (samples > 0) {
       banner.hidden = false;
       banner.textContent = samples + ' sample ' + (samples === 1 ? 'row is' : 'rows are') +
         ' still in place — tell Claude your real numbers and they get replaced.';
@@ -2081,11 +2093,32 @@
       }
 
       $('lock-form').addEventListener('submit', attempt);
+
+      $('lock-guest').addEventListener('click', function () {
+        error.textContent = 'Loading the sample…';
+        fetch('sample-data.json', { cache: 'no-store' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('sample-data.json → HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function (bundle) {
+            guest = true;
+            $('lock-btn').setAttribute('aria-label', 'Leave guest mode');
+            gate.hidden = true;
+            error.textContent = '';
+            resolve(bundle);
+          })
+          .catch(function (err) {
+            error.textContent = 'Could not load the sample. ' + err.message;
+          });
+      });
     });
   }
 
+  // In guest mode there is no key to forget; a reload is the way back to the
+  // lock screen, and a real key cached on this device is left alone.
   function lockApp() {
-    clearStore(KEY_STORE);
+    if (!guest) clearStore(KEY_STORE);
     location.reload();
   }
 

@@ -179,6 +179,18 @@ cached key useless. The lock button clears it immediately.
 The crypto helpers are duplicated in each app rather than imported, because
 sub-experiences share no code by design (see above). They must stay in step.
 
+**Guest mode.** The Forecast lock screen has a "Look around as a guest" button
+that opens `apps/forecast/sample-data.json` — a committed, plaintext bundle of
+invented numbers in the vault's shape (`{ meta, income, loans, … }`, every row
+`sample: true`) — instead of the vault. No passphrase, nothing cached, its
+overrides under `forecast-scenario-guest-v1`, and a banner that says so; the
+lock button reloads back to the gate. It is the tour for someone without the
+secret and the fixed dataset to check a change against (headless: click
+`#lock-guest`, no secret needed). Regenerate it with a script rather than by
+hand when the shape changes — the loan `principal`s are walked from
+`loanFacts.disbursedOn` so the Invest view's interest identity lands on the
+true figure. Nothing in it is real; keep it that way.
+
 **Gotcha worth remembering:** a `[hidden]` lock screen with `display: flex` stays
 laid out and silently swallows every click on the app underneath. Both gates
 carry an explicit `#lock-screen[hidden] { display: none; }`.
