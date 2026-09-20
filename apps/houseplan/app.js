@@ -1031,11 +1031,12 @@ async function boot() {
     layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v; }, 'Objects', { color: g.color });
   }
   if (reliefLabels.length || objects.some((o) => o.id === 'relief')) {
-    layer('relief-points', 'Relief points', true, (v) => setLayer('relief-points', v), 'Relief');
+    /* The surface alone by default; the rest is there to switch on. */
+    layer('relief-points', 'Relief points', false, (v) => setLayer('relief-points', v), 'Relief');
     layer('relief-surface', 'Relief surface', true, (v) => setLayer('relief-surface', v), 'Relief');
-    layer('relief-minor', 'Contours 10 cm', true, (v) => setLayer('relief-minor', v), 'Relief');
-    layer('relief-major', 'Contours 1 m', true, (v) => setLayer('relief-major', v), 'Relief');
-    layer('relief-labels', 'Contour labels', true, (v) => setLayer('relief-labels', v), 'Relief');
+    layer('relief-minor', 'Contours 10 cm', false, (v) => setLayer('relief-minor', v), 'Relief');
+    layer('relief-major', 'Contours 1 m', false, (v) => setLayer('relief-major', v), 'Relief');
+    layer('relief-labels', 'Contour labels', false, (v) => setLayer('relief-labels', v), 'Relief');
     layer('relief-grid', 'Relief grid', false, (v) => setLayer('relief-grid', v), 'Relief');
   }
 
