@@ -657,43 +657,72 @@ async function boot() {
   /* ── the relief: the surveyed ground ────────────────── */
 
   /* The terrain app's layers, in this frame. relief.js carries the
-     survey as a height field — one cell per metre of the survey grid —
-     and from it come: every surveyed point, tinted by height from the
-     group's colour at the bottom of the sample to near white at the
-     top; the ground as a surface, dimmed outside the parcel; contours
-     every 10 cm of real height with a heavier line at each metre, as
-     the terrain app draws them; a height label wherever a parcel edge
-     crosses a metre line; and the survey's own lattice draped on the
-     ground every 5 m. Each is a layer of one Relief object, hidden
-     with the group or on its own from Settings. Not framed, not
-     tappable — it is the backdrop the model sits in. */
+     survey as height fields — a 0.2 m lattice over and around the
+     parcel, and the 1 m grid over the whole survey, emptied where the
+     fine one covers it — and from them come: every surveyed point,
+     tinted by height from the group's colour at the bottom of the
+     sample to near white at the top; the ground as a surface, dimmed
+     outside the parcel; contours every 10 cm of real height with a
+     heavier line at each metre, as the terrain app draws them; a height
+     label wherever a parcel edge crosses a metre line; and the survey's
+     own eastings and northings every 5 m, draped on the ground. Each
+     is a layer of one Relief object, hidden with the group or on its
+     own from Settings. Not framed, not tappable — it is the backdrop
+     the model sits in. */
   const reliefLabels = [];
   const RELIEF_INK = '#bff2d6';
-  if (window.HOUSE_RELIEF?.heights && window.HOUSE_RELIEF.frame) {
+  if (window.HOUSE_RELIEF?.fields?.length && window.HOUSE_RELIEF.frame) {
     const R = window.HOUSE_RELIEF;
     const o = makeObject({ id: 'relief', name: R.name || 'Relief', group: 'relief' });
-    const [nx, ny] = R.size;
     const { mid, ex, ez, org } = R.frame;
-    const H = R.heights;
-    const has = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && H[j * nx + i] != null;
-    const place = (i, j) => {
-      const dX = R.origin[0] + i - mid[0], dY = R.origin[1] + j - mid[1];
-      return [org[0] + dX * ex[0] + dY * ex[1], H[j * nx + i] - R.datum, org[1] + dX * ez[0] + dY * ez[1]];
+    const toModel = (X, Y, h) => {
+      const dX = X - mid[0], dY = Y - mid[1];
+      return [org[0] + dX * ex[0] + dY * ex[1], h - R.datum, org[1] + dX * ez[0] + dY * ez[1]];
     };
-    /* One vertex per sampled cell, shared by the points, the surface
-       and the contours, so they cannot disagree. */
-    const vid = new Int32Array(nx * ny).fill(-1);
-    const pos = [];
+    /* Each field: one vertex per sampled cell, shared by the points,
+       the surface and the contours, so they cannot disagree; and two
+       triangles per cell whose four corners were all sampled. */
     let lo = Infinity, hi = -Infinity;
-    for (let j = 0; j < ny; j++) {
-      for (let i = 0; i < nx; i++) {
-        if (!has(i, j)) continue;
-        vid[j * nx + i] = pos.length / 3;
-        const p = place(i, j);
-        pos.push(...p);
-        lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]);
+    let sx0 = Infinity, sx1 = -Infinity, sy0 = Infinity, sy1 = -Infinity;
+    const fields = R.fields.map((F) => {
+      const [nx, ny] = F.size;
+      const H = F.heights;
+      const has = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && H[j * nx + i] != null;
+      const survey = (i, j) => [F.origin[0] + i * F.u[0] + j * F.v[0], F.origin[1] + i * F.u[1] + j * F.v[1]];
+      const vid = new Int32Array(nx * ny).fill(-1);
+      const pos = [];
+      for (let j = 0; j < ny; j++) {
+        for (let i = 0; i < nx; i++) {
+          if (!has(i, j)) continue;
+          vid[j * nx + i] = pos.length / 3;
+          const [X, Y] = survey(i, j);
+          sx0 = Math.min(sx0, X); sx1 = Math.max(sx1, X); sy0 = Math.min(sy0, Y); sy1 = Math.max(sy1, Y);
+          const p = toModel(X, Y, H[j * nx + i]);
+          pos.push(...p);
+          lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]);
+        }
       }
-    }
+      const tri = [];
+      for (let j = 0; j < ny - 1; j++) {
+        for (let i = 0; i < nx - 1; i++) {
+          if (!(has(i, j) && has(i + 1, j) && has(i, j + 1) && has(i + 1, j + 1))) continue;
+          const a = vid[j * nx + i], b = vid[j * nx + i + 1], d = vid[(j + 1) * nx + i], e = vid[(j + 1) * nx + i + 1];
+          tri.push(a, b, e, a, e, d);
+        }
+      }
+      /* The field's height at a survey point, bilinear in its own
+         lattice; null where any corner is missing. */
+      const det = F.u[0] * F.v[1] - F.u[1] * F.v[0];
+      const heightAt = (X, Y) => {
+        const dx = X - F.origin[0], dy = Y - F.origin[1];
+        const fu = (dx * F.v[1] - dy * F.v[0]) / det, fv = (dy * F.u[0] - dx * F.u[1]) / det;
+        const i = Math.floor(fu), j = Math.floor(fv);
+        if (!(has(i, j) && has(i + 1, j) && has(i, j + 1) && has(i + 1, j + 1))) return null;
+        const s = fu - i, t = fv - j;
+        return H[j * nx + i] * (1 - s) * (1 - t) + H[j * nx + i + 1] * s * (1 - t) + H[(j + 1) * nx + i] * (1 - s) * t + H[(j + 1) * nx + i + 1] * s * t;
+      };
+      return { pos, tri, heightAt };
+    });
     /* Tinted by height; and outside the parcel — a ray cast from the
        point against the boundary in plan — dimmed, as the terrain app
        masks its parcels. */
@@ -706,65 +735,59 @@ async function boot() {
       }
       return inn;
     };
-    const colors = new Float32Array(pos.length);
     const c = new THREE.Color();
-    for (let k = 0; k < pos.length; k += 3) {
-      c.copy(o.col).lerp(WHITE, 0.15 + 0.7 * ((pos[k + 1] - lo) / (hi - lo || 1)));
-      if (poly?.length && !inside(pos[k], pos[k + 2])) c.multiplyScalar(0.4);
-      colors[k] = c.r; colors[k + 1] = c.g; colors[k + 2] = c.b;
-    }
-    const posAttr = new THREE.Float32BufferAttribute(pos, 3);
-    const colAttr = new THREE.BufferAttribute(colors, 3);
-
-    o.node.add(tagged(new THREE.Points(
-      new THREE.BufferGeometry().setAttribute('position', posAttr).setAttribute('color', colAttr),
-      new THREE.PointsMaterial({
-        size: 3.5, sizeAttenuation: false, vertexColors: true, map: dotTexture(THREE),
-        transparent: true, opacity: 0.85, alphaTest: 0.35, depthWrite: false,
-      }),
-    ), 'relief-points'));
-
-    /* The surface: two triangles per cell whose four corners were all
-       sampled, translucent so the model still reads through it. */
-    const tri = [];
-    for (let j = 0; j < ny - 1; j++) {
-      for (let i = 0; i < nx - 1; i++) {
-        if (!(has(i, j) && has(i + 1, j) && has(i, j + 1) && has(i + 1, j + 1))) continue;
-        const a = vid[j * nx + i], b = vid[j * nx + i + 1], d = vid[(j + 1) * nx + i], e = vid[(j + 1) * nx + i + 1];
-        tri.push(a, b, e, a, e, d);
-      }
-    }
-    const surf = new THREE.BufferGeometry();
-    surf.setAttribute('position', posAttr);
-    surf.setAttribute('color', colAttr);
-    surf.setIndex(tri);
-    const surfMesh = new THREE.Mesh(surf, new THREE.MeshBasicMaterial({
-      vertexColors: true, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false,
-    }));
-    surfMesh.renderOrder = -1;
-    o.node.add(tagged(surfMesh, 'relief-surface'));
-
-    /* Contours, walked per triangle over the 10 cm levels it spans —
-       levels of real height, so a metre line is a metre above sea
-       level, as on the survey. */
     const minorSegs = [], majorSegs = [];
     const LIFT = 0.02;
-    const cross = (a, b, y, out) => {
-      const ya = pos[a * 3 + 1], yb = pos[b * 3 + 1];
-      if ((ya < y) === (yb < y)) return;
-      const f = (y - ya) / (yb - ya);
-      out.push(pos[a * 3] + (pos[b * 3] - pos[a * 3]) * f, pos[a * 3 + 2] + (pos[b * 3 + 2] - pos[a * 3 + 2]) * f);
-    };
-    for (let k = 0; k < tri.length; k += 3) {
-      const a = tri[k], b = tri[k + 1], d = tri[k + 2];
-      const ya = pos[a * 3 + 1], yb = pos[b * 3 + 1], yd = pos[d * 3 + 1];
-      const s0 = Math.ceil((Math.min(ya, yb, yd) + R.datum) * 10 - 1e-6);
-      const s1 = Math.floor((Math.max(ya, yb, yd) + R.datum) * 10 + 1e-6);
-      for (let st = s0; st <= s1; st++) {
-        const y = st / 10 - R.datum;
-        const xz = [];
-        cross(a, b, y, xz); cross(b, d, y, xz); cross(d, a, y, xz);
-        if (xz.length >= 4) (st % 10 === 0 ? majorSegs : minorSegs).push(xz[0], y + LIFT, xz[1], xz[2], y + LIFT, xz[3]);
+    const dotMapRelief = dotTexture(THREE);
+    for (const { pos, tri } of fields) {
+      const colors = new Float32Array(pos.length);
+      for (let k = 0; k < pos.length; k += 3) {
+        c.copy(o.col).lerp(WHITE, 0.15 + 0.7 * ((pos[k + 1] - lo) / (hi - lo || 1)));
+        if (poly?.length && !inside(pos[k], pos[k + 2])) c.multiplyScalar(0.4);
+        colors[k] = c.r; colors[k + 1] = c.g; colors[k + 2] = c.b;
+      }
+      const posAttr = new THREE.Float32BufferAttribute(pos, 3);
+      const colAttr = new THREE.BufferAttribute(colors, 3);
+
+      o.node.add(tagged(new THREE.Points(
+        new THREE.BufferGeometry().setAttribute('position', posAttr).setAttribute('color', colAttr),
+        new THREE.PointsMaterial({
+          size: 3, sizeAttenuation: false, vertexColors: true, map: dotMapRelief,
+          transparent: true, opacity: 0.85, alphaTest: 0.35, depthWrite: false,
+        }),
+      ), 'relief-points'));
+
+      /* The surface, translucent so the model still reads through it. */
+      const surf = new THREE.BufferGeometry();
+      surf.setAttribute('position', posAttr);
+      surf.setAttribute('color', colAttr);
+      surf.setIndex(tri);
+      const surfMesh = new THREE.Mesh(surf, new THREE.MeshBasicMaterial({
+        vertexColors: true, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false,
+      }));
+      surfMesh.renderOrder = -1;
+      o.node.add(tagged(surfMesh, 'relief-surface'));
+
+      /* Contours, walked per triangle over the 10 cm levels it spans —
+         levels of real height, so a metre line is a metre above sea
+         level, as on the survey. */
+      const cross = (a, b, y, out) => {
+        const ya = pos[a * 3 + 1], yb = pos[b * 3 + 1];
+        if ((ya < y) === (yb < y)) return;
+        const f = (y - ya) / (yb - ya);
+        out.push(pos[a * 3] + (pos[b * 3] - pos[a * 3]) * f, pos[a * 3 + 2] + (pos[b * 3 + 2] - pos[a * 3 + 2]) * f);
+      };
+      for (let k = 0; k < tri.length; k += 3) {
+        const a = tri[k], b = tri[k + 1], d = tri[k + 2];
+        const ya = pos[a * 3 + 1], yb = pos[b * 3 + 1], yd = pos[d * 3 + 1];
+        const s0 = Math.ceil((Math.min(ya, yb, yd) + R.datum) * 10 - 1e-6);
+        const s1 = Math.floor((Math.max(ya, yb, yd) + R.datum) * 10 + 1e-6);
+        for (let st = s0; st <= s1; st++) {
+          const y = st / 10 - R.datum;
+          const xz = [];
+          cross(a, b, y, xz); cross(b, d, y, xz); cross(d, a, y, xz);
+          if (xz.length >= 4) (st % 10 === 0 ? majorSegs : minorSegs).push(xz[0], y + LIFT, xz[1], xz[2], y + LIFT, xz[3]);
+        }
       }
     }
     o.node.add(tagged(segments(minorSegs, new THREE.LineBasicMaterial({ color: o.col, transparent: true, opacity: 0.3 })), 'relief-minor'));
@@ -792,19 +815,24 @@ async function boot() {
     }
     o.node.add(labelsNode);
 
-    /* The survey's lattice, every 5 m of its own easting and northing,
-       drawn cell by cell so it lies on the ground. */
-    const EVERY = 5;
+    /* The survey's own coordinates: its eastings and northings every
+       5 m, each line draped on whichever field covers it — the fine one
+       first — a quarter-metre at a time, broken where neither does. */
+    const EVERY = 5, SAMPLE = 0.25;
+    const heightAt = (X, Y) => { for (const f of fields) { const h = f.heightAt(X, Y); if (h != null) return h; } return null; };
     const gridSegs = [];
-    const lift = (p) => [p[0], p[1] + LIFT, p[2]];
-    for (let j = 0; j < ny; j++) {
-      if ((R.origin[1] + j) % EVERY) continue;
-      for (let i = 0; i < nx - 1; i++) if (has(i, j) && has(i + 1, j)) gridSegs.push(...lift(place(i, j)), ...lift(place(i + 1, j)));
-    }
-    for (let i = 0; i < nx; i++) {
-      if ((R.origin[0] + i) % EVERY) continue;
-      for (let j = 0; j < ny - 1; j++) if (has(i, j) && has(i, j + 1)) gridSegs.push(...lift(place(i, j)), ...lift(place(i, j + 1)));
-    }
+    const drape = (walk) => {
+      let prev = null;
+      for (const [X, Y] of walk) {
+        const h = heightAt(X, Y);
+        const p = h == null ? null : toModel(X, Y, h + LIFT);
+        if (prev && p) gridSegs.push(...prev, ...p);
+        prev = p;
+      }
+    };
+    const span = (a, b) => { const out = []; for (let v = a; v <= b + 1e-9; v += SAMPLE) out.push(v); return out; };
+    for (let X = Math.ceil(sx0 / EVERY) * EVERY; X <= sx1; X += EVERY) drape(span(sy0, sy1).map((Y) => [X, Y]));
+    for (let Y = Math.ceil(sy0 / EVERY) * EVERY; Y <= sy1; Y += EVERY) drape(span(sx0, sx1).map((X) => [X, Y]));
     o.node.add(tagged(segments(gridSegs, new THREE.LineBasicMaterial({ color: o.col.clone().lerp(WHITE, 0.25), transparent: true, opacity: 0.45 })), 'relief-grid'));
   }
   /* A contour label's text, in the language of the moment. */

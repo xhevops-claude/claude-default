@@ -21,7 +21,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | Retaining walls | violet | garage-wall-south / -west / -north, retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
 | Parcel | red | parcel (boundary, 705 m²), existing (the 6 × 8 m building at the top corner) |
-| Relief | green | relief — the surveyed ground from the terrain app's 1 m sample (`relief.js`, a 166 × 147 height field, 12,405 cells), as the terrain app's layers: points tinted by height, a translucent surface dimmed outside the parcel, contours every 10 cm with a heavier line each metre, a height label where a parcel edge crosses a metre line, and the survey's own 5 m lattice draped on the ground (off by default). Each is a layer in Settings |
+| Relief | green | relief — the surveyed ground from the terrain app's two samples (`relief.js`: the 0.2 m cloud over and around the parcel, 34,004 points, and the 1 m grid over the whole survey, emptied where the cloud covers it), as the terrain app's layers: points tinted by height, a translucent surface dimmed outside the parcel, contours every 10 cm with a heavier line each metre, a height label where a parcel edge crosses a metre line, and the survey's own 5 m lattice draped on the ground (off by default). Each is a layer in Settings |
 
 ## Rules agreed so far
 
