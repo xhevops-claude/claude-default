@@ -112,3 +112,6 @@ fix.
   turns the camera in place, pinch or wheel walks it along its facing, two
   fingers or a right-drag slide it). A toggle in the bottom bar; the axis
   gizmo turns the camera in place in Camera mode (branch, unmerged).
+- Settings sheet behind a gear top right: the Object / Camera navigation
+  choice and an EN / DE language switch that translates the interface,
+  legend, object names and dimension labels (branch, unmerged).

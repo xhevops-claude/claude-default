@@ -22,6 +22,39 @@ const e = PLAN.envelope;
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n.toFixed(2).replace(/\.?0+$/, '');
 
+/* ── language ─────────────────────────────────────────── */
+
+/* English is the source; German is looked up by the English string, so
+   plan.js keeps its names and anything without an entry falls back. The
+   choice is remembered on the device. */
+const DE = {
+  Settings: 'Einstellungen', Close: 'Schließen', Navigation: 'Navigation', Object: 'Objekt', Camera: 'Kamera',
+  Language: 'Sprache',
+  'Drag orbits the scene, pinch or wheel zooms, two fingers pan.': 'Ziehen kreist um die Szene, Kneifen oder Rad zoomt, zwei Finger verschieben.',
+  'Drag turns the camera, pinch or wheel walks it, two fingers slide it.': 'Ziehen dreht die Kamera, Kneifen oder Rad bewegt sie vor und zurück, zwei Finger verschieben sie.',
+  Fit: 'Einpassen', Faces: 'Flächen', Floors: 'Böden', Dots: 'Punkte', Ground: 'Gelände', Spin: 'Drehen', Defects: 'Mängel',
+  east: 'Ost', up: 'oben', south: 'Süd', 'site falls': 'Gelände fällt',
+  House: 'Haus', Cantilever: 'Auskragung', Driveway: 'Einfahrt', 'Retaining walls': 'Stützmauern', Road: 'Straße',
+  Garage: 'Garage', 'Ground floor': 'Erdgeschoss', 'First floor': 'Obergeschoss',
+  'Cantilever over the door': 'Auskragung über dem Tor', 'Apron, in front of the door': 'Vorplatz vor dem Tor',
+  'Driveway, down to the road': 'Einfahrt hinunter zur Straße',
+  'Garage wall, south': 'Garagenwand Süd', 'Garage wall, west': 'Garagenwand West', 'Garage wall, north': 'Garagenwand Nord',
+  'Retaining wall': 'Stützmauer', 'Retaining wall, tapering out': 'Stützmauer, auslaufend',
+  'Corner fillet, wall': 'Eckrundung, Mauer', 'Retaining wall, uphill side': 'Stützmauer bergseitig',
+  'Entrance mouth, wall': 'Einfahrtstrichter, Mauer',
+  run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über',
+};
+let LANG = (() => {
+  try { const v = localStorage.getItem('houseplan-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
+  return (navigator.language || '').toLowerCase().startsWith('de') ? 'de' : 'en';
+})();
+const t = (key) => (LANG === 'de' ? DE[key] ?? key : key);
+/* A dimension label: its words translated, and a decimal comma. */
+const tDim = (label) => {
+  if (LANG !== 'de') return label;
+  return label.replace(/\b(run|flare|along|over)\b/g, (w) => DE[w]).replace(/(\d)\.(\d)/g, '$1,$2');
+};
+
 /* ── what the box is ──────────────────────────────────── */
 
 /* The downhill face: which world axis the site falls along, and which
@@ -275,11 +308,13 @@ function groundY(x, z) {
   return rampLevel(across);
 }
 
-const pushed = PLAN.levels.find((l) => l.extendFront);
 $('wf-name').textContent = PLAN.name;
-$('wf-dims').textContent = `${fmt(e.x1 - e.x0)} × ${fmt(e.y1 - e.y0)} × ${fmt(BOX.y1 - BOX.y0)} m`
-  + (pushed ? ` · ${pushed.name.toLowerCase()} out ${fmt(pushed.extendFront)} m to ${TER.front}` : '')
-  + (TER ? ` · site falls ${fmt(TER.backLevel - ROAD_MIN)} m` : '');
+function paintHeader() {
+  const num = (n) => (LANG === 'de' ? fmt(n).replace('.', ',') : fmt(n));
+  $('wf-dims').textContent = `${num(e.x1 - e.x0)} × ${num(e.y1 - e.y0)} × ${num(BOX.y1 - BOX.y0)} m`
+    + (TER ? ` · ${t('site falls')} ${num(TER.backLevel - ROAD_MIN)} m` : '');
+}
+paintHeader();
 
 /* ── scene ────────────────────────────────────────────── */
 
@@ -602,7 +637,8 @@ async function boot() {
     chip.type = 'button';
     chip.className = 'chip';
     chip.style.setProperty('--c', g.color);
-    chip.innerHTML = `<i></i>${g.name}`;
+    chip.dataset.name = g.name;
+    chip.innerHTML = `<i></i>${t(g.name)}`;
     chip.addEventListener('click', () => {
       if (hidden.has(key)) hidden.delete(key); else hidden.add(key);
       chip.classList.toggle('is-off', hidden.has(key));
@@ -764,7 +800,7 @@ async function boot() {
     }
     labels.length = 0;
     selected = o && o !== selected ? o : null;
-    $('wf-sel').textContent = selected ? selected.name : '';
+    $('wf-sel').textContent = selected ? t(selected.name) : '';
     if (!selected) return;
     paintSelection(selected, true);
     for (const d of selected.dims || []) {
@@ -777,7 +813,7 @@ async function boot() {
          it — small on a small thing, so you zoom in to read it, like
          letters on a grain of rice. It turns about the line to face
          you (see orientLabels), never off it. */
-      const tex = labelTexture(THREE, d.label);
+      const tex = labelTexture(THREE, tDim(d.label));
       const aspect = tex.image.width / tex.image.height;
       const len = dist3(d.a, d.b);
       const h = Math.max(0.04, Math.min(0.35, Math.max(0.06, len * 0.05), (0.85 * len) / aspect));
@@ -920,13 +956,38 @@ async function boot() {
       if (state.spin) $('t-spin').click();
       controls.enabled = false;
     }
-    $('t-mode').textContent = mode === 'object' ? 'Object' : 'Camera';
-    $('t-mode').title = mode === 'object'
-      ? 'Drag orbits the scene · tap to drive the camera instead'
-      : 'Drag turns the camera, pinch walks it · tap to orbit the scene instead';
-    $('t-mode').classList.toggle('is-on', mode === 'camera');
+    for (const b of document.querySelectorAll('#seg-mode .seg-btn')) b.classList.toggle('is-on', b.dataset.mode === mode);
+    $('mode-hint').textContent = t(mode === 'object'
+      ? 'Drag orbits the scene, pinch or wheel zooms, two fingers pan.'
+      : 'Drag turns the camera, pinch or wheel walks it, two fingers slide it.');
   }
-  $('t-mode').addEventListener('click', () => setMode(state.mode === 'object' ? 'camera' : 'object'));
+  for (const b of document.querySelectorAll('#seg-mode .seg-btn')) b.addEventListener('click', () => setMode(b.dataset.mode));
+
+  /* ── settings sheet and language ────────────────────── */
+
+  const sheet = $('settings');
+  $('settings-open').addEventListener('click', () => { sheet.hidden = false; });
+  $('settings-close').addEventListener('click', () => { sheet.hidden = true; });
+  $('settings-backdrop').addEventListener('click', () => { sheet.hidden = true; });
+
+  /* Everything with a data-i18n key, the header, the legend, the axis
+     key, the selection and its labels are repainted in the language. */
+  function applyLang() {
+    document.documentElement.lang = LANG;
+    for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+    $('axis-key').innerHTML = `<b class="ax-x">X</b> ${t('east')} · <b class="ax-y">Y</b> ${t('up')} · <b class="ax-z">Z</b> ${t('south')}`;
+    paintHeader();
+    for (const chip of legend.children) chip.innerHTML = `<i></i>${t(chip.dataset.name)}`;
+    for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.classList.toggle('is-on', b.dataset.lang === LANG);
+    setMode(state.mode);
+    if (selected) { const o = selected; select(null); select(o); }
+  }
+  for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.addEventListener('click', () => {
+    LANG = b.dataset.lang;
+    try { localStorage.setItem('houseplan-lang', LANG); } catch (err) { /* private mode */ }
+    applyLang();
+  });
+  applyLang();
 
   function fit() {
     const dist = (BOX.r / Math.sin((camera.fov * Math.PI / 180) / 2)) * 1.25;

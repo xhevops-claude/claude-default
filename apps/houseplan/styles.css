@@ -102,6 +102,40 @@ a.ghost { text-decoration: none; line-height: 1.15; }
 .ghost:active { background: rgba(143, 216, 255, 0.12); }
 
 #quit { padding: 7px 11px; }
+.ghost--icon { padding: 7px 9px; display: inline-flex; align-items: center; }
+.ghost--icon svg { display: block; }
+
+/* ── settings sheet ───────────────────────────────────── */
+
+.sheet { position: fixed; inset: 0; z-index: 20; }
+.sheet[hidden] { display: none; }
+.sheet-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); }
+.sheet-panel {
+  position: absolute;
+  right: 14px;
+  top: calc(56px + env(safe-area-inset-top));
+  width: min(320px, calc(100vw - 28px));
+  padding: 14px 16px 16px;
+  background: rgba(8, 12, 16, 0.92);
+  border: 1px solid var(--hud-edge);
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sheet-title { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: var(--line); }
+.setting { margin-top: 12px; }
+.setting-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
+.setting-hint { font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.4; }
+.seg { display: inline-flex; border: 1px solid var(--hud-edge); border-radius: 999px; overflow: hidden; }
+.seg-btn {
+  padding: 7px 14px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--dim);
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--hud-edge); }
+.seg-btn.is-on { color: #06101a; background: var(--line); }
 
 /* ── object legend ────────────────────────────────────── */
 
