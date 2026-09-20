@@ -1038,6 +1038,7 @@ body.sheet-open { overflow: hidden; }
 }
 
 .inv-row b { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.inv-row em { font-style: normal; font-size: 11px; color: var(--ink-3); }
 .inv-row b.is-pos { color: var(--pos); }
 .inv-row b.is-neg { color: var(--neg); }
 

@@ -322,7 +322,14 @@ the timeline runs on, so the two views cannot drift apart. `costs` is the cash
 basis (deposit, parking); it does not include instalments paid before the
 forecast opens, so add those as a cost line if you want them counted. Sale value
 is `areaM2 × salePricePerM2` plus the `saleExtras`, and the target price is
-editable on the view as a session-only override like the budget field.
+editable on the view as an override like the budget field (remembered, see
+below). A project's optional `loanFacts` — `originalPrincipal`, `currency`,
+`annualRate`, `disbursedOn`, `termEnds`, `note` — is the bank's own summary of
+the loan and also feeds the "Paid so far" block: interest paid to date is the
+identity `instalments paid − (originalPrincipal − balance today)`, with the
+instalments counted as one a month since `disbursedOn` unless `loanFacts`
+carries `paidToDate` (native currency, from a statement), which is exact and
+turns the ≈ off. Add `paidToDate` when the user quotes a figure.
 
 **The Timeline is the home view** and it leads with what is still ahead rather
 than the first of the month. `build()` marks `model.nextPay` (the earliest pay

@@ -1314,15 +1314,20 @@
 
       var owed = debt ? debt.balanceToday : 0;
       // Every instalment still ahead of us; the part of it that is not the
-      // balance itself is interest yet to be paid.
+      // balance itself is interest yet to be paid. Instalments already made
+      // this month are the start of "paid so far", below.
       var toPay = 0;
+      var paidInSim = 0;
       if (debt) {
         debt.months.forEach(function (m) {
           m.payments.forEach(function (p) {
             if (p.date.getTime() > today.getTime()) toPay += p.eur;
+            else paidInSim += p.eur;
           });
         });
       }
+
+      var soFar = debt ? interestSoFar(pr.loanFacts, debt, owed, paidInSim) : null;
 
       return {
         id: pr.id,
@@ -1340,6 +1345,7 @@
         owed: owed,
         toPay: toPay,
         interestLeft: Math.max(0, toPay - owed),
+        soFar: soFar,
         equity: saleValue - owed,
         // Net profit: sell at the target, clear the loan off the proceeds, and
         // this is what is left over and above the cash already sunk in. It
@@ -1353,8 +1359,12 @@
     var sum = function (key) {
       return projects.reduce(function (a, b) { return a + b[key]; }, 0);
     };
+    var sumSoFar = function (key) {
+      return projects.reduce(function (a, b) { return a + (b.soFar ? b.soFar[key] : 0); }, 0);
+    };
     var cashIn = sum('cashIn');
     var gain = sum('gain');
+    var withSoFar = projects.some(function (p) { return !!p.soFar; });
     return {
       pricePerM2: pricePerM2,
       projects: projects,
@@ -1366,7 +1376,66 @@
       gain: gain,
       returnPct: cashIn > 0 ? gain / cashIn * 100 : null,
       areaM2: sum('areaM2'),
+      soFar: withSoFar ? {
+        paid: sumSoFar('paid'),
+        interest: sumSoFar('interest'),
+        estimated: projects.some(function (p) { return p.soFar && p.soFar.estimated; }),
+      } : null,
     };
+  }
+
+  /* What the loan has cost up to today. The bank's history is not in the data,
+   * but two ends of it are: `loanFacts.originalPrincipal` (what was borrowed)
+   * and the engine's balance today. Everything paid that did not reduce the
+   * balance was interest — an identity, not a model:
+   *
+   *     interest so far = instalments paid so far − (borrowed − balance today)
+   *
+   * "Instalments paid so far" is the one thing that has to be counted:
+   * `loanFacts.paidToDate` (native currency, from a statement) when the data
+   * has it, otherwise one monthly instalment for every whole month between
+   * disbursement and the forecast opening, plus whatever the simulation has
+   * already paid this month. That estimate is flagged so the view can say so. */
+  function interestSoFar(facts, debt, owed, paidInSim) {
+    if (!facts || !(facts.originalPrincipal > 0)) return null;
+    var cur = facts.currency || debt.currency;
+    var borrowed = toEur(facts.originalPrincipal, cur);
+
+    var paidBefore;
+    var estimated = false;
+    if (facts.paidToDate != null) {
+      paidBefore = toEur(facts.paidToDate, cur);
+    } else {
+      var disbursed = ymLoose(facts.disbursedOn);
+      if (!disbursed) return null;
+      // First instalment falls the month after disbursement; the opening month
+      // itself belongs to the simulation.
+      var months = Math.max(0, ymToIndex(data.startYm) - ymToIndex(disbursed) - 1);
+      paidBefore = months * debt.monthlyEur;
+      estimated = true;
+    }
+
+    var paid = paidBefore + paidInSim;
+    var principalRepaid = Math.max(0, borrowed - owed);
+    var interest = Math.max(0, paid - principalRepaid);
+    return {
+      borrowed: borrowed,
+      paid: paid,
+      principalRepaid: principalRepaid,
+      interest: interest,
+      interestShare: paid > 0 ? interest / paid * 100 : null,
+      estimated: estimated,
+    };
+  }
+
+  // "2024-03-15", "2024-03" or "15.03.2024" → "2024-03"; null when unreadable.
+  function ymLoose(s) {
+    if (!s) return null;
+    var m = String(s).match(/^(\d{4})-(\d{2})/);
+    if (m) return m[1] + '-' + m[2];
+    m = String(s).match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+    if (m) return m[3] + '-' + pad2(parseInt(m[2], 10));
+    return null;
   }
 
   // "+38%" alongside a profit figure; nothing when there is no cash basis.
@@ -1392,6 +1461,11 @@
       '<div class="sum-cell"><span>Worth at target</span><b>' + esc(money(inv.saleValue)) + '</b></div>' +
       '<div class="sum-cell"><span>Equity</span><b class="is-pos">' +
         esc(money(inv.equity)) + '</b></div>' +
+      (inv.soFar ?
+        '<div class="sum-cell"><span>Instalments so far' + (inv.soFar.estimated ? ' ≈' : '') +
+          '</span><b>' + esc(money(inv.soFar.paid)) + '</b></div>' +
+        '<div class="sum-cell"><span>Interest so far</span><b class="is-neg">' +
+          esc(money(inv.soFar.interest)) + '</b></div>' : '') +
       '<div class="sum-net">' +
         '<span>Net profit if sold at target</span>' +
         '<b class="' + (inv.gain < 0 ? 'is-neg' : 'is-pos') + '">' +
@@ -1441,6 +1515,22 @@
             esc(money(p.toPay)) + '</b></div>' +
         '</div>' +
 
+        (p.soFar ? '<div class="inv-block"><div class="inv-head">Paid so far</div>' +
+          '<div class="inv-row"><span>Down payment and costs</span><b>' +
+            esc(money(p.cashIn)) + '</b></div>' +
+          '<div class="inv-row"><span>Instalments' +
+            (p.facts && p.facts.disbursedOn ? ' since ' + esc(p.facts.disbursedOn) : '') +
+            (p.soFar.estimated ? ' <em>≈ estimated</em>' : '') + '</span><b>' +
+            esc(money(p.soFar.paid)) + '</b></div>' +
+          '<div class="inv-row"><span>Of which came off the balance</span><b>' +
+            esc(money(p.soFar.principalRepaid)) + '</b></div>' +
+          '<div class="inv-row is-total is-net"><span>Interest paid</span><b class="is-neg">' +
+            esc(money(p.soFar.interest)) + returnTag(p.soFar.interestShare) + '</b></div>' +
+          '<div class="inv-row"><span>As a share of the down payment</span><b>' +
+            (p.cashIn > 0 ? esc(Math.round(p.soFar.interest / p.cashIn * 100) + '%') : '—') +
+            '</b></div>' +
+        '</div>' : '') +
+
         '<div class="inv-block"><div class="inv-head">If sold at target</div>' +
           saleRows +
           '<div class="inv-row is-total"><span>Sale price</span><b>' +
@@ -1459,7 +1549,11 @@
     }).join('');
 
     $('invest-note').textContent = '"Put in" is the cash listed on each project — ' +
-      'deposit, parking and the instalments paid up to the forecast. Net profit is ' +
+      'deposit, parking and the instalments paid up to the forecast. "Paid so far" ' +
+      'reads interest off two known ends: what was borrowed and what is owed today — ' +
+      'whatever was paid that did not come off the balance was interest. The ' +
+      'instalment count is ≈ estimated as one a month since disbursement unless the ' +
+      'loan facts carry a paidToDate figure from a statement. Net profit is ' +
       'the sale price less the loan balance and less that cash, i.e. selling at the ' +
       'target today and clearing the loan off the proceeds — the interest on ' +
       'instalments you never make is not counted against it, and neither is tax. ' +
