@@ -224,18 +224,37 @@ const DRIVE = (() => {
     for (let i = 0; i <= 14; i++) set.add(+(MOUTH.across0 + MOUTH.b * Math.sin((i / 14) * (Math.PI / 2))).toFixed(6));
   }
   const stations = [...set].filter((c) => c >= r.from - 1e-9 && c <= CUT.to + 1e-9).sort((a, b) => a - b);
-  const edge = (c, off = 0) => {
+  /* The cut line's d at a station. */
+  const edge = (c) => {
     if (FILLET && c < FILLET.centre.across) {
-      const rad = FILLET.r - off, dc = dFrom - FILLET.r;
-      return dc + Math.sqrt(Math.max(0, rad * rad - (c - FILLET.centre.across) ** 2));
+      const dc = dFrom - FILLET.r;
+      return dc + Math.sqrt(Math.max(0, FILLET.r ** 2 - (c - FILLET.centre.across) ** 2));
     }
     if (MOUTH && c > MOUTH.across0) {
-      const u = (c - MOUTH.across0) / (MOUTH.b + off);
-      return MOUTH.d0 - (MOUTH.a + off) * Math.sqrt(Math.max(0, 1 - u * u));
+      const u = (c - MOUTH.across0) / MOUTH.b;
+      return MOUTH.d0 - MOUTH.a * Math.sqrt(Math.max(0, 1 - u * u));
     }
-    return dFrom - off;
+    return dFrom;
   };
-  return { stations, edge, outer: WALL_D, dFrom };
+  /* The wall's far face for the cut point at a station: WALL into the
+     hill along the line's normal — on an arc that is the same angle on
+     the offset arc, so the point moves across as well as out, and the
+     wall's top can be read at the ground it actually stands in. */
+  const hill = (c) => {
+    if (FILLET && c < FILLET.centre.across) {
+      const { r: rad, centre } = FILLET;
+      const dc = dFrom - rad;
+      const cos = (centre.across - c) / rad, sin = (edge(c) - dc) / rad;
+      return [dc + (rad - WALL) * sin, centre.across - (rad - WALL) * cos];
+    }
+    if (MOUTH && c > MOUTH.across0) {
+      const { a, b, d0, across0 } = MOUTH;
+      const sin = (c - across0) / b, cos = Math.sqrt(Math.max(0, 1 - sin * sin));
+      return [d0 - (a + WALL) * cos, across0 + (b + WALL) * sin];
+    }
+    return [dFrom - WALL, c];
+  };
+  return { stations, edge, hill, outer: WALL_D, dFrom };
 })();
 
 function groundY(x, z) {
@@ -453,7 +472,7 @@ async function boot() {
   const pt = (xz, y) => [xz[0], y, xz[1]];
 
   if (DRIVE) {
-    const { stations, edge, outer } = DRIVE;
+    const { stations, edge, hill, outer } = DRIVE;
     const m = stations.length;
     const ring = [...stations.map((c) => [outer, c]), ...stations.slice().reverse().map((c) => [edge(c), c])];
     const at = (c) => stations.indexOf(c);
@@ -478,9 +497,9 @@ async function boot() {
       if (st.length < 2) continue;
       const n = st.length;
       const cut = st.map((c) => [edge(c), c]);
-      const hill = st.map((c) => [edge(c, WALL), c]);
-      const wallRing = [...cut, ...hill.slice().reverse()];
-      const topAt = (k) => { const [d, c] = hill[k < n ? k : 2 * n - 1 - k]; return natural(d, c); };
+      const far = st.map(hill);
+      const wallRing = [...cut, ...far.slice().reverse()];
+      const topAt = (k) => { const [d, c] = far[k < n ? k : 2 * n - 1 - k]; return natural(d, c); };
       addVolume(
         makeObject({ id, name, group: 'wall' }),
         wallRing.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB)),

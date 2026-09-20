@@ -121,6 +121,17 @@ window.HOUSE_PLAN = {
     /* The outer wall holds the driveway up over the road: its top is the
      * slab's underside, its foot the road, and it runs out where the
      * slab comes down to meet the road. */
+    /* The garage is buried on three sides — the ground along them is at
+     * 0 and its floor 3 m down — so the uphill wall does not stop at the
+     * house's corner: it wraps the garage as its structural wall, a
+     * `wall`-thick band on the hill side of the envelope (outside it,
+     * like every retaining band), from the garage slab up to ground
+     * level. The south band ends on the house's east face line exactly
+     * where the fillet band's hill edge begins, so the two are one wall;
+     * the west band takes both corners. */
+    { id: 'garage-wall-south', group: 'wall', name: 'Garage wall, south', x0: -0.3, x1: 10, z0: 6, z1: 6.3, y0: -3.1, y1: 0 },
+    { id: 'garage-wall-west', group: 'wall', name: 'Garage wall, west', x0: -0.3, x1: 0, z0: 0, z1: 6, y0: -3.1, y1: 0 },
+    { id: 'garage-wall-north', group: 'wall', name: 'Garage wall, north', x0: -0.3, x1: 10, z0: -0.3, z1: 0, y0: -3.1, y1: 0 },
     { id: 'retainer', group: 'wall', name: 'Retaining wall', x0: 15.7, x1: 16, y0: { road: 0 }, y1: -3.1, z0: -2, z1: 6 },
     { id: 'retainer-ramp', group: 'wall', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 18, y0: { road: 0 }, y1: { floor: -0.2 } },
     /* The road, parallel to the wall along its outer face. `frame: false`
