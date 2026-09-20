@@ -26,6 +26,21 @@ const FRONT = {
   sign: (TER?.front || '+Z').startsWith('-') ? -1 : 1,
 };
 
+/* The road's level across the front — the foot of the hill — from
+   terrain.road, straight between its points and held beyond them. A
+   profile level written as 'road' resolves to this at that position. */
+const ROAD = TER?.road ? TER.road.slice().sort((a, b) => a[0] - b[0]) : null;
+const ROAD_MIN = ROAD ? Math.min(...ROAD.map(([, y]) => y)) : (TER ? TER.profile[TER.profile.length - 1][1] : 0);
+function roadLevel(across) {
+  if (!ROAD) return ROAD_MIN;
+  if (across <= ROAD[0][0]) return ROAD[0][1];
+  for (let i = 1; i < ROAD.length; i++) {
+    const [a0, y0] = ROAD[i - 1], [a1, y1] = ROAD[i];
+    if (across <= a1) return y0 + ((y1 - y0) * (across - a0)) / (a1 - a0);
+  }
+  return ROAD[ROAD.length - 1][1];
+}
+
 /* One solid per level, stacked without gaps: a level owns the slab
    under it, so its underside meets the top of the level below. A level
    with `extendFront` is pushed out of the downhill face by that much. */
@@ -56,6 +71,9 @@ const BOX = {
   z0: span('z0', Math.min), z1: span('z1', Math.max),
   y0: span('y0', Math.min), y1: span('y1', Math.max),
 };
+/* Volumes that ride the road or the ramp carry no number to span, so
+   the road's low point stands in for their bottoms. */
+if (TER) BOX.y0 = Math.min(BOX.y0, ROAD_MIN);
 BOX.cx = (BOX.x0 + BOX.x1) / 2;
 BOX.cy = (BOX.y0 + BOX.y1) / 2;
 BOX.cz = (BOX.z0 + BOX.z1) / 2;
@@ -74,14 +92,29 @@ const FACE = !TER ? 0 : FRONT.axis === 'x'
 const PROFILE = TER ? [[0, TER.backLevel], ...TER.profile] : [];
 const CUT = TER?.cut ? { ...TER.cut, profile: [[0, TER.backLevel], ...TER.cut.profile] } : null;
 
-function sampleProfile(prof, d) {
+function sampleProfile(prof, d, across) {
+  const lv = (y) => (y === 'road' ? roadLevel(across) : y);
   let i = 0;
   while (i + 1 < prof.length && prof[i + 1][0] <= d) i++;
   const [d0, y0] = prof[i];
-  if (i + 1 >= prof.length || d <= d0) return y0;
+  if (i + 1 >= prof.length || d <= d0) return lv(y0);
   const [d1, y1] = prof[i + 1];
-  return y0 + ((y1 - y0) * (d - d0)) / (d1 - d0);
+  return lv(y0) + ((lv(y1) - lv(y0)) * (d - d0)) / (d1 - d0);
 }
+
+/* The natural hill, `d` metres out from the face at `across`. */
+const natural = (d, across) => sampleProfile(PROFILE, d, across);
+
+/* Where the outer retaining wall stands: the cut profile's first
+   vertical step beyond the ramp's uphill edge (the step at the door
+   does not count). Beyond it the cut is the road, whatever the ramp
+   is doing. */
+const WALL_D = (() => {
+  if (!CUT) return Infinity;
+  const dFrom = CUT.ramp?.dFrom ?? 0;
+  const step = CUT.profile.find(([d], i) => i && d > dFrom && d === CUT.profile[i - 1][0]);
+  return step ? step[0] : CUT.profile[CUT.profile.length - 1][0];
+})();
 
 /* Where the house ends across the front, on the ramp's side. In front
    of the house the apron's cut runs the full width whatever the ramp
@@ -124,24 +157,20 @@ function rampT(across) {
   return s * (e / 2 + (t - e));
 }
 
-/* The entrance at the foot of the ramp: the hill is cut back along a
-   quarter-ellipse centred on the outer wall line at the ramp's end,
-   one semi-axis the ramp's width and the other `flare` along the road.
-   The arc leaves the ramp's uphill edge tangentially, so the wall
-   beside it stays at full height for a while, then sweeps out to meet
-   the road's edge `flare` metres on. Everything between the arc and
-   the outer wall line is the ramp's floor. In (d, across), where d is
-   metres out from the house face. */
+/* The entrance, over the ramp's last `flare` metres: the hill is cut
+   back along a quarter-ellipse centred on the outer wall line at the
+   ramp's end, one semi-axis the ramp's width and the other `flare`
+   back along the road. The arc leaves the ramp's uphill edge
+   tangentially, so the wall beside it stays at full height for a
+   while, then sweeps out to meet the road's edge at the ramp's end.
+   Everything between the arc and the outer wall line is the ramp's
+   floor, still climbing. In (d, across), where d is metres out from
+   the house face. */
 const MOUTH = (() => {
   const m = CUT?.mouth, r = CUT?.ramp;
   if (!m || !r) return null;
-  /* The outer wall stands at the cut profile's first vertical step
-     beyond the ramp's uphill edge (the step at the door does not
-     count). */
   const dFrom = r.dFrom ?? 0;
-  const step = CUT.profile.find(([d], i) => i && d > dFrom && d === CUT.profile[i - 1][0]);
-  const wallD = step ? step[0] : CUT.profile[CUT.profile.length - 1][0];
-  return { a: wallD - dFrom, b: m.flare, d0: wallD, dFrom, across0: r.to };
+  return { a: WALL_D - dFrom, b: m.flare, d0: WALL_D, dFrom, across0: r.to - m.flare };
 })();
 
 function inMouth(d, across) {
@@ -154,11 +183,11 @@ function inMouth(d, across) {
 }
 
 /* The ramp's floor at a position across the front: the apron level,
-   falling past ramp.from, never below the profile's last level. */
+   falling past ramp.from, never below the road. */
 function rampLevel(across) {
   const r = CUT.ramp;
-  const base = sampleProfile(CUT.profile, r.dFrom ?? 0);
-  return Math.max(base - r.drop * rampT(across), CUT.profile[CUT.profile.length - 1][1]);
+  const base = sampleProfile(CUT.profile, r.dFrom ?? 0, across);
+  return Math.max(base - r.drop * rampT(across), roadLevel(across));
 }
 
 function groundY(x, z) {
@@ -166,25 +195,24 @@ function groundY(x, z) {
   const along = FRONT.axis === 'x' ? x : z;
   const across = FRONT.axis === 'x' ? z : x;
   const d = (along - FACE) * FRONT.sign;
-  if (!CUT || across < CUT.from || across > CUT.to) return sampleProfile(PROFILE, d);
-  const base = sampleProfile(CUT.profile, d);
+  if (!CUT || across < CUT.from || across > CUT.to) return natural(d, across);
+  const base = sampleProfile(CUT.profile, d, across);
   if (d < 0 || !CUT.ramp) return base;
   const r = CUT.ramp;
-  if (across <= r.from) return base;
-  const floor = CUT.profile[CUT.profile.length - 1][1];
-  if (across > r.to) return inMouth(d, across) ? floor : sampleProfile(PROFILE, d);
+  if (across <= r.from || across > r.to || d >= WALL_D) return base;
+  if (MOUTH && across >= MOUTH.across0) return inMouth(d, across) ? rampLevel(across) : natural(d, across);
   if (d < (r.dFrom ?? 0)) {
     if (across <= HOUSE_EDGE) return base;
-    if (!inFillet(along, across)) return sampleProfile(PROFILE, d);
+    if (!inFillet(along, across)) return natural(d, across);
   }
-  return Math.max(base - r.drop * rampT(across), floor);
+  return rampLevel(across);
 }
 
 const pushed = PLAN.levels.find((l) => l.extendFront);
 $('wf-name').textContent = PLAN.name;
 $('wf-dims').textContent = `${fmt(e.x1 - e.x0)} × ${fmt(e.y1 - e.y0)} × ${fmt(BOX.y1 - BOX.y0)} m`
   + (pushed ? ` · ${pushed.name.toLowerCase()} out ${fmt(pushed.extendFront)} m to ${TER.front}` : '')
-  + (TER ? ` · site falls ${fmt(TER.backLevel - PROFILE[PROFILE.length - 1][1])} m` : '');
+  + (TER ? ` · site falls ${fmt(TER.backLevel - ROAD_MIN)} m` : '');
 
 /* ── scene ────────────────────────────────────────────── */
 
@@ -290,32 +318,34 @@ async function boot() {
 
   /* A box volume's z1 end may sit lower than its z0 end (y0End / y1End),
      so every corner carries its own bottom and top. A bottom or top
-     given as { floor } follows the ramp, so that volume is walked along
-     the ramp in half-metre steps and drawn as a bent prism — uprights
-     and dots only at its four real corners. */
-  const followsRamp = (v) => typeof v.y0 === 'object' || typeof v.y1 === 'object';
-  const yAt = (spec, across) => (typeof spec === 'number' ? spec : rampLevel(across) + (spec.floor || 0));
+     given as { floor } / { road } / { ground } follows that surface, so
+     the volume is walked across the front in half-metre steps and drawn
+     as a bent prism — uprights and dots only at its four real corners.
+     `ground` is the natural hill at the volume's house-side face, one
+     height across its thickness. */
+  const followsGround = (v) => typeof v.y0 === 'object' || typeof v.y1 === 'object';
+  const yAt = (spec, across, dFace) => {
+    if (typeof spec === 'number') return spec;
+    if ('road' in spec) return roadLevel(across) + (spec.road || 0);
+    if ('ground' in spec) return natural(dFace, across) + (spec.ground || 0);
+    return rampLevel(across) + (spec.floor || 0);
+  };
   for (const v of VOLS) {
     const o = makeObject(v);
-    if (followsRamp(v) && CUT?.ramp) {
+    if (followsGround(v) && TER) {
       const [a0, a1] = FRONT.axis === 'x' ? [v.z0, v.z1] : [v.x0, v.x1];
       const n = Math.max(2, Math.ceil((a1 - a0) / 0.5) + 1);
       const steps = Array.from({ length: n }, (_, i) => a0 + ((a1 - a0) * i) / (n - 1));
       const side = (fixed, list) => list.map((a) => (FRONT.axis === 'x' ? [fixed, a] : [a, fixed]));
       const lo = FRONT.axis === 'x' ? v.x0 : v.z0, hi = FRONT.axis === 'x' ? v.x1 : v.z1;
+      const dFace = ((FRONT.sign > 0 ? lo : hi) - FACE) * FRONT.sign;
       const ring = [...side(lo, steps), ...side(hi, steps.slice().reverse())];
       const acrossOf = ([x, z]) => (FRONT.axis === 'x' ? z : x);
       const cornersAt = [0, n - 1, n, 2 * n - 1];
-      addVolume(
-        o,
-        ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z])), z]),
-        ring.map(([x, z]) => [x, yAt(v.y1, acrossOf([x, z])), z]),
-        { dots: false, uprightAt: cornersAt },
-      );
-      for (const i of cornersAt) {
-        const [x, z] = ring[i];
-        o.dotPos.push(x, yAt(v.y0, acrossOf([x, z])), z, x, yAt(v.y1, acrossOf([x, z])), z);
-      }
+      const bottom = ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z]), dFace), z]);
+      const top = ring.map(([x, z]) => [x, yAt(v.y1, acrossOf([x, z]), dFace), z]);
+      addVolume(o, bottom, top, { dots: false, uprightAt: cornersAt });
+      for (const i of cornersAt) o.dotPos.push(...bottom[i], ...top[i]);
       continue;
     }
     const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
@@ -332,7 +362,7 @@ async function boot() {
   if (FILLET) {
     const { r, corner, centre } = FILLET;
     const toXZ = (along, across) => (FRONT.axis === 'x' ? [along, across] : [across, along]);
-    const natural = (along) => sampleProfile(PROFILE, (along - FACE) * FRONT.sign);
+    const hill = (along, across) => natural((along - FACE) * FRONT.sign, across);
     const arc = (rad, N = 12) => Array.from({ length: N + 1 }, (_, i) => {
       const th = (i / N) * (Math.PI / 2);
       return [centre.along + FRONT.sign * rad * Math.sin(th), centre.across - rad * Math.cos(th)];
@@ -351,22 +381,20 @@ async function boot() {
     addVolume(
       makeObject({ id: 'fillet-wall', name: 'Corner fillet, wall', group: 'wall' }),
       wallRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
-      wallRing.map(([a, c]) => [toXZ(a, c)[0], natural(a), toXZ(a, c)[1]]),
+      wallRing.map(([a, c]) => [toXZ(a, c)[0], hill(a, c), toXZ(a, c)[1]]),
       { dots: false, uprightAt: [0, n - 1, n, 2 * n - 1] },
     );
   }
-  /* The mouth: its floor is the quarter-ellipse itself, at the ramp's
-     bottom level; its wall a 30 cm band along the arc on the hill side,
+  /* The mouth: its floor is the quarter-ellipse itself, still on the
+     ramp's grade; its wall a 30 cm band along the arc on the hill side,
      from the floor up to the natural ground — full height where it
      leaves the ramp, nothing where it meets the road. */
   if (MOUTH) {
     const { a, b, d0, across0 } = MOUTH;
-    const floor = CUT.profile[CUT.profile.length - 1][1];
     const toXZ = (d, across) => {
       const along = FACE + FRONT.sign * d;
       return FRONT.axis === 'x' ? [along, across] : [across, along];
     };
-    const natural = (d) => sampleProfile(PROFILE, d);
     const arc = (ra, rb, N = 14) => Array.from({ length: N + 1 }, (_, i) => {
       const th = (i / N) * (Math.PI / 2);
       return [d0 - ra * Math.cos(th), across0 + rb * Math.sin(th)];
@@ -375,16 +403,16 @@ async function boot() {
     const floorRing = [[d0, across0], ...arc(a, b)];
     addVolume(
       makeObject({ id: 'mouth-floor', name: 'Entrance mouth, floor', group: 'drive' }),
-      floorRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
-      floorRing.map(([d, c]) => [toXZ(d, c)[0], floor + 0.1, toXZ(d, c)[1]]),
+      floorRing.map(([d, c]) => [toXZ(d, c)[0], rampLevel(c) - 0.1, toXZ(d, c)[1]]),
+      floorRing.map(([d, c]) => [toXZ(d, c)[0], rampLevel(c) + 0.1, toXZ(d, c)[1]]),
       { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
     );
 
     const wallRing = [...arc(a, b), ...arc(a + 0.3, b + 0.3).reverse()];
     addVolume(
       makeObject({ id: 'mouth-wall', name: 'Entrance mouth, wall', group: 'wall' }),
-      wallRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
-      wallRing.map(([d, c]) => [toXZ(d, c)[0], natural(d), toXZ(d, c)[1]]),
+      wallRing.map(([d, c]) => [toXZ(d, c)[0], rampLevel(c) - 0.1, toXZ(d, c)[1]]),
+      wallRing.map(([d, c]) => [toXZ(d, c)[0], natural(d, c), toXZ(d, c)[1]]),
       { dots: false, uprightAt: [0, wallRing.length - 1] },
     );
   }
@@ -449,9 +477,11 @@ async function boot() {
     if (CUT) across.push(CUT.from - 0.001, CUT.from, CUT.to, CUT.to + 0.001);
     if (CUT?.ramp) {
       across.push(CUT.ramp.from, CUT.ramp.to);
+      if (MOUTH) across.push(MOUTH.across0);
       const p = FACE + FRONT.sign * (CUT.ramp.dFrom ?? 0);
       along.push(p - FRONT.sign * 0.001, p);
     }
+    if (ROAD) for (const [a] of ROAD) if (!across.includes(a)) across.push(a);
   }
   xs.sort((a, b) => a - b);
   zs.sort((a, b) => a - b);

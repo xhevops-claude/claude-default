@@ -83,7 +83,7 @@
     <div class="legend">
       <span class="chip" style="--c: #8fd8ff"><i></i>House — garage, ground, first</span>
       <span class="chip" style="--c: #ff8c5a"><i></i>Cantilever — canopy</span>
-      <span class="chip" style="--c: #f5e663"><i></i>Driveway — apron, door strip, ramp, fillet floor, mouth floor</span>
+      <span class="chip" style="--c: #f5e663"><i></i>Driveway — apron, ramp, fillet floor, mouth floor</span>
       <span class="chip" style="--c: #d28cff"><i></i>Retaining walls — outer wall, its taper, uphill wall, fillet wall, mouth wall</span>
       <span class="chip" style="--c: #9aa4b2"><i></i>Road</span>
     </div>
@@ -122,12 +122,12 @@
     </section>
 
     <section class="card" id="d3">
-      <div class="head"><span class="num">3</span><span class="title">Lip along the ramp's uphill edge</span><span class="where">x 13, z 5–6</span><span class="status open">open — decision D1</span></div>
+      <div class="head"><span class="num">3</span><span class="title">Lip along the ramp's uphill edge</span><span class="where">x 13, z 5–6</span><span class="status fixed">fixed</span></div>
       <div class="body">
-        <p><b>Wrong:</b> the ramp eases down from z 5, but the door strip beside it (x 10–13) stays flat, so for that metre there is a 7 cm step between the two slabs.</p>
-        <p><b>Fix:</b> start the ramp at z 6 (the house edge) so the two slabs meet at one level — or let the door strip follow the ramp.</p>
+        <p><b>Was wrong:</b> the ramp eased down from z 5, but the door strip beside it (x 10–13) stayed flat, so for that metre there was a 7 cm step between the two slabs.</p>
+        <p><b>Fixed (D1):</b> the ramp starts at z 6, the house edge; the apron is one flat slab z −2 to 6 and the door strip is gone.</p>
       </div>
-      <div class="shots"><figure><img src="defects/03-lip-x13-z5-6.png" alt="The lip along x 13" /><figcaption>The flat door strip (left) against the ramp already dropping (right).</figcaption></figure></div>
+      <div class="shots"><figure><img src="defects/03-lip-x13-z5-6.png" alt="The lip along x 13" /><figcaption>After: the apron's edge at z 6 meets the ramp at one level.</figcaption></figure></div>
     </section>
 
     <section class="card" id="d4">
@@ -170,18 +170,19 @@
     </section>
 
     <section class="card" id="d8">
-      <div class="head"><span class="num">8</span><span class="title">The grade is too steep</span><span class="where">whole ramp</span><span class="status open">open — decision D2</span></div>
+      <div class="head"><span class="num">8</span><span class="title">The grade is too steep</span><span class="where">whole ramp</span><span class="status fixed">fixed</span></div>
       <div class="body">
-        <p><b>Wrong:</b> 3 m over 11 m is 27 % average and about 36 % through the eased middle — too steep for a car in the wet.</p>
-        <p><b>Fix:</b> run the ramp longer, 16–18 m (the road runs to z 24, so there is room), for about 17–19 %.</p>
+        <p><b>Was wrong:</b> 3 m over 11 m was 27 % average and about 36 % through the eased middle — too steep for a car in the wet.</p>
+        <p><b>Fixed (D2):</b> the grade starts at the entrance itself, not at the end of a flat pad: the ramp runs z 6 to 22 (16 m) and the mouth's floor is on it. The road is 2 m below the garage at the entrance, so the drop is 2 m — 12.5 % average, about 17 % in the middle.</p>
       </div>
-      <div class="shots"><figure><img src="defects/08-grade-side.png" alt="Side elevation of the ramp" /><figcaption>Side elevation, looking west.</figcaption></figure></div>
+      <div class="shots"><figure><img src="defects/08-grade-side.png" alt="Side elevation of the ramp" /><figcaption>After: side elevation looking west, the grade running from the entrance (left) to the apron; the road itself rises to the left.</figcaption></figure></div>
     </section>
 
-    <h2>Decisions waiting</h2>
+    <h2>Decisions</h2>
     <ul class="decisions">
-      <li><b>D1</b> — Ramp start: at the house edge (z 6, no lip, the door strip stays flat), or keep the 1 m into the apron (z 5) and bend the door strip with it?</li>
-      <li><b>D2</b> — Ramp length: keep 11 m (z 5–16), or run to about 16–18 m?</li>
+      <li><b>D1 — decided:</b> the ramp starts at the house edge (z 6); the apron stays flat and whole.</li>
+      <li><b>D2 — decided:</b> the driveway climbs from the very entrance; no flat pad. The mouth is the ramp's last 6 m and its floor is on the grade.</li>
+      <li><b>Site fact:</b> the road is not level — it rises 1 m along the property, so the entrance (south end, z 22) is 2 m below the garage floor, not 3. Assumed: the north end of the property (z −2) is the 3 m-below end.</li>
     </ul>
   </main>
 </body>

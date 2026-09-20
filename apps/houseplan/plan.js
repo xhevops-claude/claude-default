@@ -45,9 +45,18 @@ window.HOUSE_PLAN = {
   terrain: {
     front: '+X',
     backLevel: 0,
+    /* The road at the foot of the hill is not level: it rises 1 m along
+     * the property, from 3 m below the garage floor at the north end to
+     * 2 m below it at the entrance. [across the front, level], straight
+     * between, held beyond. Wherever a profile says 'road' it means
+     * this level, here. */
+    road: [
+      [-2, -6],
+      [22, -5],
+    ],
     profile: [
-      [6, -6],   // one 45° fall from the house face to the foot of the wall
-      [9, -6],   // and level beyond
+      [6, 'road'],   // one fall from the house face to the road's edge
+      [9, 'road'],   // and level beyond
     ],
     /* In front of the house only — between `from` and `to` across the
      * front — the ground is cut to this profile instead: dropped to the
@@ -56,58 +65,62 @@ window.HOUSE_PLAN = {
       from: -2,
       to: 22,
       profile: [
-        [0, -3],   // straight down at the door, to the garage floor
-        [6, -3],   // the driveway, level out to the wall
-        [6, -6],   // the retaining wall: straight down 3 m
-        [9, -6],   // and level beyond
+        [0, -3],       // straight down at the door, to the garage floor
+        [6, -3],       // the driveway, level out to the wall
+        [6, 'road'],   // the retaining wall: straight down to the road
+        [9, 'road'],   // and level beyond
       ],
       /* Past `from` across the front the cut floor descends, reaching
        * `drop` lower at `to` — the driveway running on along the house
-       * and down the hill — but never below the profile's last level,
-       * so the wall at its edge shrinks to nothing as the two meet. The
-       * ramp is only `dFrom` metres out and beyond; nearer the house the
-       * natural slope stands, which is the face the driveway is carved
-       * into. `ease` is the share of the run at each end over which the
-       * grade builds up and tails off, so the floor bends into the pad
-       * and the apron instead of hinging onto them — the middle is
-       * correspondingly steeper. */
-      ramp: { from: 5, to: 16, drop: 3, dFrom: 2.7, ease: 0.25 },
+       * and down the hill from the house's edge to the entrance — but
+       * never below the road, so the wall at its edge shrinks to nothing
+       * where the two meet. The ramp is only `dFrom` metres out and
+       * beyond; nearer the house the natural slope stands, which is the
+       * face the driveway is carved into. `ease` is the share of the run
+       * at each end over which the grade builds up and tails off, so the
+       * floor bends into the road and the apron instead of hinging onto
+       * them — the middle is correspondingly steeper. */
+      ramp: { from: 6, to: 22, drop: 2, dFrom: 2.7, ease: 0.25 },
       /* The inside corner where the apron turns onto the ramp is cut
        * back in a quarter-round of this radius, so a car can swing out
        * of the garage without clipping the hill. The floor and the wall
        * along it are derived from the terrain, not listed as works. */
       fillet: { r: 2.7 },
-      /* The entrance at the foot: past the ramp the hill is cut back
-       * along a quarter-ellipse `flare` metres long, leaving the ramp's
-       * uphill edge tangentially and sweeping out to the road's edge, so
-       * the wall beside it stays high and then falls away to nothing.
-       * Floor and wall are derived, as for the fillet. */
+      /* The entrance: over the ramp's last `flare` metres the hill is
+       * cut back along a quarter-ellipse, leaving the ramp's uphill edge
+       * tangentially and sweeping out to the road's edge, so the wall
+       * beside it stays high and then falls away to nothing. The floor
+       * keeps climbing through it — the grade starts at the road, not
+       * at the end of a flat pad. Floor and wall are derived, as for
+       * the fillet. */
       mouth: { flare: 6 },
     },
   },
 
   /* Built things that are not a level, drawn the same way as the levels.
    * World coordinates: x0..x1 along X, z0..z1 along Z, y0..y1 up. A
-   * bottom or top given as `{ floor: offset }` follows the ramp's floor
-   * along Z, that much above or below it — which is how the ramp slab
-   * and the walls beside it bend with the eased grade. */
+   * bottom or top may follow the ground along Z instead of being a
+   * number: `{ floor: offset }` rides the ramp's floor, `{ road: offset }`
+   * the road, `{ ground: offset }` the natural hill at the volume's
+   * house-side face — each that much above or below it. That is how the
+   * ramp slab and the walls beside it bend with the eased grade and the
+   * road's own fall. */
   works: [
     { id: 'canopy', group: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
-    /* The apron gives its last metre to the ramp, so the grade starts
-     * bending before the junction rather than at it. */
-    { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 5 },
-    { id: 'driveway-door', group: 'drive', name: 'Apron, the last metre under the canopy', x0: 10, x1: 13, y0: -3.1, y1: -2.9, z0: 5, z1: 6 },
-    { id: 'driveway-ramp', group: 'drive', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 5, z1: 16, y0: { floor: -0.1 }, y1: { floor: 0.1 } },
-    { id: 'retainer', group: 'wall', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: -2, z1: 5 },
-    { id: 'retainer-ramp', group: 'wall', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 5, z1: 16, y0: -6, y1: { floor: 0.1 } },
+    { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 6 },
+    /* The straight run of the ramp; the mouth carries the floor on from
+     * z 16 to the road. */
+    { id: 'driveway-ramp', group: 'drive', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 6, z1: 16, y0: { floor: -0.1 }, y1: { floor: 0.1 } },
+    { id: 'retainer', group: 'wall', name: 'Retaining wall', x0: 15.7, x1: 16, y0: { road: 0 }, y1: -2.9, z0: -2, z1: 6 },
+    { id: 'retainer-ramp', group: 'wall', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 22, y0: { road: 0 }, y1: { floor: 0.1 } },
     /* The uphill side of the ramp is the opposite shape: the cut face
-     * beside the driveway grows from nothing to 3 m, so this wall's top
-     * stays at the natural ground while its foot goes down with the
-     * driveway. It stands in the 30 cm the cut is widened by. */
-    { id: 'retainer-uphill', group: 'wall', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 8.7, z1: 16, y0: { floor: -0.1 }, y1: -2.7 },
+     * beside the driveway grows from nothing, so this wall's top stays
+     * at the natural ground while its foot goes down with the driveway.
+     * It stands in the 30 cm the cut is widened by. */
+    { id: 'retainer-uphill', group: 'wall', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 8.7, z1: 16, y0: { floor: -0.1 }, y1: { ground: 0 } },
     /* The road, parallel to the wall along its outer face. `frame: false`
      * keeps its 30 m out of the camera's Fit, so the house stays the
      * subject. */
-    { id: 'road', group: 'road', name: 'Road', x0: 16, x1: 20, z0: -6, z1: 24, y0: -6.1, y1: -5.9, frame: false },
+    { id: 'road', group: 'road', name: 'Road', x0: 16, x1: 20, z0: -6, z1: 24, y0: { road: -0.1 }, y1: { road: 0.1 }, frame: false },
   ],
 };
