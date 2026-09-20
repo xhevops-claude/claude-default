@@ -34,7 +34,7 @@
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=0ebb455" />
+  <link rel="stylesheet" href="styles.css?v=3fa2d18" />
   <script type="importmap">
   {
     "imports": {
@@ -66,6 +66,9 @@
       <button type="button" class="ghost" id="quit" aria-label="Quit">&#10005;</button>
     </header>
 
+    <!-- One chip per object group, in its colour; tap to hide the group. -->
+    <nav class="hud hud--legend" id="legend" aria-label="Object groups"></nav>
+
     <footer class="hud hud--bottom">
       <button type="button" class="ghost" id="fit">Fit</button>
       <button type="button" class="ghost is-on" id="t-faces">Faces</button>
@@ -73,13 +76,14 @@
       <button type="button" class="ghost is-on" id="t-dots">Dots</button>
       <button type="button" class="ghost is-on" id="t-grid">Ground</button>
       <button type="button" class="ghost" id="t-spin">Spin</button>
+      <a class="ghost" href="defects.html" target="_blank" rel="noopener">Defects</a>
       <span class="axis-key" id="axis-key">
         <b class="ax-x">X</b> east · <b class="ax-y">Y</b> up · <b class="ax-z">Z</b> south
       </span>
     </footer>
   </main>
 
-  <script src="plan.js?v=0ebb455"></script>
-  <script type="module" src="app.js?v=0ebb455"></script>
+  <script src="plan.js?v=3fa2d18"></script>
+  <script type="module" src="app.js?v=3fa2d18"></script>
 </body>
 </html>
