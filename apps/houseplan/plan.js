@@ -121,11 +121,15 @@ window.HOUSE_PLAN = {
     /* In front of the house only — between `from` and `to` across the
      * front — the ground is cut to this profile instead: dropped to the
      * garage floor at the door, level out to the wall, then down. */
-    /* The cut spans the frontage the survey gives — z −3.17 to 16.17 —
-     * less a little at the north end, where the boundary runs at an
-     * angle and the apron's corner at x 10 must stay inside it. */
+    /* The cut spans the frontage the survey gives, to z 16.17 at the
+     * south end. At the north end the boundary runs at an angle, so
+     * `from` is a line, not a number: [out from the face, across], the
+     * parcel's own vertices from where its north-east side crosses the
+     * house face line (x 10, z −1.93) to its road corner (16, −3.17),
+     * straight between and held beyond. Everything that stops at the
+     * cut's north edge — the apron, the outer wall — stops on it. */
     cut: {
-      from: -1.5,
+      from: [[0, -1.93], [0.25, -1.98], [2.52, -2.29], [6, -3.17]],
       to: 16.17,
       profile: [
         [0, -2.9],     // straight down at the door, to the garage floor
@@ -172,7 +176,9 @@ window.HOUSE_PLAN = {
    * foot simply ends where the two meet. */
   works: [
     { id: 'canopy', group: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
-    { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -1.5, z1: 6 },
+    /* A z0 of 'cut' is the cut's north edge — the boundary line — so
+     * the apron fills the parcel right up to it. */
+    { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: 'cut', z1: 6 },
     /* The ramp itself is derived from `terrain.cut` — one slab from the
      * apron's edge to the mouth, the fillet's corner included — as are
      * the walls along its uphill side and the mouth. */
@@ -190,7 +196,7 @@ window.HOUSE_PLAN = {
     { id: 'garage-wall-south', group: 'wall', name: 'Garage wall, south', x0: -0.3, x1: 10, z0: 6, z1: 6.3, y0: -3.1, y1: 0 },
     { id: 'garage-wall-west', group: 'wall', name: 'Garage wall, west', x0: -0.3, x1: 0, z0: 0, z1: 6, y0: -3.1, y1: 0 },
     { id: 'garage-wall-north', group: 'wall', name: 'Garage wall, north', x0: -0.3, x1: 10, z0: -0.3, z1: 0, y0: -3.1, y1: 0 },
-    { id: 'retainer', group: 'wall', name: 'Retaining wall', x0: 15.7, x1: 16, y0: { road: 0 }, y1: -3.1, z0: -1.5, z1: 6 },
+    { id: 'retainer', group: 'wall', name: 'Retaining wall', x0: 15.7, x1: 16, y0: { road: 0 }, y1: -3.1, z0: 'cut', z1: 6 },
     { id: 'retainer-ramp', group: 'wall', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 6, z1: 14, y0: { road: 0 }, y1: { floor: -0.2 } },
     /* The road, parallel to the wall along its outer face. `frame: false`
      * keeps its 30 m out of the camera's Fit, so the house stays the

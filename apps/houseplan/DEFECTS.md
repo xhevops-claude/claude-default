@@ -60,7 +60,7 @@ fix.
 | 7 | Ramp, z 6–22 | Grid at 1 m, slabs at 0.5 m: lines that should coincide did not. | R5: one `STEP` (0.5 m) for walked volumes and for the grid over the driveway, stations from `ramp.from`, so slab edges and grid lines are the same polyline. | shipped | (19, −1.6, 9.6) → (14.5, −4.2, 10.5) |
 | 8 | Whole ramp | 27 % average, ~36 % mid. | D2 brought it to 12.5 %, D3's landing to 18 % — and the real frontage (19.3 m, ending at z 16.17) leaves only z 6–14 for the grade: **1.76 m over 8 m, 22 % average, ~27 % mid**, with a 2.2 m landing. The frontage is the hard limit now; see D4. | open — decision D4 | (34, −2.5, 10) → (14.5, −4.5, 10) |
 | 9 | The entrance, z 16–22 | The outer wall ran to the tip and the floor met the road only over the last 1.5 m. | D3: the driveway reaches the road at z 18 and from there *is* the road's surface (a 4 m landing that follows the road's own fall, with the mouth's flare opening onto it); the outer wall runs out at z ≈ 16.1, so the road side is open for 6 m, the first 2 m with a kerb of at most 24 cm. | shipped | plan view (15.5, 6, 19) → (15.5, −5, 19), up −Z |
-| 10 | Apron's north edge, z −2, x 10–16, and the house face x 10, z −2…0 | The cut in front of the house is bounded to the north by a bare vertical face: 2.9 m of hill at x 10 falling to nothing at x ≈ 12.95, and from there to the outer wall the apron sits *above* the natural ground with no wall under its edge. The strip of the house's east face line north of the garage (x 10, z −2…0) is bare too. | Carry the wall line on: garage north band → a band on the hill side of x 10 from z −0.3 to −2.3 → a band on the north side of z −2 from x 9.7 to 16, cut wall as far as the ground is above the apron, fill wall (down to natural ground) beyond, meeting the outer wall at (16, −2). | open | plan view (12.5, 8, −1) → (12.5, −3, −1), up −Z |
+| 10 | Apron's north edge — the north-east boundary from (10, −1.93) to the road corner (16, −3.17) — and the house face x 10, z −1.93…0 | The cut in front of the house is bounded to the north by a bare vertical face: 2.9 m of hill at x 10 falling to nothing at x ≈ 13, and from there to the outer wall the apron sits *above* the natural ground with no wall under its edge. The strip of the house's east face line north of the garage (x 10, z −1.93…0) is bare too. (The edge used to stop at z −1.5, short of the boundary; it now runs on the boundary itself.) | Carry the wall line on: garage north band → a band on the hill side of x 10 from z −0.3 to the boundary → a band inside the boundary line to the outer wall, cut wall as far as the ground is above the apron, fill wall (down to natural ground) beyond, meeting the outer wall at the road corner. The band would take 30 cm off the apron's north edge. | open | plan view (12.5, 8, −1) → (12.5, −3, −1), up −Z |
 | 11 | The house against the real parcel | With the surveyed parcel overlaid, the house's north edge lay outside the north-east boundary and the cut assumed a 24 m frontage. | D5: the parcel is placed 3.5 m further north relative to the house (frontage midpoint at z 6.5), so the north wall clears the boundary by 0.5 m at its north-west corner and the apron's corner at x 10 stays inside; the cut, the road's fall and the ramp now use the surveyed frontage (z −3.17…16.17, road −6.08 → −4.48). | fixed | plan view (−4, 60, 7) → (−4, 0, 7), up −Z |
 
 ## Decisions
@@ -134,6 +134,11 @@ fix.
 - The surveyed ground as a Relief group, and the parcel re-placed so the
   house clears the boundary; cut, road fall and ramp follow the surveyed
   frontage (branch, unmerged).
+- The apron and the outer retaining wall carried to the surveyed boundary:
+  the cut's north edge is the parcel's north-east side itself, bend for
+  bend, from where it crosses the house face line (10, −1.93) to the
+  road corner (16, −3.17); the apron fills up to it and the outer wall
+  ends on it (branch, unmerged).
 - The terrain app's other layers — surface, 10 cm and 1 m contours,
   contour labels at the parcel's edges, the draped survey lattice — and a
   Layers section in Settings with a checkbox for every layer (drawing

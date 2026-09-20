@@ -142,6 +142,10 @@ const FACE = !TER ? 0 : FRONT.axis === 'x'
   : (FRONT.sign > 0 ? e.y1 : e.y0);
 const PROFILE = TER ? [[0, TER.backLevel], ...TER.profile] : [];
 const CUT = TER?.cut ? { ...TER.cut, profile: [[0, TER.backLevel], ...TER.cut.profile] } : null;
+/* The cut's near edge across the front, `d` metres out from the face:
+   a number, or a line of [d, across] points — the boundary — straight
+   between them and held beyond. */
+const cutFrom = (d) => (typeof CUT.from === 'number' ? CUT.from : sampleProfile(CUT.from, d, 0));
 
 function sampleProfile(prof, d, across) {
   const lv = (y) => (y === 'road' ? roadLevel(across) : y);
@@ -308,7 +312,7 @@ function groundY(x, z) {
   const along = FRONT.axis === 'x' ? x : z;
   const across = FRONT.axis === 'x' ? z : x;
   const d = (along - FACE) * FRONT.sign;
-  if (!CUT || across < CUT.from || across > CUT.to) return natural(d, across);
+  if (!CUT || across < cutFrom(d) || across > CUT.to) return natural(d, across);
   const base = sampleProfile(CUT.profile, d, across);
   if (d < 0 || !CUT.ramp) return base;
   const r = CUT.ramp;
@@ -513,14 +517,22 @@ async function boot() {
 
   for (const v of VOLS) {
     const o = makeObject(v);
+    /* A z0 of 'cut' stops the volume on the cut's near edge — a line
+       when the boundary runs at an angle — so its end follows it. */
+    const onCut = v.z0 === 'cut' && CUT && FRONT.axis === 'x';
+    const cutAt = (x) => cutFrom((x - FACE) * FRONT.sign);
     if (followsGround(v) && TER) {
-      const [a0, a1] = FRONT.axis === 'x' ? [v.z0, v.z1] : [v.x0, v.x1];
       const lo = FRONT.axis === 'x' ? v.x0 : v.z0, hi = FRONT.axis === 'x' ? v.x1 : v.z1;
+      const a0Lo = onCut ? cutAt(lo) : (FRONT.axis === 'x' ? v.z0 : v.x0);
+      const a0Hi = onCut ? cutAt(hi) : a0Lo;
+      const a1 = FRONT.axis === 'x' ? v.z1 : v.x1;
       const dFace = ((FRONT.sign > 0 ? lo : hi) - FACE) * FRONT.sign;
-      const steps = runOut(stationsBetween(a0, a1), (a) => yAt(v.y1, a, dFace) - yAt(v.y0, a, dFace));
+      const steps = runOut(stationsBetween(Math.max(a0Lo, a0Hi), a1), (a) => yAt(v.y1, a, dFace) - yAt(v.y0, a, dFace));
       const n = steps.length;
+      /* Each side starts on its own end of the cut edge; the stations
+         beyond the first are shared, so the two chains match. */
       const side = (fixed, list) => list.map((a) => (FRONT.axis === 'x' ? [fixed, a] : [a, fixed]));
-      const ring = [...side(lo, steps), ...side(hi, steps.slice().reverse())];
+      const ring = [...side(lo, [a0Lo, ...steps.slice(1)]), ...side(hi, [a0Hi, ...steps.slice(1)].reverse())];
       const acrossOf = ([x, z]) => (FRONT.axis === 'x' ? z : x);
       const cornersAt = [0, n - 1, n, 2 * n - 1];
       const bottom = ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z]), dFace), z]);
@@ -530,13 +542,26 @@ async function boot() {
       o.dims = walkedDims(bottom, top, n);
       continue;
     }
-    const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
-    addVolume(
-      o,
-      corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]),
-      corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]),
-    );
-    o.dims = boxDims(v);
+    let corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
+    if (onCut) {
+      /* The near edge is the cut line itself: its end points at the
+         volume's two sides, and every bend of the line between them. */
+      const bends = typeof CUT.from === 'number' ? [] : CUT.from
+        .map(([d, a]) => [FACE + FRONT.sign * d, a])
+        .filter(([x]) => x > v.x0 + 1e-6 && x < v.x1 - 1e-6)
+        .sort((p, q) => q[0] - p[0]);
+      corners = [[v.x0, v.z1], [v.x1, v.z1], [v.x1, cutAt(v.x1)], ...bends, [v.x0, cutAt(v.x0)]];
+    }
+    const bottom = corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]);
+    const top = corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]);
+    addVolume(o, bottom, top);
+    if (onCut) {
+      /* Every side of the footprint, and the height. */
+      o.dims = top.map((a, i) => ({ a, b: top[(i + 1) % top.length], label: mLabel(plan2(a, top[(i + 1) % top.length])) }));
+      o.dims.push({ a: bottom[1], b: top[1], label: `h ${mLabel(top[1][1] - bottom[1][1])}` });
+    } else {
+      o.dims = boxDims(v);
+    }
   }
 
   /* ── the driveway, derived ──────────────────────────── */
@@ -889,7 +914,11 @@ async function boot() {
         if (!along.includes(p)) along.push(p);
       });
     }
-    if (CUT) across.push(CUT.from - 0.001, CUT.from, CUT.to, CUT.to + 0.001);
+    if (CUT) across.push(CUT.to, CUT.to + 0.001);
+    if (CUT && typeof CUT.from === 'number') across.push(CUT.from - 0.001, CUT.from);
+    /* A cut edge that runs at an angle is met line by line below; its
+       bends get a line of their own along the front. */
+    if (CUT && typeof CUT.from !== 'number') for (const [d] of CUT.from) { const p = FACE + FRONT.sign * d; if (!along.includes(p)) along.push(p); }
     if (CUT?.ramp) {
       /* Over the driveway the grid runs at the slab's own stations, so
          its lines and the slab's edges are one polyline. */
@@ -905,14 +934,36 @@ async function boot() {
   /* Every line is walked sample by sample in both directions, so the
      grid bends with the ground whichever axis the fall is on. */
   const gridPts = [];
+  /* Where the cut's near edge is a line at an angle, each grid line
+     crossing it takes a sample a hair either side of the crossing, so
+     the drop is drawn as a wall there too. */
+  const slanted = CUT && typeof CUT.from !== 'number' && FRONT.axis === 'x';
+  const withCrossings = (list, crossings) => {
+    if (!crossings.length) return list;
+    const out = [...list];
+    for (const c of crossings) out.push(c - 0.001, c, c + 0.001);
+    return out.sort((a, b) => a - b);
+  };
+  const xCrossings = (z) => {
+    const out = [];
+    if (!slanted) return out;
+    for (let i = 1; i < CUT.from.length; i++) {
+      const [d0, a0] = CUT.from[i - 1], [d1, a1] = CUT.from[i];
+      if ((a0 - z) * (a1 - z) <= 0 && a0 !== a1) out.push(FACE + FRONT.sign * (d0 + ((z - a0) * (d1 - d0)) / (a1 - a0)));
+    }
+    return out;
+  };
+  const zCrossings = (x) => (slanted && (x - FACE) * FRONT.sign >= 0 ? [cutFrom((x - FACE) * FRONT.sign)] : []);
   for (const z of zs) {
-    for (let i = 0; i < xs.length - 1; i++) {
-      gridPts.push(xs[i], groundY(xs[i], z), z, xs[i + 1], groundY(xs[i + 1], z), z);
+    const line = withCrossings(xs, xCrossings(z));
+    for (let i = 0; i < line.length - 1; i++) {
+      gridPts.push(line[i], groundY(line[i], z), z, line[i + 1], groundY(line[i + 1], z), z);
     }
   }
   for (const x of xs) {
-    for (let i = 0; i < zs.length - 1; i++) {
-      gridPts.push(x, groundY(x, zs[i]), zs[i], x, groundY(x, zs[i + 1]), zs[i + 1]);
+    const line = withCrossings(zs, zCrossings(x));
+    for (let i = 0; i < line.length - 1; i++) {
+      gridPts.push(x, groundY(x, line[i]), line[i], x, groundY(x, line[i + 1]), line[i + 1]);
     }
   }
   ground.add(segments(gridPts, new THREE.LineBasicMaterial({
