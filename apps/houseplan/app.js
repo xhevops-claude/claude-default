@@ -32,7 +32,7 @@ const FRONT = {
 const VOLS = PLAN.levels.map((l) => {
   const out = l.extendFront || 0;
   const v = {
-    name: l.name,
+    id: l.id, name: l.name, group: l.group || 'house',
     x0: e.x0, x1: e.x1, z0: e.y0, z1: e.y1,
     y0: l.elevation - SLAB,
     y1: l.elevation + l.height,
@@ -221,30 +221,46 @@ async function boot() {
   controls.autoRotateSpeed = 0.6;
   controls.target.set(BOX.cx, BOX.cy, BOX.cz);
 
-  const LINE = 0x8fd8ff;
-  const lineMat = (opacity) => new THREE.LineBasicMaterial({ color: LINE, transparent: true, opacity });
   const segments = (pts, mat) => new THREE.LineSegments(
     new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)), mat,
   );
 
-  /* ── one box per level ──────────────────────────────── */
+  /* ── one object per built thing ─────────────────────── */
 
-  /* Uprights and plates go into separate groups: dropping the plates
-     leaves the bare corner sticks, which is a useful thing to look at. */
-  const faces = new THREE.Group();
-  const edges = new THREE.Group();
-  const floors = new THREE.Group();
-  const glassMat = new THREE.MeshBasicMaterial({
-    color: 0xbfe9ff, transparent: true, opacity: 0.045,
-    side: THREE.DoubleSide, depthWrite: false,
-  });
+  /* Every built thing — a level, a slab, a wall — is its own node in
+     the scene, named by its id and coloured by its group, so a part
+     can be pointed at, hidden with the rest of its group, and told
+     apart from what it meets. Inside a node the uprights, the plates
+     (rings), the glass and the dots are separate children tagged with
+     a `layer`, which is what the Faces / Floors / Dots toggles flip. */
+  const GROUPS = PLAN.groups || {};
+  const WHITE = new THREE.Color(0xffffff);
+  const parts = new THREE.Group();
+  const objects = [];
+  function makeObject({ id, name, group }) {
+    const col = new THREE.Color(GROUPS[group]?.color || '#8fd8ff');
+    const node = new THREE.Group();
+    node.name = id;
+    node.userData = { id, name, group };
+    const o = {
+      id, name, group, node, col, dotPos: [],
+      glass: new THREE.MeshBasicMaterial({
+        color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity: 0.05,
+        side: THREE.DoubleSide, depthWrite: false,
+      }),
+      line: (opacity) => new THREE.LineBasicMaterial({ color: col, transparent: true, opacity }),
+    };
+    objects.push(o);
+    parts.add(node);
+    return o;
+  }
+  const tagged = (obj, layer) => { obj.userData.layer = layer; return obj; };
 
   /* Every solid is a prism over a footprint: a bottom ring and a top
      ring of [x, y, z], same length, same order. Uprights join them,
      the rings are the plates, and the glass is the caps (triangulated,
      so a footprint may be concave — the fillet is) plus the sides. */
-  const dotPos = [];
-  function addVolume(bottom, top, { dots: withDots = true, uprightAt = null } = {}) {
+  function addVolume(o, bottom, top, { dots: withDots = true, uprightAt = null } = {}) {
     const n = bottom.length;
     const pos = [...bottom.flat(), ...top.flat()];
     const idx = [];
@@ -257,19 +273,19 @@ async function boot() {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setIndex(idx);
-    faces.add(new THREE.Mesh(geo, glassMat));
+    o.node.add(tagged(new THREE.Mesh(geo, o.glass), 'faces'));
 
     const uprights = [];
     for (let i = 0; i < n; i++) if (!uprightAt || uprightAt.includes(i)) uprights.push(...bottom[i], ...top[i]);
-    edges.add(segments(uprights, lineMat(0.95)));
+    o.node.add(tagged(segments(uprights, o.line(0.95)), 'edges'));
 
     const rings = [];
     for (const ring of [bottom, top]) {
       for (let i = 0; i < n; i++) rings.push(...ring[i], ...ring[(i + 1) % n]);
     }
-    floors.add(segments(rings, lineMat(0.6)));
+    o.node.add(tagged(segments(rings, o.line(0.6)), 'floors'));
 
-    if (withDots) for (const ring of [bottom, top]) for (const p of ring) dotPos.push(...p);
+    if (withDots) for (const ring of [bottom, top]) for (const p of ring) o.dotPos.push(...p);
   }
 
   /* A box volume's z1 end may sit lower than its z0 end (y0End / y1End),
@@ -280,6 +296,7 @@ async function boot() {
   const followsRamp = (v) => typeof v.y0 === 'object' || typeof v.y1 === 'object';
   const yAt = (spec, across) => (typeof spec === 'number' ? spec : rampLevel(across) + (spec.floor || 0));
   for (const v of VOLS) {
+    const o = makeObject(v);
     if (followsRamp(v) && CUT?.ramp) {
       const [a0, a1] = FRONT.axis === 'x' ? [v.z0, v.z1] : [v.x0, v.x1];
       const n = Math.max(2, Math.ceil((a1 - a0) / 0.5) + 1);
@@ -290,18 +307,20 @@ async function boot() {
       const acrossOf = ([x, z]) => (FRONT.axis === 'x' ? z : x);
       const cornersAt = [0, n - 1, n, 2 * n - 1];
       addVolume(
+        o,
         ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z])), z]),
         ring.map(([x, z]) => [x, yAt(v.y1, acrossOf([x, z])), z]),
         { dots: false, uprightAt: cornersAt },
       );
       for (const i of cornersAt) {
         const [x, z] = ring[i];
-        dotPos.push(x, yAt(v.y0, acrossOf([x, z])), z, x, yAt(v.y1, acrossOf([x, z])), z);
+        o.dotPos.push(x, yAt(v.y0, acrossOf([x, z])), z, x, yAt(v.y1, acrossOf([x, z])), z);
       }
       continue;
     }
     const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
     addVolume(
+      o,
       corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]),
       corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]),
     );
@@ -321,6 +340,7 @@ async function boot() {
 
     const floorRing = [[corner.along, corner.across], ...arc(r)];
     addVolume(
+      makeObject({ id: 'fillet-floor', name: 'Corner fillet, floor', group: 'drive' }),
       floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
       floorRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) + 0.1, toXZ(a, c)[1]]),
       { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
@@ -329,6 +349,7 @@ async function boot() {
     const wallRing = [...arc(r), ...arc(r - 0.3).reverse()];
     const n = wallRing.length / 2;
     addVolume(
+      makeObject({ id: 'fillet-wall', name: 'Corner fillet, wall', group: 'wall' }),
       wallRing.map(([a, c]) => [toXZ(a, c)[0], rampLevel(c) - 0.1, toXZ(a, c)[1]]),
       wallRing.map(([a, c]) => [toXZ(a, c)[0], natural(a), toXZ(a, c)[1]]),
       { dots: false, uprightAt: [0, n - 1, n, 2 * n - 1] },
@@ -353,6 +374,7 @@ async function boot() {
 
     const floorRing = [[d0, across0], ...arc(a, b)];
     addVolume(
+      makeObject({ id: 'mouth-floor', name: 'Entrance mouth, floor', group: 'drive' }),
       floorRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
       floorRing.map(([d, c]) => [toXZ(d, c)[0], floor + 0.1, toXZ(d, c)[1]]),
       { dots: false, uprightAt: [0, 1, floorRing.length - 1] },
@@ -360,21 +382,47 @@ async function boot() {
 
     const wallRing = [...arc(a, b), ...arc(a + 0.3, b + 0.3).reverse()];
     addVolume(
+      makeObject({ id: 'mouth-wall', name: 'Entrance mouth, wall', group: 'wall' }),
       wallRing.map(([d, c]) => [toXZ(d, c)[0], floor - 0.1, toXZ(d, c)[1]]),
       wallRing.map(([d, c]) => [toXZ(d, c)[0], natural(d), toXZ(d, c)[1]]),
       { dots: false, uprightAt: [0, wallRing.length - 1] },
     );
   }
-  scene.add(faces, edges, floors);
 
-  const dots = new THREE.Points(
-    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(dotPos, 3)),
-    new THREE.PointsMaterial({
-      color: 0xe8f7ff, size: 7, sizeAttenuation: false,
-      map: dotTexture(THREE), transparent: true, alphaTest: 0.35, depthWrite: false,
-    }),
-  );
-  scene.add(dots);
+  /* The dots ride with their object, a shade lighter than its lines. */
+  const dotMap = dotTexture(THREE);
+  for (const o of objects) {
+    if (!o.dotPos.length) continue;
+    o.node.add(tagged(new THREE.Points(
+      new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(o.dotPos, 3)),
+      new THREE.PointsMaterial({
+        color: o.col.clone().lerp(WHITE, 0.55), size: 7, sizeAttenuation: false,
+        map: dotMap, transparent: true, alphaTest: 0.35, depthWrite: false,
+      }),
+    ), 'dots'));
+  }
+  scene.add(parts);
+
+  const setLayer = (layer, on) => parts.traverse((n) => { if (n.userData.layer === layer) n.visible = on; });
+
+  /* The legend: one chip per group that has something in it, in the
+     group's colour; tap to hide or show the whole group. */
+  const legend = $('legend');
+  const hidden = new Set();
+  for (const [key, g] of Object.entries(GROUPS)) {
+    if (!objects.some((o) => o.group === key)) continue;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.style.setProperty('--c', g.color);
+    chip.innerHTML = `<i></i>${g.name}`;
+    chip.addEventListener('click', () => {
+      if (hidden.has(key)) hidden.delete(key); else hidden.add(key);
+      chip.classList.toggle('is-off', hidden.has(key));
+      for (const o of objects) if (o.group === key) o.node.visible = !hidden.has(key);
+    });
+    legend.appendChild(chip);
+  }
 
   /* ── the site ───────────────────────────────────────── */
 
@@ -479,9 +527,9 @@ async function boot() {
     apply(state[key]);
     btn.classList.toggle('is-on', state[key]);
   };
-  toggle('t-faces', 'faces', (v) => { faces.visible = v; });
-  toggle('t-floors', 'floors', (v) => { floors.visible = v; });
-  toggle('t-dots', 'dots', (v) => { dots.visible = v; });
+  toggle('t-faces', 'faces', (v) => setLayer('faces', v));
+  toggle('t-floors', 'floors', (v) => setLayer('floors', v));
+  toggle('t-dots', 'dots', (v) => setLayer('dots', v));
   toggle('t-grid', 'grid', (v) => { ground.visible = v; });
   toggle('t-spin', 'spin', (v) => { controls.autoRotate = v; });
 
@@ -552,6 +600,9 @@ async function boot() {
   new ResizeObserver(resize).observe(host);
   resize();
   fit();
+
+  /* For scripts that drive the view — screenshots of a corner, say. */
+  window.houseWire = { THREE, camera, controls, objects, fit };
 
   renderer.autoClear = false;
 

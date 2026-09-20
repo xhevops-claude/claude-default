@@ -13,6 +13,20 @@ window.HOUSE_PLAN = {
   envelope: { x0: 0, y0: 0, x1: 10, y1: 6 },
   slab: 0.2,
 
+  /* Every built thing is its own object in the scene, and belongs to
+   * one of these groups — the group gives it its colour, and the
+   * legend along the bottom hides or shows a whole group at a tap.
+   * Levels are `house` unless they say otherwise; each work names its
+   * own group; the fillet and the mouth put their floors in `drive`
+   * and their walls in `wall`. */
+  groups: {
+    house: { name: 'House', color: '#8fd8ff' },
+    canopy: { name: 'Cantilever', color: '#ff8c5a' },
+    drive: { name: 'Driveway', color: '#f5e663' },
+    wall: { name: 'Retaining walls', color: '#d28cff' },
+    road: { name: 'Road', color: '#9aa4b2' },
+  },
+
   /* `envelope` is the house. A level can push past it on the downhill
    * face with `extendFront`; none does at the moment — the garage sits
    * inside, its door on the downhill face, under a cantilevered slab. */
@@ -78,22 +92,22 @@ window.HOUSE_PLAN = {
    * along Z, that much above or below it — which is how the ramp slab
    * and the walls beside it bend with the eased grade. */
   works: [
-    { id: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
+    { id: 'canopy', group: 'canopy', name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
     /* The apron gives its last metre to the ramp, so the grade starts
      * bending before the junction rather than at it. */
-    { id: 'driveway', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 5 },
-    { id: 'driveway-door', name: 'Apron, the last metre under the canopy', x0: 10, x1: 13, y0: -3.1, y1: -2.9, z0: 5, z1: 6 },
-    { id: 'driveway-ramp', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 5, z1: 16, y0: { floor: -0.1 }, y1: { floor: 0.1 } },
-    { id: 'retainer', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: -2, z1: 5 },
-    { id: 'retainer-ramp', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 5, z1: 16, y0: -6, y1: { floor: 0.1 } },
+    { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: -2, z1: 5 },
+    { id: 'driveway-door', group: 'drive', name: 'Apron, the last metre under the canopy', x0: 10, x1: 13, y0: -3.1, y1: -2.9, z0: 5, z1: 6 },
+    { id: 'driveway-ramp', group: 'drive', name: 'Driveway, down the hill', x0: 13, x1: 16, z0: 5, z1: 16, y0: { floor: -0.1 }, y1: { floor: 0.1 } },
+    { id: 'retainer', group: 'wall', name: 'Retaining wall', x0: 15.7, x1: 16, y0: -6, y1: -2.9, z0: -2, z1: 5 },
+    { id: 'retainer-ramp', group: 'wall', name: 'Retaining wall, tapering out', x0: 15.7, x1: 16, z0: 5, z1: 16, y0: -6, y1: { floor: 0.1 } },
     /* The uphill side of the ramp is the opposite shape: the cut face
      * beside the driveway grows from nothing to 3 m, so this wall's top
      * stays at the natural ground while its foot goes down with the
      * driveway. It stands in the 30 cm the cut is widened by. */
-    { id: 'retainer-uphill', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 8.7, z1: 16, y0: { floor: -0.1 }, y1: -2.7 },
+    { id: 'retainer-uphill', group: 'wall', name: 'Mini retaining wall, uphill side', x0: 12.7, x1: 13, z0: 8.7, z1: 16, y0: { floor: -0.1 }, y1: -2.7 },
     /* The road, parallel to the wall along its outer face. `frame: false`
      * keeps its 30 m out of the camera's Fit, so the house stays the
      * subject. */
-    { id: 'road', name: 'Road', x0: 16, x1: 20, z0: -6, z1: 24, y0: -6.1, y1: -5.9, frame: false },
+    { id: 'road', group: 'road', name: 'Road', x0: 16, x1: 20, z0: -6, z1: 24, y0: -6.1, y1: -5.9, frame: false },
   ],
 };
