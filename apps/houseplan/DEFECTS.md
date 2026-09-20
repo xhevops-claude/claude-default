@@ -101,5 +101,10 @@ fix.
   exactly instead of spanning them with flat triangles (shipped, PR #139).
 - The garage's buried sides get their structural wall: 30 cm bands outside
   the envelope on the south, west and north, garage slab to ground level,
-  the south one ending where the fillet band's hill edge begins (branch,
-  unmerged).
+  the south one ending where the fillet band's hill edge begins (shipped, PR #140).
+- Tap an object for its dimensions: its lines brighten and its own set of
+  measured lines is drawn on it — length, width, height for boxes;
+  thickness, plan length and the height at each end for walked walls;
+  run, width, grade, slab depth, fillet radius and mouth flare for the
+  driveway; thickness, arc length and end heights for the wall bands
+  (branch, unmerged).
