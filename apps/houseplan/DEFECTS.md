@@ -20,6 +20,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | Driveway | yellow | driveway (apron), driveway-ramp (one slab from the apron to the road, fillet and mouth included) |
 | Retaining walls | violet | garage-wall-south / -west / -north, retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
+| Parcel | red | parcel (boundary, 705 m²), existing (the 6 × 8 m building at the top corner) |
 
 ## Rules agreed so far
 
@@ -59,6 +60,7 @@ fix.
 | 8 | Whole ramp | 27 % average, ~36 % mid. | D2 brought it to 12.5 % — but D3's landing shortens the run again: 2.17 m over 12 m (z 6–18) is **18 % average, ~23 % mid** (`ease` 0.2). Trade-off between the landing's length and the grade; see D4. | open — decision D4 | (34, −2.5, 10) → (14.5, −4.5, 10) |
 | 9 | The entrance, z 16–22 | The outer wall ran to the tip and the floor met the road only over the last 1.5 m. | D3: the driveway reaches the road at z 18 and from there *is* the road's surface (a 4 m landing that follows the road's own fall, with the mouth's flare opening onto it); the outer wall runs out at z ≈ 16.1, so the road side is open for 6 m, the first 2 m with a kerb of at most 24 cm. | shipped | plan view (15.5, 6, 19) → (15.5, −5, 19), up −Z |
 | 10 | Apron's north edge, z −2, x 10–16, and the house face x 10, z −2…0 | The cut in front of the house is bounded to the north by a bare vertical face: 2.9 m of hill at x 10 falling to nothing at x ≈ 12.95, and from there to the outer wall the apron sits *above* the natural ground with no wall under its edge. The strip of the house's east face line north of the garage (x 10, z −2…0) is bare too. | Carry the wall line on: garage north band → a band on the hill side of x 10 from z −0.3 to −2.3 → a band on the north side of z −2 from x 9.7 to 16, cut wall as far as the ground is above the apron, fill wall (down to natural ground) beyond, meeting the outer wall at (16, −2). | open | plan view (12.5, 8, −1) → (12.5, −3, −1), up −Z |
+| 11 | The house against the real parcel | With the surveyed parcel overlaid (frontage along x 16, midpoint at z 10, the real road meeting the model's road there), the house's north edge at z 0 lies *outside* the parcel: the north-east boundary crosses the footprint at z ≈ 2–3, and the apron's north end at z −2 is outside too. The frontage is 19.3 m (z 0.3–19.7), not the 24 m (z −2–22) the cut assumes. | Move the house and its cut south by about 3 m (or shorten the cut to the real frontage) so everything sits inside the boundary; the terrain model can then also take the real ground, which keeps rising to +11.7 m at the back of the parcel. | open — decision D5 | plan view (−6, 60, 11) → (−6, 0, 11), up −Z |
 
 ## Decisions
 
@@ -74,6 +76,14 @@ fix.
 - **D3 — decided:** a road-level landing. The ramp reaches the road at
   z 18; from there to the property's end the driveway is the road's own
   surface, and the outer wall runs out where the slab meets the road.
+- **Site fact (survey):** the parcel from the terrain app's DXF is 705 m²,
+  44 m deep from the road, 19.3 m wide at the road and 10 m at the back,
+  rising 17.8 m from its lowest road corner to its top corner. The road
+  frontage rises 1.6 m from its east corner to its south corner (the road
+  fall the model carries). Where the house stands the real ground runs
+  from +1.5 to −0.5 and falls to −5.4 at the road, close to the model.
+- **D5 — waiting:** shift the house (and its cut) south to sit inside the
+  boundary, and whether to replace the synthetic hill with the real ground.
 - **D4 — waiting:** the grade is back to 18 % (23 % mid) because the
   landing takes 4 m off the run. Options: a shorter landing (3 m → 16 %),
   a flatter `ease`, starting the grade inside the apron again, or accept
@@ -115,3 +125,7 @@ fix.
 - Settings sheet behind a gear top right: the Object / Camera navigation
   choice and an EN / DE language switch that translates the interface,
   legend, object names and dimension labels (shipped, PR #142).
+- The surveyed parcel and the existing building brought in from the terrain
+  app's DXF as a red Parcel group: knee-high ribbons at real heights, with
+  side lengths and rise on tap; the header height is the house's own and
+  the ground grid spans the parcel (branch, unmerged).

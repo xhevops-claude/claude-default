@@ -42,7 +42,8 @@ const DE = {
   'Retaining wall': 'Stützmauer', 'Retaining wall, tapering out': 'Stützmauer, auslaufend',
   'Corner fillet, wall': 'Eckrundung, Mauer', 'Retaining wall, uphill side': 'Stützmauer bergseitig',
   'Entrance mouth, wall': 'Einfahrtstrichter, Mauer',
-  run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über',
+  run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über', rise: 'Anstieg',
+  Parcel: 'Parzelle', 'Parcel boundary, 705 m²': 'Parzellengrenze, 705 m²', 'Existing building': 'Bestandsgebäude',
 };
 let LANG = (() => {
   try { const v = localStorage.getItem('houseplan-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
@@ -52,7 +53,7 @@ const t = (key) => (LANG === 'de' ? DE[key] ?? key : key);
 /* A dimension label: its words translated, and a decimal comma. */
 const tDim = (label) => {
   if (LANG !== 'de') return label;
-  return label.replace(/\b(run|flare|along|over)\b/g, (w) => DE[w]).replace(/(\d)\.(\d)/g, '$1,$2');
+  return label.replace(/\b(run|flare|along|over|rise)\b/g, (w) => DE[w]).replace(/(\d)\.(\d)/g, '$1,$2');
 };
 
 /* ── what the box is ──────────────────────────────────── */
@@ -110,8 +111,15 @@ const BOX = {
   y0: span('y0', Math.min), y1: span('y1', Math.max),
 };
 /* Volumes that ride the road or the ramp carry no number to span, so
-   the road's low point stands in for their bottoms. */
+   the road's low point stands in for their bottoms. The parcel and what
+   already stands on it are the site, so they are framed too. */
 if (TER) BOX.y0 = Math.min(BOX.y0, ROAD_MIN);
+const OUTLINES = [PLAN.parcel, PLAN.existing].filter(Boolean);
+for (const o of OUTLINES) for (const [x, y, z] of o.points) {
+  BOX.x0 = Math.min(BOX.x0, x); BOX.x1 = Math.max(BOX.x1, x);
+  BOX.z0 = Math.min(BOX.z0, z); BOX.z1 = Math.max(BOX.z1, z);
+  BOX.y0 = Math.min(BOX.y0, y); BOX.y1 = Math.max(BOX.y1, y);
+}
 BOX.cx = (BOX.x0 + BOX.x1) / 2;
 BOX.cy = (BOX.y0 + BOX.y1) / 2;
 BOX.cz = (BOX.z0 + BOX.z1) / 2;
@@ -311,7 +319,9 @@ function groundY(x, z) {
 $('wf-name').textContent = PLAN.name;
 function paintHeader() {
   const num = (n) => (LANG === 'de' ? fmt(n).replace('.', ',') : fmt(n));
-  $('wf-dims').textContent = `${num(e.x1 - e.x0)} × ${num(e.y1 - e.y0)} × ${num(BOX.y1 - BOX.y0)} m`
+  const top = Math.max(...PLAN.levels.map((l) => l.elevation + l.height));
+  const foot = Math.min(...PLAN.levels.map((l) => l.elevation - SLAB));
+  $('wf-dims').textContent = `${num(e.x1 - e.x0)} × ${num(e.y1 - e.y0)} × ${num(top - foot)} m`
     + (TER ? ` · ${t('site falls')} ${num(TER.backLevel - ROAD_MIN)} m` : '');
 }
 paintHeader();
@@ -390,7 +400,7 @@ async function boot() {
      ring of [x, y, z], same length, same order. Uprights join them,
      the rings are the plates, and the glass is the caps (triangulated,
      so a footprint may be concave — the fillet is) plus the sides. */
-  function addVolume(o, bottom, top, { dots: withDots = true, uprightAt = null, strip = false } = {}) {
+  function addVolume(o, bottom, top, { dots: withDots = true, uprightAt = null, strip = false, caps = true } = {}) {
     const n = bottom.length;
     const pos = [...bottom.flat(), ...top.flat()];
     const idx = [];
@@ -399,7 +409,9 @@ async function boot() {
        surface that bends along the chains is drawn band by band, not
        as whatever triangles happen to span the outline. */
     const tris = [];
-    if (strip) {
+    if (!caps) {
+      /* sides only — an outline drawn as a ribbon, with nothing across */
+    } else if (strip) {
       const m = n / 2;
       for (let j = 0; j < m - 1; j++) tris.push([j, j + 1, n - 2 - j], [j, n - 2 - j, n - 1 - j]);
     } else {
@@ -611,6 +623,32 @@ async function boot() {
     }
   }
 
+  /* ── the parcel, and what already stands on it ──────── */
+
+  /* An outline is a closed loop of surveyed points at their real
+     heights, drawn as a knee-high ribbon along the ground (sides only,
+     so it neither roofs the parcel nor cuts through the house) with a
+     dot at every vertex. Its dimensions are the `sides` it names,
+     measured along the loop, and its rise from lowest to highest
+     corner. */
+  for (const spec of OUTLINES) {
+    const o = makeObject(spec);
+    const pts = spec.points;
+    const bottom = pts.map(([x, y, z]) => [x, y, z]);
+    const top = pts.map(([x, y, z]) => [x, y + 0.5, z]);
+    addVolume(o, bottom, top, { dots: true, uprightAt: [], caps: false });
+    o.dims = [];
+    const n = pts.length;
+    for (const [i, j] of spec.sides || []) {
+      let along = 0;
+      for (let k = i; k !== j; k = (k + 1) % n) along += dist3(pts[k], pts[(k + 1) % n]);
+      o.dims.push({ a: top[i], b: top[j], label: `${mLabel(along)} along` });
+    }
+    let lo = 0, hi = 0;
+    pts.forEach((p, k) => { if (p[1] < pts[lo][1]) lo = k; if (p[1] > pts[hi][1]) hi = k; });
+    if (hi !== lo) o.dims.push({ a: pts[lo], b: [pts[lo][0], pts[hi][1], pts[lo][2]], label: `rise ${mLabel(pts[hi][1] - pts[lo][1])}` });
+  }
+
   /* The dots ride with their object, a shade lighter than its lines. */
   const dotMap = dotTexture(THREE);
   for (const o of objects) {
@@ -652,10 +690,12 @@ async function boot() {
   /* A grid of lines laid on groundY(), so the slope is something you
      can read rather than something you have to be told about. */
   const ground = new THREE.Group();
-  const EXT = 22;
+  /* The grid reaches a little past everything framed, the parcel
+     included. */
+  const PAD = 8;
   const xs = [], zs = [];
-  for (let x = Math.round(BOX.cx - EXT); x <= BOX.cx + EXT; x += 1) xs.push(x);
-  for (let z = Math.round(BOX.cz - EXT); z <= BOX.cz + EXT; z += 1) zs.push(z);
+  for (let x = Math.floor(BOX.x0 - PAD); x <= BOX.x1 + PAD; x += 1) xs.push(x);
+  for (let z = Math.floor(BOX.z0 - PAD); z <= BOX.z1 + PAD; z += 1) zs.push(z);
   /* Sample every bend of the profiles too, or the shoulders get rounded
      off — and a hair before each step, so a drop is drawn as a wall.
      The cut's edges across the front get the same treatment. */

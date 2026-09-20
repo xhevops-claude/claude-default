@@ -30,7 +30,60 @@ window.HOUSE_PLAN = {
     drive: { name: 'Driveway', color: '#f5e663' },
     wall: { name: 'Retaining walls', color: '#d28cff' },
     road: { name: 'Road', color: '#9aa4b2' },
+    parcel: { name: 'Parcel', color: '#ff4d3d' },
   },
+
+  /* The real parcel, from the surveyor's DXF in apps/terrain (layer
+   * `Zid`, 23 vertices, 705 m²) with the existing building on it (layer
+   * `Objekt`, 6 × 8 m), draped on the terrain sample there. Brought into
+   * this frame so its road-side edge — the 19.3 m frontage that rises
+   * 1.6 m from its east corner to its south corner, which is the road
+   * fall the model already carries — runs along +Z at x 16, its midpoint
+   * at z 10, and so uphill into the parcel is −X. Heights are metres
+   * above the model's datum: real 991.11 m a.s.l. is y 0, chosen so the
+   * real road at the frontage's midpoint meets the model's road there.
+   * Points are [x, y, z]; `sides` are vertex spans measured along the
+   * loop when the parcel is tapped. */
+  parcel: {
+    id: 'parcel', group: 'parcel', name: 'Parcel boundary, 705 m²',
+    sides: [[0, 3], [3, 11], [11, 16], [16, 0]],
+    points: [
+      [ -27.62,  11.63,  20.44],
+      [ -27.43,  11.75,  19.03],
+      [ -26.84,  10.44,  13.01],
+      [ -26.65,  10.31,  10.46],
+      [ -20.25,   9.08,   8.39],
+      [ -13.80,   6.89,   6.31],
+      [  -7.25,   4.84,   4.13],
+      [   1.21,   0.67,   2.80],
+      [   7.59,  -0.26,   2.09],
+      [  10.25,  -2.02,   1.52],
+      [  12.52,  -3.50,   1.21],
+      [  16.00,  -6.08,   0.33],
+      [  16.19,  -5.70,   2.83],
+      [  16.21,  -5.28,   7.86],
+      [  16.11,  -4.87,  15.62],
+      [  16.06,  -4.91,  17.62],
+      [  16.00,  -4.48,  19.67],
+      [  12.73,  -2.58,  20.63],
+      [   9.95,  -0.86,  20.17],
+      [   7.25,   0.47,  20.05],
+      [  -9.80,   7.22,  22.12],
+      [ -14.53,   9.69,  21.63],
+      [ -21.47,  10.58,  21.00],
+    ],
+  },
+  existing: {
+    id: 'existing', group: 'parcel', name: 'Existing building',
+    sides: [[0, 1], [1, 2]],
+    points: [
+      [ -26.84,  10.44,  13.01],
+      [ -18.88,   9.23,  13.65],
+      [ -19.24,  10.08,  19.68],
+      [ -27.43,  11.75,  19.03],
+    ],
+  },
+
 
   /* `envelope` is the house. A level can push past it on the downhill
    * face with `extendFront`; none does at the moment — the garage sits
