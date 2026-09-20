@@ -17,7 +17,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 |---|---|---|
 | House | cyan | garage, ground, first |
 | Cantilever | orange | canopy |
-| Driveway | yellow | driveway (apron), driveway-ramp (one slab, the fillet corner included), mouth-floor |
+| Driveway | yellow | driveway (apron), driveway-ramp (one slab from the apron to the road, fillet and mouth included) |
 | Retaining walls | violet | retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
 
@@ -95,3 +95,6 @@ fix.
   (branch, unmerged).
 - The ramp is one derived slab, the fillet's corner part of its outline
   rather than a separate sliver (branch, unmerged).
+- The whole driveway — ramp, fillet, mouth and landing — is one strip built
+  station by station, so the entrance surface follows the grade and the road
+  exactly instead of spanning them with flat triangles (branch, unmerged).
