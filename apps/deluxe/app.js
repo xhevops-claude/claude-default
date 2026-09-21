@@ -415,6 +415,9 @@ async function boot() {
   }
 
   const host = $('canvas-host');
+  /* No context menu on a long press or right-click: the press is a
+     look, the right button a slide. */
+  host.addEventListener('contextmenu', (e) => e.preventDefault());
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.setClearColor(0x000000, 1);

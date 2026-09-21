@@ -23,7 +23,14 @@ html, body {
 
 button { font-family: inherit; color: inherit; border: none; background: none; cursor: pointer; }
 
-.wf { position: fixed; inset: 0; }
+.wf {
+  position: fixed; inset: 0;
+  /* A long press must not select the canvas or the HUD like text, nor
+     raise Safari's copy callout — the press is for the scene. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 .stage { position: absolute; inset: 0; }
 .canvas-host { position: absolute; inset: 0; touch-action: none; }
