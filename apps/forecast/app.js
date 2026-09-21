@@ -72,6 +72,7 @@
     horizon: 36,
     rollover: false,
     off: Object.create(null),
+    amounts: Object.create(null),   // id → native amount typed over a ledger row
   };
   var defaults = null;
 
@@ -199,6 +200,20 @@
 
   function isOn(item) {
     return item.active !== false && !scenario.off[item.id];
+  }
+
+  // A ledger row's amount as the forecast should use it: what the user typed
+  // over it on the Ledger view, else what the data file says. Only the
+  // additional income, budget and unplanned-expense rows are editable there.
+  function amountOf(item) {
+    var o = scenario.amounts[item.id];
+    return o != null ? o : item.amount;
+  }
+
+  function curSymbol(cur) {
+    if (cur === 'MKD') return 'ден';
+    if (cur === 'USD') return '$';
+    return '€';
   }
 
   function payCycle() {
@@ -426,7 +441,7 @@
       });
       var budgetTotal = scenario.budgetOverride != null
         ? scenario.budgetOverride
-        : budgetItems.reduce(function (a, b) { return a + toEur(b.amount, b.currency); }, 0);
+        : budgetItems.reduce(function (a, b) { return a + toEur(amountOf(b), b.currency); }, 0);
       var budgetLabel = budgetItems.length === 1 ? budgetItems[0].label : 'Monthly budget';
 
       (data.extras.extras || []).forEach(function (it) {
@@ -436,7 +451,7 @@
         events.push({
           date: mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day),
           kind: 'extra', label: it.label, detail: it.note || 'Unplanned',
-          eur: -toEur(it.amount, it.currency),
+          eur: -toEur(amountOf(it), it.currency),
         });
       });
 
@@ -447,7 +462,7 @@
         events.push({
           date: mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day),
           kind: 'income', label: it.label, detail: it.note || '',
-          eur: toEur(it.amount, it.currency),
+          eur: toEur(amountOf(it), it.currency),
         });
       });
 
@@ -1634,6 +1649,43 @@
       '</div>';
   }
 
+  /* A row whose amount can be typed over — after a pay, say, when the real
+   * figure is known. The committed figure stays in the note so the edit is
+   * always visible, and ↺ puts it back. Typing must not toggle the row, so
+   * the click handler skips anything inside .ledit. */
+  function editableRow(item, sub) {
+    var off = !isOn(item);
+    var edited = scenario.amounts[item.id] != null;
+    var cur = item.currency || 'EUR';
+    return '<div class="lrow' + (off ? ' is-off' : '') + (edited ? ' is-edited' : '') +
+        '" data-toggle="' + esc(item.id) + '">' +
+      '<span class="lcheck" aria-hidden="true"></span>' +
+      '<span class="lbody"><span class="lname">' + esc(item.label) +
+        (item.sample ? '<span class="tag">sample</span>' : '') + '</span>' +
+        '<span class="lnote">' + esc(sub) +
+          (edited ? ' · was ' + esc(nativeMoney(item.amount, cur)) : '') + '</span></span>' +
+      '<span class="lright ledit">' +
+        (edited ? '<button class="lrevert" type="button" data-revert="' + esc(item.id) +
+          '" aria-label="Back to the committed amount">↺</button>' : '') +
+        '<input class="ledit-in" type="number" min="0" step="any" inputmode="decimal"' +
+          ' data-amount="' + esc(item.id) + '" value="' + esc(String(amountOf(item))) +
+          '" aria-label="' + esc(item.label) + ' amount in ' + esc(cur) + '">' +
+        '<span class="ledit-cur">' + esc(curSymbol(cur)) + '</span>' +
+      '</span>' +
+      '</div>';
+  }
+
+  // The committed row behind an editable id, for telling an edit that merely
+  // retypes the original from a real one.
+  function editableItem(id) {
+    var lists = [data.income.additional, data.budget.budget, data.extras.extras];
+    for (var i = 0; i < lists.length; i++) {
+      var list = lists[i] || [];
+      for (var j = 0; j < list.length; j++) if (list[j].id === id) return list[j];
+    }
+    return null;
+  }
+
   function renderLedger() {
     var w = data.income.workday;
     var cycle = payCycle();
@@ -1650,7 +1702,7 @@
         return ledgerRow({ id: 'workday', label: w.label || 'Work day income', sample: w.sample },
           nativeMoney(dayAmount(w, null), w.currency) + ' / day', detail);
       }
-      return ledgerRow(it, nativeMoney(it.amount, it.currency),
+      return editableRow(it,
         (cadenceNote[it.cadence || 'monthly'] || '') +
         (it.month ? ' · from ' + ymLabel(it.month, { long: true }) : ''));
     });
@@ -1691,17 +1743,17 @@
       });
 
     var budgetTotal = (data.budget.budget || []).reduce(function (a, b) {
-      return a + (isOn(b) ? toEur(b.amount, b.currency) : 0);
+      return a + (isOn(b) ? toEur(amountOf(b), b.currency) : 0);
     }, 0);
     var budgetHtml = ledgerSection('Fixed monthly budget', money(budgetTotal) + ' / month',
       data.budget.budget || [], function (it) {
-        return ledgerRow(it, nativeMoney(it.amount, it.currency),
+        return editableRow(it,
           'taken from each pay after its loans' + (it.note ? ' · ' + it.note : ''));
       });
 
     var extrasHtml = ledgerSection('Unplanned expenses', 'Drawn from savings',
       data.extras.extras || [], function (it) {
-        return ledgerRow(it, nativeMoney(it.amount, it.currency),
+        return editableRow(it,
           ymLabel(it.month, { long: true }) + (it.note ? ' · ' + it.note : ''));
       });
 
@@ -1738,6 +1790,7 @@
       horizon: same('horizon') ? null : scenario.horizon,
       rollover: same('rollover') ? null : scenario.rollover,
       off: Object.keys(scenario.off),
+      amounts: scenario.amounts,
     }));
   }
 
@@ -1769,6 +1822,12 @@
     if (Array.isArray(saved.off)) {
       saved.off.forEach(function (id) { if (typeof id === 'string') scenario.off[id] = true; });
     }
+    if (saved.amounts && typeof saved.amounts === 'object') {
+      Object.keys(saved.amounts).forEach(function (id) {
+        var a = num(saved.amounts[id], 0, Infinity);
+        if (a != null) scenario.amounts[id] = a;
+      });
+    }
     if (typeof saved.currency === 'string' &&
         document.querySelector('.cur-btn[data-cur="' + saved.currency + '"]')) {
       currency = saved.currency;
@@ -1793,7 +1852,8 @@
       scenario.extraToDebt !== 0 ||
       scenario.horizon !== defaults.horizon ||
       scenario.rollover !== defaults.rollover ||
-      Object.keys(scenario.off).length > 0;
+      Object.keys(scenario.off).length > 0 ||
+      Object.keys(scenario.amounts).length > 0;
   }
 
   function syncScenarioUi() {
@@ -1891,11 +1951,41 @@
     });
 
     $('ledger-list').addEventListener('click', function (ev) {
+      var revert = ev.target.closest('[data-revert]');
+      if (revert) {
+        delete scenario.amounts[revert.dataset.revert];
+        renderLedger();
+        recompute();
+        return;
+      }
+      if (ev.target.closest('.ledit')) return;   // typing, not toggling
       var row = ev.target.closest('[data-toggle]');
       if (!row) return;
       var id = row.dataset.toggle;
       if (scenario.off[id]) delete scenario.off[id];
       else scenario.off[id] = true;
+      renderLedger();
+      recompute();
+    });
+
+    // While typing, the model and the store follow every keystroke but the
+    // row is left alone so the field keeps focus; the ledger redraws once the
+    // value is committed (blur or Enter), which also refreshes the section
+    // totals.
+    $('ledger-list').addEventListener('input', function (ev) {
+      var inp = ev.target.closest('.ledit-in');
+      if (!inp) return;
+      var v = Number(inp.value);
+      if (inp.value === '' || !isFinite(v) || v < 0) return;
+      var id = inp.dataset.amount;
+      var item = editableItem(id);
+      if (item && v === item.amount) delete scenario.amounts[id];
+      else scenario.amounts[id] = v;
+      model = build();
+      saveScenario();
+    });
+    $('ledger-list').addEventListener('change', function (ev) {
+      if (!ev.target.closest('.ledit-in')) return;
       renderLedger();
       recompute();
     });
@@ -1956,6 +2046,7 @@
       scenario.horizon = defaults.horizon;
       scenario.rollover = defaults.rollover;
       scenario.off = Object.create(null);
+      scenario.amounts = Object.create(null);
       renderLedger();
       recompute();
     });
