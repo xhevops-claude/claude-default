@@ -405,7 +405,15 @@ their projects. Changing the hash reloads the page (one scene at a time).
   objects (a building to its floors, via `parent`/`short` on `makeObject`),
   then the relief's layers. An object's checkbox is its own `hidden` flag
   on top of its group's; tapping its name selects it and `flyTo()`s the
-  camera. The full-screen button cycles three stages (`state.fs`):
+  camera. The right dock is the selected object's properties (`paintProps`
+  in `viewer.js`: group, building, the `props` the model recorded, extent,
+  dims, Fly to / Hide); it starts folded and its rail lights while
+  something is selected. Drawing layers: Facade (`faces` — outer walls,
+  roof, underside), Interior floors (`interior` — a storey's slab against
+  the storey above or below, `addVolume`'s `interior` option, fainter
+  glass), Wireframe (`edges`, the uprights), Floor lines (`floors`, the
+  rings), Dots. There is no interior-wall data yet, so no such layer.
+  The full-screen button cycles three stages (`state.fs`):
   browser full screen with the docks, scene only (`body.fs-2`, one exit
   button top-left, Escape works), back. The dock folds to a rail; that
   choice is kept in `planner-dock`, except upright on a phone, where the

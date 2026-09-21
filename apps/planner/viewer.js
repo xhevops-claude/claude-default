@@ -101,9 +101,16 @@ async function boot() {
     node.name = id;
     node.userData = { id, name, group };
     const o = {
-      id, name, group, node, col, dotPos: [], opacity, parent, short: short || name, hidden: false,
+      id, name, group, node, col, dotPos: [], opacity, parent, short: short || name, hidden: false, props: [],
       glass: new THREE.MeshBasicMaterial({
         color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity,
+        side: THREE.DoubleSide, depthWrite: false,
+      }),
+      /* An interior floor: the slab between two storeys, seen through
+         the facade and the storeys above, so far fainter than a wall —
+         two of them stacked still read lighter than the roof. */
+      glassIn: new THREE.MeshBasicMaterial({
+        color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity: opacity * 0.4,
         side: THREE.DoubleSide, depthWrite: false,
       }),
       line: (opacity) => new THREE.LineBasicMaterial({ color: col, transparent: true, opacity }),
@@ -118,10 +125,13 @@ async function boot() {
      ring of [x, y, z], same length, same order. Uprights join them,
      the rings are the plates, and the glass is the caps (triangulated,
      so a footprint may be concave — the fillet is) plus the sides. */
-  function addVolume(o, bottom, top, { dots: withDots = true, uprightAt = null, strip = false, caps = true } = {}) {
+  /* The glass comes in up to three meshes — sides, bottom cap, top cap —
+     so a storey's slab against the storey below (`interior.bottom`) or
+     above (`interior.top`) can be its own, fainter layer while the
+     outer walls, the roof and the underside stay the facade. */
+  function addVolume(o, bottom, top, { dots: withDots = true, uprightAt = null, strip = false, caps = true, interior = null } = {}) {
     const n = bottom.length;
     const pos = [...bottom.flat(), ...top.flat()];
-    const idx = [];
     /* A `strip` ring is two chains of equal length, the second reversed,
        and its caps are the quads between matching stations — so a
        surface that bends along the chains is drawn band by band, not
@@ -135,15 +145,22 @@ async function boot() {
     } else {
       tris.push(...THREE.ShapeUtils.triangulateShape(bottom.map(([x, , z]) => new THREE.Vector2(x, z)), []));
     }
-    for (const [a, b, c] of tris) idx.push(a, b, c, a + n, b + n, c + n);
+    const capBottom = [], capTop = [], sides = [];
+    for (const [a, b, c] of tris) { capBottom.push(a, b, c); capTop.push(a + n, b + n, c + n); }
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
-      idx.push(i, j, j + n, i, j + n, i + n);
+      sides.push(i, j, j + n, i, j + n, i + n);
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setIndex(idx);
-    o.node.add(tagged(new THREE.Mesh(geo, o.glass), 'faces'));
+    const glass = (idx, inside) => {
+      if (!idx.length) return;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      o.node.add(tagged(new THREE.Mesh(geo, inside ? o.glassIn : o.glass), inside ? 'interior' : 'faces'));
+    };
+    glass(sides, false);
+    glass(capBottom, !!interior?.bottom);
+    glass(capTop, !!interior?.top);
 
     const uprights = [];
     for (let i = 0; i < n; i++) if (!uprightAt || uprightAt.includes(i)) uprights.push(...bottom[i], ...top[i]);
@@ -453,10 +470,12 @@ async function boot() {
      the floor's slab outline from the slab's underside to the top of
      the storey, with the outline's sides and the storey height as its
      dimensions. A buildable area is one such prism on its own. */
-  const prism = (o, ring, y0, y1, { name = null } = {}) => {
+  const ringArea = (ring) => Math.abs(ring.reduce((s, [x, z], i) => { const [x2, z2] = ring[(i + 1) % ring.length]; return s + x * z2 - x2 * z; }, 0)) / 2;
+  const prism = (o, ring, y0, y1, { name = null, interior = null } = {}) => {
     const bottom = ring.map(([x, z]) => [x, y0, z]);
     const top = ring.map(([x, z]) => [x, y1, z]);
-    addVolume(o, bottom, top);
+    addVolume(o, bottom, top, { interior });
+    o.props.push(['Footprint', `${fmt(Math.round(ringArea(ring) * 10) / 10)} m²`], ['Height', `${fmt(y1 - y0)} m`]);
     o.dims = [];
     top.forEach((a, i) => {
       const b = top[(i + 1) % top.length];
@@ -469,12 +488,15 @@ async function boot() {
      walls solid enough to tell one from the next. */
   const shades = ['#8fd8ff', '#ffd27a', '#b9a3ff', '#7ee8c9', '#ff9db4', '#c8d6e5'];
   (PLAN.buildings || []).forEach((b, bi) => {
-    for (const f of b.floors) {
+    b.floors.forEach((f, fi) => {
       const o = makeObject({ id: `${b.id}-${f.id}`, name: `${b.name} · ${f.name}`, group: b.group || 'house', color: b.color || shades[bi % shades.length], opacity: 0.3, parent: { id: b.id, name: b.name }, short: f.name });
-      prism(o, f.ring, f.elevation - SLAB, f.elevation + f.height);
+      /* The lowest floor's underside and the top floor's roof are
+         facade; every slab between two storeys is interior. */
+      o.props.push(['Level', `${fmt(f.elevation)} · ${fmt(f.elevation + (PLAN.datum || 0))} m`]);
+      prism(o, f.ring, f.elevation - SLAB, f.elevation + f.height, { interior: { bottom: fi > 0, top: fi < b.floors.length - 1 } });
       /* the floor's level, in the header's frame, as a dimension on it */
       o.dims.push({ a: [f.ring[0][0], f.elevation, f.ring[0][1]], b: [f.ring[1][0], f.elevation, f.ring[1][1]], label: `${t('floor')} ${fmt(f.elevation)} · ${fmt(f.elevation + (PLAN.datum || 0))} m` });
-    }
+    });
   });
   for (const v of PLAN.envelopes || []) {
     const o = makeObject({ id: v.id, name: v.name, group: v.group || 'envelope' });
@@ -817,7 +839,7 @@ async function boot() {
     o.node.add(tagged(new THREE.Points(
       new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(o.dotPos, 3)),
       new THREE.PointsMaterial({
-        color: o.col.clone().lerp(WHITE, 0.55), size: 7, sizeAttenuation: false,
+        color: o.col.clone().lerp(WHITE, 0.55), size: 5, sizeAttenuation: false,
         map: dotMap, transparent: true, alphaTest: 0.35, depthWrite: false,
       }),
     ), 'dots'));
@@ -976,8 +998,10 @@ async function boot() {
     const d = PLAN.defaults?.layers?.[id] ?? def;
     LAYERS.push({ id, name, def: d, on: d, apply, section, ...extra });
   };
-  layer('faces', 'Faces', true, (v) => setLayer('faces', v), 'Drawing');
-  layer('floors', 'Floors', true, (v) => setLayer('floors', v), 'Drawing');
+  layer('faces', 'Facade', true, (v) => setLayer('faces', v), 'Drawing');
+  layer('interior', 'Interior floors', true, (v) => setLayer('interior', v), 'Drawing');
+  layer('wire', 'Wireframe', true, (v) => setLayer('edges', v), 'Drawing');
+  layer('floors', 'Floor lines', true, (v) => setLayer('floors', v), 'Drawing');
   layer('dots', 'Dots', false, (v) => setLayer('dots', v), 'Drawing');
   if (TER) layer('grid', 'Ground grid', true, (v) => { ground.visible = v; }, 'Drawing');
   for (const [key, g] of Object.entries(GROUPS)) {
@@ -1110,32 +1134,91 @@ async function boot() {
   function goTo(list) {
     if (list.length === 1 && selected !== list[0]) select(list[0]);
     flyTo(list);
-    if (portrait()) setDock(false);
+    if (portrait()) setDock('left', false);
   }
   const layersAll = $('layers-all');
   const layersSave = $('layers-save');
 
-  /* The dock folds to a rail and back; the choice is kept on the device,
-     except upright on a phone, where it always starts folded. */
-  const dock = $('dock-left'), rail = $('dock-left-open');
+  /* Each dock folds to a rail and back; the choices are kept on the
+     device, except upright on a phone, where both always start folded.
+     The properties dock starts folded everywhere until asked for. */
   const DOCK_KEY = 'planner-dock';
   const portrait = () => window.matchMedia('(orientation: portrait) and (max-width: 700px)').matches;
-  let dockOpen = (() => {
-    if (portrait()) return false;
-    try { return localStorage.getItem(DOCK_KEY) !== 'closed'; } catch (err) { return true; }
+  const docks = {
+    left: { el: $('dock-left'), rail: $('dock-left-open'), fold: $('dock-left-fold'), def: true },
+    right: { el: $('dock-right'), rail: $('dock-right-open'), fold: $('dock-right-fold'), def: false },
+  };
+  const dockState = (() => {
+    try { const s = JSON.parse(localStorage.getItem(DOCK_KEY) || 'null'); return s && typeof s === 'object' ? s : {}; } catch (err) { return {}; }
   })();
-  function setDock(open, remember = false) {
-    dockOpen = open;
-    dock.hidden = !open;
-    rail.hidden = open;
-    if (remember && !portrait()) { try { localStorage.setItem(DOCK_KEY, open ? 'open' : 'closed'); } catch (err) { /* private mode */ } }
+  function setDock(side, open, remember = false) {
+    const d = docks[side];
+    d.open = open;
+    d.el.hidden = !open;
+    d.rail.hidden = open;
+    if (remember && !portrait()) {
+      dockState[side] = open;
+      try { localStorage.setItem(DOCK_KEY, JSON.stringify(dockState)); } catch (err) { /* private mode */ }
+    }
   }
-  $('dock-left-fold').addEventListener('click', () => setDock(false, true));
-  rail.addEventListener('click', () => setDock(true, true));
-  setDock(dockOpen);
+  for (const [side, d] of Object.entries(docks)) {
+    d.fold.addEventListener('click', () => setDock(side, false, true));
+    d.rail.addEventListener('click', () => setDock(side, true, true));
+    setDock(side, portrait() ? false : (typeof dockState[side] === 'boolean' ? dockState[side] : d.def));
+  }
+
+  /* ── the properties dock ────────────────────────────── */
+
+  /* What the tapped object is: its group and building, the facts the
+     model recorded on it (`props`), its extent, and its dimensions as
+     the scene labels them. With the dock folded, its rail lights up so
+     the properties are one tap away. */
+  const propsEl = $('props');
+  const propBox = new THREE.Box3();
+  function paintProps() {
+    docks.right.rail.classList.toggle('is-lit', !!selected);
+    propsEl.replaceChildren();
+    if (!selected) {
+      const p = document.createElement('p');
+      p.className = 'props-empty';
+      p.textContent = t('Nothing selected. Tap an object in the scene or in the layer tree.');
+      propsEl.appendChild(p);
+      return;
+    }
+    const o = selected;
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    const rowOf = (label, value) => { const r = el('div', 'props-row'); r.append(el('b', null, t(label)), el('span', null, value)); propsEl.appendChild(r); };
+    propsEl.appendChild(el('div', 'props-name', t(o.name)));
+    rowOf('Group', t(GROUPS[o.group]?.name || o.group));
+    if (o.parent) rowOf('Building', t(o.parent.name));
+    for (const [k, v] of o.props) rowOf(k, tDim(v));
+    propBox.makeEmpty().expandByObject(o.node);
+    if (!propBox.isEmpty()) {
+      const s = propBox.getSize(new THREE.Vector3());
+      rowOf('Extent', tDim(`${fmt(s.x)} × ${fmt(s.z)} × ${fmt(s.y)} m`));
+      rowOf('Top', tDim(`${fmt(propBox.max.y)}${PLAN.datum ? ` · ${fmt(propBox.max.y + PLAN.datum)}` : ''} m`));
+    }
+    rowOf('Id', o.id);
+    const dims = (o.dims || []).filter((d) => d.a !== d.b);
+    if (dims.length) {
+      propsEl.appendChild(el('div', 'props-sub', t('Dimensions')));
+      const ul = el('ul', 'props-dims');
+      for (const d of dims) ul.appendChild(el('li', null, tDim(d.label)));
+      propsEl.appendChild(ul);
+    }
+    const actions = el('div', 'props-actions');
+    const fly = el('button', 'ghost', t('Fly to'));
+    fly.type = 'button';
+    fly.addEventListener('click', () => flyTo([o]));
+    const hide = el('button', 'ghost', t('Hide'));
+    hide.type = 'button';
+    hide.addEventListener('click', () => showObject(o, false));
+    actions.append(fly, hide);
+    propsEl.appendChild(actions);
+  }
 
   /* The bottom bar's buttons and the legend's chips. */
-  for (const [id, key] of [['t-faces', 'faces'], ['t-floors', 'floors'], ['t-dots', 'dots'], ['t-grid', 'grid']]) {
+  for (const [id, key] of [['t-faces', 'faces'], ['t-interior', 'interior'], ['t-wire', 'wire'], ['t-floors', 'floors'], ['t-dots', 'dots'], ['t-grid', 'grid']]) {
     const L = LAYERS.find((l) => l.id === key);
     if (!L) { $(id).hidden = true; continue; }
     L.btn = $(id);
@@ -1224,9 +1307,10 @@ async function boot() {
       if (layer === 'edges' || layer === 'floors') {
         n.material.color.copy(on ? o.col.clone().lerp(WHITE, 0.6) : o.col);
         n.material.opacity = on ? 1 : (layer === 'edges' ? 0.95 : 0.6);
-      } else if (layer === 'faces') {
+      } else if (layer === 'faces' || layer === 'interior') {
+        const base = layer === 'faces' ? o.opacity : o.opacity * 0.4;
         n.material.color.copy(o.col.clone().lerp(WHITE, on ? 0.2 : 0.35));
-        n.material.opacity = on ? Math.max(0.22, o.opacity + 0.15) : o.opacity;
+        n.material.opacity = on ? Math.max(0.22, base + 0.15) : base;
       } else if (layer === 'dots') {
         n.material.color.copy(on ? WHITE : o.col.clone().lerp(WHITE, 0.55));
       }
@@ -1243,6 +1327,7 @@ async function boot() {
     selected = o && o !== selected ? o : null;
     $('wf-sel').textContent = selected ? t(selected.name) : '';
     paintTreeSel();
+    paintProps();
     if (!selected) return;
     paintSelection(selected, true);
     for (const d of selected.dims || []) {
@@ -1296,7 +1381,7 @@ async function boot() {
 
   const glassMeshes = () => {
     const glass = [];
-    for (const o of objects) if (o.node.visible) o.node.traverse((n) => { if (n.userData.layer === 'faces') { n.userData.owner = o; glass.push(n); } });
+    for (const o of objects) if (o.node.visible) o.node.traverse((n) => { if ((n.userData.layer === 'faces' || n.userData.layer === 'interior') && n.visible) { n.userData.owner = o; glass.push(n); } });
     return glass;
   };
 
@@ -1422,8 +1507,9 @@ async function boot() {
     paintHeader();
     for (const chip of legend.children) chip.innerHTML = `<i></i>${t(chip.dataset.name)}`;
     for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.classList.toggle('is-on', b.dataset.lang === LANG);
-    for (const [id, key] of [['dock-left-fold', 'Collapse'], ['dock-left-open', 'Expand'], ['fs-exit', 'Exit full screen'], ['settings-open', 'Settings']]) { $(id).title = t(key); $(id).setAttribute('aria-label', t(key)); }
+    for (const [id, key] of [['dock-left-fold', 'Collapse'], ['dock-left-open', 'Expand'], ['dock-right-fold', 'Collapse'], ['dock-right-open', 'Expand'], ['fs-exit', 'Exit full screen'], ['settings-open', 'Settings']]) { $(id).title = t(key); $(id).setAttribute('aria-label', t(key)); }
     paintFS();
+    paintProps();
     setMode(state.mode);
     paintReliefLabels();
     if (selected) { const o = selected; select(null); select(o); }
