@@ -18,6 +18,17 @@ const WALL = PLAN.wall || 0.3;
 const STEP = 0.5;
 const TER = PLAN.terrain;
 const e = PLAN.envelope;
+/* The house turned about its south-east corner — the corner the fillet
+   hangs off — by `turn` degrees, clockwise seen from above. H() takes
+   a point in the house's own frame (the envelope's axes) to the
+   model's; everything else in the model lies on the frontage's axes. */
+const TURN = ((PLAN.turn || 0) * Math.PI) / 180;
+const PIVOT = [e.x1, e.y1];
+const H = (x, z) => {
+  if (!TURN) return [x, z];
+  const dx = x - PIVOT[0], dz = z - PIVOT[1];
+  return [PIVOT[0] + dx * Math.cos(TURN) + dz * Math.sin(TURN), PIVOT[1] - dx * Math.sin(TURN) + dz * Math.cos(TURN)];
+};
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n.toFixed(2).replace(/\.?0+$/, '');
@@ -42,7 +53,13 @@ const DE = {
   'Retaining wall': 'Stützmauer', 'Retaining wall, tapering out': 'Stützmauer, auslaufend',
   'Corner fillet, wall': 'Eckrundung, Mauer', 'Retaining wall, uphill side': 'Stützmauer bergseitig',
   'Entrance mouth, wall': 'Einfahrtstrichter, Mauer',
-  run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über',
+  run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über', rise: 'Anstieg',
+  Parcel: 'Parzelle', 'Parcel boundary, 705 m²': 'Parzellengrenze, 705 m²', 'Existing building': 'Bestandsgebäude',
+  Relief: 'Relief',
+  Layers: 'Ebenen', 'All layers': 'Alle Ebenen', Save: 'Speichern', Reset: 'Zurücksetzen',
+  Drawing: 'Zeichnung', Objects: 'Objekte', 'Ground grid': 'Bodenraster',
+  'Relief points': 'Reliefpunkte', 'Relief surface': 'Reliefoberfläche', 'Contours 10 cm': 'Höhenlinien 10 cm',
+  'Contours 1 m': 'Höhenlinien 1 m', 'Contour labels': 'Höhenbeschriftung', 'Relief grid': 'Reliefraster',
 };
 let LANG = (() => {
   try { const v = localStorage.getItem('houseplan-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
@@ -52,7 +69,7 @@ const t = (key) => (LANG === 'de' ? DE[key] ?? key : key);
 /* A dimension label: its words translated, and a decimal comma. */
 const tDim = (label) => {
   if (LANG !== 'de') return label;
-  return label.replace(/\b(run|flare|along|over)\b/g, (w) => DE[w]).replace(/(\d)\.(\d)/g, '$1,$2');
+  return label.replace(/\b(run|flare|along|over|rise)\b/g, (w) => DE[w]).replace(/(\d)\.(\d)/g, '$1,$2');
 };
 
 /* ── what the box is ──────────────────────────────────── */
@@ -85,7 +102,7 @@ function roadLevel(across) {
 const VOLS = PLAN.levels.map((l) => {
   const out = l.extendFront || 0;
   const v = {
-    id: l.id, name: l.name, group: l.group || 'house',
+    id: l.id, name: l.name, group: l.group || 'house', house: true,
     x0: e.x0, x1: e.x1, z0: e.y0, z1: e.y1,
     y0: l.elevation - SLAB,
     y1: l.elevation + l.height,
@@ -110,8 +127,15 @@ const BOX = {
   y0: span('y0', Math.min), y1: span('y1', Math.max),
 };
 /* Volumes that ride the road or the ramp carry no number to span, so
-   the road's low point stands in for their bottoms. */
+   the road's low point stands in for their bottoms. The parcel and what
+   already stands on it are the site, so they are framed too. */
 if (TER) BOX.y0 = Math.min(BOX.y0, ROAD_MIN);
+const OUTLINES = [PLAN.parcel, PLAN.existing].filter(Boolean);
+for (const o of OUTLINES) for (const [x, y, z] of o.points) {
+  BOX.x0 = Math.min(BOX.x0, x); BOX.x1 = Math.max(BOX.x1, x);
+  BOX.z0 = Math.min(BOX.z0, z); BOX.z1 = Math.max(BOX.z1, z);
+  BOX.y0 = Math.min(BOX.y0, y); BOX.y1 = Math.max(BOX.y1, y);
+}
 BOX.cx = (BOX.x0 + BOX.x1) / 2;
 BOX.cy = (BOX.y0 + BOX.y1) / 2;
 BOX.cz = (BOX.z0 + BOX.z1) / 2;
@@ -129,6 +153,10 @@ const FACE = !TER ? 0 : FRONT.axis === 'x'
   : (FRONT.sign > 0 ? e.y1 : e.y0);
 const PROFILE = TER ? [[0, TER.backLevel], ...TER.profile] : [];
 const CUT = TER?.cut ? { ...TER.cut, profile: [[0, TER.backLevel], ...TER.cut.profile] } : null;
+/* The cut's near edge across the front, `d` metres out from the face:
+   a number, or a line of [d, across] points — the boundary — straight
+   between them and held beyond. */
+const cutFrom = (d) => (typeof CUT.from === 'number' ? CUT.from : sampleProfile(CUT.from, d, 0));
 
 function sampleProfile(prof, d, across) {
   const lv = (y) => (y === 'road' ? roadLevel(across) : y);
@@ -168,11 +196,26 @@ const FILLET = (() => {
   const f = CUT?.fillet, r = CUT?.ramp;
   if (!f || !r) return null;
   const dFrom = r.dFrom ?? 0;
-  const rad = f.r ?? dFrom;
+  /* With the house turned, its south edge line leaves the corner at
+     -TURN, so the circle tangent to it there and to the ramp's edge is
+     smaller: r (1 + sin TURN) = dFrom. Its centre is r along the turned
+     edge's normal from the corner, and the arc runs from the corner
+     (at -TURN from the centre's north) round to the ramp's edge. */
+  const rad = f.r ?? dFrom / (1 + Math.sin(TURN));
   const corner = { along: FACE + FRONT.sign * dFrom, across: Math.max(r.from, HOUSE_EDGE) };
-  return { r: rad, corner, centre: { along: corner.along - FRONT.sign * rad, across: corner.across + rad } };
+  const centre = { along: corner.along - FRONT.sign * rad, across: corner.across + rad * Math.cos(TURN) };
+  return { r: rad, corner, centre };
 })();
 
+/* Inside the rounded hill corner: the part of the fillet's circle that
+   is still hill (its centre's side of the arc), within the cut. */
+function insideFillet(along, across) {
+  if (!FILLET) return false;
+  const { r, corner, centre } = FILLET;
+  const da = (corner.along - along) * FRONT.sign;
+  if (da < 0 || across > centre.across) return false;
+  return Math.hypot(along - centre.along, across - centre.across) < r - 1e-9;
+}
 function inFillet(along, across) {
   if (!FILLET) return false;
   const { r, corner, centre } = FILLET;
@@ -295,10 +338,15 @@ function groundY(x, z) {
   const along = FRONT.axis === 'x' ? x : z;
   const across = FRONT.axis === 'x' ? z : x;
   const d = (along - FACE) * FRONT.sign;
-  if (!CUT || across < CUT.from || across > CUT.to) return natural(d, across);
-  const base = sampleProfile(CUT.profile, d, across);
-  if (d < 0 || !CUT.ramp) return base;
+  if (!CUT || across < cutFrom(d) || across > CUT.to) return natural(d, across);
+  /* The turned house's east face runs west of the face line north of
+     the corner; the cut's floor reaches it. */
+  const dFace = faceD(across);
+  if (d < dFace) return sampleProfile(CUT.profile, d, across);
+  const base = sampleProfile(CUT.profile, Math.max(d, 0), across);
+  if (!CUT.ramp) return base;
   const r = CUT.ramp;
+  if (insideFillet(along, across)) return natural(d, across);
   if (across <= r.from || d >= WALL_D) return base;
   if (MOUTH && across >= MOUTH.across0) return inMouth(d, across) ? rampLevel(across) : natural(d, across);
   if (d < (r.dFrom ?? 0)) {
@@ -307,18 +355,28 @@ function groundY(x, z) {
   }
   return rampLevel(across);
 }
+/* Where the house's east face stands, in d, at a position across the
+   front: on the face line for a house that is not turned; for one that
+   is, west of it by the turn north of the corner, and nowhere south of
+   the corner (there the house's own south edge line takes over). */
+function faceD(across) {
+  if (!TURN || across > HOUSE_EDGE) return 0;
+  return -(HOUSE_EDGE - across) * Math.tan(TURN);
+}
 
 $('wf-name').textContent = PLAN.name;
 function paintHeader() {
   const num = (n) => (LANG === 'de' ? fmt(n).replace('.', ',') : fmt(n));
-  $('wf-dims').textContent = `${num(e.x1 - e.x0)} × ${num(e.y1 - e.y0)} × ${num(BOX.y1 - BOX.y0)} m`
+  const top = Math.max(...PLAN.levels.map((l) => l.elevation + l.height));
+  const foot = Math.min(...PLAN.levels.map((l) => l.elevation - SLAB));
+  $('wf-dims').textContent = `${num(e.x1 - e.x0)} × ${num(e.y1 - e.y0)} × ${num(top - foot)} m`
     + (TER ? ` · ${t('site falls')} ${num(TER.backLevel - ROAD_MIN)} m` : '');
 }
 paintHeader();
 
 /* ── scene ────────────────────────────────────────────── */
 
-const state = { faces: true, floors: true, dots: true, grid: true, spin: false, mode: 'object' };
+const state = { spin: false, mode: 'object' };
 
 boot();
 
@@ -390,7 +448,7 @@ async function boot() {
      ring of [x, y, z], same length, same order. Uprights join them,
      the rings are the plates, and the glass is the caps (triangulated,
      so a footprint may be concave — the fillet is) plus the sides. */
-  function addVolume(o, bottom, top, { dots: withDots = true, uprightAt = null, strip = false } = {}) {
+  function addVolume(o, bottom, top, { dots: withDots = true, uprightAt = null, strip = false, caps = true } = {}) {
     const n = bottom.length;
     const pos = [...bottom.flat(), ...top.flat()];
     const idx = [];
@@ -399,7 +457,9 @@ async function boot() {
        surface that bends along the chains is drawn band by band, not
        as whatever triangles happen to span the outline. */
     const tris = [];
-    if (strip) {
+    if (!caps) {
+      /* sides only — an outline drawn as a ribbon, with nothing across */
+    } else if (strip) {
       const m = n / 2;
       for (let j = 0; j < m - 1; j++) tris.push([j, j + 1, n - 2 - j], [j, n - 2 - j, n - 1 - j]);
     } else {
@@ -474,11 +534,14 @@ async function boot() {
   const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
   const plan2 = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
   const mLabel = (n) => `${fmt(n)} m`;
-  const boxDims = (v) => [
-    { a: [v.x0, v.y1, v.z1], b: [v.x1, v.y1, v.z1], label: mLabel(v.x1 - v.x0) },
-    { a: [v.x1, v.y1, v.z0], b: [v.x1, v.y1, v.z1], label: mLabel(v.z1 - v.z0) },
-    { a: [v.x1, v.y0, v.z1], b: [v.x1, v.y1, v.z1], label: `h ${mLabel(v.y1 - v.y0)}` },
-  ];
+  const boxDims = (v, turn = null) => {
+    const P = (x, y, z) => { const [px, pz] = turn ? turn(x, z) : [x, z]; return [px, y, pz]; };
+    return [
+      { a: P(v.x0, v.y1, v.z1), b: P(v.x1, v.y1, v.z1), label: mLabel(v.x1 - v.x0) },
+      { a: P(v.x1, v.y1, v.z0), b: P(v.x1, v.y1, v.z1), label: mLabel(v.z1 - v.z0) },
+      { a: P(v.x1, v.y0, v.z1), b: P(v.x1, v.y1, v.z1), label: `h ${mLabel(v.y1 - v.y0)}` },
+    ];
+  };
   /* A walked volume: thickness and length read off its top, and the
      height it stands at each end — the second may differ from the first
      or be nothing at all, which is the point of showing both. */
@@ -496,14 +559,22 @@ async function boot() {
 
   for (const v of VOLS) {
     const o = makeObject(v);
+    /* A z0 of 'cut' stops the volume on the cut's near edge — a line
+       when the boundary runs at an angle — so its end follows it. */
+    const onCut = v.z0 === 'cut' && CUT && FRONT.axis === 'x';
+    const cutAt = (x) => cutFrom((x - FACE) * FRONT.sign);
     if (followsGround(v) && TER) {
-      const [a0, a1] = FRONT.axis === 'x' ? [v.z0, v.z1] : [v.x0, v.x1];
       const lo = FRONT.axis === 'x' ? v.x0 : v.z0, hi = FRONT.axis === 'x' ? v.x1 : v.z1;
+      const a0Lo = onCut ? cutAt(lo) : (FRONT.axis === 'x' ? v.z0 : v.x0);
+      const a0Hi = onCut ? cutAt(hi) : a0Lo;
+      const a1 = FRONT.axis === 'x' ? v.z1 : v.x1;
       const dFace = ((FRONT.sign > 0 ? lo : hi) - FACE) * FRONT.sign;
-      const steps = runOut(stationsBetween(a0, a1), (a) => yAt(v.y1, a, dFace) - yAt(v.y0, a, dFace));
+      const steps = runOut(stationsBetween(Math.max(a0Lo, a0Hi), a1), (a) => yAt(v.y1, a, dFace) - yAt(v.y0, a, dFace));
       const n = steps.length;
+      /* Each side starts on its own end of the cut edge; the stations
+         beyond the first are shared, so the two chains match. */
       const side = (fixed, list) => list.map((a) => (FRONT.axis === 'x' ? [fixed, a] : [a, fixed]));
-      const ring = [...side(lo, steps), ...side(hi, steps.slice().reverse())];
+      const ring = [...side(lo, [a0Lo, ...steps.slice(1)]), ...side(hi, [a0Hi, ...steps.slice(1)].reverse())];
       const acrossOf = ([x, z]) => (FRONT.axis === 'x' ? z : x);
       const cornersAt = [0, n - 1, n, 2 * n - 1];
       const bottom = ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z]), dFace), z]);
@@ -513,13 +584,66 @@ async function boot() {
       o.dims = walkedDims(bottom, top, n);
       continue;
     }
-    const corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
-    addVolume(
-      o,
-      corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]),
-      corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]),
-    );
-    o.dims = boxDims(v);
+    let corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
+    /* A part of the house is drawn in the house's frame, turned. */
+    if (v.house) corners = corners.map(([x, z]) => H(x, z));
+    if (onCut) {
+      /* The near edge is the cut line itself: its end points at the
+         volume's two sides, and every bend of the line between them.
+         With the house turned, the west side is its east face, from
+         the corner north to where it meets the cut line — and the
+         south-east corner is rounded by the fillet's arc, which dips a
+         touch north of the corner's line before it swings out. */
+      const westX = TURN ? faceMeetsCut() : null;
+      const west = westX ? westX[0] : v.x0;
+      const bends = typeof CUT.from === 'number' ? [] : CUT.from
+        .map(([d, a]) => [FACE + FRONT.sign * d, a])
+        .filter(([x]) => x > west + 1e-6 && x < v.x1 - 1e-6)
+        .sort((p, q) => q[0] - p[0]);
+      const dip = [];
+      if (FILLET && TURN) {
+        const { r: rad, centre } = FILLET;
+        const n = 6;
+        for (let i = 1; i <= n; i++) {
+          const phi = -TURN + (2 * TURN * i) / n;
+          dip.push([centre.along + rad * Math.sin(phi), centre.across - rad * Math.cos(phi)]);
+        }
+      }
+      corners = [[v.x0, v.z1], ...dip, [v.x1, v.z1], [v.x1, cutAt(v.x1)], ...bends, westX || [v.x0, cutAt(v.x0)]];
+    }
+    const bottom = corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]);
+    const top = corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]);
+    addVolume(o, bottom, top);
+    if (onCut) {
+      /* Every straight side of the footprint, and the height. */
+      o.dims = [];
+      top.forEach((a, i) => {
+        const b = top[(i + 1) % top.length];
+        if (plan2(a, b) < 0.5) return;
+        o.dims.push({ a, b, label: mLabel(plan2(a, b)) });
+      });
+      o.dims.push({ a: bottom[1], b: top[1], label: `h ${mLabel(top[1][1] - bottom[1][1])}` });
+    } else {
+      o.dims = boxDims(v, v.house ? H : null);
+    }
+  }
+  /* Where the turned house's east face line meets the cut's near edge:
+     the apron's north-west corner. */
+  function faceMeetsCut() {
+    if (typeof CUT.from === 'number') return [FACE + FRONT.sign * faceD(CUT.from), CUT.from];
+    const t = Math.tan(TURN);
+    for (let i = 1; i < CUT.from.length; i++) {
+      const [d0, a0] = CUT.from[i - 1], [d1, a1] = CUT.from[i];
+      /* d0 + u (d1 - d0) = -(E - a0 - u (a1 - a0)) t */
+      const den = d1 - d0 - (a1 - a0) * t;
+      if (Math.abs(den) < 1e-9) continue;
+      const u = (-(HOUSE_EDGE - a0) * t - d0) / den;
+      if (u >= -1e-9 && u <= 1 + 1e-9) {
+        const a = a0 + u * (a1 - a0);
+        return [FACE + FRONT.sign * faceD(a), a];
+      }
+    }
+    return null;
   }
 
   /* ── the driveway, derived ──────────────────────────── */
@@ -589,9 +713,25 @@ async function boot() {
     for (const [id, name, within] of pieces) {
       const st = stations.filter(within);
       if (st.length < 2) continue;
-      const n = st.length;
-      const cut = st.map((c) => [edge(c), c]);
-      const far = st.map(hill);
+      let cut = st.map((c) => [edge(c), c]);
+      let far = st.map(hill);
+      if (id === 'fillet-wall' && TURN) {
+        /* The arc starts at the house's corner, which with the house
+           turned lies before the arc's northernmost point, where a
+           station's across would be ambiguous — so this band is walked
+           by angle about the centre instead: from -TURN up to where the
+           stations take over, then at the stations' own angles. */
+        const { r: rad, centre } = FILLET;
+        const dc = rad - WALL;
+        const phis = [-TURN, -TURN / 2, 0];
+        for (const c of st) {
+          const phi = Math.acos(Math.min(1, Math.max(-1, (centre.across - c) / rad)));
+          if (phi > 1e-9) phis.push(phi);
+        }
+        cut = phis.map((phi) => [centre.along - FACE + rad * Math.sin(phi), centre.across - rad * Math.cos(phi)]);
+        far = phis.map((phi) => [centre.along - FACE + dc * Math.sin(phi), centre.across - dc * Math.cos(phi)]);
+      }
+      const n = cut.length;
       const wallRing = [...cut, ...far.slice().reverse()];
       const topAt = (k) => { const [d, c] = far[k < n ? k : 2 * n - 1 - k]; return natural(d, c); };
       const wo = makeObject({ id, name, group: 'wall' });
@@ -611,6 +751,225 @@ async function boot() {
     }
   }
 
+  /* ── the parcel, and what already stands on it ──────── */
+
+  /* An outline is a closed loop of surveyed points at their real
+     heights, drawn as a knee-high ribbon along the ground (sides only,
+     so it neither roofs the parcel nor cuts through the house) with a
+     dot at every vertex. Its dimensions are the `sides` it names,
+     measured along the loop, and its rise from lowest to highest
+     corner. */
+  for (const spec of OUTLINES) {
+    const o = makeObject(spec);
+    const pts = spec.points;
+    const bottom = pts.map(([x, y, z]) => [x, y, z]);
+    const top = pts.map(([x, y, z]) => [x, y + 0.5, z]);
+    addVolume(o, bottom, top, { dots: true, uprightAt: [], caps: false });
+    o.dims = [];
+    const n = pts.length;
+    for (const [i, j] of spec.sides || []) {
+      let along = 0;
+      for (let k = i; k !== j; k = (k + 1) % n) along += dist3(pts[k], pts[(k + 1) % n]);
+      o.dims.push({ a: top[i], b: top[j], label: `${mLabel(along)} along` });
+    }
+    let lo = 0, hi = 0;
+    pts.forEach((p, k) => { if (p[1] < pts[lo][1]) lo = k; if (p[1] > pts[hi][1]) hi = k; });
+    if (hi !== lo) o.dims.push({ a: pts[lo], b: [pts[lo][0], pts[hi][1], pts[lo][2]], label: `rise ${mLabel(pts[hi][1] - pts[lo][1])}` });
+  }
+
+  /* ── the relief: the surveyed ground ────────────────── */
+
+  /* The terrain app's layers, in this frame. relief.js carries the
+     survey as height fields — a 0.2 m lattice over and around the
+     parcel, and the 1 m grid over the whole survey, emptied where the
+     fine one covers it — and from them come: every surveyed point,
+     tinted by height from the group's colour at the bottom of the
+     sample to near white at the top; the ground as a surface, dimmed
+     outside the parcel; contours every 10 cm of real height with a
+     heavier line at each metre, as the terrain app draws them; a height
+     label wherever a parcel edge crosses a metre line; and the survey's
+     own eastings and northings every 5 m, draped on the ground. Each
+     is a layer of one Relief object, hidden with the group or on its
+     own from Settings. Not framed, not tappable — it is the backdrop
+     the model sits in. */
+  const reliefLabels = [];
+  const RELIEF_INK = '#bff2d6';
+  if (window.HOUSE_RELIEF?.fields?.length && window.HOUSE_RELIEF.frame) {
+    const R = window.HOUSE_RELIEF;
+    const o = makeObject({ id: 'relief', name: R.name || 'Relief', group: 'relief' });
+    const { mid, ex, ez, org } = R.frame;
+    const toModel = (X, Y, h) => {
+      const dX = X - mid[0], dY = Y - mid[1];
+      return [org[0] + dX * ex[0] + dY * ex[1], h - R.datum, org[1] + dX * ez[0] + dY * ez[1]];
+    };
+    /* Each field: one vertex per sampled cell, shared by the points,
+       the surface and the contours, so they cannot disagree; and two
+       triangles per cell whose four corners were all sampled. */
+    let lo = Infinity, hi = -Infinity;
+    let sx0 = Infinity, sx1 = -Infinity, sy0 = Infinity, sy1 = -Infinity;
+    const fields = R.fields.map((F) => {
+      const [nx, ny] = F.size;
+      const H = F.heights;
+      const has = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && H[j * nx + i] != null;
+      const survey = (i, j) => [F.origin[0] + i * F.u[0] + j * F.v[0], F.origin[1] + i * F.u[1] + j * F.v[1]];
+      const vid = new Int32Array(nx * ny).fill(-1);
+      const pos = [];
+      for (let j = 0; j < ny; j++) {
+        for (let i = 0; i < nx; i++) {
+          if (!has(i, j)) continue;
+          vid[j * nx + i] = pos.length / 3;
+          const [X, Y] = survey(i, j);
+          sx0 = Math.min(sx0, X); sx1 = Math.max(sx1, X); sy0 = Math.min(sy0, Y); sy1 = Math.max(sy1, Y);
+          const p = toModel(X, Y, H[j * nx + i]);
+          pos.push(...p);
+          lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]);
+        }
+      }
+      const tri = [];
+      for (let j = 0; j < ny - 1; j++) {
+        for (let i = 0; i < nx - 1; i++) {
+          if (!(has(i, j) && has(i + 1, j) && has(i, j + 1) && has(i + 1, j + 1))) continue;
+          const a = vid[j * nx + i], b = vid[j * nx + i + 1], d = vid[(j + 1) * nx + i], e = vid[(j + 1) * nx + i + 1];
+          tri.push(a, b, e, a, e, d);
+        }
+      }
+      /* The field's height at a survey point, bilinear in its own
+         lattice; null where any corner is missing. */
+      const det = F.u[0] * F.v[1] - F.u[1] * F.v[0];
+      const heightAt = (X, Y) => {
+        const dx = X - F.origin[0], dy = Y - F.origin[1];
+        const fu = (dx * F.v[1] - dy * F.v[0]) / det, fv = (dy * F.u[0] - dx * F.u[1]) / det;
+        const i = Math.floor(fu), j = Math.floor(fv);
+        if (!(has(i, j) && has(i + 1, j) && has(i, j + 1) && has(i + 1, j + 1))) return null;
+        const s = fu - i, t = fv - j;
+        return H[j * nx + i] * (1 - s) * (1 - t) + H[j * nx + i + 1] * s * (1 - t) + H[(j + 1) * nx + i] * (1 - s) * t + H[(j + 1) * nx + i + 1] * s * t;
+      };
+      return { pos, tri, heightAt };
+    });
+    /* Tinted by height; and outside the parcel — a ray cast from the
+       point against the boundary in plan — dimmed, as the terrain app
+       masks its parcels. */
+    const poly = PLAN.parcel?.points?.map(([x, , z]) => [x, z]);
+    const inside = (x, z) => {
+      let inn = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, zi] = poly[i], [xj, zj] = poly[j];
+        if ((zi > z) !== (zj > z) && x < xi + ((xj - xi) * (z - zi)) / (zj - zi)) inn = !inn;
+      }
+      return inn;
+    };
+    const c = new THREE.Color();
+    const minorSegs = [], majorSegs = [];
+    const LIFT = 0.02;
+    const dotMapRelief = dotTexture(THREE);
+    for (const { pos, tri } of fields) {
+      const colors = new Float32Array(pos.length);
+      for (let k = 0; k < pos.length; k += 3) {
+        c.copy(o.col).lerp(WHITE, 0.15 + 0.7 * ((pos[k + 1] - lo) / (hi - lo || 1)));
+        if (poly?.length && !inside(pos[k], pos[k + 2])) c.multiplyScalar(0.4);
+        colors[k] = c.r; colors[k + 1] = c.g; colors[k + 2] = c.b;
+      }
+      const posAttr = new THREE.Float32BufferAttribute(pos, 3);
+      const colAttr = new THREE.BufferAttribute(colors, 3);
+
+      o.node.add(tagged(new THREE.Points(
+        new THREE.BufferGeometry().setAttribute('position', posAttr).setAttribute('color', colAttr),
+        new THREE.PointsMaterial({
+          size: 3, sizeAttenuation: false, vertexColors: true, map: dotMapRelief,
+          transparent: true, opacity: 0.85, alphaTest: 0.35, depthWrite: false,
+        }),
+      ), 'relief-points'));
+
+      /* The surface, translucent so the model still reads through it. */
+      const surf = new THREE.BufferGeometry();
+      surf.setAttribute('position', posAttr);
+      surf.setAttribute('color', colAttr);
+      surf.setIndex(tri);
+      const surfMesh = new THREE.Mesh(surf, new THREE.MeshBasicMaterial({
+        vertexColors: true, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false,
+      }));
+      surfMesh.renderOrder = -1;
+      o.node.add(tagged(surfMesh, 'relief-surface'));
+
+      /* Contours, walked per triangle over the 10 cm levels it spans —
+         levels of real height, so a metre line is a metre above sea
+         level, as on the survey. */
+      const cross = (a, b, y, out) => {
+        const ya = pos[a * 3 + 1], yb = pos[b * 3 + 1];
+        if ((ya < y) === (yb < y)) return;
+        const f = (y - ya) / (yb - ya);
+        out.push(pos[a * 3] + (pos[b * 3] - pos[a * 3]) * f, pos[a * 3 + 2] + (pos[b * 3 + 2] - pos[a * 3 + 2]) * f);
+      };
+      for (let k = 0; k < tri.length; k += 3) {
+        const a = tri[k], b = tri[k + 1], d = tri[k + 2];
+        const ya = pos[a * 3 + 1], yb = pos[b * 3 + 1], yd = pos[d * 3 + 1];
+        const s0 = Math.ceil((Math.min(ya, yb, yd) + R.datum) * 10 - 1e-6);
+        const s1 = Math.floor((Math.max(ya, yb, yd) + R.datum) * 10 + 1e-6);
+        for (let st = s0; st <= s1; st++) {
+          const y = st / 10 - R.datum;
+          const xz = [];
+          cross(a, b, y, xz); cross(b, d, y, xz); cross(d, a, y, xz);
+          if (xz.length >= 4) (st % 10 === 0 ? majorSegs : minorSegs).push(xz[0], y + LIFT, xz[1], xz[2], y + LIFT, xz[3]);
+        }
+      }
+    }
+    o.node.add(tagged(segments(minorSegs, new THREE.LineBasicMaterial({ color: o.col, transparent: true, opacity: 0.3 })), 'relief-minor'));
+    o.node.add(tagged(segments(majorSegs, new THREE.LineBasicMaterial({ color: o.col.clone().lerp(WHITE, 0.45), transparent: true, opacity: 0.9 })), 'relief-major'));
+
+    /* A label at every point where a parcel edge crosses a metre line:
+       the real height, and the model's (above the garage-floor datum)
+       beside it. Sprites, so they face you from anywhere. */
+    const labelsNode = tagged(new THREE.Group(), 'relief-labels');
+    const pts = PLAN.parcel?.points || [];
+    for (let k = 0; k < pts.length; k++) {
+      const p = pts[k], q = pts[(k + 1) % pts.length];
+      const ya = p[1] + R.datum, yb = q[1] + R.datum;
+      if (ya === yb) continue;
+      for (let m = Math.ceil(Math.min(ya, yb)); m <= Math.floor(Math.max(ya, yb)); m++) {
+        const f = (m - ya) / (yb - ya);
+        const rel = m - R.datum;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
+        sprite.userData.text = `${m} m · ${rel >= 0 ? '+' : '−'}${Math.abs(rel).toFixed(1)}`;
+        sprite.position.set(p[0] + (q[0] - p[0]) * f, rel + 0.05, p[2] + (q[2] - p[2]) * f);
+        sprite.renderOrder = 5;
+        labelsNode.add(sprite);
+        reliefLabels.push(sprite);
+      }
+    }
+    o.node.add(labelsNode);
+
+    /* The survey's own coordinates: its eastings and northings every
+       5 m, each line draped on whichever field covers it — the fine one
+       first — a quarter-metre at a time, broken where neither does. */
+    const EVERY = 5, SAMPLE = 0.25;
+    const heightAt = (X, Y) => { for (const f of fields) { const h = f.heightAt(X, Y); if (h != null) return h; } return null; };
+    const gridSegs = [];
+    const drape = (walk) => {
+      let prev = null;
+      for (const [X, Y] of walk) {
+        const h = heightAt(X, Y);
+        const p = h == null ? null : toModel(X, Y, h + LIFT);
+        if (prev && p) gridSegs.push(...prev, ...p);
+        prev = p;
+      }
+    };
+    const span = (a, b) => { const out = []; for (let v = a; v <= b + 1e-9; v += SAMPLE) out.push(v); return out; };
+    for (let X = Math.ceil(sx0 / EVERY) * EVERY; X <= sx1; X += EVERY) drape(span(sy0, sy1).map((Y) => [X, Y]));
+    for (let Y = Math.ceil(sy0 / EVERY) * EVERY; Y <= sy1; Y += EVERY) drape(span(sx0, sx1).map((X) => [X, Y]));
+    o.node.add(tagged(segments(gridSegs, new THREE.LineBasicMaterial({ color: o.col.clone().lerp(WHITE, 0.25), transparent: true, opacity: 0.45 })), 'relief-grid'));
+  }
+  /* A contour label's text, in the language of the moment. */
+  function paintReliefLabels() {
+    for (const s of reliefLabels) {
+      s.material.map?.dispose();
+      const tex = labelTexture(THREE, tDim(s.userData.text), RELIEF_INK);
+      s.material.map = tex;
+      s.material.needsUpdate = true;
+      s.scale.set(0.5 * (tex.image.width / tex.image.height), 0.5, 1);
+    }
+  }
+  paintReliefLabels();
+
   /* The dots ride with their object, a shade lighter than its lines. */
   const dotMap = dotTexture(THREE);
   for (const o of objects) {
@@ -627,35 +986,19 @@ async function boot() {
 
   const setLayer = (layer, on) => parts.traverse((n) => { if (n.userData.layer === layer) n.visible = on; });
 
-  /* The legend: one chip per group that has something in it, in the
-     group's colour; tap to hide or show the whole group. */
   const legend = $('legend');
-  const hidden = new Set();
-  for (const [key, g] of Object.entries(GROUPS)) {
-    if (!objects.some((o) => o.group === key)) continue;
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'chip';
-    chip.style.setProperty('--c', g.color);
-    chip.dataset.name = g.name;
-    chip.innerHTML = `<i></i>${t(g.name)}`;
-    chip.addEventListener('click', () => {
-      if (hidden.has(key)) hidden.delete(key); else hidden.add(key);
-      chip.classList.toggle('is-off', hidden.has(key));
-      for (const o of objects) if (o.group === key) o.node.visible = !hidden.has(key);
-    });
-    legend.appendChild(chip);
-  }
 
   /* ── the site ───────────────────────────────────────── */
 
   /* A grid of lines laid on groundY(), so the slope is something you
      can read rather than something you have to be told about. */
   const ground = new THREE.Group();
-  const EXT = 22;
+  /* The grid reaches a little past everything framed, the parcel
+     included. */
+  const PAD = 8;
   const xs = [], zs = [];
-  for (let x = Math.round(BOX.cx - EXT); x <= BOX.cx + EXT; x += 1) xs.push(x);
-  for (let z = Math.round(BOX.cz - EXT); z <= BOX.cz + EXT; z += 1) zs.push(z);
+  for (let x = Math.floor(BOX.x0 - PAD); x <= BOX.x1 + PAD; x += 1) xs.push(x);
+  for (let z = Math.floor(BOX.z0 - PAD); z <= BOX.z1 + PAD; z += 1) zs.push(z);
   /* Sample every bend of the profiles too, or the shoulders get rounded
      off — and a hair before each step, so a drop is drawn as a wall.
      The cut's edges across the front get the same treatment. */
@@ -669,7 +1012,11 @@ async function boot() {
         if (!along.includes(p)) along.push(p);
       });
     }
-    if (CUT) across.push(CUT.from - 0.001, CUT.from, CUT.to, CUT.to + 0.001);
+    if (CUT) across.push(CUT.to, CUT.to + 0.001);
+    if (CUT && typeof CUT.from === 'number') across.push(CUT.from - 0.001, CUT.from);
+    /* A cut edge that runs at an angle is met line by line below; its
+       bends get a line of their own along the front. */
+    if (CUT && typeof CUT.from !== 'number') for (const [d] of CUT.from) { const p = FACE + FRONT.sign * d; if (!along.includes(p)) along.push(p); }
     if (CUT?.ramp) {
       /* Over the driveway the grid runs at the slab's own stations, so
          its lines and the slab's edges are one polyline. */
@@ -685,14 +1032,47 @@ async function boot() {
   /* Every line is walked sample by sample in both directions, so the
      grid bends with the ground whichever axis the fall is on. */
   const gridPts = [];
+  /* Where the cut's near edge is a line at an angle, each grid line
+     crossing it takes a sample a hair either side of the crossing, so
+     the drop is drawn as a wall there too. */
+  const slanted = CUT && typeof CUT.from !== 'number' && FRONT.axis === 'x';
+  const withCrossings = (list, crossings) => {
+    if (!crossings.length) return list;
+    const out = [...list];
+    for (const c of crossings) out.push(c - 0.001, c, c + 0.001);
+    return out.sort((a, b) => a - b);
+  };
+  const xCrossings = (z) => {
+    const out = [];
+    if (!slanted) return out;
+    for (let i = 1; i < CUT.from.length; i++) {
+      const [d0, a0] = CUT.from[i - 1], [d1, a1] = CUT.from[i];
+      if ((a0 - z) * (a1 - z) <= 0 && a0 !== a1) out.push(FACE + FRONT.sign * (d0 + ((z - a0) * (d1 - d0)) / (a1 - a0)));
+    }
+    return out;
+  };
+  const zCrossings = (x) => {
+    const d = (x - FACE) * FRONT.sign;
+    const out = slanted && d >= faceD(cutFrom(d)) ? [cutFrom(d)] : [];
+    /* the turned house's east face, between the cut's edge and the corner */
+    if (TURN && d < 0 && d >= faceD(cutFrom(d))) out.push(HOUSE_EDGE + d / Math.tan(TURN));
+    return out;
+  };
+  const faceXCrossing = (z) => {
+    if (!TURN || z > HOUSE_EDGE) return [];
+    const d = faceD(z);
+    return z >= cutFrom(d) ? [FACE + FRONT.sign * d] : [];
+  };
   for (const z of zs) {
-    for (let i = 0; i < xs.length - 1; i++) {
-      gridPts.push(xs[i], groundY(xs[i], z), z, xs[i + 1], groundY(xs[i + 1], z), z);
+    const line = withCrossings(xs, [...xCrossings(z), ...faceXCrossing(z)]);
+    for (let i = 0; i < line.length - 1; i++) {
+      gridPts.push(line[i], groundY(line[i], z), z, line[i + 1], groundY(line[i + 1], z), z);
     }
   }
   for (const x of xs) {
-    for (let i = 0; i < zs.length - 1; i++) {
-      gridPts.push(x, groundY(x, zs[i]), zs[i], x, groundY(x, zs[i + 1]), zs[i + 1]);
+    const line = withCrossings(zs, zCrossings(x));
+    for (let i = 0; i < line.length - 1; i++) {
+      gridPts.push(x, groundY(x, line[i]), line[i], x, groundY(x, line[i + 1]), line[i + 1]);
     }
   }
   ground.add(segments(gridPts, new THREE.LineBasicMaterial({
@@ -741,7 +1121,127 @@ async function boot() {
     tips.push(sprite);
   }
 
-  /* ── chrome ─────────────────────────────────────────── */
+  /* ── layers, and the settings that keep them ────────── */
+
+  /* Everything that can be shown or hidden is a layer: the drawing's
+     own parts, each object group, and the relief's layers from the
+     terrain app. The bottom bar's buttons, the legend's chips and the
+     checkboxes in Settings are three faces of the same switch. The set
+     can be saved on the device and reset to how it ships, as in the
+     terrain app. */
+  const LAYERS = [];
+  const layer = (id, name, def, apply, section, extra = {}) => { LAYERS.push({ id, name, def, on: def, apply, section, ...extra }); };
+  layer('faces', 'Faces', true, (v) => setLayer('faces', v), 'Drawing');
+  layer('floors', 'Floors', true, (v) => setLayer('floors', v), 'Drawing');
+  layer('dots', 'Dots', true, (v) => setLayer('dots', v), 'Drawing');
+  layer('grid', 'Ground grid', true, (v) => { ground.visible = v; }, 'Drawing');
+  for (const [key, g] of Object.entries(GROUPS)) {
+    if (!objects.some((o) => o.group === key)) continue;
+    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v; }, 'Objects', { color: g.color });
+  }
+  if (reliefLabels.length || objects.some((o) => o.id === 'relief')) {
+    /* The surface alone by default; the rest is there to switch on. */
+    layer('relief-points', 'Relief points', false, (v) => setLayer('relief-points', v), 'Relief');
+    layer('relief-surface', 'Relief surface', true, (v) => setLayer('relief-surface', v), 'Relief');
+    layer('relief-minor', 'Contours 10 cm', false, (v) => setLayer('relief-minor', v), 'Relief');
+    layer('relief-major', 'Contours 1 m', false, (v) => setLayer('relief-major', v), 'Relief');
+    layer('relief-labels', 'Contour labels', false, (v) => setLayer('relief-labels', v), 'Relief');
+    layer('relief-grid', 'Relief grid', false, (v) => setLayer('relief-grid', v), 'Relief');
+  }
+
+  const SETTINGS_KEY = 'houseplan-settings';
+  let saved = (() => {
+    try {
+      const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');
+      return s?.layers && typeof s.layers === 'object' ? s.layers : null;
+    } catch (err) { return null; }
+  })();
+  const savedOr = (L) => (typeof saved?.[L.id] === 'boolean' ? saved[L.id] : L.def);
+  for (const L of LAYERS) L.on = savedOr(L);
+
+  /* The checkboxes, in their sections. */
+  const layersList = $('layers');
+  let section = null;
+  for (const L of LAYERS) {
+    if (L.section !== section) {
+      section = L.section;
+      const head = document.createElement('li');
+      head.className = 'layers-head';
+      head.dataset.i18n = section;
+      head.textContent = t(section);
+      layersList.appendChild(head);
+    }
+    const li = document.createElement('li');
+    li.className = 'layer';
+    if (L.color) li.style.setProperty('--c', L.color);
+    const lab = document.createElement('label');
+    lab.className = 'check';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    const span = document.createElement('span');
+    span.dataset.i18n = L.name;
+    span.textContent = t(L.name);
+    lab.append(cb, span);
+    li.appendChild(lab);
+    layersList.appendChild(li);
+    L.checkbox = cb;
+    cb.addEventListener('change', () => setLayerOn(L, cb.checked));
+  }
+  const layersAll = $('layers-all');
+  const layersSave = $('layers-save');
+
+  /* The bottom bar's buttons and the legend's chips. */
+  for (const [id, key] of [['t-faces', 'faces'], ['t-floors', 'floors'], ['t-dots', 'dots'], ['t-grid', 'grid']]) {
+    const L = LAYERS.find((l) => l.id === key);
+    L.btn = $(id);
+    L.btn.addEventListener('click', () => setLayerOn(L, !L.on));
+  }
+  for (const L of LAYERS) {
+    if (!L.id.startsWith('group:')) continue;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.style.setProperty('--c', L.color);
+    chip.dataset.name = L.name;
+    chip.innerHTML = `<i></i>${t(L.name)}`;
+    chip.addEventListener('click', () => setLayerOn(L, !L.on));
+    legend.appendChild(chip);
+    L.chip = chip;
+  }
+
+  function paintLayers() {
+    for (const L of LAYERS) {
+      L.checkbox.checked = L.on;
+      if (L.btn) L.btn.classList.toggle('is-on', L.on);
+      if (L.chip) L.chip.classList.toggle('is-off', !L.on);
+    }
+    const on = LAYERS.filter((L) => L.on).length;
+    layersAll.checked = on === LAYERS.length;
+    layersAll.indeterminate = on > 0 && on < LAYERS.length;
+    layersSave.disabled = LAYERS.every((L) => L.on === savedOr(L));
+  }
+  function setLayerOn(L, v) {
+    L.on = v;
+    L.apply(v);
+    paintLayers();
+  }
+  /* All: on if any is off, else off. */
+  layersAll.addEventListener('change', () => {
+    const v = !LAYERS.every((L) => L.on);
+    for (const L of LAYERS) { L.on = v; L.apply(v); }
+    paintLayers();
+  });
+  $('layers-reset').addEventListener('click', () => {
+    for (const L of LAYERS) { L.on = L.def; L.apply(L.def); }
+    paintLayers();
+  });
+  layersSave.addEventListener('click', () => {
+    saved = Object.fromEntries(LAYERS.map((L) => [L.id, L.on]));
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ layers: saved })); } catch (err) { /* private mode */ }
+    paintLayers();
+  });
+  for (const L of LAYERS) L.apply(L.on);
+  paintLayers();
 
   const toggle = (id, key, apply) => {
     const btn = $(id);
@@ -753,10 +1253,6 @@ async function boot() {
     apply(state[key]);
     btn.classList.toggle('is-on', state[key]);
   };
-  toggle('t-faces', 'faces', (v) => setLayer('faces', v));
-  toggle('t-floors', 'floors', (v) => setLayer('floors', v));
-  toggle('t-dots', 'dots', (v) => setLayer('dots', v));
-  toggle('t-grid', 'grid', (v) => { ground.visible = v; });
   toggle('t-spin', 'spin', (v) => { controls.autoRotate = v; });
 
   /* ── tap an object for its dimensions ───────────────── */
@@ -980,6 +1476,7 @@ async function boot() {
     for (const chip of legend.children) chip.innerHTML = `<i></i>${t(chip.dataset.name)}`;
     for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.classList.toggle('is-on', b.dataset.lang === LANG);
     setMode(state.mode);
+    paintReliefLabels();
     if (selected) { const o = selected; select(null); select(o); }
   }
   for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.addEventListener('click', () => {
@@ -1121,7 +1618,7 @@ function dotTexture(THREE) {
 }
 
 /* A dimension's label: the text on a dark pill, sized to fit it. */
-function labelTexture(THREE, text) {
+function labelTexture(THREE, text, ink = '#fff3b0') {
   const h = 96, pad = 28;
   const c = document.createElement('canvas');
   const g = c.getContext('2d');
@@ -1134,10 +1631,12 @@ function labelTexture(THREE, text) {
   g.beginPath();
   if (g.roundRect) g.roundRect(2, 8, w - 4, h - 16, (h - 16) / 2); else g.rect(2, 8, w - 4, h - 16);
   g.fill();
-  g.strokeStyle = 'rgba(255, 243, 176, 0.55)';
+  g.strokeStyle = ink;
+  g.globalAlpha = 0.55;
   g.lineWidth = 3;
   g.stroke();
-  g.fillStyle = '#fff3b0';
+  g.globalAlpha = 1;
+  g.fillStyle = ink;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText(text, w / 2, h / 2 + 2);

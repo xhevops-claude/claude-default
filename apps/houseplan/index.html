@@ -34,7 +34,7 @@
     }
     @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=f5a2e33" />
+  <link rel="stylesheet" href="styles.css?v=2811590" />
   <script type="importmap">
   {
     "imports": {
@@ -70,13 +70,25 @@
       <button type="button" class="ghost" id="quit" aria-label="Quit">&#10005;</button>
     </header>
 
-    <!-- Settings: how the view moves, and the language. Opened by the gear. -->
+    <!-- Settings: which layers show, how the view moves, and the language.
+         Opened by the gear. The layer rows are filled in by app.js. -->
     <div class="sheet" id="settings" hidden>
       <div class="sheet-backdrop" id="settings-backdrop"></div>
       <div class="sheet-panel" role="dialog" aria-labelledby="settings-title">
         <div class="sheet-head">
           <span class="sheet-title" id="settings-title" data-i18n="Settings">Settings</span>
           <button type="button" class="ghost" id="settings-close" data-i18n="Close">Close</button>
+        </div>
+        <div class="setting">
+          <div class="setting-label" data-i18n="Layers">Layers</div>
+          <div class="setting-row">
+            <label class="check check--all"><input type="checkbox" id="layers-all" /><span data-i18n="All layers">All layers</span></label>
+            <span class="setting-actions">
+              <button type="button" class="ghost" id="layers-save" data-i18n="Save" disabled>Save</button>
+              <button type="button" class="ghost" id="layers-reset" data-i18n="Reset">Reset</button>
+            </span>
+          </div>
+          <ul class="layers" id="layers"></ul>
         </div>
         <div class="setting">
           <div class="setting-label" data-i18n="Navigation">Navigation</div>
@@ -113,7 +125,8 @@
     </footer>
   </main>
 
-  <script src="plan.js?v=f5a2e33"></script>
-  <script type="module" src="app.js?v=f5a2e33"></script>
+  <script src="plan.js?v=2811590"></script>
+  <script src="relief.js?v=2811590"></script>
+  <script type="module" src="app.js?v=2811590"></script>
 </body>
 </html>
