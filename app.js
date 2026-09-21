@@ -124,6 +124,14 @@
       url: 'apps/houseplan/',
     },
     {
+      slug: 'deluxe',
+      name: 'Deluxe',
+      meta: 'Wireframe',
+      tagline: 'A second plan, from the first.',
+      icon: '🏡',
+      url: 'apps/deluxe/',
+    },
+    {
       slug: 'directions',
       name: 'Directions',
       meta: 'Coming soon',
