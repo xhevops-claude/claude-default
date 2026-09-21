@@ -902,6 +902,21 @@ async function boot() {
       }
       return inn;
     };
+    /* Inside the ring, or within `m` of its edge: a pit is dug a working
+       margin wider than what stands in it, and that margin is at least
+       a cell, so the surface's step from cut to uncut falls outside the
+       walls instead of ramping through the basement. */
+    const nearRing = (ring, x, z, m) => {
+      if (inRing(ring, x, z)) return true;
+      if (!m) return false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [ax, az] = ring[j], [bx, bz] = ring[i];
+        const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+        const u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
+        if (Math.hypot(x - ax - u * dx, z - az - u * dz) <= m) return true;
+      }
+      return false;
+    };
     const EXC = [];
     for (const b of PLAN.buildings || []) {
       if (!b.floors?.length) continue;
@@ -922,6 +937,7 @@ async function boot() {
     for (const F of R.fields) {
       const [nx, ny] = F.size;
       const W = Array.from(F.heights);
+      const cellM = Math.sqrt(Math.abs(F.u[0] * F.v[1] - F.u[1] * F.v[0]));
       if (EXC.length) {
         for (let j = 0; j < ny; j++) {
           for (let i = 0; i < nx; i++) {
@@ -930,7 +946,7 @@ async function boot() {
             const [X, Y] = surveyOf(F, i, j);
             const [x, , z] = toModel(X, Y, W[k]);
             for (const c of EXC) {
-              if (!inRing(c.ring, x, z)) continue;
+              if (!nearRing(c.ring, x, z, c.margin ?? Math.max(cellM, 0.5))) continue;
               const cut = c.depth != null ? W[k] - c.depth : c.level + R.datum;
               if (cut < W[k]) W[k] = cut;
             }
@@ -1117,13 +1133,14 @@ async function boot() {
       let vol = 0, deep = 0;
       for (const f of fields) {
         const cell = Math.abs(f.F.u[0] * f.F.v[1] - f.F.u[1] * f.F.v[0]);
+        const m = c.margin ?? Math.max(Math.sqrt(cell), 0.5);
         for (let j = 0; j < f.ny; j++) {
           for (let i = 0; i < f.nx; i++) {
             const k = j * f.nx + i, h0 = f.F.heights[k];
             if (h0 == null) continue;
             const [X, Y] = surveyOf(f.F, i, j);
             const [x, , z] = toModel(X, Y, h0);
-            if (!inRing(c.ring, x, z)) continue;
+            if (!nearRing(c.ring, x, z, m)) continue;
             const d = h0 - R.datum - floorAt(x, z);
             if (d > 0) { vol += d * cell; deep = Math.max(deep, d); }
           }

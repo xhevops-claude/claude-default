@@ -654,7 +654,8 @@ window.HOUSE_PLAN = {
   /* Cuts into the surveyed ground beyond what the buildings need — the
    * viewer digs those out itself. Each is a ring in plan, [x, z], and
    * either a `level` (the y the ground is taken down to) or a `depth`
-   * below the ground as found. Nothing yet; for later, e.g.
+   * below the ground as found, and optionally a `margin` dug wider than
+   * the ring (a cell, at least 0.5 m, unless said). Nothing yet; for later, e.g.
    *   { id: 'path', name: 'Path to the garden', depth: 0.3, ring: [[…], …] } */
   excavations: [],
 
