@@ -37,7 +37,7 @@ paintHeader();
 
 /* ── scene ────────────────────────────────────────────── */
 
-const state = { spin: false, mode: 'object' };
+const state = { spin: false, mode: 'object', fs: 0 };
 
 boot();
 
@@ -92,13 +92,16 @@ async function boot() {
   /* `color` overrides the group's; `opacity` is the glass's — 0.05 for
      a wireframe's whisper of a face, more for a building whose walls
      should read as walls. */
-  function makeObject({ id, name, group, color = null, opacity = 0.05 }) {
+  /* `parent` and `short` are for the dock's tree: a floor lists under
+     its building by its short name. `hidden` is the object's own switch
+     there, on top of its group's. */
+  function makeObject({ id, name, group, color = null, opacity = 0.05, parent = null, short = null }) {
     const col = new THREE.Color(color || GROUPS[group]?.color || '#8fd8ff');
     const node = new THREE.Group();
     node.name = id;
     node.userData = { id, name, group };
     const o = {
-      id, name, group, node, col, dotPos: [], opacity,
+      id, name, group, node, col, dotPos: [], opacity, parent, short: short || name, hidden: false,
       glass: new THREE.MeshBasicMaterial({
         color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity,
         side: THREE.DoubleSide, depthWrite: false,
@@ -467,7 +470,7 @@ async function boot() {
   const shades = ['#8fd8ff', '#ffd27a', '#b9a3ff', '#7ee8c9', '#ff9db4', '#c8d6e5'];
   (PLAN.buildings || []).forEach((b, bi) => {
     for (const f of b.floors) {
-      const o = makeObject({ id: `${b.id}-${f.id}`, name: `${b.name} · ${f.name}`, group: b.group || 'house', color: b.color || shades[bi % shades.length], opacity: 0.3 });
+      const o = makeObject({ id: `${b.id}-${f.id}`, name: `${b.name} · ${f.name}`, group: b.group || 'house', color: b.color || shades[bi % shades.length], opacity: 0.3, parent: { id: b.id, name: b.name }, short: f.name });
       prism(o, f.ring, f.elevation - SLAB, f.elevation + f.height);
       /* the floor's level, in the header's frame, as a dimension on it */
       o.dims.push({ a: [f.ring[0][0], f.elevation, f.ring[0][1]], b: [f.ring[1][0], f.elevation, f.ring[1][1]], label: `${t('floor')} ${fmt(f.elevation)} · ${fmt(f.elevation + (PLAN.datum || 0))} m` });
@@ -979,7 +982,7 @@ async function boot() {
   if (TER) layer('grid', 'Ground grid', true, (v) => { ground.visible = v; }, 'Drawing');
   for (const [key, g] of Object.entries(GROUPS)) {
     if (!objects.some((o) => o.group === key)) continue;
-    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v; }, 'Objects', { color: g.color });
+    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v && !o.hidden; }, 'Objects', { color: g.color });
   }
   if (reliefLabels.length || objects.some((o) => o.id === 'relief')) {
     /* The surface alone by default; the rest is there to switch on. */
@@ -1003,36 +1006,133 @@ async function boot() {
   const savedOr = (L) => (typeof saved?.[L.id] === 'boolean' ? saved[L.id] : L.def);
   for (const L of LAYERS) L.on = savedOr(L);
 
-  /* The checkboxes, in their sections. */
-  const layersList = $('layers');
+  /* ── the dock's tree ────────────────────────────────── */
+
+  /* Section by section: a layer is a row with a checkbox; an object
+     group's row opens to its objects (a building's floors under the
+     building), each with its own checkbox and a name that, tapped,
+     selects it and flies the camera to it. */
+  const tree = $('tree');
+  const treeRows = new Map();
+  const row = ({ name, color = null, kids = false, onName = null }) => {
+    const li = document.createElement('li');
+    li.className = 'tnode';
+    const r = document.createElement('div');
+    r.className = 'trow';
+    if (color) r.style.setProperty('--c', color);
+    const tw = document.createElement('button');
+    tw.type = 'button';
+    tw.className = `tw${kids ? '' : ' is-leaf'}`;
+    tw.tabIndex = kids ? 0 : -1;
+    const open = () => li.classList.toggle('is-open');
+    if (kids) tw.addEventListener('click', open);
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    const nm = document.createElement(onName || kids ? 'button' : 'span');
+    nm.className = 'tname';
+    if (onName || kids) { nm.type = 'button'; nm.addEventListener('click', onName || open); }
+    nm.dataset.i18n = name;
+    nm.textContent = t(name);
+    r.append(tw, cb, nm);
+    li.appendChild(r);
+    let ul = null;
+    if (kids) { ul = document.createElement('ul'); li.appendChild(ul); }
+    return { li, row: r, cb, ul };
+  };
+  const groupOn = (o) => LAYERS.find((L) => L.id === `group:${o.group}`)?.on ?? true;
+  const objectRows = [];
+  function showObject(o, v) {
+    o.hidden = !v;
+    o.node.visible = groupOn(o) && v;
+    if (!v && selected === o) select(null);
+    paintObjectRows();
+  }
+  function paintObjectRows() {
+    for (const { o, kids, cb, row: r } of objectRows) {
+      if (o) { cb.checked = !o.hidden; r.classList.toggle('is-hidden', o.hidden); continue; }
+      const on = kids.filter((k) => !k.hidden).length;
+      cb.checked = on === kids.length;
+      cb.indeterminate = on > 0 && on < kids.length;
+      r.classList.toggle('is-hidden', on === 0);
+    }
+  }
+  const objectRow = (ul, o) => {
+    const r = row({ name: o.short, onName: () => goTo([o]) });
+    r.cb.addEventListener('change', () => showObject(o, r.cb.checked));
+    ul.appendChild(r.li);
+    objectRows.push({ o, cb: r.cb, row: r.row });
+    treeRows.set(o.id, r);
+  };
   let section = null;
   for (const L of LAYERS) {
     if (L.section !== section) {
       section = L.section;
       const head = document.createElement('li');
-      head.className = 'layers-head';
+      head.className = 'tree-head';
       head.dataset.i18n = section;
       head.textContent = t(section);
-      layersList.appendChild(head);
+      tree.appendChild(head);
     }
-    const li = document.createElement('li');
-    li.className = 'layer';
-    if (L.color) li.style.setProperty('--c', L.color);
-    const lab = document.createElement('label');
-    lab.className = 'check';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    const span = document.createElement('span');
-    span.dataset.i18n = L.name;
-    span.textContent = t(L.name);
-    lab.append(cb, span);
-    li.appendChild(lab);
-    layersList.appendChild(li);
-    L.checkbox = cb;
-    cb.addEventListener('change', () => setLayerOn(L, cb.checked));
+    const members = L.id.startsWith('group:') ? objects.filter((o) => o.group === L.id.slice(6)) : [];
+    /* One object standing for its whole group (the relief) needs no
+       row of its own. */
+    const listed = members.length === 1 && members[0].id === members[0].group ? [] : members;
+    const r = row({ name: L.name, color: L.color, kids: listed.length > 0 });
+    L.checkbox = r.cb;
+    r.cb.addEventListener('change', () => setLayerOn(L, r.cb.checked));
+    tree.appendChild(r.li);
+    const parents = new Map();
+    for (const o of listed) {
+      if (!o.parent) { objectRow(r.ul, o); continue; }
+      let p = parents.get(o.parent.id);
+      if (!p) {
+        const kids = listed.filter((k) => k.parent?.id === o.parent.id);
+        p = row({ name: o.parent.name, kids: true, onName: () => goTo(kids) });
+        p.cb.addEventListener('change', () => { for (const k of kids) { k.hidden = !p.cb.checked; k.node.visible = groupOn(k) && !k.hidden; } if (!p.cb.checked && kids.includes(selected)) select(null); paintObjectRows(); });
+        r.ul.appendChild(p.li);
+        objectRows.push({ kids, cb: p.cb, row: p.row });
+        parents.set(o.parent.id, p);
+      }
+      objectRow(p.ul, o);
+    }
+  }
+  paintObjectRows();
+  /* The selected object's row lit, its branch opened and scrolled to. */
+  function paintTreeSel() {
+    for (const [id, r] of treeRows) r.row.classList.toggle('is-sel', selected?.id === id);
+    const r = selected && treeRows.get(selected.id);
+    if (!r) return;
+    for (let n = r.li.parentElement; n && n !== tree; n = n.parentElement) if (n.classList.contains('tnode')) n.classList.add('is-open');
+    r.row.scrollIntoView({ block: 'nearest' });
+  }
+  /* Tapped in the tree: selected, and flown to; on a phone held upright
+     the dock lies over the scene, so it folds away to show the flight. */
+  function goTo(list) {
+    if (list.length === 1 && selected !== list[0]) select(list[0]);
+    flyTo(list);
+    if (portrait()) setDock(false);
   }
   const layersAll = $('layers-all');
   const layersSave = $('layers-save');
+
+  /* The dock folds to a rail and back; the choice is kept on the device,
+     except upright on a phone, where it always starts folded. */
+  const dock = $('dock-left'), rail = $('dock-left-open');
+  const DOCK_KEY = 'planner-dock';
+  const portrait = () => window.matchMedia('(orientation: portrait) and (max-width: 700px)').matches;
+  let dockOpen = (() => {
+    if (portrait()) return false;
+    try { return localStorage.getItem(DOCK_KEY) !== 'closed'; } catch (err) { return true; }
+  })();
+  function setDock(open, remember = false) {
+    dockOpen = open;
+    dock.hidden = !open;
+    rail.hidden = open;
+    if (remember && !portrait()) { try { localStorage.setItem(DOCK_KEY, open ? 'open' : 'closed'); } catch (err) { /* private mode */ } }
+  }
+  $('dock-left-fold').addEventListener('click', () => setDock(false, true));
+  rail.addEventListener('click', () => setDock(true, true));
+  setDock(dockOpen);
 
   /* The bottom bar's buttons and the legend's chips. */
   for (const [id, key] of [['t-faces', 'faces'], ['t-floors', 'floors'], ['t-dots', 'dots'], ['t-grid', 'grid']]) {
@@ -1142,6 +1242,7 @@ async function boot() {
     labels.length = 0;
     selected = o && o !== selected ? o : null;
     $('wf-sel').textContent = selected ? t(selected.name) : '';
+    paintTreeSel();
     if (!selected) return;
     paintSelection(selected, true);
     for (const d of selected.dims || []) {
@@ -1321,6 +1422,8 @@ async function boot() {
     paintHeader();
     for (const chip of legend.children) chip.innerHTML = `<i></i>${t(chip.dataset.name)}`;
     for (const b of document.querySelectorAll('#seg-lang .seg-btn')) b.classList.toggle('is-on', b.dataset.lang === LANG);
+    for (const [id, key] of [['dock-left-fold', 'Collapse'], ['dock-left-open', 'Expand'], ['fs-exit', 'Exit full screen'], ['settings-open', 'Settings']]) { $(id).title = t(key); $(id).setAttribute('aria-label', t(key)); }
+    paintFS();
     setMode(state.mode);
     paintReliefLabels();
     if (selected) { const o = selected; select(null); select(o); }
@@ -1385,6 +1488,62 @@ async function boot() {
     };
   }
 
+  /* Fly to one object or several (a building's floors): the camera keeps
+     its bearing and glides in until the whole of it fills the view,
+     the orbit centred on it. As the camera it turns to face it too. */
+  const flyBox = new THREE.Box3();
+  function flyTo(list) {
+    flyBox.makeEmpty();
+    for (const o of list) flyBox.expandByObject(o.node);
+    if (flyBox.isEmpty()) return;
+    if (state.spin) $('t-spin').click();
+    const c = flyBox.getCenter(new THREE.Vector3());
+    const r = Math.max(0.6, flyBox.getSize(new THREE.Vector3()).length() / 2);
+    const dist = Math.max(controls.minDistance + 0.5, (r / Math.sin((camera.fov * Math.PI) / 360)) * 1.15);
+    const dir = state.mode === 'object'
+      ? camera.position.clone().sub(controls.target)
+      : new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+    if (dir.lengthSq() < 1e-6) dir.set(0.75, 0.42, 1);
+    dir.normalize();
+    /* never from below the ground, and a little above at the least */
+    if (dir.y < 0.2) { dir.y = 0.2; dir.normalize(); }
+    const to = c.clone().addScaledVector(dir, dist);
+    camera.up.set(0, 1, 0);
+    tween = { from: camera.position.clone(), to, tFrom: controls.target.clone(), tTo: c, t0: performance.now(), ms: 520 };
+    if (state.mode === 'camera') {
+      const m = new THREE.Matrix4().lookAt(to, c, camera.up);
+      turn = { from: camera.quaternion.clone(), to: new THREE.Quaternion().setFromRotationMatrix(m), t0: performance.now(), ms: 520 };
+    }
+  }
+
+  /* ── full screen, in two steps ──────────────────────── */
+
+  /* The first press asks the browser for the whole screen and keeps the
+     bars and the dock; the second hides those too, so the scene has
+     everything, with one small button (or Escape) to come back; the
+     third, or leaving full screen any other way, puts it all back. */
+  const FS = document.documentElement;
+  const isFS = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  function paintFS() {
+    document.body.classList.toggle('fs-1', state.fs === 1);
+    document.body.classList.toggle('fs-2', state.fs === 2);
+    const label = t(['Full screen', 'Scene only', 'Exit full screen'][state.fs]);
+    $('fs').title = label;
+    $('fs').setAttribute('aria-label', label);
+  }
+  function setFS(stage) {
+    state.fs = stage;
+    try {
+      if (stage > 0 && !isFS()) (FS.requestFullscreen || FS.webkitRequestFullscreen)?.call(FS)?.catch?.(() => {});
+      if (stage === 0 && isFS()) (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)?.catch?.(() => {});
+    } catch (err) { /* no full screen here (an iPhone): the stages still fold the chrome */ }
+    paintFS();
+  }
+  $('fs').addEventListener('click', () => setFS((state.fs + 1) % 3));
+  $('fs-exit').addEventListener('click', () => setFS(0));
+  for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(ev, () => { if (!isFS() && state.fs) setFS(0); });
+  window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && state.fs === 2) setFS(0); });
+
   /* Where on the canvas the gizmo pass draws. Taken from the hit box so
      the two can never drift apart. setViewport counts y from the bottom. */
   const gz = { x: 0, y: 0, s: 0 };
@@ -1408,7 +1567,7 @@ async function boot() {
   fit();
 
   /* For scripts that drive the view — screenshots of a corner, say. */
-  window.houseWire = { THREE, camera, controls, objects, fit, select };
+  window.houseWire = { THREE, camera, controls, objects, fit, select, flyTo, setFS, setDock };
 
   renderer.autoClear = false;
 
@@ -1416,13 +1575,14 @@ async function boot() {
     requestAnimationFrame(loop);
 
     if (tween) {
-      const k = Math.min(1, (performance.now() - tween.t0) / 380);
+      const k = Math.min(1, (performance.now() - tween.t0) / (tween.ms || 380));
       const ease = k < 0.5 ? 2 * k * k : 1 - ((-2 * k + 2) ** 2) / 2;
       camera.position.lerpVectors(tween.from, tween.to, ease);
+      if (tween.tTo) controls.target.lerpVectors(tween.tFrom, tween.tTo, ease);
       if (k >= 1) tween = null;
     }
     if (turn) {
-      const k = Math.min(1, (performance.now() - turn.t0) / 380);
+      const k = Math.min(1, (performance.now() - turn.t0) / (turn.ms || 380));
       const ease = k < 0.5 ? 2 * k * k : 1 - ((-2 * k + 2) ** 2) / 2;
       camera.quaternion.slerpQuaternions(turn.from, turn.to, ease);
       if (k >= 1) turn = null;
