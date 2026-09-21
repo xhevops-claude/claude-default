@@ -35,7 +35,7 @@ button { font-family: inherit; color: inherit; border: none; background: none; c
 .wf {
   position: fixed; inset: 0;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-rows: auto minmax(0, 1fr) auto;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
@@ -189,6 +189,23 @@ body.fs-2 .fs-exit { display: inline-flex; }
   z-index: 2;
 }
 .dock-rail[hidden] { display: none; }
+.dock--right { grid-column: 3; border-right: none; border-left: 1px solid var(--hud-edge); }
+.dock-rail--right { grid-column: 3; border-right: none; border-left: 1px solid var(--hud-edge); }
+/* Something is selected and the properties are folded: the rail says so. */
+.dock-rail.is-lit { color: #fff3b0; box-shadow: inset 3px 0 0 #fff3b0; }
+
+/* The properties: the object's name, then label / value rows, its
+   dimensions as the scene labels them, and what can be done with it. */
+.props { padding: 4px 12px 12px; font-size: 12px; }
+.props-empty { margin: 8px 0; color: var(--dim); line-height: 1.4; }
+.props-name { margin: 4px 0 10px; font-size: 13px; font-weight: 700; color: #fff3b0; line-height: 1.3; }
+.props-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px solid rgba(143, 216, 255, 0.1); }
+.props-row b { flex: 0 0 auto; font-weight: 600; color: var(--dim); letter-spacing: 0.02em; }
+.props-row span { text-align: right; font-variant-numeric: tabular-nums; color: var(--line); word-break: break-word; }
+.props-sub { margin: 10px 0 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+.props-dims { list-style: none; margin: 0; padding: 0; }
+.props-dims li { padding: 3px 0; color: #fff3b0; font-variant-numeric: tabular-nums; }
+.props-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 
 .setting-actions { display: inline-flex; gap: 6px; }
 .setting-actions .ghost { padding: 5px 10px; font-size: 11px; }
@@ -365,6 +382,7 @@ body.fs-2 .gizmo-hit { top: calc(var(--gizmo-inset) + env(safe-area-inset-top));
     width: min(var(--dock-w), 80vw);
     box-shadow: 12px 0 40px rgba(0, 0, 0, 0.6);
   }
+  .dock--right { left: auto; right: 0; box-shadow: -12px 0 40px rgba(0, 0, 0, 0.6); }
 }
 
 /* ── launcher ─────────────────────────────────────────── */

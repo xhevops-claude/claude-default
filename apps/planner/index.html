@@ -101,6 +101,17 @@
     </aside>
     <button type="button" class="dock-rail" id="dock-left-open" aria-label="Expand" title="Expand" hidden>&#8250;</button>
 
+    <!-- The right dock: the tapped object's properties. Folded until
+         asked for; its rail lights up while something is selected. -->
+    <aside class="dock dock--right" id="dock-right" hidden>
+      <div class="dock-head">
+        <span class="dock-title" data-i18n="Properties">Properties</span>
+        <button type="button" class="ghost ghost--icon dock-fold" id="dock-right-fold" aria-label="Collapse" title="Collapse">&#8250;</button>
+      </div>
+      <div class="dock-body props" id="props"></div>
+    </aside>
+    <button type="button" class="dock-rail dock-rail--right" id="dock-right-open" aria-label="Expand" title="Expand">&#8249;</button>
+
     <div class="stage" id="stage">
       <div class="canvas-host" id="canvas-host"></div>
       <div class="fail" id="fail" hidden>
@@ -150,8 +161,10 @@
       <nav class="bar-row legend" id="legend" aria-label="Object groups"></nav>
       <div class="bar-row">
         <button type="button" class="ghost" id="fit" data-i18n="Fit">Fit</button>
-        <button type="button" class="ghost is-on" id="t-faces" data-i18n="Faces">Faces</button>
-        <button type="button" class="ghost is-on" id="t-floors" data-i18n="Floors">Floors</button>
+        <button type="button" class="ghost is-on" id="t-faces" data-i18n="Facade">Facade</button>
+        <button type="button" class="ghost is-on" id="t-interior" data-i18n="Interior floors">Interior floors</button>
+        <button type="button" class="ghost is-on" id="t-wire" data-i18n="Wireframe">Wireframe</button>
+        <button type="button" class="ghost is-on" id="t-floors" data-i18n="Floor lines">Floor lines</button>
         <button type="button" class="ghost is-on" id="t-dots" data-i18n="Dots">Dots</button>
         <button type="button" class="ghost is-on" id="t-grid" data-i18n="Ground">Ground</button>
         <button type="button" class="ghost" id="t-spin" data-i18n="Spin">Spin</button>
