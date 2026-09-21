@@ -56,7 +56,7 @@ const DE = {
   'Entrance mouth, wall': 'Einfahrtstrichter, Mauer',
   run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über', rise: 'Anstieg',
   Parcel: 'Parzelle', 'Parcel boundary, 705 m²': 'Parzellengrenze, 705 m²', 'Existing building': 'Bestandsgebäude',
-  Relief: 'Relief',
+  Relief: 'Relief', 'Nothing built yet': 'Noch nichts gebaut',
   Layers: 'Ebenen', 'All layers': 'Alle Ebenen', Save: 'Speichern', Reset: 'Zurücksetzen',
   Drawing: 'Zeichnung', Objects: 'Objekte', 'Ground grid': 'Bodenraster',
   'Relief points': 'Reliefpunkte', 'Relief surface': 'Reliefoberfläche', 'Contours 10 cm': 'Höhenlinien 10 cm',
@@ -137,6 +137,9 @@ for (const o of OUTLINES) for (const [x, y, z] of o.points) {
   BOX.z0 = Math.min(BOX.z0, z); BOX.z1 = Math.max(BOX.z1, z);
   BOX.y0 = Math.min(BOX.y0, y); BOX.y1 = Math.max(BOX.y1, y);
 }
+/* An empty plan still needs something to frame: a 10 m cube at the
+   origin, so the camera and the gizmo have somewhere to be. */
+if (!Number.isFinite(BOX.x0)) Object.assign(BOX, { x0: -5, x1: 5, y0: -5, y1: 5, z0: -5, z1: 5 });
 BOX.cx = (BOX.x0 + BOX.x1) / 2;
 BOX.cy = (BOX.y0 + BOX.y1) / 2;
 BOX.cz = (BOX.z0 + BOX.z1) / 2;
@@ -370,7 +373,7 @@ function paintHeader() {
   const num = (n) => (LANG === 'de' ? fmt(n).replace('.', ',') : fmt(n));
   if (!PLAN.levels?.length) {
     /* Nothing built yet: the site's own numbers instead. */
-    const site = PLAN.parcel ? `${t(PLAN.parcel.name)} · ${t('rise')} ${num(BOX.y1 - BOX.y0)} m` : '';
+    const site = PLAN.parcel ? `${t(PLAN.parcel.name)} · ${t('rise')} ${num(BOX.y1 - BOX.y0)} m` : t('Nothing built yet');
     $('wf-dims').textContent = site;
     return;
   }

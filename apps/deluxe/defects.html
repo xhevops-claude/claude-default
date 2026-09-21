@@ -74,48 +74,32 @@
   <main>
     <h1>Deluxe — defects</h1>
     <p class="lead">
-      Deluxe started as a clone of House Wire at PR #143 and diverges from there; this is its own list, numbered once and never renumbered.
-      World axes X east, Y up, Z south; metres. The site's frame is House Wire's: the road frontage along +Z at x 16, uphill into the parcel −X. There is no house in the plan yet.
+      Deluxe is a different house on a different site. The viewer is House Wire's as merged in PR #143; the plan starts empty and is built from the new documents — terrain, parcel, building — as they come.
+      World axes X east, Y up, Z south; metres.
       <a href="./">Back to the model</a>.
     </p>
 
     <h2>Objects and groups</h2>
-    <div class="legend">
-      <span class="chip" style="--c: #8fd8ff"><i></i>House — garage, ground, first</span>
-      <span class="chip" style="--c: #ff8c5a"><i></i>Cantilever — canopy</span>
-      <span class="chip" style="--c: #f5e663"><i></i>Driveway — apron, ramp (one slab from the apron to the road, fillet and mouth included)</span>
-      <span class="chip" style="--c: #d28cff"><i></i>Retaining walls — garage walls (south, west, north), outer wall, its taper, fillet wall, uphill wall, mouth wall</span>
-      <span class="chip" style="--c: #9aa4b2"><i></i>Road</span>
-      <span class="chip" style="--c: #ff4d3d"><i></i>Parcel — the surveyed boundary (705 m²) and the existing building</span>
-      <span class="chip" style="--c: #6fbf9a"><i></i>Relief — the surveyed ground as points, surface, contours, labels and lattice; each a layer in Settings</span>
-    </div>
+    <p class="lead">The palette is House Wire's — house, cantilever, driveway, retaining walls, road, parcel, relief — and nothing is in it yet.</p>
 
-    <h2>Rules agreed so far</h2>
+    <h2>Rules carried over</h2>
     <ol class="rules">
       <li><b>R1 — Levels are finished surfaces.</b> A number in a terrain profile is the surface you walk or drive on. A slab's top is that number; its underside is 20 cm below.</li>
       <li><b>R2 — Walls sit on the cut face, flush.</b> A wall beside a cut stands in the 30 cm the cut is widened by, on the hill side of the line, and every wall along one edge is one continuous line.</li>
       <li><b>R3 — Nothing overlaps.</b> A wall stops at a slab's underside; a slab stops at a wall's face. Two objects share a face, never a volume.</li>
       <li><b>R4 — Tangent joins.</b> Where an arc meets a straight, the arc's end is tangent to the straight.</li>
-      <li><b>R5 — One sampling.</b> Anything that follows the ramp — slabs, walls, the ground grid — is sampled at the same stations.</li>
+      <li><b>R5 — One sampling.</b> Anything that follows a ramp — slabs, walls, the ground grid — is sampled at the same stations.</li>
     </ol>
-
-    <h2>Inherited decisions</h2>
-    <ul class="decisions">
-      <li><b>D1:</b> the ramp starts at the house edge; the apron stays flat and whole.</li>
-      <li><b>D2:</b> the driveway climbs from the very entrance; no flat pad.</li>
-      <li><b>D3:</b> a road-level landing; the outer wall runs out where the slab meets the road.</li>
-      <li><b>D5:</b> the surveyed parcel and ground are the site; the synthetic hill is the model's terrain for now.</li>
-      <li><b>D6:</b> the house is turned 8.06° about its south-east corner to lie parallel to the north-east boundary, 1 m off it at the closest point.</li>
-      <li><b>Open from House Wire:</b> the grade (20 %, 25 % mid — D4 waiting) and the bare face along the apron's north edge (no wall yet).</li>
-    </ul>
 
     <h2>Defects</h2>
     <p class="lead">None yet — this list starts empty.</p>
 
+    <h2>Decisions</h2>
+    <p class="lead">None yet.</p>
+
     <h2>Done</h2>
     <ul class="done">
-      <li>Cloned from House Wire at PR #143.</li>
-      <li>The house, its walls, the driveway, the road and the synthetic terrain taken out: the site alone — parcel, existing building, relief.</li>
+      <li>Viewer cloned from House Wire at PR #143; the scene emptied — no terrain, parcel or building until the new documents are read.</li>
     </ul>
   </main>
 </body>
