@@ -22,6 +22,7 @@ window.HOUSE_PLAN = {
     cadastral: { name: 'Cadastre', color: '#9cff8a' },
     road: { name: 'Street', color: '#9aa4b2' },
     relief: { name: 'Relief', color: '#6fbf9a' },
+    excavation: { name: 'Excavation', color: '#c9a86a' },
   },
   /* The site boundary — the five DUP building parcels together — used
    * to mask the relief outside it and to label the contours. */
@@ -649,6 +650,13 @@ window.HOUSE_PLAN = {
       [  20.20,   47.58],
     ] },
   ],
+
+  /* Cuts into the surveyed ground beyond what the buildings need — the
+   * viewer digs those out itself. Each is a ring in plan, [x, z], and
+   * either a `level` (the y the ground is taken down to) or a `depth`
+   * below the ground as found. Nothing yet; for later, e.g.
+   *   { id: 'path', name: 'Path to the garden', depth: 0.3, ring: [[…], …] } */
+  excavations: [],
 
   levels: [],
   works: [],

@@ -103,6 +103,15 @@ fix.
 
 ## Done
 
+- The ground is worked, not redrawn: relief.js stays the untouched
+  survey; the viewer builds the terrain from it in order — original,
+  the objects' own excavation (the house's envelope to the garage slab's underside and the apron (marked `excavate`)), then any custom cuts listed in
+  plan.js under `excavations` (a ring with a `level` or a `depth`;
+  none yet) — and renders the result. Each excavation is an object in
+  the Excavation group with its depth and volume on tap, so moving a
+  building means recomputing, never touching the survey (branch,
+  unmerged).
+
 - Wireframe box, gizmo, 10 × 6 house, three levels, garage under a
   cantilever, site cascades, driveway cut, tapering wall, road, apron,
   corner fillet, eased grade, bell-mouth entrance — all on `main`.
