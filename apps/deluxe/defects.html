@@ -85,6 +85,7 @@
       <span class="chip" style="--c: #ff4d3d"><i></i>Parcels — the site boundary and the five DUP parcels</span>
       <span class="chip" style="--c: #9cff8a"><i></i>Cadastre — the survey's cadastral lines, draped</span>
       <span class="chip" style="--c: #9aa4b2"><i></i>Street — the DUP access street</span>
+      <span class="chip" style="--c: #c9a86a"><i></i>Excavation — one object per cut, depth and m³ on tap</span>
       <span class="chip" style="--c: #6fbf9a"><i></i>Relief — the surveyed ground</span>
     </div>
     <h2>Site facts</h2>
@@ -117,13 +118,20 @@
       <div class="body"><p><b>Wrong:</b> 10.20 m is the cornice height above the ground; the volumes take the mean ground under the outline, a rough reading on a 34 % slope.</p><p><b>Fix:</b> the DUP's own rule for the reference ground.</p></div>
     </section>
 
+    <section class="card" id="d4">
+      <div class="head"><span class="num">4</span><span class="title">Building 5 stands in the air on its downhill side</span><span class="where">parcel 2.77; buildings 1 and 4 less so</span><span class="status fixed">fixed</span></div>
+      <div class="body"><p><b>Wrong:</b> the lowest floor is at 298.45 m while the ground under the footprint falls from 300 m at the west wall to 294 m at the east: the west half is dug in, the east half stands 2–4 m in the air. The architect's own Objekt 5 profile shows the ground line passing under the building's east end, so it is in the design, not the placement.</p><p><b>Fix (D2):</b> buildings 1 and 5 one storey lower — the whole stack shifted 2.89 m down, no floor added. Now dug 5 m in at the uphill wall and 1.8 m clear at the downhill corner.</p></div>
+    </section>
+
     <h2>Decisions</h2>
     <ul class="decisions">
+      <li><b>D2 — decided:</b> buildings 1 and 5 (parcels 2.67.1 and 2.77) go one storey lower: their stack shifted 2.89 m down, no floor added. Lowest floor now 295.56 m; building 4 stays. The fill-or-walk-out question remains for what is left of the gap.</li>
       <li><b>D1 — decided:</b> the buildings' ±0.00 is 286.08 m a.s.l., from the profile drawing's slab lines, not the 288.97 a first reading of the BIMx stories suggested.</li>
     </ul>
 
     <h2>Done</h2>
     <ul class="done">
+      <li>The ground is worked, not redrawn: relief.js stays the untouched survey; the viewer digs what the objects need (each building's lowest floor to its slab's underside; the shared garage at −2.50 dominates, 10.6 m deep at the terrace), applies any custom cuts listed in plan.js under <code>excavations</code>, and renders the result. Each excavation is an object with its depth and volume on tap.</li>
       <li>Viewer cloned from House Wire at PR #143; the scene emptied — no terrain, parcel or building until the new documents are read.</li>
       <li>The Crniče site built from the documents: relief, the five DUP parcels and the access street, cadastral lines, buildable areas, and the six buildings floor by floor; the viewer gained polygon buildings, buildable-area volumes, draped lines and contour intervals set by the relief file.</li>
     </ul>
