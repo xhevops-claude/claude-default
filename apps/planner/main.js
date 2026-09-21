@@ -15,7 +15,7 @@ async function launcher() {
   let orgs = [];
   try { orgs = await registry(); } catch (err) { $('launcher-list').innerHTML = `<p class="launch-empty">${esc(t('The project list could not be loaded.'))}</p>`; hideLoader(); return; }
   let recent = [];
-  try { recent = JSON.parse(localStorage.getItem('wire-recent') || '[]'); } catch (err) { /* private mode */ }
+  try { recent = JSON.parse(localStorage.getItem('planner-recent') || '[]'); } catch (err) { /* private mode */ }
   const card = (org, p) => `
     <a class="launch-card" href="#/${esc(org.slug)}/${esc(p.slug)}" style="--c: ${esc(org.color || '#8fd8ff')}">
       <span class="launch-name">${esc(p.name)}</span>
@@ -55,7 +55,7 @@ if (r) {
 window.addEventListener('hashchange', () => location.reload());
 
 function recentPush(addr) {
-  const list = JSON.parse(localStorage.getItem('wire-recent') || '[]').filter((a) => a !== addr);
+  const list = JSON.parse(localStorage.getItem('planner-recent') || '[]').filter((a) => a !== addr);
   list.unshift(addr);
-  localStorage.setItem('wire-recent', JSON.stringify(list.slice(0, 6)));
+  localStorage.setItem('planner-recent', JSON.stringify(list.slice(0, 6)));
 }

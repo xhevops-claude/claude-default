@@ -993,7 +993,7 @@ async function boot() {
     layer('relief-grid', 'Relief grid', false, (v) => setLayer('relief-grid', v), 'Relief');
   }
 
-  const SETTINGS_KEY = `wire-settings:${PROJECT.org}/${PROJECT.slug}`;
+  const SETTINGS_KEY = `planner-settings:${PROJECT.org}/${PROJECT.slug}`;
   let saved = (() => {
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');

@@ -373,10 +373,10 @@ following the committed data when it changes. Only the user's own overrides go
 in there, never a figure from the vault. Reset in the scenario sheet puts
 everything but the currency back.
 
-## Wire (apps/wire/) — one viewer, many projects
+## Planner (apps/planner/) — one viewer, many projects
 
-Wire is the site-and-buildings wireframe viewer. It is software only; a
-project is data. The address picks the project: `apps/wire/#/<org>/<slug>`;
+Planner is the site-and-buildings viewer (it was called Wire for a day). It is software only; a
+project is data. The address picks the project: `apps/planner/#/<org>/<slug>`;
 with no project in the address the launcher shows the organizations and
 their projects. Changing the hash reloads the page (one scene at a time).
 
@@ -398,10 +398,10 @@ their projects. Changing the hash reloads the page (one scene at a time).
   settings, tap-to-measure, navigation), `i18n.js`, `textures.js`,
   `util.js`, `main.js` (launcher or viewer). Editing and export do not
   exist yet; every change is an edit to `scene.json` and a commit.
-- Layer sets are saved per project (`wire-settings:<org>/<slug>`), the
-  language once for all (`wire-lang`), recent projects in `wire-recent`.
-- The old `apps/houseplan/` and `apps/deluxe/` are gone from the source; on
-  `gh-pages` each holds only a redirect stub to its project (kept there by
+- Layer sets are saved per project (`planner-settings:<org>/<slug>`), the
+  language once for all (`planner-lang`), recent projects in `planner-recent`.
+- The old `apps/houseplan/`, `apps/deluxe/` and `apps/wire/` are gone from the
+  source; on `gh-pages` each holds only a redirect stub to its project (kept there by
   hand, since `keep_files` never deletes).
 - `package.json` has `"type": "module"` so CI's `node --check` parses
   the engine's `import`/`export`; every `.js` in the repo is parsed as a
