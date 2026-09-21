@@ -374,7 +374,9 @@ their projects. Changing the hash reloads the page (one scene at a time).
   exist yet; every change is an edit to `scene.json` and a commit.
 - Layer sets are saved per project (`wire-settings:<org>/<slug>`), the
   language once for all (`wire-lang`), recent projects in `wire-recent`.
-- `apps/houseplan/` and `apps/deluxe/` are redirects to their projects.
+- The old `apps/houseplan/` and `apps/deluxe/` are gone from the source; on
+  `gh-pages` each holds only a redirect stub to its project (kept there by
+  hand, since `keep_files` never deletes).
 - `package.json` has `"type": "module"` so CI's `node --check` parses
   the engine's `import`/`export`; every `.js` in the repo is parsed as a
   module now.
