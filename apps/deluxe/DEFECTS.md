@@ -80,19 +80,17 @@ that page in step with this one).
 |---|---|---|---|---|---|
 | 1 | Upper buildings' floor plates | The floor outlines are 189 / 147 / 81 m² against DUP footprints of 174 / 122 / 68 m²; the lower pair's 224 / 140 m² against 187 / 138 m². Balconies may explain part of it. | Check which outline the DUP measures (footprint at ground) against the plans; a compliance readout per parcel. | open | (120, 40, 90) → (45, 8, 32) |
 | 2 | Ground east of the 294 m contour | The survey draws no contours over the terrace and the bank down to the road; the relief there rests on 62 spot heights read by eye from the sheet. | The heights as text from `azurirana.dwg` (a DXF export would do), or the surveyor's point list. | open | (100, 20, 32) → (40, 10, 32) |
-| 4 | Building 5 (Objekt 5, parcel 2.77), downhill side; buildings 1 and 4 less so | The lowest floor is at 298.45 m while the ground under the footprint falls from 300 m at the west wall to 294 m at the east: the west half is dug in, the east half stands 2–4 m in the air. The architect's own Objekt 5 profile shows the ground line passing under the building's east end, so it is in the design, not the placement. | Decision D2. | open — decision D2 | (10, 16, 70) → (33, 12, 37) |
+| 4 | Building 5 (Objekt 5, parcel 2.77), downhill side; buildings 1 and 4 less so | The lowest floor is at 298.45 m while the ground under the footprint falls from 300 m at the west wall to 294 m at the east: the west half is dug in, the east half stands 2–4 m in the air. The architect's own Objekt 5 profile shows the ground line passing under the building's east end, so it is in the design, not the placement. | D2: buildings 1 and 5 one storey lower. Now dug 5.0 m at the uphill wall and 1.8 m in the air at the downhill corner. | fixed | (10, 16, 70) → (33, 12, 37) |
 | 3 | Buildable-area volumes | 10.20 m is the cornice height above the ground; the volumes take the mean ground under the outline, which on a 34 % slope is a rough reading. | The DUP's own rule for the reference ground. | open | — |
 
 ## Decisions
 
-- **D2 — waiting (with the architects):** what happens under the
-  downhill side of the upper buildings — fill and retain (the ground
-  built up to the basement level on the east, held by a wall; a fill
-  volume, a terrace), a walk-out basement (the exposed storey kept as
-  a face with openings), or the building lowered a storey (which moves
-  it against the street and the 10.20 m cornice rule). Whichever: the
-  ground pipeline gets a fill step beside the dig, with its m³, and the
-  retaining edge as a wall object.
+- **D2 — decided:** buildings 1 and 5 (parcels 2.67.1 and 2.77) go
+  one storey lower: their whole stack shifted 2.89 m down, no floor
+  added. Their lowest floor is now at 295.56 m — dug 5 m in at the
+  uphill wall, 1.8 m clear of the ground at the downhill corner.
+  Building 4 already sat on the ground and stays. The fill-or-walk-out
+  question remains for what is left of the gap.
 
 - **D1 — decided:** the buildings' ±0.00 is 286.08 m a.s.l., from the
   profile drawing's slab lines (six of the lower building's match), not
