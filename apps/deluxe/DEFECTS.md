@@ -52,6 +52,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | Parcels | red | the site boundary and the five DUP parcels, as ribbons |
 | Cadastre | green | the cadastral lines from the survey, draped |
 | Street | grey | the DUP access street parcel |
+| Excavation | sand | one object per building's cut, depth and m³ on tap |
 | Relief | green | the surveyed ground: points, surface, 1 m / 5 m contours, labels, lattice |
 
 ## Rules carried over
@@ -88,6 +89,15 @@ that page in step with this one).
   the 288.97 a first reading of the BIMx stories suggested.
 
 ## Done
+
+- The ground is worked, not redrawn: relief.js stays the untouched
+  survey; the viewer builds the terrain from it in order — original,
+  the objects' own excavation (each building's lowest floor to its
+  slab's underside; the shared garage at −2.50 dominates, 10.6 m deep
+  at the terrace), then any custom cuts listed in plan.js under
+  `excavations` (a ring with a `level` or a `depth`; none yet) — and
+  renders the result. Each excavation is an object in the Excavation
+  group with its depth and volume on tap (branch, unmerged).
 
 - Viewer cloned from House Wire at PR #143; the scene emptied — no
   terrain, parcel or building until the new documents are read (branch,

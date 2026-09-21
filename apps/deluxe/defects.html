@@ -85,6 +85,7 @@
       <span class="chip" style="--c: #ff4d3d"><i></i>Parcels — the site boundary and the five DUP parcels</span>
       <span class="chip" style="--c: #9cff8a"><i></i>Cadastre — the survey's cadastral lines, draped</span>
       <span class="chip" style="--c: #9aa4b2"><i></i>Street — the DUP access street</span>
+      <span class="chip" style="--c: #c9a86a"><i></i>Excavation — one object per cut, depth and m³ on tap</span>
       <span class="chip" style="--c: #6fbf9a"><i></i>Relief — the surveyed ground</span>
     </div>
     <h2>Site facts</h2>
@@ -124,6 +125,7 @@
 
     <h2>Done</h2>
     <ul class="done">
+      <li>The ground is worked, not redrawn: relief.js stays the untouched survey; the viewer digs what the objects need (each building's lowest floor to its slab's underside; the shared garage at −2.50 dominates, 10.6 m deep at the terrace), applies any custom cuts listed in plan.js under <code>excavations</code>, and renders the result. Each excavation is an object with its depth and volume on tap.</li>
       <li>Viewer cloned from House Wire at PR #143; the scene emptied — no terrain, parcel or building until the new documents are read.</li>
       <li>The Crniče site built from the documents: relief, the five DUP parcels and the access street, cadastral lines, buildable areas, and the six buildings floor by floor; the viewer gained polygon buildings, buildable-area volumes, draped lines and contour intervals set by the relief file.</li>
     </ul>
