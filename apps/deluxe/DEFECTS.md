@@ -80,7 +80,7 @@ that page in step with this one).
 |---|---|---|---|---|---|
 | 1 | Upper buildings' floor plates | The floor outlines are 189 / 147 / 81 m² against DUP footprints of 174 / 122 / 68 m²; the lower pair's 224 / 140 m² against 187 / 138 m². Balconies may explain part of it. | Check which outline the DUP measures (footprint at ground) against the plans; a compliance readout per parcel. | open | (120, 40, 90) → (45, 8, 32) |
 | 2 | Ground east of the 294 m contour | The survey draws no contours over the terrace and the bank down to the road; the relief there rests on 62 spot heights read by eye from the sheet. | The heights as text from `azurirana.dwg` (a DXF export would do), or the surveyor's point list. | open | (100, 20, 32) → (40, 10, 32) |
-| 4 | Building 5 (Objekt 5, parcel 2.77), downhill side; buildings 1 and 4 less so | The lowest floor is at 298.45 m while the ground under the footprint falls from 300 m at the west wall to 294 m at the east: the west half is dug in, the east half stands 2–4 m in the air. The architect's own Objekt 5 profile shows the ground line passing under the building's east end, so it is in the design, not the placement. | D2: buildings 1 and 5 one storey lower. Now dug 5.0 m at the uphill wall and 1.8 m in the air at the downhill corner. | fixed | (10, 16, 70) → (33, 12, 37) |
+| 4 | Building 5 (Objekt 5, parcel 2.77), downhill side; buildings 1 and 4 less so | The lowest floor is at 298.45 m while the ground under the footprint falls from 300 m at the west wall to 294 m at the east: the west half is dug in, the east half stands 2–4 m in the air. The architect's own Objekt 5 profile shows the ground line passing under the building's east end, so it is in the design, not the placement. | D2: buildings 1 and 5 one storey lower. Now dug 5.0 m at the uphill wall and 1.8 m in the air at the downhill corner. | shipped | (10, 16, 70) → (33, 12, 37) |
 | 3 | Buildable-area volumes | 10.20 m is the cornice height above the ground; the volumes take the mean ground under the outline, which on a 34 % slope is a rough reading. | The DUP's own rule for the reference ground. | open | — |
 
 ## Decisions
@@ -105,7 +105,7 @@ that page in step with this one).
   at the terrace), then any custom cuts listed in plan.js under
   `excavations` (a ring with a `level` or a `depth`; none yet) — and
   renders the result. Each excavation is an object in the Excavation
-  group with its depth and volume on tap (branch, unmerged).
+  group with its depth and volume on tap (shipped, PR #145).
 
 - Viewer cloned from House Wire at PR #143; the scene emptied — no
   terrain, parcel or building until the new documents are read (branch,
