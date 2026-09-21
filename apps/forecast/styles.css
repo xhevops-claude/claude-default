@@ -127,6 +127,29 @@ body.sheet-open { overflow: hidden; }
   margin: 10px 0 0;
 }
 
+/* Guest mode: the same shape as Unlock, quieter, so it reads as the second choice. */
+.lock-guest {
+  width: 100%;
+  margin-top: 8px;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lock-guest:active { background: rgba(255, 255, 255, 0.12); }
+
+.lock-guest-note {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
 /* The way out for someone who opened the app and does not want to unlock. */
 .lock-quit {
   margin-top: 6px;
@@ -169,6 +192,12 @@ body.sheet-open { overflow: hidden; }
 
 /* Quit sits with the brand so the header stays two groups: name left, tools right. */
 .hdr-brand .icon-btn { flex: none; margin-right: 2px; }
+
+/* On a phone the quit button, the currency switch and two tools leave no room
+ * for both the emoji and the name — the name wins. */
+@media (max-width: 430px) {
+  .hdr-icon { display: none; }
+}
 
 .hdr-actions { display: flex; align-items: center; gap: 8px; }
 
@@ -1038,6 +1067,7 @@ body.sheet-open { overflow: hidden; }
 }
 
 .inv-row b { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.inv-row em { font-style: normal; font-size: 11px; color: var(--ink-3); }
 .inv-row b.is-pos { color: var(--pos); }
 .inv-row b.is-neg { color: var(--neg); }
 

@@ -55,6 +55,14 @@
    * scenario sheet puts everything back to the committed data. */
   var SCENARIO_STORE = 'forecast-scenario-v1';
   var LEGACY_OFF_STORE = 'forecast-ledger-off-v1';   // ticks only, pre-v1; migrated once
+
+  /* Guest mode opens sample-data.json instead of the vault: invented numbers,
+   * no passphrase, nothing cached. It is a tour of the app for someone without
+   * the secret, and a fixed dataset to check a change against. Its overrides
+   * live under their own key so they never bleed into the real ones. */
+  var guest = false;
+  var GUEST_STORE = 'forecast-scenario-guest-v1';
+  function scenarioStore() { return guest ? GUEST_STORE : SCENARIO_STORE; }
   var scenario = {
     pricePerM2: null,       // EUR/m² the sale figures are struck at
     rateKnob: null,
@@ -1302,9 +1310,13 @@
       }
 
       var costs = (pr.costs || []).filter(isOn).map(function (c) {
-        return { label: c.label, eur: toEur(c.amount, c.currency || cur) };
+        return { label: c.label, eur: toEur(c.amount, c.currency || cur), instalments: isInstalmentCost(c) };
       });
       var cashIn = costs.reduce(function (a, b) { return a + b.eur; }, 0);
+      // The instalment lines are the loan's history, not the down payment —
+      // "Paid so far" sets interest against the two separately.
+      var instalmentCosts = costs.reduce(function (a, b) { return a + (b.instalments ? b.eur : 0); }, 0);
+      var downPayment = cashIn - instalmentCosts;
 
       var extras = (pr.saleExtras || []).filter(isOn).map(function (x) {
         return { label: x.label, eur: toEur(x.amount, x.currency || cur) };
@@ -1314,15 +1326,20 @@
 
       var owed = debt ? debt.balanceToday : 0;
       // Every instalment still ahead of us; the part of it that is not the
-      // balance itself is interest yet to be paid.
+      // balance itself is interest yet to be paid. Instalments already made
+      // this month are the start of "paid so far", below.
       var toPay = 0;
+      var paidInSim = 0;
       if (debt) {
         debt.months.forEach(function (m) {
           m.payments.forEach(function (p) {
             if (p.date.getTime() > today.getTime()) toPay += p.eur;
+            else paidInSim += p.eur;
           });
         });
       }
+
+      var soFar = debt ? interestSoFar(pr.loanFacts, debt, owed, paidInSim, instalmentCosts) : null;
 
       return {
         id: pr.id,
@@ -1333,6 +1350,7 @@
         debt: debt,
         costs: costs,
         cashIn: cashIn,
+        downPayment: downPayment,
         extras: extras,
         pricePerM2: pricePerM2,
         floorValue: floorValue,
@@ -1340,6 +1358,7 @@
         owed: owed,
         toPay: toPay,
         interestLeft: Math.max(0, toPay - owed),
+        soFar: soFar,
         equity: saleValue - owed,
         // Net profit: sell at the target, clear the loan off the proceeds, and
         // this is what is left over and above the cash already sunk in. It
@@ -1353,8 +1372,12 @@
     var sum = function (key) {
       return projects.reduce(function (a, b) { return a + b[key]; }, 0);
     };
+    var sumSoFar = function (key) {
+      return projects.reduce(function (a, b) { return a + (b.soFar ? b.soFar[key] : 0); }, 0);
+    };
     var cashIn = sum('cashIn');
     var gain = sum('gain');
+    var withSoFar = projects.some(function (p) { return !!p.soFar; });
     return {
       pricePerM2: pricePerM2,
       projects: projects,
@@ -1366,7 +1389,84 @@
       gain: gain,
       returnPct: cashIn > 0 ? gain / cashIn * 100 : null,
       areaM2: sum('areaM2'),
+      soFar: withSoFar ? {
+        paid: sumSoFar('paid'),
+        interest: sumSoFar('interest'),
+        estimated: projects.some(function (p) { return p.soFar && p.soFar.estimated; }),
+      } : null,
     };
+  }
+
+  /* What the loan has cost up to today. The bank's history is not in the data,
+   * but two ends of it are: `loanFacts.originalPrincipal` (what was borrowed)
+   * and the engine's balance today. Everything paid that did not reduce the
+   * balance was interest — an identity, not a model:
+   *
+   *     interest so far = instalments paid so far − (borrowed − balance today)
+   *
+   * "Instalments paid so far" is the one thing that has to be counted:
+   * `loanFacts.paidToDate` (native currency, from a statement) when the data
+   * has it, otherwise one monthly instalment for every whole month between
+   * disbursement and the forecast opening, plus whatever the simulation has
+   * already paid this month. That estimate is flagged so the view can say so. */
+  function interestSoFar(facts, debt, owed, paidInSim, instalmentCosts) {
+    if (!facts || !(facts.originalPrincipal > 0)) return null;
+    var cur = facts.currency || debt.currency;
+    var borrowed = toEur(facts.originalPrincipal, cur);
+
+    var paidBefore;
+    var estimated = false;
+    if (facts.paidToDate != null) {
+      paidBefore = toEur(facts.paidToDate, cur);
+    } else if (instalmentCosts > 0) {
+      paidBefore = instalmentCosts;
+    } else {
+      var disbursed = ymLoose(facts.disbursedOn);
+      if (!disbursed) return null;
+      // First instalment falls the month after disbursement; the opening month
+      // itself belongs to the simulation.
+      var months = Math.max(0, ymToIndex(data.startYm) - ymToIndex(disbursed) - 1);
+      paidBefore = months * debt.monthlyEur;
+      estimated = true;
+    }
+
+    var paid = paidBefore + paidInSim;
+    var principalRepaid = Math.max(0, borrowed - owed);
+    var interest = Math.max(0, paid - principalRepaid);
+    return {
+      borrowed: borrowed,
+      paid: paid,
+      principalRepaid: principalRepaid,
+      interest: interest,
+      interestShare: paid > 0 ? interest / paid * 100 : null,
+      estimated: estimated,
+    };
+  }
+
+  // The month of a date written any of the ways the data has been written:
+  // "2024-03-15", "2024-03", "15.03.2024", "15/03/2024", "21 May 2021",
+  // "May 2021" → "2024-03" / "2021-05"; null when unreadable.
+  function ymLoose(s) {
+    if (!s) return null;
+    var str = String(s).trim();
+    var m = str.match(/^(\d{4})-(\d{2})/);
+    if (m) return m[1] + '-' + m[2];
+    m = str.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+    if (m) return m[3] + '-' + pad2(parseInt(m[2], 10));
+    m = str.match(/^(?:\d{1,2}\s+)?([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{4})$/);
+    if (m) {
+      var mi = MONTHS_SHORT.map(function (n) { return n.toLowerCase(); })
+        .indexOf(m[1].toLowerCase());
+      if (mi >= 0) return m[2] + '-' + pad2(mi + 1);
+    }
+    return null;
+  }
+
+  // A cost line that is really the instalments paid before the forecast
+  // opened — "Instalments paid to Aug 2026" — carries the exact paid-so-far
+  // figure. Flag it with kind: "instalments"; the label is the fallback.
+  function isInstalmentCost(c) {
+    return c.kind === 'instalments' || /instal/i.test(c.label || '');
   }
 
   // "+38%" alongside a profit figure; nothing when there is no cash basis.
@@ -1392,6 +1492,11 @@
       '<div class="sum-cell"><span>Worth at target</span><b>' + esc(money(inv.saleValue)) + '</b></div>' +
       '<div class="sum-cell"><span>Equity</span><b class="is-pos">' +
         esc(money(inv.equity)) + '</b></div>' +
+      (inv.soFar ?
+        '<div class="sum-cell"><span>Instalments so far' + (inv.soFar.estimated ? ' ≈' : '') +
+          '</span><b>' + esc(money(inv.soFar.paid)) + '</b></div>' +
+        '<div class="sum-cell"><span>Interest so far</span><b class="is-neg">' +
+          esc(money(inv.soFar.interest)) + '</b></div>' : '') +
       '<div class="sum-net">' +
         '<span>Net profit if sold at target</span>' +
         '<b class="' + (inv.gain < 0 ? 'is-neg' : 'is-pos') + '">' +
@@ -1441,6 +1546,22 @@
             esc(money(p.toPay)) + '</b></div>' +
         '</div>' +
 
+        (p.soFar ? '<div class="inv-block"><div class="inv-head">Paid so far</div>' +
+          '<div class="inv-row"><span>Down payment and costs</span><b>' +
+            esc(money(p.downPayment)) + '</b></div>' +
+          '<div class="inv-row"><span>Instalments' +
+            (p.facts && p.facts.disbursedOn ? ' since ' + esc(p.facts.disbursedOn) : '') +
+            (p.soFar.estimated ? ' <em>≈ estimated</em>' : '') + '</span><b>' +
+            esc(money(p.soFar.paid)) + '</b></div>' +
+          '<div class="inv-row"><span>Of which came off the balance</span><b>' +
+            esc(money(p.soFar.principalRepaid)) + '</b></div>' +
+          '<div class="inv-row is-total is-net"><span>Interest paid</span><b class="is-neg">' +
+            esc(money(p.soFar.interest)) + returnTag(p.soFar.interestShare) + '</b></div>' +
+          '<div class="inv-row"><span>As a share of the down payment</span><b>' +
+            (p.downPayment > 0 ? esc(Math.round(p.soFar.interest / p.downPayment * 100) + '%') : '—') +
+            '</b></div>' +
+        '</div>' : '') +
+
         '<div class="inv-block"><div class="inv-head">If sold at target</div>' +
           saleRows +
           '<div class="inv-row is-total"><span>Sale price</span><b>' +
@@ -1459,7 +1580,11 @@
     }).join('');
 
     $('invest-note').textContent = '"Put in" is the cash listed on each project — ' +
-      'deposit, parking and the instalments paid up to the forecast. Net profit is ' +
+      'deposit, parking and the instalments paid up to the forecast. "Paid so far" ' +
+      'reads interest off two known ends: what was borrowed and what is owed today — ' +
+      'whatever was paid that did not come off the balance was interest. The ' +
+      'instalment count is ≈ estimated as one a month since disbursement unless the ' +
+      'loan facts carry a paidToDate figure from a statement. Net profit is ' +
       'the sale price less the loan balance and less that cash, i.e. selling at the ' +
       'target today and clearing the loan off the proceeds — the interest on ' +
       'instalments you never make is not counted against it, and neither is tax. ' +
@@ -1603,7 +1728,7 @@
    * falls back to the committed data rather than blocking the app. */
   function saveScenario() {
     var same = function (key) { return scenario[key] === defaults[key]; };
-    writeStore(SCENARIO_STORE, JSON.stringify({
+    writeStore(scenarioStore(), JSON.stringify({
       currency: currency,
       budgetOverride: scenario.budgetOverride,
       pricePerM2: scenario.pricePerM2,
@@ -1618,10 +1743,10 @@
 
   function loadScenario() {
     var saved = null;
-    try { saved = JSON.parse(readStore(SCENARIO_STORE) || 'null'); } catch (e) { /* malformed */ }
+    try { saved = JSON.parse(readStore(scenarioStore()) || 'null'); } catch (e) { /* malformed */ }
 
     // The first version only remembered the ledger ticks, under its own key.
-    if (!saved) {
+    if (!saved && !guest) {
       try {
         var ids = JSON.parse(readStore(LEGACY_OFF_STORE) || 'null');
         if (Array.isArray(ids)) saved = { off: ids };
@@ -1720,7 +1845,11 @@
       ' · cash basis, net ' + payCycle().netDays;
 
     var banner = $('banner');
-    if (samples > 0) {
+    if (guest) {
+      banner.hidden = false;
+      banner.textContent = 'Guest mode — every number here is invented. ' +
+        'Tap the lock to go back to the real thing.';
+    } else if (samples > 0) {
       banner.hidden = false;
       banner.textContent = samples + ' sample ' + (samples === 1 ? 'row is' : 'rows are') +
         ' still in place — tell Claude your real numbers and they get replaced.';
@@ -1987,11 +2116,32 @@
       }
 
       $('lock-form').addEventListener('submit', attempt);
+
+      $('lock-guest').addEventListener('click', function () {
+        error.textContent = 'Loading the sample…';
+        fetch('sample-data.json', { cache: 'no-store' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('sample-data.json → HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function (bundle) {
+            guest = true;
+            $('lock-btn').setAttribute('aria-label', 'Leave guest mode');
+            gate.hidden = true;
+            error.textContent = '';
+            resolve(bundle);
+          })
+          .catch(function (err) {
+            error.textContent = 'Could not load the sample. ' + err.message;
+          });
+      });
     });
   }
 
+  // In guest mode there is no key to forget; a reload is the way back to the
+  // lock screen, and a real key cached on this device is left alone.
   function lockApp() {
-    clearStore(KEY_STORE);
+    if (!guest) clearStore(KEY_STORE);
     location.reload();
   }
 
