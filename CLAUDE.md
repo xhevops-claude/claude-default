@@ -347,6 +347,38 @@ following the committed data when it changes. Only the user's own overrides go
 in there, never a figure from the vault. Reset in the scenario sheet puts
 everything but the currency back.
 
+## Wire (apps/wire/) — one viewer, many projects
+
+Wire is the site-and-buildings wireframe viewer. It is software only; a
+project is data. The address picks the project: `apps/wire/#/<org>/<slug>`;
+with no project in the address the launcher shows the organizations and
+their projects. Changing the hash reloads the page (one scene at a time).
+
+- `projects/index.json` lists the organizations (a namespace, not access
+  control — the repo is public); `projects/<org>/index.json` lists that
+  org's projects (slug, name, site, summary, status). Add a project =
+  a folder plus one line there.
+- `projects/<org>/<slug>/scene.json` is the whole plan: name, `notes`,
+  `datum`, `assets` (the relief as `relief.json`, a height field with a
+  frame), `tracker` (the defects page), `defaults.layers` (which layers
+  ship on), `groups`, `levels`/`works`/`terrain` (the house model),
+  `buildings`/`envelopes`/`outlines`/`lines` (polygon models),
+  `excavations` (custom cuts). **Projects hold no JavaScript.** Only
+  JSON, Markdown, HTML for the tracker page, PNG screenshots.
+- The engine, by area: `load.js` (route, registries, scene and assets),
+  `model.js` (`deriveModel(scene)` — terrain, cut, driveway, volumes,
+  framing; no three.js), `viewer.js` (builds the scene, the ground
+  pipeline original → dig → custom cuts → render, objects, layers,
+  settings, tap-to-measure, navigation), `i18n.js`, `textures.js`,
+  `util.js`, `main.js` (launcher or viewer). Editing and export do not
+  exist yet; every change is an edit to `scene.json` and a commit.
+- Layer sets are saved per project (`wire-settings:<org>/<slug>`), the
+  language once for all (`wire-lang`), recent projects in `wire-recent`.
+- `apps/houseplan/` and `apps/deluxe/` are redirects to their projects.
+- `package.json` has `"type": "module"` so CI's `node --check` parses
+  the engine's `import`/`export`; every `.js` in the repo is parsed as a
+  module now.
+
 ## Conventions worth preserving
 
 - **Every page kills double-tap-to-zoom.** Put `touch-action: manipulation` on

@@ -2,6 +2,7 @@
   "name": "claude-default",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "Static games arcade — see README for layout.",
   "scripts": {
     "predev": "npm run build:data",
