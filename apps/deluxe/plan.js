@@ -22,6 +22,7 @@ window.HOUSE_PLAN = {
     cadastral: { name: 'Cadastre', color: '#9cff8a' },
     road: { name: 'Street', color: '#9aa4b2' },
     relief: { name: 'Relief', color: '#6fbf9a' },
+    excavation: { name: 'Excavation', color: '#c9a86a' },
   },
   /* The site boundary — the five DUP building parcels together — used
    * to mask the relief outside it and to label the contours. */
@@ -335,7 +336,10 @@ window.HOUSE_PLAN = {
    * outline read from that level's plan, at the story height of the
    * BIMx model (the lower pair on 2.66 / 2.67.2 over a shared garage;
    * the upper three with two basements dug into the slope). `elevation`
-   * is the finished floor, `height` the clear storey. */
+   * is the finished floor, `height` the clear storey. Buildings 1 and 5
+   * (parcels 2.67.1 and 2.77) are one storey — 2.89 m — lower than the
+   * model's stack, decision D2: as drawn their lowest floor stood 4.6 m
+   * in the air at the downhill corner. */
   buildings: [
     {
       id: 'b-2-66', group: 'house', name: 'Building 2 (Objekt 2), parcel 2.66',
@@ -433,37 +437,37 @@ window.HOUSE_PLAN = {
     {
       id: 'b-2-67-1', group: 'house', name: 'Building 1 (Objekt 1), parcel 2.67.1',
       floors: [
-        { id: 'um2', name: 'Basement −2', elevation: 12.57, height: 2.69, ring: [
+        { id: 'um2', name: 'Basement −2', elevation: 9.68, height: 2.69, ring: [
           [  25.52,   31.02],
           [  25.22,   42.47],
           [  40.19,   42.86],
           [  40.49,   31.41],
         ] },
-        { id: 'um1', name: 'Basement −1', elevation: 15.46, height: 2.69, ring: [
+        { id: 'um1', name: 'Basement −1', elevation: 12.57, height: 2.69, ring: [
           [  25.52,   31.02],
           [  25.22,   42.47],
           [  40.19,   42.86],
           [  40.49,   31.41],
         ] },
-        { id: 'u0', name: 'Ground floor', elevation: 18.35, height: 2.69, ring: [
+        { id: 'u0', name: 'Ground floor', elevation: 15.46, height: 2.69, ring: [
           [  25.52,   31.02],
           [  25.22,   42.47],
           [  40.19,   42.86],
           [  40.49,   31.41],
         ] },
-        { id: 'u1', name: '1st floor', elevation: 21.24, height: 2.69, ring: [
+        { id: 'u1', name: '1st floor', elevation: 18.35, height: 2.69, ring: [
           [  24.02,   30.98],
           [  23.72,   42.43],
           [  40.19,   42.86],
           [  40.49,   31.41],
         ] },
-        { id: 'u2', name: '2nd floor', elevation: 24.13, height: 2.69, ring: [
+        { id: 'u2', name: '2nd floor', elevation: 21.24, height: 2.69, ring: [
           [  24.02,   30.98],
           [  23.72,   42.43],
           [  40.19,   42.86],
           [  40.49,   31.41],
         ] },
-        { id: 'u3', name: 'Attic', elevation: 27.02, height: 2.5, ring: [
+        { id: 'u3', name: 'Attic', elevation: 24.13, height: 2.5, ring: [
           [  24.02,   30.98],
           [  23.72,   42.43],
           [  40.19,   42.86],
@@ -474,25 +478,25 @@ window.HOUSE_PLAN = {
     {
       id: 'b-2-77', group: 'house', name: 'Building 5 (Objekt 5), parcel 2.77',
       floors: [
-        { id: 'um2', name: 'Basement −2', elevation: 12.57, height: 2.69, ring: [
+        { id: 'um2', name: 'Basement −2', elevation: 9.68, height: 2.69, ring: [
           [  22.93,   26.55],
           [  36.08,   27.29],
           [  36.60,   17.80],
           [  23.43,   17.52],
         ] },
-        { id: 'um1', name: 'Basement −1', elevation: 15.46, height: 2.69, ring: [
+        { id: 'um1', name: 'Basement −1', elevation: 12.57, height: 2.69, ring: [
           [  22.93,   26.55],
           [  36.08,   27.29],
           [  36.60,   17.80],
           [  23.43,   17.52],
         ] },
-        { id: 'u0', name: 'Ground floor', elevation: 18.35, height: 2.69, ring: [
+        { id: 'u0', name: 'Ground floor', elevation: 15.46, height: 2.69, ring: [
           [  23.43,   17.52],
           [  22.93,   26.55],
           [  36.08,   27.29],
           [  36.60,   17.80],
         ] },
-        { id: 'u1', name: '1st floor', elevation: 21.24, height: 2.69, ring: [
+        { id: 'u1', name: '1st floor', elevation: 18.35, height: 2.69, ring: [
           [  21.43,   26.47],
           [  36.08,   27.29],
           [  36.38,   21.75],
@@ -505,7 +509,7 @@ window.HOUSE_PLAN = {
           [  23.43,   17.52],
           [  21.93,   17.49],
         ] },
-        { id: 'u2', name: '2nd floor', elevation: 24.13, height: 2.69, ring: [
+        { id: 'u2', name: '2nd floor', elevation: 21.24, height: 2.69, ring: [
           [  21.43,   26.47],
           [  36.08,   27.29],
           [  36.38,   21.75],
@@ -519,7 +523,7 @@ window.HOUSE_PLAN = {
           [  23.43,   17.52],
           [  21.93,   17.49],
         ] },
-        { id: 'u3', name: 'Attic', elevation: 27.02, height: 2.5, ring: [
+        { id: 'u3', name: 'Attic', elevation: 24.13, height: 2.5, ring: [
           [  21.93,   17.49],
           [  21.43,   26.47],
           [  36.08,   27.29],
@@ -649,6 +653,14 @@ window.HOUSE_PLAN = {
       [  20.20,   47.58],
     ] },
   ],
+
+  /* Cuts into the surveyed ground beyond what the buildings need — the
+   * viewer digs those out itself. Each is a ring in plan, [x, z], and
+   * either a `level` (the y the ground is taken down to) or a `depth`
+   * below the ground as found, and optionally a `margin` dug wider than
+   * the ring (a cell, at least 0.5 m, unless said). Nothing yet; for later, e.g.
+   *   { id: 'path', name: 'Path to the garden', depth: 0.3, ring: [[…], …] } */
+  excavations: [],
 
   levels: [],
   works: [],

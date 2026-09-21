@@ -87,6 +87,7 @@
       <span class="chip" style="--c: #d28cff"><i></i>Retaining walls — garage walls (south, west, north), outer wall, its taper, fillet wall, uphill wall, mouth wall</span>
       <span class="chip" style="--c: #9aa4b2"><i></i>Road</span>
       <span class="chip" style="--c: #ff4d3d"><i></i>Parcel — the surveyed boundary (705 m²) and the existing building</span>
+      <span class="chip" style="--c: #c9a86a"><i></i>Excavation — one object per cut, depth and m³ on tap</span>
       <span class="chip" style="--c: #6fbf9a"><i></i>Relief — the surveyed ground as points, surface, contours, labels and lattice; each a layer in Settings</span>
     </div>
     <div class="shots"><figure><img src="defects/00-overview.png" alt="Overview of the model with each group in its colour" /><figcaption>Overview, each group in its colour.</figcaption></figure></div>
@@ -230,6 +231,11 @@
       <li><b>D6 — decided:</b> the house is turned 8.06° about its south-east corner (10, 6) so its north wall runs parallel to the north-east boundary's chord, and the site is placed so the wall is 1 m off the boundary at its closest point. Only the house, its garage bands and the canopy turn; the driveway, walls and road keep the frontage's axes.</li>
       <li><b>D4 — waiting:</b> the grade is 20 % (25 % mid) because the surveyed frontage leaves 8.7 m for the ramp. Options: start the grade inside the apron, a shorter landing, a flatter ease, a different driveway layout, or accept it.</li>
       <li><b>Site fact:</b> the road is not level — it rises 1 m along the property, so the entrance (south end, z 22) is 2 m below the garage floor, not 3. Assumed: the north end of the property (z −2) is the 3 m-below end.</li>
+    </ul>
+
+    <h2>Done, since the tracker began</h2>
+    <ul class="decisions">
+      <li>The ground is worked, not redrawn: relief.js stays the untouched survey; the viewer digs what the objects need (the house's envelope to the garage slab's underside and the apron, marked <code>excavate</code>), applies any custom cuts listed in plan.js under <code>excavations</code>, and renders the result. Each excavation is an object with its depth and volume on tap.</li>
     </ul>
   </main>
 </body>

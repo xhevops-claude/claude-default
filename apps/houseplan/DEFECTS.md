@@ -21,6 +21,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | Retaining walls | violet | garage-wall-south / -west / -north, retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
 | Parcel | red | parcel (boundary, 705 m²), existing (the 6 × 8 m building at the top corner) |
+| Excavation | sand | one object per cut: the house's pit and the apron's, depth and m³ on tap |
 | Relief | green | relief — the surveyed ground from the terrain app's two samples (`relief.js`: the 0.2 m cloud over and around the parcel, 34,004 points, and the 1 m grid over the whole survey, emptied where the cloud covers it), as the terrain app's layers: points tinted by height, a translucent surface dimmed outside the parcel, contours every 10 cm with a heavier line each metre, a height label where a parcel edge crosses a metre line, and the survey's own 5 m lattice draped on the ground. Each is a layer in Settings; only the surface is on by default |
 
 ## Rules agreed so far
@@ -102,6 +103,15 @@ fix.
   driveway layout, or accept it.
 
 ## Done
+
+- The ground is worked, not redrawn: relief.js stays the untouched
+  survey; the viewer builds the terrain from it in order — original,
+  the objects' own excavation (the house's envelope to the garage slab's underside and the apron (marked `excavate`)), then any custom cuts listed in
+  plan.js under `excavations` (a ring with a `level` or a `depth`;
+  none yet) — and renders the result. Each excavation is an object in
+  the Excavation group with its depth and volume on tap, so moving a
+  building means recomputing, never touching the survey (branch,
+  unmerged).
 
 - Wireframe box, gizmo, 10 × 6 house, three levels, garage under a
   cantilever, site cascades, driveway cut, tapering wall, road, apron,

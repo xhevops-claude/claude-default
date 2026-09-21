@@ -52,6 +52,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | Parcels | red | the site boundary and the five DUP parcels, as ribbons |
 | Cadastre | green | the cadastral lines from the survey, draped |
 | Street | grey | the DUP access street parcel |
+| Excavation | sand | one object per building's cut, depth and m³ on tap |
 | Relief | green | the surveyed ground: points, surface, 1 m / 5 m contours, labels, lattice |
 
 ## Rules carried over
@@ -79,15 +80,32 @@ that page in step with this one).
 |---|---|---|---|---|---|
 | 1 | Upper buildings' floor plates | The floor outlines are 189 / 147 / 81 m² against DUP footprints of 174 / 122 / 68 m²; the lower pair's 224 / 140 m² against 187 / 138 m². Balconies may explain part of it. | Check which outline the DUP measures (footprint at ground) against the plans; a compliance readout per parcel. | open | (120, 40, 90) → (45, 8, 32) |
 | 2 | Ground east of the 294 m contour | The survey draws no contours over the terrace and the bank down to the road; the relief there rests on 62 spot heights read by eye from the sheet. | The heights as text from `azurirana.dwg` (a DXF export would do), or the surveyor's point list. | open | (100, 20, 32) → (40, 10, 32) |
+| 4 | Building 5 (Objekt 5, parcel 2.77), downhill side; buildings 1 and 4 less so | The lowest floor is at 298.45 m while the ground under the footprint falls from 300 m at the west wall to 294 m at the east: the west half is dug in, the east half stands 2–4 m in the air. The architect's own Objekt 5 profile shows the ground line passing under the building's east end, so it is in the design, not the placement. | D2: buildings 1 and 5 one storey lower. Now dug 5.0 m at the uphill wall and 1.8 m in the air at the downhill corner. | shipped | (10, 16, 70) → (33, 12, 37) |
 | 3 | Buildable-area volumes | 10.20 m is the cornice height above the ground; the volumes take the mean ground under the outline, which on a 34 % slope is a rough reading. | The DUP's own rule for the reference ground. | open | — |
 
 ## Decisions
+
+- **D2 — decided:** buildings 1 and 5 (parcels 2.67.1 and 2.77) go
+  one storey lower: their whole stack shifted 2.89 m down, no floor
+  added. Their lowest floor is now at 295.56 m — dug 5 m in at the
+  uphill wall, 1.8 m clear of the ground at the downhill corner.
+  Building 4 already sat on the ground and stays. The fill-or-walk-out
+  question remains for what is left of the gap.
 
 - **D1 — decided:** the buildings' ±0.00 is 286.08 m a.s.l., from the
   profile drawing's slab lines (six of the lower building's match), not
   the 288.97 a first reading of the BIMx stories suggested.
 
 ## Done
+
+- The ground is worked, not redrawn: relief.js stays the untouched
+  survey; the viewer builds the terrain from it in order — original,
+  the objects' own excavation (each building's lowest floor to its
+  slab's underside; the shared garage at −2.50 dominates, 10.6 m deep
+  at the terrace), then any custom cuts listed in plan.js under
+  `excavations` (a ring with a `level` or a `depth`; none yet) — and
+  renders the result. Each excavation is an object in the Excavation
+  group with its depth and volume on tap (shipped, PR #145).
 
 - Viewer cloned from House Wire at PR #143; the scene emptied — no
   terrain, parcel or building until the new documents are read (branch,

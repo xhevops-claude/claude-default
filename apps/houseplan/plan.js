@@ -40,6 +40,7 @@ window.HOUSE_PLAN = {
     road: { name: 'Road', color: '#9aa4b2' },
     parcel: { name: 'Parcel', color: '#ff4d3d' },
     relief: { name: 'Relief', color: '#6fbf9a' },
+    excavation: { name: 'Excavation', color: '#c9a86a' },
   },
 
   /* The real parcel, from the surveyor's DXF in apps/terrain (layer
@@ -99,6 +100,14 @@ window.HOUSE_PLAN = {
   /* `envelope` is the house. A level can push past it on the downhill
    * face with `extendFront`; none does at the moment — the garage sits
    * inside, its door on the downhill face, under a cantilevered slab. */
+  /* Cuts into the surveyed ground beyond what the buildings need — the
+   * viewer digs those out itself. Each is a ring in plan, [x, z], and
+   * either a `level` (the y the ground is taken down to) or a `depth`
+   * below the ground as found, and optionally a `margin` dug wider than
+   * the ring (a cell, at least 0.5 m, unless said). Nothing yet; for later, e.g.
+   *   { id: 'path', name: 'Path to the garden', depth: 0.3, ring: [[…], …] } */
+  excavations: [],
+
   levels: [
     { id: 'garage', name: 'Garage', elevation: -2.9, height: 2.7 },
     { id: 'ground', name: 'Ground floor', elevation: 0, height: 2.7 },
@@ -190,7 +199,7 @@ window.HOUSE_PLAN = {
     { id: 'canopy', group: 'canopy', house: true, name: 'Cantilever over the door', x0: 10, x1: 13, y0: -0.2, y1: 0, z0: 0, z1: 6 },
     /* A z0 of 'cut' is the cut's north edge — the boundary line — so
      * the apron fills the parcel right up to it. */
-    { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: 'cut', z1: 6 },
+    { id: 'driveway', group: 'drive', name: 'Apron, in front of the door', x0: 10, x1: 16, y0: -3.1, y1: -2.9, z0: 'cut', z1: 6, excavate: true },
     /* The ramp itself is derived from `terrain.cut` — one slab from the
      * apron's edge to the mouth, the fillet's corner included — as are
      * the walls along its uphill side and the mouth. */
