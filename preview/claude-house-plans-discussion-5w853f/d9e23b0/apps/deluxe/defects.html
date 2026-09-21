@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Deluxe — defects</title>
+  <style>
+    /* The visual copy of DEFECTS.md: one card per defect, with the
+       screenshot that shows it. Keep the two in step. */
+    :root {
+      --line: #8fd8ff;
+      --dim: rgba(143, 216, 255, 0.5);
+      --edge: rgba(143, 216, 255, 0.18);
+      --card: #0b1016;
+      --open: #ff8c5a;
+      --agreed: #f5e663;
+      --fixed: #7ce89a;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      touch-action: manipulation;
+      background: #000; color: #cfe9f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+    h1 { font-size: 18px; margin: 0 0 4px; color: var(--line); }
+    .lead { color: var(--dim); font-size: 13px; margin: 0 0 20px; line-height: 1.5; }
+    .lead a { color: var(--line); }
+    h2 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin: 32px 0 12px; }
+    .rules { margin: 0; padding: 0 0 0 18px; font-size: 13px; line-height: 1.55; color: #b9d8e6; }
+    .rules li { margin-bottom: 6px; }
+    .rules b { color: var(--line); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--edge);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+    .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+    .num {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px;
+      background: rgba(143, 216, 255, 0.12); color: var(--line);
+    }
+    .title { font-weight: 600; font-size: 15px; flex: 1 1 auto; }
+    .where { color: var(--dim); font-size: 12px; }
+    .status {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 999px; border: 1px solid currentcolor;
+    }
+    .status.open { color: var(--open); }
+    .status.agreed { color: var(--agreed); }
+    .status.fixed, .status.shipped { color: var(--fixed); }
+    .body { font-size: 13px; line-height: 1.55; color: #b9d8e6; }
+    .body p { margin: 0 0 6px; }
+    .body b { color: var(--line); font-weight: 600; }
+    .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin-top: 12px; }
+    .shots figure { margin: 0; }
+    .shots img { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--edge); }
+    .shots figcaption { font-size: 11px; color: var(--dim); margin-top: 4px; }
+    .decisions { list-style: none; padding: 0; margin: 0; }
+    .decisions li { padding: 10px 14px; border: 1px solid var(--edge); border-radius: 10px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+    .decisions b { color: var(--agreed); }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 7px; font-size: 11px; font-weight: 600; border: 1px solid var(--edge); border-radius: 999px; color: var(--c); }
+    .chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 6px var(--c); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Deluxe — defects</h1>
+    <p class="lead">
+      Deluxe started as a clone of House Wire at PR #143 and diverges from there; this is its own list, numbered once and never renumbered.
+      World axes X east, Y up, Z south; metres. The site's frame is House Wire's: the road frontage along +Z at x 16, uphill into the parcel −X. There is no house in the plan yet.
+      <a href="./">Back to the model</a>.
+    </p>
+
+    <h2>Objects and groups</h2>
+    <div class="legend">
+      <span class="chip" style="--c: #8fd8ff"><i></i>House — garage, ground, first</span>
+      <span class="chip" style="--c: #ff8c5a"><i></i>Cantilever — canopy</span>
+      <span class="chip" style="--c: #f5e663"><i></i>Driveway — apron, ramp (one slab from the apron to the road, fillet and mouth included)</span>
+      <span class="chip" style="--c: #d28cff"><i></i>Retaining walls — garage walls (south, west, north), outer wall, its taper, fillet wall, uphill wall, mouth wall</span>
+      <span class="chip" style="--c: #9aa4b2"><i></i>Road</span>
+      <span class="chip" style="--c: #ff4d3d"><i></i>Parcel — the surveyed boundary (705 m²) and the existing building</span>
+      <span class="chip" style="--c: #6fbf9a"><i></i>Relief — the surveyed ground as points, surface, contours, labels and lattice; each a layer in Settings</span>
+    </div>
+
+    <h2>Rules agreed so far</h2>
+    <ol class="rules">
+      <li><b>R1 — Levels are finished surfaces.</b> A number in a terrain profile is the surface you walk or drive on. A slab's top is that number; its underside is 20 cm below.</li>
+      <li><b>R2 — Walls sit on the cut face, flush.</b> A wall beside a cut stands in the 30 cm the cut is widened by, on the hill side of the line, and every wall along one edge is one continuous line.</li>
+      <li><b>R3 — Nothing overlaps.</b> A wall stops at a slab's underside; a slab stops at a wall's face. Two objects share a face, never a volume.</li>
+      <li><b>R4 — Tangent joins.</b> Where an arc meets a straight, the arc's end is tangent to the straight.</li>
+      <li><b>R5 — One sampling.</b> Anything that follows the ramp — slabs, walls, the ground grid — is sampled at the same stations.</li>
+    </ol>
+
+    <h2>Inherited decisions</h2>
+    <ul class="decisions">
+      <li><b>D1:</b> the ramp starts at the house edge; the apron stays flat and whole.</li>
+      <li><b>D2:</b> the driveway climbs from the very entrance; no flat pad.</li>
+      <li><b>D3:</b> a road-level landing; the outer wall runs out where the slab meets the road.</li>
+      <li><b>D5:</b> the surveyed parcel and ground are the site; the synthetic hill is the model's terrain for now.</li>
+      <li><b>D6:</b> the house is turned 8.06° about its south-east corner to lie parallel to the north-east boundary, 1 m off it at the closest point.</li>
+      <li><b>Open from House Wire:</b> the grade (20 %, 25 % mid — D4 waiting) and the bare face along the apron's north edge (no wall yet).</li>
+    </ul>
+
+    <h2>Defects</h2>
+    <p class="lead">None yet — this list starts empty.</p>
+
+    <h2>Done</h2>
+    <ul class="done">
+      <li>Cloned from House Wire at PR #143.</li>
+      <li>The house, its walls, the driveway, the road and the synthetic terrain taken out: the site alone — parcel, existing building, relief.</li>
+    </ul>
+  </main>
+</body>
+</html>
