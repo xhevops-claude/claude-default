@@ -121,7 +121,11 @@ a.ghost { text-decoration: none; line-height: 1.15; }
   border-radius: 14px;
   backdrop-filter: blur(12px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  max-height: calc(100vh - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
+.ghost:disabled { opacity: 0.4; cursor: default; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .sheet-title { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: var(--line); }
 .setting { margin-top: 12px; }
@@ -136,6 +140,31 @@ a.ghost { text-decoration: none; line-height: 1.15; }
 }
 .seg-btn + .seg-btn { border-left: 1px solid var(--hud-edge); }
 .seg-btn.is-on { color: #06101a; background: var(--line); }
+
+/* The layer list: a checkbox per layer, in two columns, under small
+   section heads; an object group's row carries its colour in --c. */
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.setting-actions { display: inline-flex; gap: 6px; }
+.setting-actions .ghost { padding: 5px 10px; font-size: 11px; }
+.check {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600;
+  color: var(--c, var(--line));
+  cursor: pointer;
+}
+.check input { width: 15px; height: 15px; margin: 0; accent-color: var(--line); cursor: pointer; }
+.check--all { color: var(--line); }
+.layers {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px;
+}
+.layers-head {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--dim);
+}
+.layers-head:first-child { margin-top: 0; }
 
 /* ── object legend ────────────────────────────────────── */
 
