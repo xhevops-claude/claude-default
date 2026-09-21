@@ -33,7 +33,7 @@ export const DE = {
   'Relief points': 'Reliefpunkte', 'Relief surface': 'Reliefoberfläche', 'Contours 1 m': 'Höhenlinien 1 m', 'Contours 5 m': 'Höhenlinien 5 m', 'Contour labels': 'Höhenbeschriftung', 'Relief grid': 'Reliefraster',
 };
 export let LANG = (() => {
-  try { const v = localStorage.getItem('wire-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
+  try { const v = localStorage.getItem('planner-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
   return (navigator.language || '').toLowerCase().startsWith('de') ? 'de' : 'en';
 })();
 export const t = (key) => (LANG === 'de' ? DE[key] ?? key : key);
@@ -49,5 +49,5 @@ export const tDim = (label) => {
 /* The choice, remembered on the device across every project. */
 export function setLang(v) {
   LANG = v;
-  try { localStorage.setItem('wire-lang', LANG); } catch (err) { /* private mode */ }
+  try { localStorage.setItem('planner-lang', LANG); } catch (err) { /* private mode */ }
 }
