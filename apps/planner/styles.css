@@ -1,0 +1,290 @@
+/* Planner — black scene, HUD floats over it; the launcher when no project is open. */
+
+:root {
+  --line: #8fd8ff;
+  --dim: rgba(143, 216, 255, 0.45);
+  --hud-bg: rgba(8, 12, 16, 0.6);
+  --hud-edge: rgba(143, 216, 255, 0.18);
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  height: 100%;
+  touch-action: manipulation;
+  background: #000;
+  color: var(--line);
+  font-family: var(--font);
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; color: inherit; border: none; background: none; cursor: pointer; }
+
+.wf {
+  position: fixed; inset: 0;
+  /* A long press must not select the canvas or the HUD like text, nor
+     raise Safari's copy callout — the press is for the scene. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.stage { position: absolute; inset: 0; }
+.canvas-host { position: absolute; inset: 0; touch-action: none; }
+.canvas-host canvas { display: block; width: 100%; height: 100%; }
+
+.fail {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--dim);
+  border: 1px solid var(--hud-edge);
+  border-radius: 10px;
+}
+.fail[hidden] { display: none; }
+
+/* ── HUD ──────────────────────────────────────────────── */
+
+.hud {
+  position: absolute; left: 0; right: 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px;
+  pointer-events: none;
+}
+.hud > * { pointer-events: auto; }
+.hud--top { top: 0; padding-top: calc(12px + env(safe-area-inset-top)); }
+/* The two bottom rows scroll sideways, so unlike the top HUD they take
+   the touches themselves — pointer-events on the row, and pan-x so the
+   browser handles the swipe instead of the canvas underneath. */
+.hud--bottom {
+  bottom: 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  overflow-x: auto;
+  scrollbar-width: none;
+  pointer-events: auto;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.hud--bottom::-webkit-scrollbar { display: none; }
+
+.hud-title {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 0;
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+.hud-dim {
+  font-size: 11px; font-weight: 400;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+/* The tapped object's name, in the dimensions' colour. */
+.hud-sel {
+  font-size: 11px; font-weight: 600;
+  color: #fff3b0;
+}
+.hud-sel:empty { display: none; }
+
+.ghost {
+  flex: 0 0 auto;
+  padding: 7px 13px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--dim);
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-edge);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+a.ghost { text-decoration: none; line-height: 1.15; }
+.ghost.is-on { color: var(--line); border-color: rgba(143, 216, 255, 0.55); }
+.ghost:active { background: rgba(143, 216, 255, 0.12); }
+
+#quit { padding: 7px 11px; }
+.ghost--icon { padding: 7px 9px; display: inline-flex; align-items: center; }
+.ghost--icon svg { display: block; }
+
+/* ── settings sheet ───────────────────────────────────── */
+
+.sheet { position: fixed; inset: 0; z-index: 20; }
+.sheet[hidden] { display: none; }
+.sheet-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); }
+.sheet-panel {
+  position: absolute;
+  right: 14px;
+  top: calc(56px + env(safe-area-inset-top));
+  width: min(320px, calc(100vw - 28px));
+  padding: 14px 16px 16px;
+  background: rgba(8, 12, 16, 0.92);
+  border: 1px solid var(--hud-edge);
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  max-height: calc(100vh - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ghost:disabled { opacity: 0.4; cursor: default; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sheet-title { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: var(--line); }
+.setting { margin-top: 12px; }
+.setting-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
+.setting-hint { font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.4; }
+.seg { display: inline-flex; border: 1px solid var(--hud-edge); border-radius: 999px; overflow: hidden; }
+.seg-btn {
+  padding: 7px 14px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--dim);
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--hud-edge); }
+.seg-btn.is-on { color: #06101a; background: var(--line); }
+
+/* The layer list: a checkbox per layer, in two columns, under small
+   section heads; an object group's row carries its colour in --c. */
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.setting-actions { display: inline-flex; gap: 6px; }
+.setting-actions .ghost { padding: 5px 10px; font-size: 11px; }
+.check {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600;
+  color: var(--c, var(--line));
+  cursor: pointer;
+}
+.check input { width: 15px; height: 15px; margin: 0; accent-color: var(--line); cursor: pointer; }
+.check--all { color: var(--line); }
+.layers {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px;
+}
+.layers-head {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--dim);
+}
+.layers-head:first-child { margin-top: 0; }
+
+/* ── object legend ────────────────────────────────────── */
+
+/* Sits just above the bottom bar. Each chip carries its group's colour
+   in --c, set by app.js from plan.js. */
+.hud--legend {
+  bottom: calc(50px + env(safe-area-inset-bottom));
+  gap: 6px;
+  padding-top: 0; padding-bottom: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  pointer-events: auto;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.hud--legend::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 7px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--c, var(--line));
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-edge);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.15s ease;
+}
+.chip i {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--c, var(--line));
+  box-shadow: 0 0 6px var(--c, var(--line));
+}
+.chip.is-off { opacity: 0.35; }
+.chip.is-off i { background: transparent; box-shadow: none; border: 1px solid var(--c, var(--line)); }
+
+/* ── axis gizmo ───────────────────────────────────────── */
+
+/* The gizmo itself is drawn by the renderer into this same square of
+   canvas; this element only exists to catch the taps. --gizmo-size and
+   --gizmo-inset are read by app.js so both agree on one number. */
+.gizmo-hit {
+  --gizmo-size: 104px;
+  --gizmo-inset: 14px;
+  position: absolute;
+  right: var(--gizmo-inset);
+  top: calc(var(--gizmo-inset) + 46px + env(safe-area-inset-top));
+  width: var(--gizmo-size);
+  height: var(--gizmo-size);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.axis-key {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: rgba(143, 216, 255, 0.5);
+  white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+.axis-key b { font-weight: 700; }
+.ax-x { color: #ff6b6b; }
+.ax-y { color: #7ce89a; }
+.ax-z { color: #6ba8ff; }
+
+@media (max-width: 560px) {
+  .axis-key { display: none; }
+  .gizmo-hit { --gizmo-size: 86px; }
+}
+
+/* ── launcher ─────────────────────────────────────────── */
+
+.launcher {
+  position: fixed; inset: 0; z-index: 5;
+  overflow-y: auto;
+  padding: calc(20px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+  background: #000;
+}
+.launcher[hidden] { display: none; }
+body.is-launcher .wf { display: none; }
+.launch-head { max-width: 720px; margin: 0 auto 18px; }
+.launch-head h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; color: var(--line); }
+.launch-head p { margin: 0; font-size: 13px; color: var(--dim); }
+.launch-org { max-width: 720px; margin: 0 auto 22px; }
+.launch-org h2 {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 10px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--c, var(--dim));
+}
+.launch-org h2 i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--line)); box-shadow: 0 0 6px var(--c, var(--line)); }
+.launch-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.launch-card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px;
+  color: var(--line);
+  text-decoration: none;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-edge);
+  border-left: 3px solid var(--c, var(--line));
+  border-radius: 12px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.launch-card:active, .launch-card:hover { background: rgba(143, 216, 255, 0.08); border-color: rgba(143, 216, 255, 0.45); }
+.launch-name { font-size: 15px; font-weight: 700; }
+.launch-site { font-size: 11px; color: var(--dim); letter-spacing: 0.02em; }
+.launch-summary { font-size: 12px; line-height: 1.4; color: rgba(207, 233, 245, 0.8); margin-top: 4px; }
+.launch-status { font-size: 11px; color: #fff3b0; margin-top: 6px; }
+.launch-empty { margin: 0; font-size: 12px; color: var(--dim); }
+.launch-quit { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; padding: 7px 11px; }
+.embedded .launch-quit { display: inline-flex; }

@@ -116,12 +116,12 @@
       url: 'apps/forecast/',
     },
     {
-      slug: 'wire',
-      name: 'Wire',
+      slug: 'planner',
+      name: 'Planner',
       meta: 'Sites & buildings',
       tagline: 'Survey, parcels, buildings, earthworks.',
       icon: '🏗️',
-      url: 'apps/wire/',
+      url: 'apps/planner/',
     },
     {
       slug: 'directions',
