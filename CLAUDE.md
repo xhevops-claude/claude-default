@@ -398,6 +398,18 @@ their projects. Changing the hash reloads the page (one scene at a time).
   settings, tap-to-measure, navigation), `i18n.js`, `textures.js`,
   `util.js`, `main.js` (launcher or viewer). Editing and export do not
   exist yet; every change is an edit to `scene.json` and a commit.
+- The viewer is a workspace: a CSS grid of top bar, left dock, stage and
+  bottom bar (`.wf` in `styles.css`), so the canvas is exactly what the
+  docks leave. The left dock is the layer tree (`#tree`, built in
+  `viewer.js`): drawing layers, then each object group opening to its
+  objects (a building to its floors, via `parent`/`short` on `makeObject`),
+  then the relief's layers. An object's checkbox is its own `hidden` flag
+  on top of its group's; tapping its name selects it and `flyTo()`s the
+  camera. The full-screen button cycles three stages (`state.fs`):
+  browser full screen with the docks, scene only (`body.fs-2`, one exit
+  button top-left, Escape works), back. The dock folds to a rail; that
+  choice is kept in `planner-dock`, except upright on a phone, where the
+  dock overlays the scene and always starts folded.
 - Layer sets are saved per project (`planner-settings:<org>/<slug>`), the
   language once for all (`planner-lang`), recent projects in `planner-recent`.
 - The old `apps/houseplan/`, `apps/deluxe/` and `apps/wire/` are gone from the

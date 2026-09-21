@@ -29,8 +29,9 @@ export const DE = {
   'Basement −1': 'Untergeschoss −1', 'Basement −2': 'Untergeschoss −2', 'Garage floor': 'Garagengeschoss', 'Cadastral line': 'Katasterlinie',
   Recent: 'Zuletzt', 'No projects yet.': 'Noch keine Projekte.', Projects: 'Projekte', 'All projects': 'Alle Projekte', 'A viewer for sites and the buildings drawn for them. Pick a project.': 'Ein Betrachter für Grundstücke und die darauf gezeichneten Gebäude. Wähle ein Projekt.', 'The project list could not be loaded.': 'Die Projektliste konnte nicht geladen werden.', 'This project could not be loaded.': 'Dieses Projekt konnte nicht geladen werden.',
   Layers: 'Ebenen', 'All layers': 'Alle Ebenen', Save: 'Speichern', Reset: 'Zurücksetzen',
+  'Full screen': 'Vollbild', 'Scene only': 'Nur die Szene', 'Exit full screen': 'Vollbild verlassen', Collapse: 'Einklappen', Expand: 'Ausklappen',
   Drawing: 'Zeichnung', Objects: 'Objekte', 'Ground grid': 'Bodenraster',
-  'Relief points': 'Reliefpunkte', 'Relief surface': 'Reliefoberfläche', 'Contours 1 m': 'Höhenlinien 1 m', 'Contours 5 m': 'Höhenlinien 5 m', 'Contour labels': 'Höhenbeschriftung', 'Relief grid': 'Reliefraster',
+  'Relief points': 'Reliefpunkte', 'Relief surface': 'Reliefoberfläche', 'Contours 10 cm': 'Höhenlinien 10 cm', 'Contours 1 m': 'Höhenlinien 1 m', 'Contours 5 m': 'Höhenlinien 5 m', 'Contour labels': 'Höhenbeschriftung', 'Relief grid': 'Reliefraster',
 };
 export let LANG = (() => {
   try { const v = localStorage.getItem('planner-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
