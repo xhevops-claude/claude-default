@@ -56,11 +56,13 @@ const DE = {
   'Entrance mouth, wall': 'Einfahrtstrichter, Mauer',
   run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über', rise: 'Anstieg',
   Parcel: 'Parzelle', 'Parcel boundary, 705 m²': 'Parzellengrenze, 705 m²', 'Existing building': 'Bestandsgebäude',
-  Relief: 'Relief', 'Nothing built yet': 'Noch nichts gebaut',
+  Relief: 'Relief', 'Nothing built yet': 'Noch nichts gebaut', buildings: 'Gebäude', floor: 'Geschoss',
+  Buildings: 'Gebäude', 'Buildable areas': 'Bebaubare Flächen', Parcels: 'Parzellen', Cadastre: 'Kataster', Street: 'Straße',
+  'Ground floor': 'Erdgeschoss', '1st floor': '1. Obergeschoss', '2nd floor': '2. Obergeschoss', Attic: 'Dachgeschoss',
+  'Basement −1': 'Untergeschoss −1', 'Basement −2': 'Untergeschoss −2', 'Garage floor': 'Garagengeschoss', 'Cadastral line': 'Katasterlinie',
   Layers: 'Ebenen', 'All layers': 'Alle Ebenen', Save: 'Speichern', Reset: 'Zurücksetzen',
   Drawing: 'Zeichnung', Objects: 'Objekte', 'Ground grid': 'Bodenraster',
-  'Relief points': 'Reliefpunkte', 'Relief surface': 'Reliefoberfläche', 'Contours 10 cm': 'Höhenlinien 10 cm',
-  'Contours 1 m': 'Höhenlinien 1 m', 'Contour labels': 'Höhenbeschriftung', 'Relief grid': 'Reliefraster',
+  'Relief points': 'Reliefpunkte', 'Relief surface': 'Reliefoberfläche', 'Contours 1 m': 'Höhenlinien 1 m', 'Contours 5 m': 'Höhenlinien 5 m', 'Contour labels': 'Höhenbeschriftung', 'Relief grid': 'Reliefraster',
 };
 let LANG = (() => {
   try { const v = localStorage.getItem('deluxe-lang'); if (v === 'de' || v === 'en') return v; } catch (err) { /* private mode */ }
@@ -131,7 +133,17 @@ const BOX = {
    the road's low point stands in for their bottoms. The parcel and what
    already stands on it are the site, so they are framed too. */
 if (TER) BOX.y0 = Math.min(BOX.y0, ROAD_MIN);
-const OUTLINES = [PLAN.parcel, PLAN.existing].filter(Boolean);
+const OUTLINES = [PLAN.parcel, PLAN.existing, ...(PLAN.outlines || [])].filter(Boolean);
+/* Polygon prisms — a building's floors, a buildable area — are framed
+   by their rings and their heights. */
+const PRISMS = [];
+for (const b of PLAN.buildings || []) for (const f of b.floors) PRISMS.push({ ring: f.ring, y0: f.elevation - SLAB, y1: f.elevation + f.height });
+for (const v of PLAN.envelopes || []) PRISMS.push({ ring: v.ring, y0: v.y0, y1: v.y1 });
+for (const p of PRISMS) for (const [x, z] of p.ring) {
+  BOX.x0 = Math.min(BOX.x0, x); BOX.x1 = Math.max(BOX.x1, x);
+  BOX.z0 = Math.min(BOX.z0, z); BOX.z1 = Math.max(BOX.z1, z);
+  BOX.y0 = Math.min(BOX.y0, p.y0); BOX.y1 = Math.max(BOX.y1, p.y1);
+}
 for (const o of OUTLINES) for (const [x, y, z] of o.points) {
   BOX.x0 = Math.min(BOX.x0, x); BOX.x1 = Math.max(BOX.x1, x);
   BOX.z0 = Math.min(BOX.z0, z); BOX.z1 = Math.max(BOX.z1, z);
@@ -373,7 +385,8 @@ function paintHeader() {
   const num = (n) => (LANG === 'de' ? fmt(n).replace('.', ',') : fmt(n));
   if (!PLAN.levels?.length) {
     /* Nothing built yet: the site's own numbers instead. */
-    const site = PLAN.parcel ? `${t(PLAN.parcel.name)} · ${t('rise')} ${num(BOX.y1 - BOX.y0)} m` : t('Nothing built yet');
+    const nb = (PLAN.buildings || []).length;
+    const site = PLAN.parcel ? `${t(PLAN.parcel.name)}${nb ? ` · ${nb} ${t('buildings')}` : ''}` : t('Nothing built yet');
     $('wf-dims').textContent = site;
     return;
   }
@@ -787,6 +800,47 @@ async function boot() {
     if (hi !== lo) o.dims.push({ a: pts[lo], b: [pts[lo][0], pts[hi][1], pts[lo][2]], label: `rise ${mLabel(pts[hi][1] - pts[lo][1])}` });
   }
 
+  /* ── buildings, buildable areas, draped lines ───────── */
+
+  /* A building is a stack of floors, each its own object: a prism over
+     the floor's slab outline from the slab's underside to the top of
+     the storey, with the outline's sides and the storey height as its
+     dimensions. A buildable area is one such prism on its own. */
+  const prism = (o, ring, y0, y1, { name = null } = {}) => {
+    const bottom = ring.map(([x, z]) => [x, y0, z]);
+    const top = ring.map(([x, z]) => [x, y1, z]);
+    addVolume(o, bottom, top);
+    o.dims = [];
+    top.forEach((a, i) => {
+      const b = top[(i + 1) % top.length];
+      if (plan2(a, b) >= 1) o.dims.push({ a, b, label: mLabel(plan2(a, b)) });
+    });
+    o.dims.push({ a: bottom[0], b: top[0], label: `h ${mLabel(y1 - y0)}` });
+    if (name) o.dims.push({ a: top[0], b: top[0], label: name });
+  };
+  for (const b of PLAN.buildings || []) {
+    for (const f of b.floors) {
+      const o = makeObject({ id: `${b.id}-${f.id}`, name: `${b.name} · ${f.name}`, group: b.group || 'house' });
+      prism(o, f.ring, f.elevation - SLAB, f.elevation + f.height);
+      /* the floor's level, in the header's frame, as a dimension on it */
+      o.dims.push({ a: [f.ring[0][0], f.elevation, f.ring[0][1]], b: [f.ring[1][0], f.elevation, f.ring[1][1]], label: `${t('floor')} ${fmt(f.elevation)} · ${fmt(f.elevation + (PLAN.datum || 0))} m` });
+    }
+  }
+  for (const v of PLAN.envelopes || []) {
+    const o = makeObject({ id: v.id, name: v.name, group: v.group || 'envelope' });
+    prism(o, v.ring, v.y0, v.y1);
+  }
+  /* A draped line: [x, y, z] points already on the ground, drawn as a
+     strip of segments; closed if it says so. */
+  for (const l of PLAN.lines || []) {
+    const o = makeObject({ id: l.id, name: l.name, group: l.group });
+    const pts = l.points, seg = [];
+    for (let i = 0; i + 1 < pts.length; i++) seg.push(...pts[i], ...pts[i + 1]);
+    if (l.closed && pts.length > 2) seg.push(...pts[pts.length - 1], ...pts[0]);
+    o.node.add(tagged(segments(seg, o.line(0.8)), 'edges'));
+    o.dims = [];
+  }
+
   /* ── the relief: the surveyed ground ────────────────── */
 
   /* The terrain app's layers, in this frame. relief.js carries the
@@ -871,6 +925,10 @@ async function boot() {
     const c = new THREE.Color();
     const minorSegs = [], majorSegs = [];
     const LIFT = 0.02;
+    /* Contour intervals, in metres of real height: the terrain app's
+       10 cm / 1 m unless the relief says otherwise. */
+    const CM = R.contours?.minor ?? 0.1, CMJ = R.contours?.major ?? 1;
+    const PER = Math.round(CMJ / CM);
     const dotMapRelief = dotTexture(THREE);
     for (const { pos, tri } of fields) {
       const colors = new Float32Array(pos.length);
@@ -913,13 +971,13 @@ async function boot() {
       for (let k = 0; k < tri.length; k += 3) {
         const a = tri[k], b = tri[k + 1], d = tri[k + 2];
         const ya = pos[a * 3 + 1], yb = pos[b * 3 + 1], yd = pos[d * 3 + 1];
-        const s0 = Math.ceil((Math.min(ya, yb, yd) + R.datum) * 10 - 1e-6);
-        const s1 = Math.floor((Math.max(ya, yb, yd) + R.datum) * 10 + 1e-6);
+        const s0 = Math.ceil((Math.min(ya, yb, yd) + R.datum) / CM - 1e-6);
+        const s1 = Math.floor((Math.max(ya, yb, yd) + R.datum) / CM + 1e-6);
         for (let st = s0; st <= s1; st++) {
-          const y = st / 10 - R.datum;
+          const y = st * CM - R.datum;
           const xz = [];
           cross(a, b, y, xz); cross(b, d, y, xz); cross(d, a, y, xz);
-          if (xz.length >= 4) (st % 10 === 0 ? majorSegs : minorSegs).push(xz[0], y + LIFT, xz[1], xz[2], y + LIFT, xz[3]);
+          if (xz.length >= 4) (st % PER === 0 ? majorSegs : minorSegs).push(xz[0], y + LIFT, xz[1], xz[2], y + LIFT, xz[3]);
         }
       }
     }
@@ -935,7 +993,7 @@ async function boot() {
       const p = pts[k], q = pts[(k + 1) % pts.length];
       const ya = p[1] + R.datum, yb = q[1] + R.datum;
       if (ya === yb) continue;
-      for (let m = Math.ceil(Math.min(ya, yb)); m <= Math.floor(Math.max(ya, yb)); m++) {
+      for (let m = Math.ceil(Math.min(ya, yb) / CMJ) * CMJ; m <= Math.max(ya, yb) + 1e-9; m += CMJ) {
         const f = (m - ya) / (yb - ya);
         const rel = m - R.datum;
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
@@ -1153,9 +1211,11 @@ async function boot() {
     /* The surface alone by default; the rest is there to switch on. */
     layer('relief-points', 'Relief points', false, (v) => setLayer('relief-points', v), 'Relief');
     layer('relief-surface', 'Relief surface', true, (v) => setLayer('relief-surface', v), 'Relief');
-    layer('relief-minor', 'Contours 10 cm', false, (v) => setLayer('relief-minor', v), 'Relief');
-    layer('relief-major', 'Contours 1 m', false, (v) => setLayer('relief-major', v), 'Relief');
-    layer('relief-labels', 'Contour labels', false, (v) => setLayer('relief-labels', v), 'Relief');
+    const R = window.HOUSE_RELIEF, cm = R.contours?.minor ?? 0.1, cmj = R.contours?.major ?? 1;
+    const ival = (v) => (v < 1 ? `${Math.round(v * 100)} cm` : `${v} m`);
+    layer('relief-minor', `Contours ${ival(cm)}`, true, (v) => setLayer('relief-minor', v), 'Relief');
+    layer('relief-major', `Contours ${ival(cmj)}`, true, (v) => setLayer('relief-major', v), 'Relief');
+    layer('relief-labels', 'Contour labels', true, (v) => setLayer('relief-labels', v), 'Relief');
     layer('relief-grid', 'Relief grid', false, (v) => setLayer('relief-grid', v), 'Relief');
   }
 

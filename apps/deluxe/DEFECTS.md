@@ -6,17 +6,53 @@ means the same thing. Status is one of **open**, **agreed** (user picked
 the fix, not yet built), **fixed** (on a branch), **shipped** (on `main`),
 **wontfix**.
 
-Deluxe is a different house on a different site. The viewer is House
-Wire's as merged in PR #143; the plan starts empty and is built from the
-new documents — terrain, parcel, building — as they come.
+Deluxe is the Crniče site: five building parcels of DUP Ј20 block 01
+(KO Kisela Voda 1, Skopje) on the west side of ul. Rilski Kongres, and
+the buildings drawn for them. The viewer is House Wire's as merged in
+PR #143, with polygon buildings, buildable areas and draped lines added.
 
-World axes: X east, Y up, Z south. Metres.
+World axes: X east, Y up, Z south. Metres. Heights are above the
+buildings' ±0.00 = 286.08 m a.s.l.; the site spans x 0–112, z −4–86.
+
+## Sources
+
+| File | What was taken |
+|---|---|
+| `Podloga_dopolnitelna.pdf` (ГЕО ДЕЗИС, July 2025, 1:500) | 2 m contours (294–318 m) and 62 spot heights read from the sheet, cadastral lines; interpolated into the 1 m relief |
+| `Детален урбанистички план … Ј20 Блок 01.pdf` | parcel numbers, class A1, П+2+Пк, 10.20 m; the table's areas, footprints and built areas |
+| `DELUXE CRNICE - site podlogi 12.03.2026.dwg` (Archicad export, cm) | site plan (DUP parcels, buildable areas, street), floor plans per level (slab outlines), the two road profiles (story heights, existing ground) |
+| `001.DELUXE CRNICE - prezentim1.bimx` | the story levels: lower −2.50 / 1.20 / 4.09 / 6.98 / 9.87 / roof 12.57; upper 12.57 / 15.46 / 18.35 / 21.24 / 24.13 / 27.02 / roof 29.72 |
+| `azurirana.dwg` | not readable here (AutoCAD 2007 format); the PDF carries the same survey |
+| `PHOTO-2026-09-21-09-18-44.jpg` | the red outline of the site on the survey |
+
+## Site facts
+
+- Parcels and DUP limits: 2.66 (615 m², footprint ≤ 187, built ≤ 749),
+  2.67.1 (398 / 174 / 696), 2.67.2 (342 / 138 / 551), 2.76 (185 / 68 /
+  271), 2.77 (293 / 122 / 489). All A1 housing, П+2+Пк, cornice 10.20 m.
+- Ground: 285.5–288.7 m along Rilski Kongres, a bank up to a terrace at
+  293–294 m, then 34 % up to 310 m at the west edge; 318 m at the top of
+  the sheet. The access street of the DUP runs north–south on the west.
+- Buildings, from the drawing set: a lower pair on 2.66 (Objekt 2, 224 m²
+  floors) and 2.67.2 (140 m²) over one 942 m² garage at −2.50; an upper
+  three on 2.67.1 (Objekt 1, 189 m²), 2.77 (Objekt 5, 147 m²) and 2.76
+  (81 m²), each with two basements dug into the slope. Datum: the
+  profile's slab lines fit ±0.00 = 286.08 m, which puts the lower ground
+  floor (+1.20 = 287.28) at street level.
 
 ## Objects and groups
 
 Every built thing is its own object, coloured by group (`plan.js` →
 `groups`; the legend along the bottom of the app hides a group at a tap).
-The palette is House Wire's; nothing is in it yet.
+
+| Group | Colour | Objects |
+|---|---|---|
+| Buildings | cyan | one object per floor of each building, and the garage |
+| Buildable areas | orange | the DUP's површина за градба, as 10.20 m volumes |
+| Parcels | red | the site boundary and the five DUP parcels, as ribbons |
+| Cadastre | green | the cadastral lines from the survey, draped |
+| Street | grey | the DUP access street parcel |
+| Relief | green | the surveyed ground: points, surface, 1 m / 5 m contours, labels, lattice |
 
 ## Rules carried over
 
@@ -41,13 +77,24 @@ that page in step with this one).
 
 | # | Where | What was wrong | Fix | Status | Camera (pos → target) |
 |---|---|---|---|---|---|
+| 1 | Upper buildings' floor plates | The floor outlines are 189 / 147 / 81 m² against DUP footprints of 174 / 122 / 68 m²; the lower pair's 224 / 140 m² against 187 / 138 m². Balconies may explain part of it. | Check which outline the DUP measures (footprint at ground) against the plans; a compliance readout per parcel. | open | (120, 40, 90) → (45, 8, 32) |
+| 2 | Ground east of the 294 m contour | The survey draws no contours over the terrace and the bank down to the road; the relief there rests on 62 spot heights read by eye from the sheet. | The heights as text from `azurirana.dwg` (a DXF export would do), or the surveyor's point list. | open | (100, 20, 32) → (40, 10, 32) |
+| 3 | Buildable-area volumes | 10.20 m is the cornice height above the ground; the volumes take the mean ground under the outline, which on a 34 % slope is a rough reading. | The DUP's own rule for the reference ground. | open | — |
 
 ## Decisions
 
-None yet.
+- **D1 — decided:** the buildings' ±0.00 is 286.08 m a.s.l., from the
+  profile drawing's slab lines (six of the lower building's match), not
+  the 288.97 a first reading of the BIMx stories suggested.
 
 ## Done
 
 - Viewer cloned from House Wire at PR #143; the scene emptied — no
   terrain, parcel or building until the new documents are read (branch,
   unmerged).
+- The Crniče site built from the documents: relief from the survey's
+  contours and spot heights, the five DUP parcels and the access street,
+  the cadastral lines, the buildable areas, and the six buildings floor
+  by floor at the BIMx story levels; the viewer gained polygon buildings,
+  buildable-area volumes, draped lines and contour intervals set by the
+  relief file (branch, unmerged).
