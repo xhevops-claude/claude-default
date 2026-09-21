@@ -97,6 +97,6 @@ that page in step with this one).
   the cadastral lines, the buildable areas, and the six buildings floor
   by floor at the BIMx story levels; the viewer gained polygon buildings,
   buildable-area volumes, draped lines and contour intervals set by the
-  relief file (branch, unmerged).
+  relief file (shipped, PR #144).
 - Buildings in their own shades with walls at 30 % rather than the
-  wireframe's 5 %, and the drawing dots off by default (branch, unmerged).
+  wireframe's 5 %, and the drawing dots off by default (shipped, PR #144).
