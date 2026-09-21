@@ -448,15 +448,18 @@ async function boot() {
   const WHITE = new THREE.Color(0xffffff);
   const parts = new THREE.Group();
   const objects = [];
-  function makeObject({ id, name, group }) {
-    const col = new THREE.Color(GROUPS[group]?.color || '#8fd8ff');
+  /* `color` overrides the group's; `opacity` is the glass's — 0.05 for
+     a wireframe's whisper of a face, more for a building whose walls
+     should read as walls. */
+  function makeObject({ id, name, group, color = null, opacity = 0.05 }) {
+    const col = new THREE.Color(color || GROUPS[group]?.color || '#8fd8ff');
     const node = new THREE.Group();
     node.name = id;
     node.userData = { id, name, group };
     const o = {
-      id, name, group, node, col, dotPos: [],
+      id, name, group, node, col, dotPos: [], opacity,
       glass: new THREE.MeshBasicMaterial({
-        color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity: 0.05,
+        color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity,
         side: THREE.DoubleSide, depthWrite: false,
       }),
       line: (opacity) => new THREE.LineBasicMaterial({ color: col, transparent: true, opacity }),
@@ -818,14 +821,17 @@ async function boot() {
     o.dims.push({ a: bottom[0], b: top[0], label: `h ${mLabel(y1 - y0)}` });
     if (name) o.dims.push({ a: top[0], b: top[0], label: name });
   };
-  for (const b of PLAN.buildings || []) {
+  /* Each building in its own shade of the group's colour, and with
+     walls solid enough to tell one from the next. */
+  const shades = ['#8fd8ff', '#ffd27a', '#b9a3ff', '#7ee8c9', '#ff9db4', '#c8d6e5'];
+  (PLAN.buildings || []).forEach((b, bi) => {
     for (const f of b.floors) {
-      const o = makeObject({ id: `${b.id}-${f.id}`, name: `${b.name} · ${f.name}`, group: b.group || 'house' });
+      const o = makeObject({ id: `${b.id}-${f.id}`, name: `${b.name} · ${f.name}`, group: b.group || 'house', color: b.color || shades[bi % shades.length], opacity: 0.3 });
       prism(o, f.ring, f.elevation - SLAB, f.elevation + f.height);
       /* the floor's level, in the header's frame, as a dimension on it */
       o.dims.push({ a: [f.ring[0][0], f.elevation, f.ring[0][1]], b: [f.ring[1][0], f.elevation, f.ring[1][1]], label: `${t('floor')} ${fmt(f.elevation)} · ${fmt(f.elevation + (PLAN.datum || 0))} m` });
     }
-  }
+  });
   for (const v of PLAN.envelopes || []) {
     const o = makeObject({ id: v.id, name: v.name, group: v.group || 'envelope' });
     prism(o, v.ring, v.y0, v.y1);
@@ -1201,7 +1207,7 @@ async function boot() {
   const layer = (id, name, def, apply, section, extra = {}) => { LAYERS.push({ id, name, def, on: def, apply, section, ...extra }); };
   layer('faces', 'Faces', true, (v) => setLayer('faces', v), 'Drawing');
   layer('floors', 'Floors', true, (v) => setLayer('floors', v), 'Drawing');
-  layer('dots', 'Dots', true, (v) => setLayer('dots', v), 'Drawing');
+  layer('dots', 'Dots', false, (v) => setLayer('dots', v), 'Drawing');
   if (TER) layer('grid', 'Ground grid', true, (v) => { ground.visible = v; }, 'Drawing');
   for (const [key, g] of Object.entries(GROUPS)) {
     if (!objects.some((o) => o.group === key)) continue;
@@ -1352,7 +1358,7 @@ async function boot() {
         n.material.opacity = on ? 1 : (layer === 'edges' ? 0.95 : 0.6);
       } else if (layer === 'faces') {
         n.material.color.copy(o.col.clone().lerp(WHITE, on ? 0.2 : 0.35));
-        n.material.opacity = on ? 0.22 : 0.05;
+        n.material.opacity = on ? Math.max(0.22, o.opacity + 0.15) : o.opacity;
       } else if (layer === 'dots') {
         n.material.color.copy(on ? WHITE : o.col.clone().lerp(WHITE, 0.55));
       }

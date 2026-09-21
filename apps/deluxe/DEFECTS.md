@@ -47,7 +47,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 
 | Group | Colour | Objects |
 |---|---|---|
-| Buildings | cyan | one object per floor of each building, and the garage |
+| Buildings | one shade per building | one object per floor of each building, and the garage; walls drawn at 30 % so each building reads as a solid |
 | Buildable areas | orange | the DUP's површина за градба, as 10.20 m volumes |
 | Parcels | red | the site boundary and the five DUP parcels, as ribbons |
 | Cadastre | green | the cadastral lines from the survey, draped |
@@ -98,3 +98,5 @@ that page in step with this one).
   by floor at the BIMx story levels; the viewer gained polygon buildings,
   buildable-area volumes, draped lines and contour intervals set by the
   relief file (branch, unmerged).
+- Buildings in their own shades with walls at 30 % rather than the
+  wireframe's 5 %, and the drawing dots off by default (branch, unmerged).
