@@ -16,8 +16,9 @@ const WALL = PLAN.wall || 0.3;
    the ground grid over the driveway — is sampled at these intervals, so
    lines that should coincide do. */
 const STEP = 0.5;
-const TER = PLAN.terrain;
-const e = PLAN.envelope;
+const TER = PLAN.terrain || null;
+/* With no house in the plan, the envelope is an empty box at the origin. */
+const e = PLAN.envelope || { x0: 0, y0: 0, x1: 0, y1: 0 };
 /* The house turned about its south-east corner — the corner the fillet
    hangs off — by `turn` degrees, clockwise seen from above. H() takes
    a point in the house's own frame (the envelope's axes) to the
@@ -367,6 +368,12 @@ function faceD(across) {
 $('wf-name').textContent = PLAN.name;
 function paintHeader() {
   const num = (n) => (LANG === 'de' ? fmt(n).replace('.', ',') : fmt(n));
+  if (!PLAN.levels?.length) {
+    /* Nothing built yet: the site's own numbers instead. */
+    const site = PLAN.parcel ? `${t(PLAN.parcel.name)} · ${t('rise')} ${num(BOX.y1 - BOX.y0)} m` : '';
+    $('wf-dims').textContent = site;
+    return;
+  }
   const top = Math.max(...PLAN.levels.map((l) => l.elevation + l.height));
   const foot = Math.min(...PLAN.levels.map((l) => l.elevation - SLAB));
   $('wf-dims').textContent = `${num(e.x1 - e.x0)} × ${num(e.y1 - e.y0)} × ${num(top - foot)} m`
@@ -1078,7 +1085,7 @@ async function boot() {
   ground.add(segments(gridPts, new THREE.LineBasicMaterial({
     color: 0x2a4450, transparent: true, opacity: 0.55,
   })));
-  scene.add(ground);
+  if (TER) scene.add(ground);
 
   /* ── axis gizmo ─────────────────────────────────────── */
 
@@ -1134,7 +1141,7 @@ async function boot() {
   layer('faces', 'Faces', true, (v) => setLayer('faces', v), 'Drawing');
   layer('floors', 'Floors', true, (v) => setLayer('floors', v), 'Drawing');
   layer('dots', 'Dots', true, (v) => setLayer('dots', v), 'Drawing');
-  layer('grid', 'Ground grid', true, (v) => { ground.visible = v; }, 'Drawing');
+  if (TER) layer('grid', 'Ground grid', true, (v) => { ground.visible = v; }, 'Drawing');
   for (const [key, g] of Object.entries(GROUPS)) {
     if (!objects.some((o) => o.group === key)) continue;
     layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v; }, 'Objects', { color: g.color });
@@ -1193,6 +1200,7 @@ async function boot() {
   /* The bottom bar's buttons and the legend's chips. */
   for (const [id, key] of [['t-faces', 'faces'], ['t-floors', 'floors'], ['t-dots', 'dots'], ['t-grid', 'grid']]) {
     const L = LAYERS.find((l) => l.id === key);
+    if (!L) { $(id).hidden = true; continue; }
     L.btn = $(id);
     L.btn.addEventListener('click', () => setLayerOn(L, !L.on));
   }

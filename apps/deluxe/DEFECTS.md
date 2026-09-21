@@ -11,9 +11,9 @@ plan, parcel, relief, rules and decisions — and diverges from there. Its
 own defects start at 1 below; House Wire's list (`apps/houseplan/DEFECTS.md`)
 is history, not this app's.
 
-World axes: X east, Y up, Z south. Metres. The house is x 0–10, z 0–6 in
-its own frame, turned 8.06° to the north-east boundary; the door and the
-driveway are off its east (+X) face.
+World axes: X east, Y up, Z south. Metres. The site's frame is House
+Wire's: the road frontage runs along +Z at x 16, uphill into the parcel
+is −X. There is no house in the plan yet — the site alone.
 
 ## Objects and groups
 
@@ -75,3 +75,6 @@ that page in step with this one).
 ## Done
 
 - Cloned from House Wire at PR #143.
+- The house, its walls, the driveway, the road and the synthetic terrain
+  taken out: the site alone — parcel, existing building, relief — with
+  the header showing the parcel and its rise (branch, unmerged).
