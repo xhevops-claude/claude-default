@@ -1,4 +1,4 @@
-/* House Wireframe — black scene, HUD floats over it. */
+/* Wire — black scene, HUD floats over it; the launcher when no project is open. */
 
 :root {
   --line: #8fd8ff;
@@ -246,3 +246,45 @@ a.ghost { text-decoration: none; line-height: 1.15; }
   .axis-key { display: none; }
   .gizmo-hit { --gizmo-size: 86px; }
 }
+
+/* ── launcher ─────────────────────────────────────────── */
+
+.launcher {
+  position: fixed; inset: 0; z-index: 5;
+  overflow-y: auto;
+  padding: calc(20px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+  background: #000;
+}
+.launcher[hidden] { display: none; }
+body.is-launcher .wf { display: none; }
+.launch-head { max-width: 720px; margin: 0 auto 18px; }
+.launch-head h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; color: var(--line); }
+.launch-head p { margin: 0; font-size: 13px; color: var(--dim); }
+.launch-org { max-width: 720px; margin: 0 auto 22px; }
+.launch-org h2 {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 10px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--c, var(--dim));
+}
+.launch-org h2 i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--line)); box-shadow: 0 0 6px var(--c, var(--line)); }
+.launch-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.launch-card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px;
+  color: var(--line);
+  text-decoration: none;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-edge);
+  border-left: 3px solid var(--c, var(--line));
+  border-radius: 12px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.launch-card:active, .launch-card:hover { background: rgba(143, 216, 255, 0.08); border-color: rgba(143, 216, 255, 0.45); }
+.launch-name { font-size: 15px; font-weight: 700; }
+.launch-site { font-size: 11px; color: var(--dim); letter-spacing: 0.02em; }
+.launch-summary { font-size: 12px; line-height: 1.4; color: rgba(207, 233, 245, 0.8); margin-top: 4px; }
+.launch-status { font-size: 11px; color: #fff3b0; margin-top: 6px; }
+.launch-empty { margin: 0; font-size: 12px; color: var(--dim); }
+.launch-quit { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; padding: 7px 11px; }
+.embedded .launch-quit { display: inline-flex; }

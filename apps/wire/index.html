@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Deluxe</title>
+  <title>Wire</title>
   <script>
     if (window.self !== window.top) document.documentElement.classList.add('embedded');
   </script>
@@ -47,6 +47,17 @@
 <body>
   <div id="app-loading"><div class="gl-bar" aria-label="Loading"></div></div>
 
+  <!-- No project in the address: the launcher. Organizations are
+       namespaces; each holds its projects. main.js fills the list. -->
+  <section class="launcher" id="launcher" hidden>
+    <header class="launch-head">
+      <h1>Wire</h1>
+      <p data-i18n="A viewer for sites and the buildings drawn for them. Pick a project.">A viewer for sites and the buildings drawn for them. Pick a project.</p>
+    </header>
+    <div id="launcher-list"></div>
+    <button type="button" class="ghost launch-quit" id="launch-quit" aria-label="Quit">&#10005;</button>
+  </section>
+
   <main class="wf">
     <div class="stage" id="stage">
       <div class="canvas-host" id="canvas-host"></div>
@@ -60,7 +71,7 @@
 
     <header class="hud hud--top">
       <div class="hud-title">
-        <span id="wf-name">Deluxe</span>
+        <span id="wf-name">Wire</span>
         <span class="hud-dim" id="wf-dims"></span>
         <span class="hud-sel" id="wf-sel"></span>
       </div>
@@ -78,6 +89,10 @@
         <div class="sheet-head">
           <span class="sheet-title" id="settings-title" data-i18n="Settings">Settings</span>
           <button type="button" class="ghost" id="settings-close" data-i18n="Close">Close</button>
+        </div>
+        <div class="setting">
+          <div class="setting-label" data-i18n="Projects">Projects</div>
+          <a class="ghost" id="settings-projects" href="#" data-i18n="All projects">All projects</a>
         </div>
         <div class="setting">
           <div class="setting-label" data-i18n="Layers">Layers</div>
@@ -118,15 +133,13 @@
       <button type="button" class="ghost is-on" id="t-dots" data-i18n="Dots">Dots</button>
       <button type="button" class="ghost is-on" id="t-grid" data-i18n="Ground">Ground</button>
       <button type="button" class="ghost" id="t-spin" data-i18n="Spin">Spin</button>
-      <a class="ghost" href="defects.html" target="_blank" rel="noopener" data-i18n="Defects">Defects</a>
+      <a class="ghost" id="defects-link" href="#" target="_blank" rel="noopener" data-i18n="Defects">Defects</a>
       <span class="axis-key" id="axis-key">
         <b class="ax-x">X</b> east · <b class="ax-y">Y</b> up · <b class="ax-z">Z</b> south
       </span>
     </footer>
   </main>
 
-  <script src="plan.js"></script>
-  <script src="relief.js"></script>
-  <script type="module" src="app.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>

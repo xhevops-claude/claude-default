@@ -10,7 +10,7 @@ the door and the driveway are off its east (+X) face.
 
 ## Objects and groups
 
-Every built thing is its own object, coloured by group (`plan.js` →
+Every built thing is its own object, coloured by group (`scene.json` →
 `groups`; the legend along the bottom of the app hides a group at a tap).
 
 | Group | Colour | Objects |
@@ -22,7 +22,7 @@ Every built thing is its own object, coloured by group (`plan.js` →
 | Road | grey | road |
 | Parcel | red | parcel (boundary, 705 m²), existing (the 6 × 8 m building at the top corner) |
 | Excavation | sand | one object per cut: the house's pit and the apron's, depth and m³ on tap |
-| Relief | green | relief — the surveyed ground from the terrain app's two samples (`relief.js`: the 0.2 m cloud over and around the parcel, 34,004 points, and the 1 m grid over the whole survey, emptied where the cloud covers it), as the terrain app's layers: points tinted by height, a translucent surface dimmed outside the parcel, contours every 10 cm with a heavier line each metre, a height label where a parcel edge crosses a metre line, and the survey's own 5 m lattice draped on the ground. Each is a layer in Settings; only the surface is on by default |
+| Relief | green | relief — the surveyed ground from the terrain app's two samples (`relief.json`: the 0.2 m cloud over and around the parcel, 34,004 points, and the 1 m grid over the whole survey, emptied where the cloud covers it), as the terrain app's layers: points tinted by height, a translucent surface dimmed outside the parcel, contours every 10 cm with a heavier line each metre, a height label where a parcel edge crosses a metre line, and the survey's own 5 m lattice draped on the ground. Each is a layer in Settings; only the surface is on by default |
 
 ## Rules agreed so far
 
@@ -104,10 +104,10 @@ fix.
 
 ## Done
 
-- The ground is worked, not redrawn: relief.js stays the untouched
+- The ground is worked, not redrawn: relief.json stays the untouched
   survey; the viewer builds the terrain from it in order — original,
   the objects' own excavation (the house's envelope to the garage slab's underside and the apron (marked `excavate`)), then any custom cuts listed in
-  plan.js under `excavations` (a ring with a `level` or a `depth`;
+  scene.json under `excavations` (a ring with a `level` or a `depth`;
   none yet) — and renders the result. Each excavation is an object in
   the Excavation group with its depth and volume on tap, so moving a
   building means recomputing, never touching the survey (branch,
@@ -155,7 +155,7 @@ fix.
   house clears the boundary; cut, road fall and ramp follow the surveyed
   frontage (shipped, PR #143).
 - The house turned 8.06° to the north-east boundary and set 1 m off it
-  (D6): the turn lives in plan.js, the levels, garage bands and canopy
+  (D6): the turn lives in scene.json, the levels, garage bands and canopy
   follow it, the apron meets the turned face and the fillet's arc dips
   from the corner tangent to the turned south edge line; the site moved
   0.68 m south along the frontage, which lengthens the ramp to 8.68 m

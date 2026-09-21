@@ -42,7 +42,7 @@ buildings' ±0.00 = 286.08 m a.s.l.; the site spans x 0–112, z −4–86.
 
 ## Objects and groups
 
-Every built thing is its own object, coloured by group (`plan.js` →
+Every built thing is its own object, coloured by group (`scene.json` →
 `groups`; the legend along the bottom of the app hides a group at a tap).
 
 | Group | Colour | Objects |
@@ -98,11 +98,11 @@ that page in step with this one).
 
 ## Done
 
-- The ground is worked, not redrawn: relief.js stays the untouched
+- The ground is worked, not redrawn: relief.json stays the untouched
   survey; the viewer builds the terrain from it in order — original,
   the objects' own excavation (each building's lowest floor to its
   slab's underside; the shared garage at −2.50 dominates, 10.6 m deep
-  at the terrace), then any custom cuts listed in plan.js under
+  at the terrace), then any custom cuts listed in scene.json under
   `excavations` (a ring with a `level` or a `depth`; none yet) — and
   renders the result. Each excavation is an object in the Excavation
   group with its depth and volume on tap (shipped, PR #145).
