@@ -179,6 +179,18 @@ cached key useless. The lock button clears it immediately.
 The crypto helpers are duplicated in each app rather than imported, because
 sub-experiences share no code by design (see above). They must stay in step.
 
+**Guest mode.** The Forecast lock screen has a "Look around as a guest" button
+that opens `apps/forecast/sample-data.json` — a committed, plaintext bundle of
+invented numbers in the vault's shape (`{ meta, income, loans, … }`, every row
+`sample: true`) — instead of the vault. No passphrase, nothing cached, its
+overrides under `forecast-scenario-guest-v1`, and a banner that says so; the
+lock button reloads back to the gate. It is the tour for someone without the
+secret and the fixed dataset to check a change against (headless: click
+`#lock-guest`, no secret needed). Regenerate it with a script rather than by
+hand when the shape changes — the loan `principal`s are walked from
+`loanFacts.disbursedOn` so the Invest view's interest identity lands on the
+true figure. Nothing in it is real; keep it that way.
+
 **Gotcha worth remembering:** a `[hidden]` lock screen with `display: flex` stays
 laid out and silently swallows every click on the app underneath. Both gates
 carry an explicit `#lock-screen[hidden] { display: none; }`.
@@ -322,7 +334,18 @@ the timeline runs on, so the two views cannot drift apart. `costs` is the cash
 basis (deposit, parking); it does not include instalments paid before the
 forecast opens, so add those as a cost line if you want them counted. Sale value
 is `areaM2 × salePricePerM2` plus the `saleExtras`, and the target price is
-editable on the view as a session-only override like the budget field.
+editable on the view as an override like the budget field (remembered, see
+below). A project's optional `loanFacts` — `originalPrincipal`, `currency`,
+`annualRate`, `disbursedOn`, `termEnds`, `note` — is the bank's own summary of
+the loan and also feeds the "Paid so far" block: interest paid to date is the
+identity `instalments paid − (originalPrincipal − balance today)`, with the
+instalments counted as one a month since `disbursedOn` unless an exact figure
+is in the data — `loanFacts.paidToDate` (native currency, from a statement), or
+a cost line that *is* the instalments paid before the forecast (the real data
+has "Instalments paid to Aug 2026"; flag such a line `kind: "instalments"`,
+the label matching /instal/i is the fallback). Either turns the ≈ off, and the
+instalment lines are kept out of the "down payment" the interest is compared
+with. `disbursedOn` is read loosely — ISO, `dd.mm.yyyy`, or "21 May 2021".
 
 **The Timeline is the home view** and it leads with what is still ahead rather
 than the first of the month. `build()` marks `model.nextPay` (the earliest pay
