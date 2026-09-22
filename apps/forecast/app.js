@@ -458,6 +458,23 @@
     var rows = [];
     var heldExpenses = [];    // unplanned expenses waiting for money to arrive
     var nextPaid = Object.create(null);   // "with the next pay" additions already placed
+
+    /* The account opens at the start of the CURRENT pay cycle — the most
+     * recent pay arrival on or before today, or the first of the start month
+     * if none has landed yet. Everything before that has already happened and
+     * is in `startingSavings`; the walk still runs it for the loan balances,
+     * but nothing before the floor touches the cash. A one-off dated before
+     * the floor is not history, though — it is money still to find, and rolls
+     * forward to today. */
+    var walkStart = mkDate(startY, startM, 1);
+    var floor = walkStart;
+    for (var fb = 0; fb <= 3; fb++) {
+      periodsOf(startY, startM - fb).forEach(function (p) {
+        var t = p.arrival.getTime();
+        if (t <= today.getTime() && t > floor.getTime()) floor = p.arrival;
+      });
+    }
+    var rollTo = today.getTime() > floor.getTime() ? today : floor;
     var cumulative = data.meta.startingSavings || 0;
     var totals = { income: 0, loan: 0, interest: 0, budget: 0, extra: 0, saved: 0 };
 
@@ -511,6 +528,7 @@
           date: mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day),
           kind: 'extra', label: it.label, detail: it.note || 'Unplanned',
           eur: -toEur(amountOf(it), it.currency),
+          once: !it.cadence || it.cadence === 'once',
         });
       });
 
@@ -522,6 +540,7 @@
           date: mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day),
           kind: 'income', label: it.label, detail: it.note || '',
           eur: toEur(amountOf(it), it.currency),
+          once: it.cadence === 'once',
         });
       });
 
@@ -556,7 +575,7 @@
           }
           var cEur = toEur(c.amount, c.currency);
           events.push({
-            date: per.arrival, kind: c.kind === 'income' ? 'income' : 'extra',
+            date: per.arrival, kind: c.kind === 'income' ? 'income' : 'extra', withPay: true,
             label: c.label, detail: 'with the ' + per.rangeLabel + ' pay · added by you',
             eur: c.kind === 'income' ? cEur : -cEur,
           });
@@ -628,6 +647,16 @@
           });
         }
       }
+
+      // A one-off that was due before the cycle opened is still to be paid
+      // (or received): it moves to today and says where it came from. Pays,
+      // instalments, budget draws, a recurring item's earlier occurrence and
+      // anything that rode on an earlier pay are history and stay put.
+      events.forEach(function (e) {
+        if (e.date.getTime() >= floor.getTime() || !e.once) return;
+        e.detail = (e.detail ? e.detail + ' · ' : '') + 'was due ' + dateLabel(e.date);
+        e.date = rollTo;
+      });
 
       events.sort(function (a, b) {
         if (a.date.getTime() !== b.date.getTime()) return a.date - b.date;
@@ -753,6 +782,10 @@
 
         if (ev.kind === 'loan') payLeft += ev.eur;   // ev.eur is negative here
 
+        // Before the cycle opened the money has already moved: the balances
+        // above needed the event, the account does not.
+        if (ev.date.getTime() < floor.getTime()) continue;
+
         if (ev.kind === 'extra' && cumulative + ev.eur < -EPS) {
           heldExpenses.push(ev);
           continue;
@@ -821,18 +854,31 @@
       if (!lastPayoff || x.payoffDate > lastPayoff) lastPayoff = x.payoffDate;
     });
 
-    // The pay the timeline opens on. The simulation still runs from the start
-    // of the month so the bookkeeping behind it stays whole — this only marks
-    // where the forward-looking view begins.
+    // The current cycle, which the home view leads with: from the pay that
+    // opened it (none if no pay has landed yet this month) up to the next
+    // pay, exclusive. Its events are what the money in hand has to cover.
     var nextPay = null;
-    for (var ri = 0; ri < rows.length && !nextPay; ri++) {
-      for (var ei = 0; ei < rows[ri].events.length; ei++) {
-        var e = rows[ri].events[ei];
-        if (e.period && e.date.getTime() >= today.getTime()) { nextPay = e; break; }
-      }
-    }
+    var cyclePay = null;
+    var cycleNext = null;
+    var cycleEvents = [];
+    rows.forEach(function (r) {
+      r.events.forEach(function (e) {
+        if (e.period) {
+          if (!nextPay && e.date.getTime() >= today.getTime()) nextPay = e;
+          if (e.date.getTime() === floor.getTime()) cyclePay = e;
+          else if (!cycleNext && e.date.getTime() > floor.getTime()) cycleNext = e;
+        }
+      });
+    });
+    rows.forEach(function (r) {
+      r.events.forEach(function (e) {
+        var t = e.date.getTime();
+        if (t >= floor.getTime() && (!cycleNext || t < cycleNext.date.getTime())) cycleEvents.push(e);
+      });
+    });
 
     return {
+      cycle: { start: floor, pay: cyclePay, next: cycleNext, events: cycleEvents },
       rows: rows,
       debts: debts,
       byPriority: byPriority,
@@ -1176,14 +1222,17 @@
    * the running balance jump without explanation. The month it starts mid-way
    * through is totalled from what is left of it. */
   function renderTimeline() {
-    var from = today.getTime();
+    // The list opens where the account does: at the pay that started the
+    // current cycle, so the balance never jumps without a row explaining it.
+    var from = model.cycle.start.getTime();
     renderNextPayCard();
 
     var blocks = [];
     model.rows.forEach(function (r) {
       var visible = r.events.filter(function (e) { return e.date.getTime() >= from; });
       if (!visible.length) return;
-      var partial = visible.length < r.events.length;
+      // The month the cycle opens in is shown from the floor, not the 1st.
+      var partial = r.ym === ymOf(model.cycle.start) && model.cycle.start.getUTCDate() > 1;
       var income = 0;
       var spent = 0;
       visible.forEach(function (e) {
@@ -1231,40 +1280,44 @@
     }).join('');
   }
 
-  /* The lead-in on the home view. The headline is what the pay LEAVES BEHIND
-   * once its instalments and budget draw are met — the gross is demoted to the
-   * informational line under it. The card's markup is static so the budget
-   * field keeps focus across recomputes; only its contents are refreshed. */
+  /* The lead-in on the home view: THIS CYCLE, from the pay that opened it to
+   * the next one, with the math written out — the pay, every other movement
+   * in the window, and what is left at the end. The card's markup is static
+   * so the budget field keeps focus across recomputes; only its contents are
+   * refreshed. */
   function renderNextPayCard() {
     var card = $('next-pay');
-    var pay = model.nextPay;
-    if (!pay) {
-      card.hidden = true;
-      return;
-    }
+    var cyc = model.cycle;
+    var pay = cyc.pay;
     card.hidden = false;
 
-    var sameDay = [];
-    model.rows.forEach(function (r) {
-      r.events.forEach(function (e) {
-        if (e !== pay && e.date.getTime() === pay.date.getTime() && e.eur < 0) sameDay.push(e);
-      });
-    });
-    var takes = sameDay.reduce(function (a, b) { return a + -b.eur; }, 0);
-    var saved = pay.eur - takes;
-    var days = Math.round((pay.date.getTime() - today.getTime()) / DAY_MS);
+    var lines = cyc.events.filter(function (e) { return e !== pay; });
+    var left = cyc.events.reduce(function (a, e) { return a + e.eur; }, 0);
+    var untilNext = cyc.next
+      ? Math.round((cyc.next.date.getTime() - today.getTime()) / DAY_MS) : null;
 
-    $('np-when').textContent = dateLabel(pay.date, { full: true }) + ' · ' +
-      (days <= 0 ? 'today' : 'in ' + days + (days === 1 ? ' day' : ' days'));
-    $('np-saved').textContent = money(saved, { signed: true });
-    $('np-saved').classList.toggle('is-short', saved < 0);
-    $('np-sub').textContent = money(pay.eur) + ' in · ' + pay.period.days + ' days × ' +
-      nativeMoney(pay.period.perDay, data.income.workday.currency) +
-      ' · Toptal ' + dateLabel(pay.period.toptal) + ' → Wise ' + dateLabel(pay.date);
+    $('np-when').textContent = dateLabel(cyc.start, { full: true }) +
+      (cyc.next ? ' → ' + dateLabel(cyc.next.date) : '') +
+      (untilNext == null ? '' : untilNext <= 0 ? ' · next pay today'
+        : ' · next pay in ' + untilNext + (untilNext === 1 ? ' day' : ' days'));
+    $('np-saved').textContent = money(left, { signed: true });
+    $('np-saved').classList.toggle('is-short', left < 0);
+    $('np-sub').textContent = pay
+      ? money(pay.eur) + ' in · ' + pay.period.days + ' days × ' +
+        nativeMoney(pay.period.perDay, data.income.workday.currency) +
+        ' · Toptal ' + dateLabel(pay.period.toptal) + ' → Wise ' + dateLabel(pay.date)
+      : 'No pay has landed in this cycle yet' +
+        (cyc.next ? ' — the next one is ' + dateLabel(cyc.next.date, { full: true }) : '') + '.';
 
-    $('np-out').innerHTML = sameDay.map(function (e) {
-      return '<span><i>' + esc(e.label) + '</i>' + esc(money(-e.eur)) + '</span>';
-    }).join('');
+    $('np-out').innerHTML =
+      (pay ? '<span class="is-in"><i>' + esc(pay.label) + '</i>' +
+        esc(money(pay.eur, { signed: true })) + '</span>' : '') +
+      lines.map(function (e) {
+        return '<span' + (e.eur > 0 ? ' class="is-in"' : '') + '><i>' + esc(e.label) +
+          (e.date.getTime() !== cyc.start.getTime() ? ' <small>' + esc(dateLabel(e.date)) + '</small>' : '') +
+          '</i>' + esc(money(e.eur, { signed: true })) + '</span>';
+      }).join('') +
+      '<span class="is-total"><i>Left at the end</i>' + esc(money(left, { signed: true })) + '</span>';
 
     syncBudgetField();
   }

@@ -742,6 +742,18 @@ body.sheet-open { overflow: hidden; }
 }
 
 .nextpay-out i { font-style: normal; color: rgba(255, 255, 255, 0.55); font-weight: 500; }
+.nextpay-out small { font-size: 11px; color: rgba(255, 255, 255, 0.38); margin-left: 4px; }
+.nextpay-out .is-in { color: #8ee8b4; }
+
+.nextpay-out .is-total {
+  margin-top: 4px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 800;
+}
+
+.nextpay-out .is-total i { color: rgba(255, 255, 255, 0.8); font-weight: 700; }
 
 .nextpay-budget {
   display: flex;

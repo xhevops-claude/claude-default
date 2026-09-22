@@ -324,7 +324,8 @@ the budget does not, because it is what you live on.
 
 Savings are the residual: `income − fixed budget − debt payments − unplanned`,
 accumulated across the horizon. `startingSavings` in `meta.json` seeds the opening
-balance.
+balance — what is in the account at the start of the **current pay cycle** (see
+the Timeline paragraph below), not on the first of the month.
 
 **The Invest view** values the property projects. A project's `loanId` ties it
 to a debt in `loans.json`, and everything on the loan side — what is still owed
@@ -347,15 +348,22 @@ the label matching /instal/i is the fallback). Either turns the ≈ off, and the
 instalment lines are kept out of the "down payment" the interest is compared
 with. `disbursedOn` is read loosely — ISO, `dd.mm.yyyy`, or "21 May 2021".
 
-**The Timeline is the home view** and it leads with what is still ahead rather
-than the first of the month. `build()` marks `model.nextPay` (the earliest pay
-arrival on or after today) and that headlines the view, but the list's floor is
-**today**, not the pay date — an expense falling between the two is still money
-to find, and hiding it would make the running balance jump without explanation.
-Months entirely behind are dropped and the one it starts mid-way through is
-totalled from what is left ("Rest of Sep"). The simulation itself still runs from
-the start of the month — the filter is presentation only, so the loan and budget
-bookkeeping behind the opening balance stays whole.
+**The Timeline is the home view** and it leads with the **current pay cycle**.
+`build()` sets a cash floor: the most recent pay arrival on or before today, or
+the first of the start month if none has landed yet (`model.cycle.start`).
+Nothing before the floor touches the account — those pays, instalments and
+budget draws have already happened and are in `startingSavings` — but the walk
+still runs them, because the loan balances (`balanceToday`) and the month's
+budget share depend on them. A one-off (committed extra, additional income or
+a calendar addition) dated before the floor is not history: it is money still
+to find, so it rolls forward to today and its detail says "was due …".
+Anything that rode on an earlier pay stays where it was. `model.cycle` carries
+the pay that opened the cycle (null if none yet), the next pay, and every
+applied event in between; the hero card writes that math out — pay, each
+movement, "Left at the end" — and the list's floor is the cycle start, so the
+running balance never jumps without a row explaining it. Months entirely
+behind are dropped and the one it starts mid-way through is totalled from what
+is left ("Rest of Sep").
 
 **Adding entries.** Append to the relevant array — every item needs a unique `id`
 (used as the ledger toggle key) and `active`. Seed rows Claude invented carry
