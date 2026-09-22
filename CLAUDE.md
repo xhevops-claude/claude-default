@@ -365,9 +365,15 @@ committed data, never a write back to it — but it does persist: the currency,
 the budget and target-price overrides, the what-if sliders, the ledger's
 excluded ids and the amounts typed over its additional-income, budget and
 unplanned-expense rows (`scenario.amounts`, id → native amount; the engine
-reads those rows through `amountOf()`) are kept in localStorage under
+reads those rows through `amountOf()`), plus the income and expenses the user
+adds on the Ledger (`scenario.custom`: `{ id, kind, label, amount, currency,
+when }` with `when` one of `next-pay`/`every-pay` + `from` or `date`/`monthly`
++ `date`; the calendar ones join the additional/extras lists in `build()` via
+`customCalendarItems()`, the pay-linked ones are pushed off each pay arrival,
+"next-pay" only the first on or after `from`) are kept in localStorage under
 `forecast-scenario-v1`, saved from `recompute()` (every change passes through
-it) and restored at boot. A slider
+it) and restored at boot. The add form is static markup above `#ledger-list`
+so a re-render never wipes what is being typed. A slider
 the user never moved is stored as `null`, not its value, so untouched knobs keep
 following the committed data when it changes. Only the user's own overrides go
 in there, never a figure from the vault. Reset in the scenario sheet puts

@@ -1203,6 +1203,124 @@ body.sheet-open { overflow: hidden; }
   cursor: pointer;
 }
 
+.lremove {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lremove:active { color: var(--neg); }
+
+.tag.is-in { color: var(--pos); background: rgba(74, 222, 128, 0.12); }
+.tag.is-out { color: var(--neg); background: rgba(255, 120, 100, 0.12); }
+
+/* --------------------------------------------------------------- add form */
+
+.add-card { padding: 10px; }
+
+.add-toggle {
+  width: 100%;
+  padding: 11px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-form { padding: 4px 4px 2px; }
+
+.seg {
+  display: flex;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px;
+  margin-bottom: 4px;
+}
+
+.seg-btn {
+  flex: 1;
+  padding: 7px 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seg-btn.is-on { background: var(--accent); color: #0d0f16; }
+
+.add-label {
+  display: block;
+  margin: 12px 0 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.add-in {
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  appearance: none;
+  -moz-appearance: textfield;
+}
+
+.add-in::-webkit-outer-spin-button,
+.add-in::-webkit-inner-spin-button { appearance: none; margin: 0; }
+.add-in:focus { outline: 2px solid #8ec5ff; outline-offset: 1px; }
+.add-in::placeholder { color: var(--ink-3); font-weight: 500; }
+
+.add-row { display: flex; gap: 8px; }
+.add-row .add-in { min-width: 0; }
+.add-sel { flex: none; width: 92px; }
+
+.add-hint {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  min-height: 18px;
+}
+
+.add-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+.add-cancel,
+.add-go {
+  flex: 1;
+  padding: 11px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-cancel { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); }
+.add-go { border: 0; background: var(--accent); color: #0d0f16; }
+
 .lrow.is-off { opacity: 0.45; }
 .lrow.is-off .lcheck { background: transparent; border-color: var(--ink-3); }
 .lrow.is-off .lcheck::after { display: none; }
