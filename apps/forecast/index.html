@@ -38,7 +38,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=612c0b6">
+  <link rel="stylesheet" href="styles.css?v=0fb76d1">
 </head>
 <body>
   <div id="app-loading">
@@ -168,10 +168,10 @@
       <section id="view-timeline" class="view is-active" aria-label="Cash timeline">
         <div id="next-pay" class="nextpay" hidden>
           <div class="nextpay-top">
-            <span class="nextpay-tag">Next payment</span>
+            <span class="nextpay-tag">This cycle</span>
             <span class="nextpay-when" id="np-when"></span>
           </div>
-          <div class="nextpay-label">Saved from this pay</div>
+          <div class="nextpay-label">Left at the end of the cycle</div>
           <div class="nextpay-amount" id="np-saved">—</div>
           <div class="nextpay-sub" id="np-sub"></div>
           <div class="nextpay-out" id="np-out"></div>
@@ -214,13 +214,47 @@
 
       <section id="view-ledger" class="view" aria-label="Ledger">
         <p class="ledger-hint">
-          Tap a row to include or exclude it from the forecast. The amounts on the
-          income, budget and unplanned rows can be typed over — after a pay, say —
-          and ↺ puts the committed figure back. All of it, with the currency, the
-          budget and target price and the what-if sliders, is kept in this browser
-          and comes back next time; the committed data files are never touched.
-          Reset in the scenario sheet puts everything back.
+          Tap a row to include or exclude it from the forecast. Add your own income
+          and expenses below — once or repeating, with a pay or on a date. The
+          amounts on the income, budget and unplanned rows can be typed over — after
+          a pay, say — and ↺ puts the committed figure back. All of it, with the
+          currency, the budget and target price and the what-if sliders, is kept in
+          this browser and comes back next time; the committed data files are never
+          touched. Reset in the scenario sheet puts everything back and removes
+          what you added.
         </p>
+        <div class="card add-card">
+          <button class="add-toggle" id="custom-add" type="button" aria-expanded="false" aria-controls="custom-form">＋ Add income or expense</button>
+          <form class="add-form" id="custom-form" hidden>
+            <div class="seg" role="group" aria-label="Income or expense">
+              <button class="seg-btn is-on" type="button" data-kind="income" aria-pressed="true">Income</button>
+              <button class="seg-btn" type="button" data-kind="expense" aria-pressed="false">Expense</button>
+            </div>
+            <label class="add-label" for="add-label">What is it</label>
+            <input class="add-in" id="add-label" type="text" maxlength="60" placeholder="Freelance invoice, car service…" autocomplete="off">
+            <label class="add-label" for="add-amount">How much</label>
+            <div class="add-row">
+              <input class="add-in" id="add-amount" type="number" min="0" step="any" inputmode="decimal" placeholder="0">
+              <select class="add-in add-sel" id="add-cur" aria-label="Currency"></select>
+            </div>
+            <label class="add-label" for="add-when">When</label>
+            <select class="add-in" id="add-when">
+              <option value="next-pay">Once — with the next pay</option>
+              <option value="date">Once — on a date</option>
+              <option value="every-pay">Every pay, from the next one</option>
+              <option value="monthly">Every month, from a date</option>
+            </select>
+            <div id="add-date-row" hidden>
+              <label class="add-label" for="add-date" id="add-date-label">On</label>
+              <input class="add-in" id="add-date" type="date">
+            </div>
+            <p class="add-hint" id="add-hint"></p>
+            <div class="add-actions">
+              <button class="add-cancel" id="custom-cancel" type="button">Cancel</button>
+              <button class="add-go" id="add-go" type="submit">Add income</button>
+            </div>
+          </form>
+        </div>
         <div id="ledger-list"></div>
       </section>
     </main>
@@ -282,6 +316,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=612c0b6"></script>
+  <script src="app.js?v=0fb76d1"></script>
 </body>
 </html>
