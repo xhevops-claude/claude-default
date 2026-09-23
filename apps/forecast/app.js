@@ -73,6 +73,7 @@
     rollover: false,
     off: Object.create(null),
     amounts: Object.create(null),   // id → native amount typed over a ledger row
+    custom: [],                     // income and expenses added on the Ledger
   };
   var defaults = null;
 
@@ -214,6 +215,61 @@
     if (cur === 'MKD') return 'ден';
     if (cur === 'USD') return '$';
     return '€';
+  }
+
+  /* ------------------------------------------------------ your additions */
+
+  /* Income and expenses the user adds on the Ledger, kept in the scenario
+   * store rather than the data files. Each one becomes ordinary events in
+   * build(): a calendar entry ("on a date", "every month") joins the
+   * additional-income or unplanned-expense list for the walk, and a pay-linked
+   * one ("with the next pay", "every pay") hangs off the pay arrivals the way
+   * an instalment does, so it lands the day the money does.
+   *
+   *   { id, kind: 'income'|'expense', label, amount, currency,
+   *     when: 'next-pay'|'every-pay'  + from: 'yyyy-mm-dd'   (pays on/after)
+   *     when: 'date'|'monthly'        + date: 'yyyy-mm-dd'   (first occurrence) } */
+  var WHEN = ['next-pay', 'date', 'every-pay', 'monthly'];
+
+  function customId() {
+    return 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
+  function isoDate(s) {
+    return mkDate(parseInt(s.slice(0, 4), 10), parseInt(s.slice(5, 7), 10) - 1,
+      parseInt(s.slice(8, 10), 10));
+  }
+
+  function isoOf(dt) {
+    return ymOf(dt) + '-' + pad2(dt.getUTCDate());
+  }
+
+  function ordinal(n) {
+    var s = ['th', 'st', 'nd', 'rd'];
+    var v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
+  // The calendar entries of one kind as items the existing loops understand.
+  function customCalendarItems(kind) {
+    return scenario.custom.filter(function (c) {
+      return c.kind === kind && (c.when === 'date' || c.when === 'monthly');
+    }).map(function (c) {
+      var item = { id: c.id, label: c.label, amount: c.amount, currency: c.currency,
+        day: parseInt(c.date.slice(8, 10), 10), note: 'added by you' };
+      if (c.when === 'date') { item.cadence = 'once'; item.month = c.date.slice(0, 7); }
+      else { item.cadence = 'monthly'; item.startMonth = c.date.slice(0, 7); }
+      return item;
+    });
+  }
+
+  function customWhenLabel(c) {
+    if (c.when === 'next-pay') return 'once · with the next pay after ' + dateLabel(isoDate(c.from));
+    if (c.when === 'every-pay') return 'every pay · from ' + dateLabel(isoDate(c.from));
+    var d = isoDate(c.date);
+    if (c.when === 'date') return 'once · ' + dateLabel(d, { full: true });
+    return 'every month on the ' + ordinal(d.getUTCDate()) + ' · from ' +
+      ymLabel(c.date.slice(0, 7), { long: true });
   }
 
   function payCycle() {
@@ -401,6 +457,24 @@
 
     var rows = [];
     var heldExpenses = [];    // unplanned expenses waiting for money to arrive
+    var nextPaid = Object.create(null);   // "with the next pay" additions already placed
+
+    /* The account opens at the start of the CURRENT pay cycle — the most
+     * recent pay arrival on or before today, or the first of the start month
+     * if none has landed yet. Everything before that has already happened and
+     * is in `startingSavings`; the walk still runs it for the loan balances,
+     * but nothing before the floor touches the cash. A one-off dated before
+     * the floor is not history, though — it is money still to find, and rolls
+     * forward to today. */
+    var walkStart = mkDate(startY, startM, 1);
+    var floor = walkStart;
+    for (var fb = 0; fb <= 3; fb++) {
+      periodsOf(startY, startM - fb).forEach(function (p) {
+        var t = p.arrival.getTime();
+        if (t <= today.getTime() && t > floor.getTime()) floor = p.arrival;
+      });
+    }
+    var rollTo = today.getTime() > floor.getTime() ? today : floor;
     var cumulative = data.meta.startingSavings || 0;
     var totals = { income: 0, loan: 0, interest: 0, budget: 0, extra: 0, saved: 0 };
 
@@ -444,18 +518,21 @@
         : budgetItems.reduce(function (a, b) { return a + toEur(amountOf(b), b.currency); }, 0);
       var budgetLabel = budgetItems.length === 1 ? budgetItems[0].label : 'Monthly budget';
 
-      (data.extras.extras || []).forEach(function (it) {
-        if (!isOn(it) || it.month !== ym) return;
+      // A committed extra names its month; an added one may repeat, so it
+      // goes through the same cadence check as income.
+      (data.extras.extras || []).concat(customCalendarItems('expense')).forEach(function (it) {
+        if (!isOn(it) || !(it.cadence ? hits(it, ym) : it.month === ym)) return;
         var day = Math.min(it.day || 1, daysInMonth(monthDate.getUTCFullYear(),
           monthDate.getUTCMonth()));
         events.push({
           date: mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day),
           kind: 'extra', label: it.label, detail: it.note || 'Unplanned',
           eur: -toEur(amountOf(it), it.currency),
+          once: !it.cadence || it.cadence === 'once',
         });
       });
 
-      (data.income.additional || []).forEach(function (it) {
+      (data.income.additional || []).concat(customCalendarItems('income')).forEach(function (it) {
         if (!isOn(it) || !hits(it, ym)) return;
         var day = Math.min(it.day || 1, daysInMonth(monthDate.getUTCFullYear(),
           monthDate.getUTCMonth()));
@@ -463,6 +540,7 @@
           date: mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day),
           kind: 'income', label: it.label, detail: it.note || '',
           eur: toEur(amountOf(it), it.currency),
+          once: it.cadence === 'once',
         });
       });
 
@@ -484,6 +562,23 @@
           detail: per.days + ' days × ' + nativeMoney(per.perDay, data.income.workday.currency) +
             ' · Toptal ' + dateLabel(per.toptal) + ' → Wise ' + dateLabel(per.arrival),
           eur: per.grossEur,
+        });
+        // Additions hung off the pays: every pay from a date on, or only the
+        // first one after it. Income joins the pay; an expense comes out of
+        // it the same day, after the pay has landed.
+        scenario.custom.forEach(function (c) {
+          if (!isOn(c) || (c.when !== 'every-pay' && c.when !== 'next-pay')) return;
+          if (per.arrival.getTime() < isoDate(c.from).getTime()) return;
+          if (c.when === 'next-pay') {
+            if (nextPaid[c.id]) return;
+            nextPaid[c.id] = true;
+          }
+          var cEur = toEur(c.amount, c.currency);
+          events.push({
+            date: per.arrival, kind: c.kind === 'income' ? 'income' : 'extra', withPay: true,
+            label: c.label, detail: 'with the ' + per.rangeLabel + ' pay · added by you',
+            eur: c.kind === 'income' ? cEur : -cEur,
+          });
         });
         // Instalments pinned to this one pay period. They go in before the
         // flexible ones so a flexible claim sees what is genuinely left.
@@ -552,6 +647,16 @@
           });
         }
       }
+
+      // A one-off that was due before the cycle opened is still to be paid
+      // (or received): it moves to today and says where it came from. Pays,
+      // instalments, budget draws, a recurring item's earlier occurrence and
+      // anything that rode on an earlier pay are history and stay put.
+      events.forEach(function (e) {
+        if (e.date.getTime() >= floor.getTime() || !e.once) return;
+        e.detail = (e.detail ? e.detail + ' · ' : '') + 'was due ' + dateLabel(e.date);
+        e.date = rollTo;
+      });
 
       events.sort(function (a, b) {
         if (a.date.getTime() !== b.date.getTime()) return a.date - b.date;
@@ -677,6 +782,10 @@
 
         if (ev.kind === 'loan') payLeft += ev.eur;   // ev.eur is negative here
 
+        // Before the cycle opened the money has already moved: the balances
+        // above needed the event, the account does not.
+        if (ev.date.getTime() < floor.getTime()) continue;
+
         if (ev.kind === 'extra' && cumulative + ev.eur < -EPS) {
           heldExpenses.push(ev);
           continue;
@@ -745,18 +854,31 @@
       if (!lastPayoff || x.payoffDate > lastPayoff) lastPayoff = x.payoffDate;
     });
 
-    // The pay the timeline opens on. The simulation still runs from the start
-    // of the month so the bookkeeping behind it stays whole — this only marks
-    // where the forward-looking view begins.
+    // The current cycle, which the home view leads with: from the pay that
+    // opened it (none if no pay has landed yet this month) up to the next
+    // pay, exclusive. Its events are what the money in hand has to cover.
     var nextPay = null;
-    for (var ri = 0; ri < rows.length && !nextPay; ri++) {
-      for (var ei = 0; ei < rows[ri].events.length; ei++) {
-        var e = rows[ri].events[ei];
-        if (e.period && e.date.getTime() >= today.getTime()) { nextPay = e; break; }
-      }
-    }
+    var cyclePay = null;
+    var cycleNext = null;
+    var cycleEvents = [];
+    rows.forEach(function (r) {
+      r.events.forEach(function (e) {
+        if (e.period) {
+          if (!nextPay && e.date.getTime() >= today.getTime()) nextPay = e;
+          if (e.date.getTime() === floor.getTime()) cyclePay = e;
+          else if (!cycleNext && e.date.getTime() > floor.getTime()) cycleNext = e;
+        }
+      });
+    });
+    rows.forEach(function (r) {
+      r.events.forEach(function (e) {
+        var t = e.date.getTime();
+        if (t >= floor.getTime() && (!cycleNext || t < cycleNext.date.getTime())) cycleEvents.push(e);
+      });
+    });
 
     return {
+      cycle: { start: floor, pay: cyclePay, next: cycleNext, events: cycleEvents },
       rows: rows,
       debts: debts,
       byPriority: byPriority,
@@ -1100,14 +1222,17 @@
    * the running balance jump without explanation. The month it starts mid-way
    * through is totalled from what is left of it. */
   function renderTimeline() {
-    var from = today.getTime();
+    // The list opens where the account does: at the pay that started the
+    // current cycle, so the balance never jumps without a row explaining it.
+    var from = model.cycle.start.getTime();
     renderNextPayCard();
 
     var blocks = [];
     model.rows.forEach(function (r) {
       var visible = r.events.filter(function (e) { return e.date.getTime() >= from; });
       if (!visible.length) return;
-      var partial = visible.length < r.events.length;
+      // The month the cycle opens in is shown from the floor, not the 1st.
+      var partial = r.ym === ymOf(model.cycle.start) && model.cycle.start.getUTCDate() > 1;
       var income = 0;
       var spent = 0;
       visible.forEach(function (e) {
@@ -1155,40 +1280,44 @@
     }).join('');
   }
 
-  /* The lead-in on the home view. The headline is what the pay LEAVES BEHIND
-   * once its instalments and budget draw are met — the gross is demoted to the
-   * informational line under it. The card's markup is static so the budget
-   * field keeps focus across recomputes; only its contents are refreshed. */
+  /* The lead-in on the home view: THIS CYCLE, from the pay that opened it to
+   * the next one, with the math written out — the pay, every other movement
+   * in the window, and what is left at the end. The card's markup is static
+   * so the budget field keeps focus across recomputes; only its contents are
+   * refreshed. */
   function renderNextPayCard() {
     var card = $('next-pay');
-    var pay = model.nextPay;
-    if (!pay) {
-      card.hidden = true;
-      return;
-    }
+    var cyc = model.cycle;
+    var pay = cyc.pay;
     card.hidden = false;
 
-    var sameDay = [];
-    model.rows.forEach(function (r) {
-      r.events.forEach(function (e) {
-        if (e !== pay && e.date.getTime() === pay.date.getTime() && e.eur < 0) sameDay.push(e);
-      });
-    });
-    var takes = sameDay.reduce(function (a, b) { return a + -b.eur; }, 0);
-    var saved = pay.eur - takes;
-    var days = Math.round((pay.date.getTime() - today.getTime()) / DAY_MS);
+    var lines = cyc.events.filter(function (e) { return e !== pay; });
+    var left = cyc.events.reduce(function (a, e) { return a + e.eur; }, 0);
+    var untilNext = cyc.next
+      ? Math.round((cyc.next.date.getTime() - today.getTime()) / DAY_MS) : null;
 
-    $('np-when').textContent = dateLabel(pay.date, { full: true }) + ' · ' +
-      (days <= 0 ? 'today' : 'in ' + days + (days === 1 ? ' day' : ' days'));
-    $('np-saved').textContent = money(saved, { signed: true });
-    $('np-saved').classList.toggle('is-short', saved < 0);
-    $('np-sub').textContent = money(pay.eur) + ' in · ' + pay.period.days + ' days × ' +
-      nativeMoney(pay.period.perDay, data.income.workday.currency) +
-      ' · Toptal ' + dateLabel(pay.period.toptal) + ' → Wise ' + dateLabel(pay.date);
+    $('np-when').textContent = dateLabel(cyc.start, { full: true }) +
+      (cyc.next ? ' → ' + dateLabel(cyc.next.date) : '') +
+      (untilNext == null ? '' : untilNext <= 0 ? ' · next pay today'
+        : ' · next pay in ' + untilNext + (untilNext === 1 ? ' day' : ' days'));
+    $('np-saved').textContent = money(left, { signed: true });
+    $('np-saved').classList.toggle('is-short', left < 0);
+    $('np-sub').textContent = pay
+      ? money(pay.eur) + ' in · ' + pay.period.days + ' days × ' +
+        nativeMoney(pay.period.perDay, data.income.workday.currency) +
+        ' · Toptal ' + dateLabel(pay.period.toptal) + ' → Wise ' + dateLabel(pay.date)
+      : 'No pay has landed in this cycle yet' +
+        (cyc.next ? ' — the next one is ' + dateLabel(cyc.next.date, { full: true }) : '') + '.';
 
-    $('np-out').innerHTML = sameDay.map(function (e) {
-      return '<span><i>' + esc(e.label) + '</i>' + esc(money(-e.eur)) + '</span>';
-    }).join('');
+    $('np-out').innerHTML =
+      (pay ? '<span class="is-in"><i>' + esc(pay.label) + '</i>' +
+        esc(money(pay.eur, { signed: true })) + '</span>' : '') +
+      lines.map(function (e) {
+        return '<span' + (e.eur > 0 ? ' class="is-in"' : '') + '><i>' + esc(e.label) +
+          (e.date.getTime() !== cyc.start.getTime() ? ' <small>' + esc(dateLabel(e.date)) + '</small>' : '') +
+          '</i>' + esc(money(e.eur, { signed: true })) + '</span>';
+      }).join('') +
+      '<span class="is-total"><i>Left at the end</i>' + esc(money(left, { signed: true })) + '</span>';
 
     syncBudgetField();
   }
@@ -1686,6 +1815,34 @@
     return null;
   }
 
+  function customEntry(id) {
+    for (var i = 0; i < scenario.custom.length; i++) {
+      if (scenario.custom[i].id === id) return scenario.custom[i];
+    }
+    return null;
+  }
+
+  // A row the user added: its amount is the entry itself (no "was"), and ×
+  // removes it. Toggling works like any other row, through scenario.off.
+  function customRow(c) {
+    var off = !isOn(c);
+    var income = c.kind === 'income';
+    return '<div class="lrow' + (off ? ' is-off' : '') + '" data-toggle="' + esc(c.id) + '">' +
+      '<span class="lcheck" aria-hidden="true"></span>' +
+      '<span class="lbody"><span class="lname">' + esc(c.label) +
+        '<span class="tag ' + (income ? 'is-in' : 'is-out') + '">' + (income ? 'in' : 'out') + '</span></span>' +
+        '<span class="lnote">' + esc(customWhenLabel(c)) + '</span></span>' +
+      '<span class="lright ledit">' +
+        '<input class="ledit-in" type="number" min="0" step="any" inputmode="decimal"' +
+          ' data-custom-amount="' + esc(c.id) + '" value="' + esc(String(c.amount)) +
+          '" aria-label="' + esc(c.label) + ' amount in ' + esc(c.currency) + '">' +
+        '<span class="ledit-cur">' + esc(curSymbol(c.currency)) + '</span>' +
+        '<button class="lremove" type="button" data-remove="' + esc(c.id) +
+          '" aria-label="Remove ' + esc(c.label) + '">×</button>' +
+      '</span>' +
+      '</div>';
+  }
+
   function renderLedger() {
     var w = data.income.workday;
     var cycle = payCycle();
@@ -1766,7 +1923,17 @@
           (it.period ? periodLabel(it.period) + ' · ' : '') + (it.note || ''));
       });
 
-    $('ledger-list').innerHTML = incomeHtml + cycleHtml + debtHtml + budgetHtml +
+    var customHtml = '<div class="card">' +
+      '<div class="card-head"><h2 class="card-title">Your additions</h2>' +
+      '<span class="card-note">' + (scenario.custom.length
+        ? scenario.custom.length + ' kept in this browser' : 'Income and expenses you add') +
+      '</span></div>' +
+      (scenario.custom.length
+        ? scenario.custom.map(customRow).join('')
+        : '<div class="empty-note">Nothing added yet — use the button above.</div>') +
+      '</div>';
+
+    $('ledger-list').innerHTML = customHtml + incomeHtml + cycleHtml + debtHtml + budgetHtml +
       extrasHtml + adjHtml;
   }
 
@@ -1791,6 +1958,7 @@
       rollover: same('rollover') ? null : scenario.rollover,
       off: Object.keys(scenario.off),
       amounts: scenario.amounts,
+      custom: scenario.custom,
     }));
   }
 
@@ -1828,6 +1996,24 @@
         if (a != null) scenario.amounts[id] = a;
       });
     }
+    if (Array.isArray(saved.custom)) {
+      var iso = /^\d{4}-\d{2}-\d{2}$/;
+      saved.custom.forEach(function (c) {
+        if (!c || typeof c.id !== 'string' || typeof c.label !== 'string') return;
+        if (c.kind !== 'income' && c.kind !== 'expense') return;
+        if (WHEN.indexOf(c.when) === -1) return;
+        var a = num(c.amount, 0, Infinity);
+        if (a == null) return;
+        var payLinked = c.when === 'next-pay' || c.when === 'every-pay';
+        if (payLinked ? !iso.test(c.from || '') : !iso.test(c.date || '')) return;
+        scenario.custom.push({
+          id: c.id, kind: c.kind, label: c.label.slice(0, 60), amount: a,
+          currency: typeof c.currency === 'string' ? c.currency : 'EUR',
+          when: c.when, from: payLinked ? c.from : undefined,
+          date: payLinked ? undefined : c.date,
+        });
+      });
+    }
     if (typeof saved.currency === 'string' &&
         document.querySelector('.cur-btn[data-cur="' + saved.currency + '"]')) {
       currency = saved.currency;
@@ -1853,7 +2039,8 @@
       scenario.horizon !== defaults.horizon ||
       scenario.rollover !== defaults.rollover ||
       Object.keys(scenario.off).length > 0 ||
-      Object.keys(scenario.amounts).length > 0;
+      Object.keys(scenario.amounts).length > 0 ||
+      scenario.custom.length > 0;
   }
 
   function syncScenarioUi() {
@@ -1951,6 +2138,17 @@
     });
 
     $('ledger-list').addEventListener('click', function (ev) {
+      var remove = ev.target.closest('[data-remove]');
+      if (remove) {
+        var gone = customEntry(remove.dataset.remove);
+        if (gone && window.confirm('Remove "' + gone.label + '" from the forecast?')) {
+          scenario.custom = scenario.custom.filter(function (c) { return c !== gone; });
+          delete scenario.off[gone.id];
+          renderLedger();
+          recompute();
+        }
+        return;
+      }
       var revert = ev.target.closest('[data-revert]');
       if (revert) {
         delete scenario.amounts[revert.dataset.revert];
@@ -1977,6 +2175,11 @@
       if (!inp) return;
       var v = Number(inp.value);
       if (inp.value === '' || !isFinite(v) || v < 0) return;
+      if (inp.dataset.customAmount) {
+        var entry = customEntry(inp.dataset.customAmount);
+        if (entry) { entry.amount = v; model = build(); saveScenario(); }
+        return;
+      }
       var id = inp.dataset.amount;
       var item = editableItem(id);
       if (item && v === item.amount) delete scenario.amounts[id];
@@ -2037,6 +2240,73 @@
       });
     });
 
+    /* The add form lives in static markup above the ledger list, so a
+     * re-render of the list never wipes what is being typed. */
+    var addKind = 'income';
+    function showAddForm(open) {
+      var form = $('custom-form');
+      form.hidden = !open;
+      $('custom-add').setAttribute('aria-expanded', open ? 'true' : 'false');
+      $('custom-add').hidden = open;
+      if (open) {
+        $('add-date').value = isoOf(today);
+        syncAddForm();
+        setTimeout(function () { $('add-label').focus(); }, 40);
+      }
+    }
+    function syncAddForm() {
+      var when = $('add-when').value;
+      var dated = when === 'date' || when === 'monthly';
+      $('add-date-row').hidden = !dated;
+      $('add-date-label').textContent = when === 'monthly' ? 'First on' : 'On';
+      $('add-hint').textContent = {
+        'next-pay': 'Lands the day the next pay does, once.',
+        'date': 'Lands on that day, once. An expense waits for money if there is none yet.',
+        'every-pay': 'With every pay from the next one on — until you remove it.',
+        'monthly': 'First on the day you pick, then the same day every month.',
+      }[when] || '';
+      $('add-go').textContent = addKind === 'income' ? 'Add income' : 'Add expense';
+    }
+    $('custom-add').addEventListener('click', function () { showAddForm(true); });
+    $('custom-cancel').addEventListener('click', function () { showAddForm(false); });
+    $('add-when').addEventListener('change', syncAddForm);
+    Array.prototype.forEach.call(document.querySelectorAll('.seg-btn'), function (btn) {
+      btn.addEventListener('click', function () {
+        addKind = btn.dataset.kind;
+        Array.prototype.forEach.call(document.querySelectorAll('.seg-btn'), function (b) {
+          var on = b === btn;
+          b.classList.toggle('is-on', on);
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        syncAddForm();
+      });
+    });
+    $('custom-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var label = $('add-label').value.trim();
+      var amount = Number($('add-amount').value);
+      var when = $('add-when').value;
+      var dateStr = $('add-date').value;
+      var problem = '';
+      if (!label) problem = 'Give it a name.';
+      else if (!(amount > 0)) problem = 'The amount has to be more than zero.';
+      else if (WHEN.indexOf(when) === -1) problem = 'Pick when it happens.';
+      else if ((when === 'date' || when === 'monthly') && !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        problem = 'Pick a date.';
+      }
+      if (problem) { $('add-hint').textContent = problem; return; }
+      var entry = { id: customId(), kind: addKind, label: label.slice(0, 60), amount: amount,
+        currency: $('add-cur').value || 'EUR', when: when };
+      if (when === 'next-pay' || when === 'every-pay') entry.from = isoOf(today);
+      else entry.date = dateStr;
+      scenario.custom.push(entry);
+      $('add-label').value = '';
+      $('add-amount').value = '';
+      showAddForm(false);
+      renderLedger();
+      recompute();
+    });
+
     $('sc-reset').addEventListener('click', function () {
       scenario.budgetOverride = null;
       scenario.pricePerM2 = null;
@@ -2047,6 +2317,7 @@
       scenario.rollover = defaults.rollover;
       scenario.off = Object.create(null);
       scenario.amounts = Object.create(null);
+      scenario.custom = [];
       renderLedger();
       recompute();
     });
@@ -2301,6 +2572,15 @@
     syncCurrencyButtons();
 
     bind();
+
+    // The add form offers every currency the data quotes a rate for.
+    var curs = ['EUR'].concat(Object.keys(data.meta.fixedRates || {}).filter(function (c) {
+      return c !== 'EUR';
+    }));
+    $('add-cur').innerHTML = curs.map(function (c) {
+      return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+    }).join('');
+
     renderLedger();
     recompute();
 
