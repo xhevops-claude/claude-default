@@ -38,6 +38,13 @@ html, body {
   touch-action: manipulation;
 }
 
+/* touch-action is not inherited, so the things people actually double-tap —
+ * a stepper, a tab, a ledger row, a field — carry it in their own right. The
+ * other iOS zoom, into a focused field under 16px, is handled by keeping every
+ * field at 16px. */
+button, input, select, textarea, a, label,
+.lrow, .tab, .cur-btn, .seg-btn, .np-step, .icon-btn { touch-action: manipulation; }
+
 body.sheet-open { overflow: hidden; }
 
 #app {
@@ -100,7 +107,7 @@ body.sheet-open { overflow: hidden; }
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .lock-input::placeholder { color: rgba(255, 255, 255, 0.4); }
@@ -1187,7 +1194,7 @@ body.sheet-open { overflow: hidden; }
   background: var(--surface-2);
   color: var(--ink);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 16px;
   font-weight: 700;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -1294,7 +1301,7 @@ body.sheet-open { overflow: hidden; }
   background: var(--surface-2);
   color: var(--ink);
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   appearance: none;
   -moz-appearance: textfield;
