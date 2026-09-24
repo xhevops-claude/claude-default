@@ -33,7 +33,7 @@
 
   // Income first, then what it pays for — same-day ordering in the timeline.
   // One-based so the `|| LAST` fallback can't swallow a zero.
-  var KIND_ORDER = { income: 1, loan: 2, budget: 3, extra: 4 };
+  var KIND_ORDER = { income: 1, loan: 2, utilities: 3, budget: 4, extra: 5 };
   var KIND_LAST = 9;
 
   var data = null;
@@ -66,10 +66,11 @@
   var scenario = {
     pricePerM2: null,       // EUR/m² the sale figures are struck at
     rateKnob: null,
-    budgetOverride: null,   // EUR/month, null = whatever budget.json says
-    cycleExtra: null,       // { start: ISO cycle start, eur } — this cycle only
-    cycleIncome: null,      // { start, items: { id: { off, eur } } } — this cycle only
-    monthOff: Object.create(null),   // ym → { id: true }: additional income off that month
+    // The current cycle's overrides, keyed to the cycle's start so they lapse
+    // when the next pay lands: { start, off: { id: true }, eur: { id: EUR } }
+    // for 'budget', 'utilities', 'extras' and each additional income's id.
+    cycle: null,
+    monthOff: Object.create(null),   // ym → { id: true }: an item off that month
     dayAdjust: 0,
     extraToDebt: 0,
     horizon: 36,
@@ -480,7 +481,9 @@
     var rollTo = today.getTime() > floor.getTime() ? today : floor;
     // The extra-expenses field on the cycle card belongs to the cycle it was
     // set in; once the next pay opens a new cycle it simply stops counting.
-    var cycleOverride = cycleExtraFor(floor);
+    var cyc = cycleFor(floor);
+    var ymFloor = ymOf(floor);
+    var cycleOverride = cyc.off.extras ? 0 : cyc.eur.extras;
 
     /* This cycle's extra expenses are one figure: every committed extra that
      * falls between the cycle's opening pay and the next one (a one-off due
@@ -525,21 +528,28 @@
      * typed over, from the Timeline. Inside the cycle the card's row wins;
      * in a later month the month's own toggles do. Returns the EUR to land,
      * or null when the item is off for that date. */
-    var cycleInc = cycleIncomeFor(floor);
     var cycleIncome = [];       // the card's rows: every addition landing in the cycle
     function incomeAt(it, date, eur) {
       var t = date.getTime();
       if (t >= floor.getTime() && (cycleEnd == null || t < cycleEnd)) {
-        var o = cycleInc[it.id];
-        var off = !!(o && o.off);
-        var use = o && o.eur != null ? o.eur : eur;
-        cycleIncome.push({ id: it.id, label: it.label, base: eur, eur: use, off: off,
-          overridden: !!(o && o.eur != null) });
-        return off ? null : use;
+        var off = !!cyc.off[it.id];
+        var over = cyc.eur[it.id];
+        cycleIncome.push({ id: it.id, label: it.label, kind: 'in', base: eur,
+          eur: over != null ? over : eur, off: off, overridden: over != null });
+        return off ? null : (over != null ? over : eur);
       }
       var m = scenario.monthOff[ymOf(date)];
       return m && m[it.id] ? null : eur;
     }
+
+    /* Utilities: the bills, one monthly figure from the Ledger, paid with the
+     * month's first pay. The current cycle's figure is the card's row — the
+     * committed one if that pay opened the cycle, else nothing to pay yet —
+     * and whatever is typed over it goes out today. */
+    var util = utilitiesItem();
+    var utilEur = isOn(util) ? toEur(amountOf(util), util.currency) : 0;
+    var cycleUtil = null;       // { date, eur, committed } once the floor month is walked
+    var cycleBudget = null;     // the floor month's budget: { base, eur, off }
     var cumulative = data.meta.startingSavings || 0;
     var totals = { income: 0, loan: 0, interest: 0, budget: 0, extra: 0, saved: 0 };
 
@@ -578,10 +588,31 @@
       var budgetItems = (data.budget.budget || []).filter(function (it) {
         return isOn(it) && hits(it, ym);
       });
-      var budgetTotal = scenario.budgetOverride != null
-        ? scenario.budgetOverride
-        : budgetItems.reduce(function (a, b) { return a + toEur(amountOf(b), b.currency); }, 0);
+      var budgetBase = budgetItems.reduce(function (a, b) {
+        return a + toEur(amountOf(b), b.currency);
+      }, 0);
+      var budgetTotal = budgetBase;
+      if (ym === ymFloor) {
+        // The cycle card's row governs the month the cycle opened in.
+        budgetTotal = cyc.off.budget ? 0 : (cyc.eur.budget != null ? cyc.eur.budget : budgetBase);
+        cycleBudget = { base: budgetBase, eur: cyc.eur.budget != null ? cyc.eur.budget : budgetBase,
+          off: !!cyc.off.budget, overridden: cyc.eur.budget != null };
+      } else if (scenario.monthOff[ym] && scenario.monthOff[ym].budget) {
+        budgetTotal = 0;
+      }
       var budgetLabel = budgetItems.length === 1 ? budgetItems[0].label : 'Monthly budget';
+
+      var monthChoices = [];      // what this month can switch off, for its chips
+      if (ym > ymFloor) {
+        if (budgetBase > 0) {
+          monthChoices.push({ id: 'budget', label: budgetLabel,
+            off: !!(scenario.monthOff[ym] && scenario.monthOff[ym].budget) });
+        }
+        if (utilEur > 0) {
+          monthChoices.push({ id: 'utilities', label: util.label,
+            off: !!(scenario.monthOff[ym] && scenario.monthOff[ym].utilities) });
+        }
+      }
 
       // Committed extras outside the current cycle keep their own rows; the
       // ones inside it are the single "Extra expenses" line below.
@@ -596,7 +627,6 @@
         });
       }
 
-      var monthChoices = [];      // the month's additions, for its toggles
       (data.income.additional || []).concat(customCalendarItems('income')).forEach(function (it) {
         if (!isOn(it) || !hits(it, ym)) return;
         var day = Math.min(it.day || 1, daysInMonth(monthDate.getUTCFullYear(),
@@ -628,6 +658,36 @@
         }
       }
       arriving.sort(function (a, b) { return a.arrival - b.arrival; });
+
+      // Utilities go out with the month's first pay (a fixed day if none).
+      var utilDate = arriving.length ? arriving[0].arrival
+        : mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(),
+          Math.min((budgetItems[0] && budgetItems[0].chargeDay) || 1,
+            daysInMonth(monthDate.getUTCFullYear(), monthDate.getUTCMonth())));
+      if (ym === ymFloor) {
+        var utilIn = utilDate.getTime() >= floor.getTime() &&
+          (cycleEnd == null || utilDate.getTime() < cycleEnd);
+        var utilBase = utilIn ? utilEur : 0;
+        var utilUse = cyc.off.utilities ? 0 : (cyc.eur.utilities != null ? cyc.eur.utilities : utilBase);
+        cycleUtil = { base: utilBase, eur: cyc.eur.utilities != null ? cyc.eur.utilities : utilBase,
+          off: !!cyc.off.utilities, overridden: cyc.eur.utilities != null,
+          date: utilIn && cyc.eur.utilities == null ? utilDate : rollTo, out: utilUse };
+        if (!utilIn && utilEur > 0) {
+          // Already paid with an earlier pay this month: history, no cash.
+          events.push({ date: utilDate, kind: 'utilities', label: util.label,
+            detail: 'with the first pay of the month', eur: -utilEur });
+        }
+      } else if (utilEur > 0 && !(scenario.monthOff[ym] && scenario.monthOff[ym].utilities)) {
+        events.push({ date: utilDate, kind: 'utilities', label: util.label,
+          detail: arriving.length ? 'with the ' + arriving[0].rangeLabel + ' pay'
+            : 'no pay lands this month', eur: -utilEur });
+      }
+      if (cycleUtil && cycleUtil.out > 0 && ym === ymOf(cycleUtil.date)) {
+        events.push({ date: cycleUtil.date, kind: 'utilities', label: util.label,
+          detail: cycleUtil.overridden ? 'this cycle · set by you' : 'with the first pay of the month',
+          eur: -cycleUtil.out, spentNow: true });
+        cycleUtil.out = 0;     // pushed once
+      }
 
       arriving.forEach(function (per, payIdx) {
         events.push({
@@ -864,7 +924,7 @@
           if (ev.eur === 0 && ev.debt) { ev.detail = 'cleared — nothing due'; }
         }
 
-        if (ev.kind === 'loan') payLeft += ev.eur;   // ev.eur is negative here
+        if (ev.kind === 'loan' || ev.kind === 'utilities') payLeft += ev.eur;   // negative
 
         // Before the cycle opened the money has already moved: the balances
         // above needed the event, the account does not.
@@ -882,7 +942,7 @@
         applied.push(ev);
         if (ev.kind === 'income') sums.income += ev.eur;
         else if (ev.kind === 'loan') sums.loan += -ev.eur;
-        else if (ev.kind === 'budget') sums.budget += -ev.eur;
+        else if (ev.kind === 'budget' || ev.kind === 'utilities') sums.budget += -ev.eur;
         else sums.extra += -ev.eur;
       }
 
@@ -966,7 +1026,17 @@
 
     return {
       cycle: { start: floor, pay: cyclePay, next: cycleNext, events: cycleEvents,
-        extras: cycleExtraEur, extrasCommitted: cycleCommittedEur, income: cycleIncome },
+        fields: [
+          { id: 'budget', label: 'Monthly budget allowance', kind: 'out',
+            base: cycleBudget.base, eur: cycleBudget.eur, off: cycleBudget.off,
+            overridden: cycleBudget.overridden },
+          { id: 'utilities', label: util.label, kind: 'out',
+            base: cycleUtil.base, eur: cycleUtil.eur, off: cycleUtil.off,
+            overridden: cycleUtil.overridden },
+          { id: 'extras', label: 'Extra expenses', kind: 'out',
+            base: cycleCommittedEur, eur: cyc.eur.extras != null ? cyc.eur.extras : cycleCommittedEur,
+            off: !!cyc.off.extras, overridden: cyc.eur.extras != null },
+        ].concat(cycleIncome) },
       rows: rows,
       debts: debts,
       byPriority: byPriority,
@@ -1424,106 +1494,83 @@
       }).join('') +
       '<span class="is-total"><i>Left at the end</i>' + esc(money(left, { signed: true })) + '</span>';
 
-    syncBudgetField();
-    syncExtraField();
-    syncIncomeRows();
+    syncCycleFields();
   }
 
-  /* One row per addition landing in this cycle: a tick for whether it lands
-   * at all, and its amount, typed over for this cycle only. The rows are
-   * rebuilt only when the set of additions changes so a field keeps focus. */
-  function syncIncomeRows() {
-    var box = $('np-income');
-    var list = model.cycle.income;
-    box.hidden = !list.length;
+  /* The cycle card's editors: one row per figure this cycle carries — the
+   * budget, utilities, extra expenses and each addition landing in it — with
+   * a tick for whether it counts and its amount, typed over for this cycle
+   * only. Rows are rebuilt only when the set changes so a field keeps focus. */
+  function syncCycleFields() {
+    var box = $('np-fields');
+    var list = model.cycle.fields;
     var key = list.map(function (r) { return r.id; }).join('|');
     if (box.dataset.key !== key) {
       box.dataset.key = key;
-      box.innerHTML = '<div class="np-budget-label np-income-head">Additional income this cycle</div>' +
-        list.map(function (r) {
-          return '<label class="np-inc-row" data-inc="' + esc(r.id) + '">' +
-            '<input class="np-inc-on" type="checkbox" data-inc-on="' + esc(r.id) + '"' +
-              ' aria-label="' + esc(r.label) + ' lands this cycle">' +
-            '<span class="np-inc-label">' + esc(r.label) + '</span>' +
-            '<span class="np-budget-field np-inc-field">' +
-              '<input class="np-budget-input np-inc-in" type="text" inputmode="numeric"' +
-                ' pattern="[0-9]*" autocomplete="off" enterkeyhint="done"' +
-                ' data-inc-amount="' + esc(r.id) + '" aria-label="' + esc(r.label) + ' this cycle">' +
-              '<span class="np-cur np-inc-cur"></span>' +
-            '</span>' +
-          '</label>';
-        }).join('');
+      var lastKind = null;
+      box.innerHTML = list.map(function (r) {
+        var head = '';
+        if (r.kind !== lastKind) {
+          lastKind = r.kind;
+          head = '<div class="np-budget-label np-fields-head">' +
+            (r.kind === 'in' ? 'Additional income this cycle' : 'Expenses this cycle') + '</div>';
+        }
+        return head + '<div class="np-row" data-cf="' + esc(r.id) + '">' +
+          '<input class="np-on" type="checkbox" data-cf-on="' + esc(r.id) + '"' +
+            ' aria-label="' + esc(r.label) + ' counts this cycle">' +
+          '<span class="np-row-label">' + esc(r.label) + '</span>' +
+          '<span class="np-budget-field">' +
+            '<button class="np-step" type="button" data-cf-step="-1" aria-label="Lower ' + esc(r.label) + '">−</button>' +
+            '<input class="np-budget-input" type="text" inputmode="numeric" pattern="[0-9]*"' +
+              ' autocomplete="off" enterkeyhint="done" data-cf-amount="' + esc(r.id) + '"' +
+              ' aria-label="' + esc(r.label) + ' this cycle">' +
+            '<span class="np-cur"></span>' +
+            '<button class="np-step" type="button" data-cf-step="1" aria-label="Raise ' + esc(r.label) + '">+</button>' +
+          '</span>' +
+        '</div>';
+      }).join('');
     }
     list.forEach(function (r) {
-      var row = box.querySelector('[data-inc="' + r.id + '"]');
+      var row = box.querySelector('[data-cf="' + r.id + '"]');
       if (!row) return;
       row.classList.toggle('is-off', r.off);
       row.classList.toggle('is-over', r.overridden);
-      row.querySelector('[data-inc-on]').checked = !r.off;
-      var input = row.querySelector('[data-inc-amount]');
+      row.querySelector('[data-cf-on]').checked = !r.off;
+      var input = row.querySelector('[data-cf-amount]');
       if (document.activeElement !== input) {
         input.value = String(Math.round(fromEur(r.eur, currency)));
       }
-      row.querySelector('.np-inc-cur').textContent = currency === 'EUR' ? '€' : 'ден';
+      row.querySelector('.np-cur').textContent = currency === 'EUR' ? '€' : 'ден';
     });
   }
 
-  function cycleIncomeFor(start) {
-    var c = scenario.cycleIncome;
-    return c && c.start === isoOf(start) && c.items ? c.items : {};
+  function cycleField(id) {
+    return model.cycle.fields.filter(function (r) { return r.id === id; })[0] || null;
   }
 
-  // Set one addition's tick or amount for this cycle; an amount equal to the
-  // committed one clears the override, and an empty entry is dropped.
-  function setCycleIncome(id, patch) {
+  // The overrides for the cycle opening at `start`, or empty ones.
+  function cycleFor(start) {
+    var c = scenario.cycle;
+    return c && c.start === isoOf(start) ? c
+      : { off: Object.create(null), eur: Object.create(null) };
+  }
+
+  // Set one figure's tick or amount for this cycle; an amount equal to the
+  // committed one clears the override, and an empty store is dropped.
+  function setCycle(id, patch) {
     var start = isoOf(model.cycle.start);
-    var c = scenario.cycleIncome;
-    if (!c || c.start !== start) c = { start: start, items: Object.create(null) };
-    var o = c.items[id] || { off: false, eur: null };
-    if ('off' in patch) o.off = !!patch.off;
-    if ('eur' in patch) {
-      var base = model.cycle.income.filter(function (r) { return r.id === id; })[0];
-      o.eur = (base && patch.eur === base.base) ? null : patch.eur;
+    var c = scenario.cycle;
+    if (!c || c.start !== start) {
+      c = { start: start, off: Object.create(null), eur: Object.create(null) };
     }
-    if (!o.off && o.eur == null) delete c.items[id]; else c.items[id] = o;
-    scenario.cycleIncome = Object.keys(c.items).length ? c : null;
+    if ('off' in patch) { if (patch.off) c.off[id] = true; else delete c.off[id]; }
+    if ('eur' in patch) {
+      var f = cycleField(id);
+      if (f && patch.eur === f.base) delete c.eur[id];
+      else c.eur[id] = Math.max(0, patch.eur);
+    }
+    scenario.cycle = Object.keys(c.off).length || Object.keys(c.eur).length ? c : null;
     recompute();
-  }
-
-  // The budget field carries the display currency, so it is rewritten on a
-  // currency switch — but never while the user is typing in it.
-  function syncBudgetField() {
-    var input = $('np-budget');
-    if (document.activeElement === input) return;
-    var eur = scenario.budgetOverride != null ? scenario.budgetOverride : defaults.budget;
-    input.value = String(Math.round(fromEur(eur, currency)));
-    input.step = String(currency === 'EUR' ? 10 : 500);
-    $('np-cur').textContent = currency === 'EUR' ? '€' : 'ден';
-    $('np-budget').setAttribute('aria-label',
-      'Monthly budget allowance in ' + currency);
-  }
-
-  // The cycle's extra expenses: the figure typed over the committed total,
-  // kept against the cycle's start so it lapses when the next pay lands.
-  // null means the committed extras stand as they are.
-  function cycleExtraFor(start) {
-    var c = scenario.cycleExtra;
-    return c && c.start === isoOf(start) ? c.eur : null;
-  }
-
-  function setCycleExtra(eur) {
-    scenario.cycleExtra = eur === model.cycle.extrasCommitted ? null
-      : { start: isoOf(model.cycle.start), eur: Math.max(0, eur) };
-    recompute();
-  }
-
-  function syncExtraField() {
-    var input = $('np-extra');
-    if (document.activeElement === input) return;
-    input.value = String(Math.round(fromEur(model.cycle.extras, currency)));
-    input.step = String(currency === 'EUR' ? 10 : 500);
-    $('np-extra-cur').textContent = currency === 'EUR' ? '€' : 'ден';
-    input.setAttribute('aria-label', 'Extra expenses this cycle in ' + currency);
   }
 
   /* The stepper fields are plain text inputs with the numeric keypad rather
@@ -1538,16 +1585,6 @@
       : v.slice(0, input.selectionStart).replace(/\D+/g, '').length;
     input.value = clean;
     try { input.setSelectionRange(caret, caret); } catch (e) { /* not focused */ }
-  }
-
-  function nudgeExtra(dir) {
-    setCycleExtra(Math.max(0, model.cycle.extras + (dir * BUDGET_STEP_EUR)));
-  }
-
-  function nudgeBudget(dir) {
-    var eur = scenario.budgetOverride != null ? scenario.budgetOverride : defaults.budget;
-    scenario.budgetOverride = Math.max(0, eur + (dir * BUDGET_STEP_EUR));
-    recompute();
   }
 
   /* ----------------------------------------------------------------- debts */
@@ -2013,9 +2050,22 @@
       '</div>';
   }
 
+  // Utilities has no committed row yet: its default is typed on the Ledger
+  // (kept in scenario.amounts like any other edit) over a base of whatever
+  // budget.json's `utilities` says, or nothing.
+  var utilItem = null;
+  function utilitiesItem() {
+    if (!utilItem) {
+      utilItem = { id: 'utilities', label: 'Utilities', currency: 'EUR',
+        amount: typeof data.budget.utilities === 'number' ? data.budget.utilities : 0 };
+    }
+    return utilItem;
+  }
+
   // The committed row behind an editable id, for telling an edit that merely
   // retypes the original from a real one.
   function editableItem(id) {
+    if (id === 'utilities') return utilitiesItem();
     var lists = [data.income.additional, data.budget.budget, data.extras.extras];
     for (var i = 0; i < lists.length; i++) {
       var list = lists[i] || [];
@@ -2117,6 +2167,11 @@
           'taken from each pay after its loans' + (it.note ? ' · ' + it.note : ''));
       });
 
+    var utilHtml = ledgerSection('Utilities', 'Bills, paid with the first pay of the month',
+      [utilitiesItem()], function (it) {
+        return editableRow(it, 'the default for every month · typed over per cycle on the Timeline');
+      });
+
     var extrasHtml = ledgerSection('Unplanned expenses', 'Drawn from savings',
       data.extras.extras || [], function (it) {
         return editableRow(it,
@@ -2143,7 +2198,7 @@
       '</div>';
 
     $('ledger-list').innerHTML = customHtml + incomeHtml + cycleHtml + debtHtml + budgetHtml +
-      extrasHtml + adjHtml;
+      utilHtml + extrasHtml + adjHtml;
   }
 
   /* ----------------------------------------------------- remembered state */
@@ -2158,9 +2213,8 @@
     var same = function (key) { return scenario[key] === defaults[key]; };
     writeStore(scenarioStore(), JSON.stringify({
       currency: currency,
-      budgetOverride: scenario.budgetOverride,
-      cycleExtra: scenario.cycleExtra,
-      cycleIncome: scenario.cycleIncome,
+      cycle: scenario.cycle ? { start: scenario.cycle.start,
+        off: Object.keys(scenario.cycle.off), eur: scenario.cycle.eur } : null,
       monthOff: Object.keys(scenario.monthOff).map(function (ym) {
         return [ym, Object.keys(scenario.monthOff[ym])];
       }),
@@ -2176,6 +2230,7 @@
     }));
   }
 
+  var legacyBudget = null;
   function loadScenario() {
     var saved = null;
     try { saved = JSON.parse(readStore(scenarioStore()) || 'null'); } catch (e) { /* malformed */ }
@@ -2194,22 +2249,41 @@
       return (typeof v === 'number' && isFinite(v) && v >= lo && v <= hi) ? v : null;
     };
     var v;
-    if ((v = num(saved.budgetOverride, 0, Infinity)) != null) scenario.budgetOverride = v;
     if ((v = num(saved.pricePerM2, 0, Infinity)) != null) scenario.pricePerM2 = v;
+    var cy = saved.cycle;
+    var c = { start: null, off: Object.create(null), eur: Object.create(null) };
+    if (cy && typeof cy.start === 'string') {
+      c.start = cy.start;
+      if (Array.isArray(cy.off)) cy.off.forEach(function (id) { if (typeof id === 'string') c.off[id] = true; });
+      if (cy.eur && typeof cy.eur === 'object') {
+        Object.keys(cy.eur).forEach(function (id) {
+          var e = num(cy.eur[id], 0, Infinity);
+          if (e != null) c.eur[id] = e;
+        });
+      }
+    }
+    // Earlier versions kept these apart; fold them into the cycle store.
     if (saved.cycleExtra && typeof saved.cycleExtra.start === 'string' &&
         (v = num(saved.cycleExtra.eur, 0, Infinity)) != null) {
-      scenario.cycleExtra = { start: saved.cycleExtra.start, eur: v };
+      c.start = c.start || saved.cycleExtra.start;
+      if (c.start === saved.cycleExtra.start) c.eur.extras = v;
     }
     var ci = saved.cycleIncome;
     if (ci && typeof ci.start === 'string' && ci.items && typeof ci.items === 'object') {
-      var items = Object.create(null);
-      Object.keys(ci.items).forEach(function (id) {
-        var o = ci.items[id] || {};
-        var eur = num(o.eur, 0, Infinity);
-        if (o.off === true || eur != null) items[id] = { off: o.off === true, eur: eur };
-      });
-      if (Object.keys(items).length) scenario.cycleIncome = { start: ci.start, items: items };
+      c.start = c.start || ci.start;
+      if (c.start === ci.start) {
+        Object.keys(ci.items).forEach(function (id) {
+          var o = ci.items[id] || {};
+          if (o.off === true) c.off[id] = true;
+          var e = num(o.eur, 0, Infinity);
+          if (e != null) c.eur[id] = e;
+        });
+      }
     }
+    if (c.start && (Object.keys(c.off).length || Object.keys(c.eur).length)) scenario.cycle = c;
+    // The budget override used to be one figure for every month; it becomes
+    // this cycle's once the cycle is known (see migrateScenario).
+    if ((v = num(saved.budgetOverride, 0, Infinity)) != null) legacyBudget = v;
     if (Array.isArray(saved.monthOff)) {
       saved.monthOff.forEach(function (pair) {
         if (!Array.isArray(pair) || !/^\d{4}-\d{2}$/.test(pair[0] || '') || !Array.isArray(pair[1])) return;
@@ -2260,7 +2334,15 @@
    * "Extra expenses" now, so any left in a saved scenario move there: the
    * one-offs due by the next pay are added to this cycle's figure, and the
    * rest (repeating or later ones) are dropped. Runs once, at boot. */
-  function foldCustomExpenses() {
+  function migrateScenario() {
+    if (legacyBudget != null) {
+      var mb = build();
+      var cb = scenario.cycle && scenario.cycle.start === isoOf(mb.cycle.start) ? scenario.cycle
+        : { start: isoOf(mb.cycle.start), off: Object.create(null), eur: Object.create(null) };
+      cb.eur.budget = legacyBudget;
+      scenario.cycle = cb;
+      legacyBudget = null;
+    }
     var old = scenario.custom.filter(function (c) { return c.kind === 'expense'; });
     if (!old.length) return;
     scenario.custom = scenario.custom.filter(function (c) { return c.kind !== 'expense'; });
@@ -2274,7 +2356,10 @@
     }, 0);
     old.forEach(function (c) { delete scenario.off[c.id]; });
     if (eur > 0) {
-      scenario.cycleExtra = { start: isoOf(m.cycle.start), eur: m.cycle.extras + eur };
+      var ce = scenario.cycle && scenario.cycle.start === isoOf(m.cycle.start) ? scenario.cycle
+        : { start: isoOf(m.cycle.start), off: Object.create(null), eur: Object.create(null) };
+      ce.eur.extras = m.cycle.fields[2].eur + eur;
+      scenario.cycle = ce;
     }
   }
 
@@ -2289,9 +2374,7 @@
   /* ------------------------------------------------------------- scenario */
 
   function scenarioTouched() {
-    return scenario.budgetOverride != null ||
-      scenario.cycleExtra != null ||
-      scenario.cycleIncome != null ||
+    return scenario.cycle != null ||
       Object.keys(scenario.monthOff).length > 0 ||
       scenario.pricePerM2 != null ||
       scenario.rateKnob !== defaults.rateKnob ||
@@ -2474,36 +2557,27 @@
     $('sc-rollover').addEventListener('change', function () {
       scenario.rollover = this.checked; recompute();
     });
-    $('np-budget').addEventListener('input', function () {
-      digitsOnly(this);
-      var v = Number(this.value);
-      if (this.value === '' || !isFinite(v) || v < 0) return;
-      scenario.budgetOverride = toEur(v, currency);
-      recompute();
-    });
-    $('np-budget').addEventListener('blur', syncBudgetField);
-    $('np-extra').addEventListener('input', function () {
-      digitsOnly(this);
-      var v = Number(this.value);
-      if (this.value === '' || !isFinite(v) || v < 0) return;
-      setCycleExtra(toEur(v, currency));
-    });
-    $('np-extra').addEventListener('blur', syncExtraField);
-
-    $('np-income').addEventListener('change', function (ev) {
+    $('np-fields').addEventListener('change', function (ev) {
       var t = ev.target;
-      if (t.dataset.incOn) setCycleIncome(t.dataset.incOn, { off: !t.checked });
+      if (t.dataset.cfOn) setCycle(t.dataset.cfOn, { off: !t.checked });
     });
-    $('np-income').addEventListener('input', function (ev) {
+    $('np-fields').addEventListener('input', function (ev) {
       var t = ev.target;
-      if (!t.dataset.incAmount) return;
+      if (!t.dataset.cfAmount) return;
       digitsOnly(t);
       var v = Number(t.value);
       if (t.value === '' || !isFinite(v) || v < 0) return;
-      setCycleIncome(t.dataset.incAmount, { eur: toEur(v, currency) });
+      setCycle(t.dataset.cfAmount, { eur: toEur(v, currency) });
     });
-    $('np-income').addEventListener('focusout', function (ev) {
-      if (ev.target.dataset.incAmount) syncIncomeRows();
+    $('np-fields').addEventListener('focusout', function (ev) {
+      if (ev.target.dataset.cfAmount) syncCycleFields();
+    });
+    $('np-fields').addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-cf-step]');
+      if (!btn) return;
+      var id = btn.closest('[data-cf]').dataset.cf;
+      var f = cycleField(id);
+      if (f) setCycle(id, { eur: Math.max(0, f.eur + (Number(btn.dataset.cfStep) * BUDGET_STEP_EUR)) });
     });
 
     $('timeline-list').addEventListener('click', function (ev) {
@@ -2533,8 +2607,6 @@
       btn.addEventListener('click', function () {
         var dir = Number(btn.dataset.step);
         if (btn.dataset.nudge === 'price') nudgePrice(dir);
-        else if (btn.dataset.nudge === 'extra') nudgeExtra(dir);
-        else nudgeBudget(dir);
       });
     });
 
@@ -2594,9 +2666,7 @@
     });
 
     $('sc-reset').addEventListener('click', function () {
-      scenario.budgetOverride = null;
-      scenario.cycleExtra = null;
-      scenario.cycleIncome = null;
+      scenario.cycle = null;
       scenario.monthOff = Object.create(null);
       scenario.pricePerM2 = null;
       scenario.rateKnob = defaults.rateKnob;
@@ -2858,7 +2928,7 @@
 
     // After the slider bounds, which the saved values are checked against.
     loadScenario();
-    foldCustomExpenses();
+    migrateScenario();
     syncCurrencyButtons();
 
     bind();

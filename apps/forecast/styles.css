@@ -829,24 +829,24 @@ body.sheet-open { overflow: hidden; }
   -moz-appearance: textfield;
 }
 
-/* Additional income landing in this cycle: tick, name, amount for the cycle. */
-.np-income {
+/* The cycle card's editors: tick, name, amount for the cycle. */
+.np-fields {
   margin-top: 12px;
   padding-top: 11px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.np-income-head { display: block; margin-bottom: 6px; }
+.np-fields-head { display: block; margin: 8px 0 6px; }
+.np-fields-head:first-child { margin-top: 0; }
 
-.np-inc-row {
+.np-row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 4px 0;
-  cursor: pointer;
 }
 
-.np-inc-on {
+.np-on {
   flex: none;
   width: 18px;
   height: 18px;
@@ -855,16 +855,16 @@ body.sheet-open { overflow: hidden; }
   cursor: pointer;
 }
 
-.np-inc-label {
+.np-row-label {
   flex: 1;
   min-width: 0;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.85);
 }
 
-.np-inc-row.is-off .np-inc-label { color: rgba(255, 255, 255, 0.4); text-decoration: line-through; }
-.np-inc-row.is-off .np-inc-field { opacity: 0.45; }
-.np-inc-row.is-over .np-inc-in { color: var(--accent); }
+.np-row.is-off .np-row-label { color: rgba(255, 255, 255, 0.4); text-decoration: line-through; }
+.np-row.is-off .np-budget-field { opacity: 0.45; }
+.np-row.is-over .np-budget-input { color: var(--accent); }
 
 /* A month's additional income, each one on or off for that month. */
 .mrow-choices {
@@ -915,6 +915,7 @@ body.sheet-open { overflow: hidden; }
 .tl-ev.is-income { border-left-color: var(--in); }
 .tl-ev.is-loan { border-left-color: var(--out); }
 .tl-ev.is-budget { border-left-color: #4a5268; }
+.tl-ev.is-utilities { border-left-color: #6b7591; }
 .tl-ev.is-extra { border-left-color: var(--neg); }
 .tl-ev.is-past { opacity: 0.5; }
 

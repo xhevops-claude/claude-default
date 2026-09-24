@@ -175,25 +175,7 @@
           <div class="nextpay-amount" id="np-saved">—</div>
           <div class="nextpay-sub" id="np-sub"></div>
           <div class="nextpay-out" id="np-out"></div>
-          <div class="nextpay-budget">
-            <label class="np-budget-label" for="np-budget">Monthly budget allowance</label>
-            <div class="np-budget-field">
-              <button class="np-step" type="button" data-nudge="budget" data-step="-1" aria-label="Lower the budget">−</button>
-              <input class="np-budget-input" id="np-budget" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done">
-              <span class="np-cur" id="np-cur" aria-hidden="true">€</span>
-              <button class="np-step" type="button" data-nudge="budget" data-step="1" aria-label="Raise the budget">+</button>
-            </div>
-          </div>
-          <div class="nextpay-budget">
-            <label class="np-budget-label" for="np-extra">Extra expenses this cycle</label>
-            <div class="np-budget-field">
-              <button class="np-step" type="button" data-nudge="extra" data-step="-1" aria-label="Lower the extra expenses">−</button>
-              <input class="np-budget-input" id="np-extra" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done">
-              <span class="np-cur" id="np-extra-cur" aria-hidden="true">€</span>
-              <button class="np-step" type="button" data-nudge="extra" data-step="1" aria-label="Raise the extra expenses">+</button>
-            </div>
-          </div>
-          <div class="np-income" id="np-income" hidden></div>
+          <div class="np-fields" id="np-fields"></div>
         </div>
         <div class="list-head">
           <span>From here on</span>
@@ -228,8 +210,11 @@
           income below — once or repeating, with a pay or on a date. Extra expenses
           go on the cycle card on the Timeline instead. The
           amounts on the income, budget and unplanned rows can be typed over — after
-          a pay, say — and ↺ puts the committed figure back. All of it, with the
-          currency, the budget and target price and the what-if sliders, is kept in
+          a pay, say — and ↺ puts the committed figure back. Utilities is the one
+          figure with no committed row: type the monthly default here. The Timeline
+          takes these defaults and lets you switch each off or type over it for the
+          current cycle, and switch it off for any later month. All of it, with the
+          currency, the target price and the what-if sliders, is kept in
           this browser and comes back next time; the committed data files are never
           touched. Reset in the scenario sheet puts everything back and removes
           what you added.
