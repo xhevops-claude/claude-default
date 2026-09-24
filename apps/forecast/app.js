@@ -478,7 +478,46 @@
     var rollTo = today.getTime() > floor.getTime() ? today : floor;
     // The extra-expenses field on the cycle card belongs to the cycle it was
     // set in; once the next pay opens a new cycle it simply stops counting.
-    var cycleExtraEur = cycleExtraFor(floor);
+    var cycleOverride = cycleExtraFor(floor);
+
+    /* This cycle's extra expenses are one figure: every committed extra that
+     * falls between the cycle's opening pay and the next one (a one-off due
+     * earlier rolls to today, so it counts too), or whatever the user typed
+     * over that on the cycle card. They go out as a single line today. */
+    var cycleEnd = null;
+    for (var fw = -1; fw <= 2; fw++) {
+      periodsOf(startY, startM + fw).forEach(function (p) {
+        var t = p.arrival.getTime();
+        if (t > floor.getTime() && (cycleEnd == null || t < cycleEnd)) cycleEnd = t;
+      });
+    }
+    function extraEvents(ym, md) {
+      var out = [];
+      (data.extras.extras || []).forEach(function (it) {
+        if (!isOn(it) || !(it.cadence ? hits(it, ym) : it.month === ym)) return;
+        var day = Math.min(it.day || 1, daysInMonth(md.getUTCFullYear(), md.getUTCMonth()));
+        out.push({
+          date: mkDate(md.getUTCFullYear(), md.getUTCMonth(), day),
+          kind: 'extra', label: it.label, detail: it.note || 'Unplanned',
+          eur: -toEur(amountOf(it), it.currency),
+          once: !it.cadence || it.cadence === 'once',
+        });
+      });
+      return out;
+    }
+    function inCycle(e) {
+      var t = (e.once && e.date.getTime() < floor.getTime()) ? rollTo : e.date;
+      t = t.getTime();
+      return t >= floor.getTime() && (cycleEnd == null || t < cycleEnd);
+    }
+    var cycleCommitted = [];
+    for (var cm = 0; cm < 2; cm++) {
+      var cmd = mkDate(startY, startM + cm, 1);
+      if (cm > 0 && (cycleEnd == null || cmd.getTime() >= cycleEnd)) break;
+      extraEvents(ymOf(cmd), cmd).forEach(function (e) { if (inCycle(e)) cycleCommitted.push(e); });
+    }
+    var cycleCommittedEur = cycleCommitted.reduce(function (a, e) { return a - e.eur; }, 0);
+    var cycleExtraEur = cycleOverride != null ? cycleOverride : cycleCommittedEur;
     var cumulative = data.meta.startingSavings || 0;
     var totals = { income: 0, loan: 0, interest: 0, budget: 0, extra: 0, saved: 0 };
 
@@ -522,24 +561,16 @@
         : budgetItems.reduce(function (a, b) { return a + toEur(amountOf(b), b.currency); }, 0);
       var budgetLabel = budgetItems.length === 1 ? budgetItems[0].label : 'Monthly budget';
 
-      // A committed extra names its month; an added one may repeat, so it
-      // goes through the same cadence check as income.
-      (data.extras.extras || []).concat(customCalendarItems('expense')).forEach(function (it) {
-        if (!isOn(it) || !(it.cadence ? hits(it, ym) : it.month === ym)) return;
-        var day = Math.min(it.day || 1, daysInMonth(monthDate.getUTCFullYear(),
-          monthDate.getUTCMonth()));
-        events.push({
-          date: mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day),
-          kind: 'extra', label: it.label, detail: it.note || 'Unplanned',
-          eur: -toEur(amountOf(it), it.currency),
-          once: !it.cadence || it.cadence === 'once',
-        });
-      });
+      // Committed extras outside the current cycle keep their own rows; the
+      // ones inside it are the single "Extra expenses" line below.
+      extraEvents(ym, monthDate).forEach(function (e) { if (!inCycle(e)) events.push(e); });
 
       if (cycleExtraEur > 0 && ym === ymOf(rollTo)) {
         events.push({
           date: rollTo, kind: 'extra', label: 'Extra expenses',
-          detail: 'this cycle · set by you', eur: -cycleExtraEur, spentNow: true,
+          detail: cycleOverride != null ? 'this cycle · set by you'
+            : cycleCommitted.map(function (e) { return e.label; }).join(' · '),
+          eur: -cycleExtraEur, spentNow: true,
         });
       }
 
@@ -891,7 +922,8 @@
     });
 
     return {
-      cycle: { start: floor, pay: cyclePay, next: cycleNext, events: cycleEvents },
+      cycle: { start: floor, pay: cyclePay, next: cycleNext, events: cycleEvents,
+        extras: cycleExtraEur, extrasCommitted: cycleCommittedEur },
       rows: rows,
       debts: debts,
       byPriority: byPriority,
@@ -1349,22 +1381,24 @@
       'Monthly budget allowance in ' + currency);
   }
 
-  // The cycle's extra expenses: one amount, kept against the cycle's start so
-  // it lapses by itself when the next pay lands.
+  // The cycle's extra expenses: the figure typed over the committed total,
+  // kept against the cycle's start so it lapses when the next pay lands.
+  // null means the committed extras stand as they are.
   function cycleExtraFor(start) {
     var c = scenario.cycleExtra;
-    return c && c.start === isoOf(start) ? c.eur : 0;
+    return c && c.start === isoOf(start) ? c.eur : null;
   }
 
   function setCycleExtra(eur) {
-    scenario.cycleExtra = eur > 0 ? { start: isoOf(model.cycle.start), eur: eur } : null;
+    scenario.cycleExtra = eur === model.cycle.extrasCommitted ? null
+      : { start: isoOf(model.cycle.start), eur: Math.max(0, eur) };
     recompute();
   }
 
   function syncExtraField() {
     var input = $('np-extra');
     if (document.activeElement === input) return;
-    input.value = String(Math.round(fromEur(cycleExtraFor(model.cycle.start), currency)));
+    input.value = String(Math.round(fromEur(model.cycle.extras, currency)));
     input.step = String(currency === 'EUR' ? 10 : 500);
     $('np-extra-cur').textContent = currency === 'EUR' ? '€' : 'ден';
     input.setAttribute('aria-label', 'Extra expenses this cycle in ' + currency);
@@ -1385,7 +1419,7 @@
   }
 
   function nudgeExtra(dir) {
-    setCycleExtra(Math.max(0, cycleExtraFor(model.cycle.start) + (dir * BUDGET_STEP_EUR)));
+    setCycleExtra(Math.max(0, model.cycle.extras + (dir * BUDGET_STEP_EUR)));
   }
 
   function nudgeBudget(dir) {
@@ -2096,7 +2130,7 @@
     }, 0);
     old.forEach(function (c) { delete scenario.off[c.id]; });
     if (eur > 0) {
-      scenario.cycleExtra = { start: isoOf(m.cycle.start), eur: cycleExtraFor(m.cycle.start) + eur };
+      scenario.cycleExtra = { start: isoOf(m.cycle.start), eur: m.cycle.extras + eur };
     }
   }
 
