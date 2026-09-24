@@ -175,15 +175,7 @@
           <div class="nextpay-amount" id="np-saved">—</div>
           <div class="nextpay-sub" id="np-sub"></div>
           <div class="nextpay-out" id="np-out"></div>
-          <div class="nextpay-budget">
-            <label class="np-budget-label" for="np-budget">Monthly budget allowance</label>
-            <div class="np-budget-field">
-              <button class="np-step" type="button" data-nudge="budget" data-step="-1" aria-label="Lower the budget">−</button>
-              <input class="np-budget-input" id="np-budget" type="number" min="0" inputmode="numeric">
-              <span class="np-cur" id="np-cur" aria-hidden="true">€</span>
-              <button class="np-step" type="button" data-nudge="budget" data-step="1" aria-label="Raise the budget">+</button>
-            </div>
-          </div>
+          <div class="np-fields" id="np-fields"></div>
         </div>
         <div class="list-head">
           <span>From here on</span>
@@ -202,7 +194,7 @@
           <label class="np-budget-label" for="inv-price">Target sale price</label>
           <div class="np-budget-field">
             <button class="np-step" type="button" data-nudge="price" data-step="-1" aria-label="Lower the target price by €50">−</button>
-            <input class="np-budget-input" id="inv-price" type="number" min="0" inputmode="numeric">
+            <input class="np-budget-input" id="inv-price" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done">
             <span class="np-cur" id="inv-cur" aria-hidden="true">€ / m²</span>
             <button class="np-step" type="button" data-nudge="price" data-step="1" aria-label="Raise the target price by €50">+</button>
           </div>
@@ -214,24 +206,24 @@
 
       <section id="view-ledger" class="view" aria-label="Ledger">
         <p class="ledger-hint">
-          Tap a row to include or exclude it from the forecast. Add your own income
-          and expenses below — once or repeating, with a pay or on a date. The
+          Tap a row to include or exclude it from the forecast. Add your own extra
+          income below — once or repeating, with a pay or on a date. Extra expenses
+          go on the cycle card on the Timeline instead. The
           amounts on the income, budget and unplanned rows can be typed over — after
-          a pay, say — and ↺ puts the committed figure back. All of it, with the
-          currency, the budget and target price and the what-if sliders, is kept in
+          a pay, say — and ↺ puts the committed figure back. Utilities is the one
+          figure with no committed row: type the monthly default here. The Timeline
+          takes these defaults and lets you switch each off or type over it for the
+          current cycle, and switch it off for any later month. All of it, with the
+          currency, the target price and the what-if sliders, is kept in
           this browser and comes back next time; the committed data files are never
           touched. Reset in the scenario sheet puts everything back and removes
           what you added.
         </p>
         <div class="card add-card">
-          <button class="add-toggle" id="custom-add" type="button" aria-expanded="false" aria-controls="custom-form">＋ Add income or expense</button>
+          <button class="add-toggle" id="custom-add" type="button" aria-expanded="false" aria-controls="custom-form">＋ Add extra income</button>
           <form class="add-form" id="custom-form" hidden>
-            <div class="seg" role="group" aria-label="Income or expense">
-              <button class="seg-btn is-on" type="button" data-kind="income" aria-pressed="true">Income</button>
-              <button class="seg-btn" type="button" data-kind="expense" aria-pressed="false">Expense</button>
-            </div>
             <label class="add-label" for="add-label">What is it</label>
-            <input class="add-in" id="add-label" type="text" maxlength="60" placeholder="Freelance invoice, car service…" autocomplete="off">
+            <input class="add-in" id="add-label" type="text" maxlength="60" placeholder="Freelance invoice, bonus…" autocomplete="off">
             <label class="add-label" for="add-amount">How much</label>
             <div class="add-row">
               <input class="add-in" id="add-amount" type="number" min="0" step="any" inputmode="decimal" placeholder="0">
