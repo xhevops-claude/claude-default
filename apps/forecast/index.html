@@ -184,6 +184,15 @@
               <button class="np-step" type="button" data-nudge="budget" data-step="1" aria-label="Raise the budget">+</button>
             </div>
           </div>
+          <div class="nextpay-budget">
+            <label class="np-budget-label" for="np-extra">Extra expenses this cycle</label>
+            <div class="np-budget-field">
+              <button class="np-step" type="button" data-nudge="extra" data-step="-1" aria-label="Lower the extra expenses">−</button>
+              <input class="np-budget-input" id="np-extra" type="number" min="0" inputmode="numeric">
+              <span class="np-cur" id="np-extra-cur" aria-hidden="true">€</span>
+              <button class="np-step" type="button" data-nudge="extra" data-step="1" aria-label="Raise the extra expenses">+</button>
+            </div>
+          </div>
         </div>
         <div class="list-head">
           <span>From here on</span>

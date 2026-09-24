@@ -67,6 +67,7 @@
     pricePerM2: null,       // EUR/m² the sale figures are struck at
     rateKnob: null,
     budgetOverride: null,   // EUR/month, null = whatever budget.json says
+    cycleExtra: null,       // { start: ISO cycle start, eur } — this cycle only
     dayAdjust: 0,
     extraToDebt: 0,
     horizon: 36,
@@ -475,6 +476,9 @@
       });
     }
     var rollTo = today.getTime() > floor.getTime() ? today : floor;
+    // The extra-expenses field on the cycle card belongs to the cycle it was
+    // set in; once the next pay opens a new cycle it simply stops counting.
+    var cycleExtraEur = cycleExtraFor(floor);
     var cumulative = data.meta.startingSavings || 0;
     var totals = { income: 0, loan: 0, interest: 0, budget: 0, extra: 0, saved: 0 };
 
@@ -531,6 +535,13 @@
           once: !it.cadence || it.cadence === 'once',
         });
       });
+
+      if (cycleExtraEur > 0 && ym === ymOf(rollTo)) {
+        events.push({
+          date: rollTo, kind: 'extra', label: 'Extra expenses',
+          detail: 'this cycle · set by you', eur: -cycleExtraEur, spentNow: true,
+        });
+      }
 
       (data.income.additional || []).concat(customCalendarItems('income')).forEach(function (it) {
         if (!isOn(it) || !hits(it, ym)) return;
@@ -786,7 +797,9 @@
         // above needed the event, the account does not.
         if (ev.date.getTime() < floor.getTime()) continue;
 
-        if (ev.kind === 'extra' && cumulative + ev.eur < -EPS) {
+        // The cycle's own extra expenses are being spent now, so they show a
+        // shortfall rather than wait for the next pay.
+        if (ev.kind === 'extra' && !ev.spentNow && cumulative + ev.eur < -EPS) {
           heldExpenses.push(ev);
           continue;
         }
@@ -1320,6 +1333,7 @@
       '<span class="is-total"><i>Left at the end</i>' + esc(money(left, { signed: true })) + '</span>';
 
     syncBudgetField();
+    syncExtraField();
   }
 
   // The budget field carries the display currency, so it is rewritten on a
@@ -1333,6 +1347,31 @@
     $('np-cur').textContent = currency === 'EUR' ? '€' : 'ден';
     $('np-budget').setAttribute('aria-label',
       'Monthly budget allowance in ' + currency);
+  }
+
+  // The cycle's extra expenses: one amount, kept against the cycle's start so
+  // it lapses by itself when the next pay lands.
+  function cycleExtraFor(start) {
+    var c = scenario.cycleExtra;
+    return c && c.start === isoOf(start) ? c.eur : 0;
+  }
+
+  function setCycleExtra(eur) {
+    scenario.cycleExtra = eur > 0 ? { start: isoOf(model.cycle.start), eur: eur } : null;
+    recompute();
+  }
+
+  function syncExtraField() {
+    var input = $('np-extra');
+    if (document.activeElement === input) return;
+    input.value = String(Math.round(fromEur(cycleExtraFor(model.cycle.start), currency)));
+    input.step = String(currency === 'EUR' ? 10 : 500);
+    $('np-extra-cur').textContent = currency === 'EUR' ? '€' : 'ден';
+    input.setAttribute('aria-label', 'Extra expenses this cycle in ' + currency);
+  }
+
+  function nudgeExtra(dir) {
+    setCycleExtra(Math.max(0, cycleExtraFor(model.cycle.start) + (dir * BUDGET_STEP_EUR)));
   }
 
   function nudgeBudget(dir) {
@@ -1950,6 +1989,7 @@
     writeStore(scenarioStore(), JSON.stringify({
       currency: currency,
       budgetOverride: scenario.budgetOverride,
+      cycleExtra: scenario.cycleExtra,
       pricePerM2: scenario.pricePerM2,
       rateKnob: same('rateKnob') ? null : scenario.rateKnob,
       dayAdjust: scenario.dayAdjust,
@@ -1982,6 +2022,10 @@
     var v;
     if ((v = num(saved.budgetOverride, 0, Infinity)) != null) scenario.budgetOverride = v;
     if ((v = num(saved.pricePerM2, 0, Infinity)) != null) scenario.pricePerM2 = v;
+    if (saved.cycleExtra && typeof saved.cycleExtra.start === 'string' &&
+        (v = num(saved.cycleExtra.eur, 0, Infinity)) != null) {
+      scenario.cycleExtra = { start: saved.cycleExtra.start, eur: v };
+    }
     if ((v = num(saved.rateKnob, 0, Number($('sc-rate').max))) != null) scenario.rateKnob = v;
     if ((v = num(saved.dayAdjust, -6, 6)) != null) scenario.dayAdjust = v;
     if ((v = num(saved.extraToDebt, 0, 1000)) != null) scenario.extraToDebt = v;
@@ -2032,6 +2076,7 @@
 
   function scenarioTouched() {
     return scenario.budgetOverride != null ||
+      scenario.cycleExtra != null ||
       scenario.pricePerM2 != null ||
       scenario.rateKnob !== defaults.rateKnob ||
       scenario.dayAdjust !== 0 ||
@@ -2220,6 +2265,12 @@
       recompute();
     });
     $('np-budget').addEventListener('blur', syncBudgetField);
+    $('np-extra').addEventListener('input', function () {
+      var v = Number(this.value);
+      if (this.value === '' || !isFinite(v) || v < 0) return;
+      setCycleExtra(toEur(v, currency));
+    });
+    $('np-extra').addEventListener('blur', syncExtraField);
 
     $('inv-price').addEventListener('input', function () {
       var v = Number(this.value);
@@ -2236,6 +2287,7 @@
       btn.addEventListener('click', function () {
         var dir = Number(btn.dataset.step);
         if (btn.dataset.nudge === 'price') nudgePrice(dir);
+        else if (btn.dataset.nudge === 'extra') nudgeExtra(dir);
         else nudgeBudget(dir);
       });
     });
@@ -2309,6 +2361,7 @@
 
     $('sc-reset').addEventListener('click', function () {
       scenario.budgetOverride = null;
+      scenario.cycleExtra = null;
       scenario.pricePerM2 = null;
       scenario.rateKnob = defaults.rateKnob;
       scenario.dayAdjust = 0;

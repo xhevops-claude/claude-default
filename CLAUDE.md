@@ -370,7 +370,9 @@ is left ("Rest of Sep").
 `"sample": true`, which paints a "sample" tag and the banner; drop the flag as
 real numbers replace them. What the user changes in the UI is an overlay on the
 committed data, never a write back to it — but it does persist: the currency,
-the budget and target-price overrides, the what-if sliders, the ledger's
+the budget and target-price overrides, the cycle card's "Extra expenses this
+cycle" (`scenario.cycleExtra`, `{ start, eur }` keyed to the cycle's start so it
+lapses when the next pay lands; it goes out today and is never held), the what-if sliders, the ledger's
 excluded ids and the amounts typed over its additional-income, budget and
 unplanned-expense rows (`scenario.amounts`, id → native amount; the engine
 reads those rows through `amountOf()`), plus the income and expenses the user
