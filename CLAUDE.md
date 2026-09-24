@@ -370,11 +370,24 @@ is left ("Rest of Sep").
 `"sample": true`, which paints a "sample" tag and the banner; drop the flag as
 real numbers replace them. What the user changes in the UI is an overlay on the
 committed data, never a write back to it — but it does persist: the currency,
-the budget and target-price overrides, the what-if sliders, the ledger's
+the target-price override, the current cycle's overrides (`scenario.cycle`,
+`{ start, off, eur }` keyed to the cycle's start so it lapses when the next pay
+lands — the cycle card lists one row per figure the cycle carries, `model.cycle.fields`:
+the budget (the total of the month the cycle opened in), utilities, extra
+expenses (one figure for every committed extra falling in the cycle, going out
+today as one line, never held) and each additional income landing in it, each
+with a tick and an amount typed over the committed one), the months switched
+off (`scenario.monthOff`, ym → ids: the chips at the top of each later month's
+container, for the budget, utilities and each addition), the what-if sliders, the ledger's
 excluded ids and the amounts typed over its additional-income, budget and
 unplanned-expense rows (`scenario.amounts`, id → native amount; the engine
-reads those rows through `amountOf()`), plus the income and expenses the user
-adds on the Ledger (`scenario.custom`: `{ id, kind, label, amount, currency,
+reads those rows through `amountOf()`), the Utilities default (the one figure with no committed row: `utilitiesItem()`, base
+`budget.json`'s `utilities` or 0, typed over on the Ledger through `scenario.amounts`,
+paid with the month's first pay), plus the extra income the user
+adds on the Ledger (the Ledger adds income only — extra expenses are the cycle
+card's field, and `foldCustomExpenses()` moves any old saved expense rows into
+it at boot; `migrateScenario()` also folds the older per-key overrides into
+`scenario.cycle`) (`scenario.custom`: `{ id, kind, label, amount, currency,
 when }` with `when` one of `next-pay`/`every-pay` + `from` or `date`/`monthly`
 + `date`; the calendar ones join the additional/extras lists in `build()` via
 `customCalendarItems()`, the pay-linked ones are pushed off each pay arrival,
