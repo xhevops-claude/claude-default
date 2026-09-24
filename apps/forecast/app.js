@@ -1979,7 +1979,7 @@
     var customHtml = '<div class="card">' +
       '<div class="card-head"><h2 class="card-title">Your additions</h2>' +
       '<span class="card-note">' + (scenario.custom.length
-        ? scenario.custom.length + ' kept in this browser' : 'Income and expenses you add') +
+        ? scenario.custom.length + ' kept in this browser' : 'Extra income you add') +
       '</span></div>' +
       (scenario.custom.length
         ? scenario.custom.map(customRow).join('')
@@ -2075,6 +2075,28 @@
     if (typeof saved.currency === 'string' &&
         document.querySelector('.cur-btn[data-cur="' + saved.currency + '"]')) {
       currency = saved.currency;
+    }
+  }
+
+  /* Expenses used to be added on the Ledger too. They are the cycle card's
+   * "Extra expenses" now, so any left in a saved scenario move there: the
+   * one-offs due by the next pay are added to this cycle's figure, and the
+   * rest (repeating or later ones) are dropped. Runs once, at boot. */
+  function foldCustomExpenses() {
+    var old = scenario.custom.filter(function (c) { return c.kind === 'expense'; });
+    if (!old.length) return;
+    scenario.custom = scenario.custom.filter(function (c) { return c.kind !== 'expense'; });
+    var m = build();
+    var by = m.cycle.next ? m.cycle.next.date.getTime() : Infinity;
+    var eur = old.reduce(function (a, c) {
+      if (!isOn(c)) return a;
+      var due = c.when === 'next-pay' ||
+        (c.when === 'date' && isoDate(c.date).getTime() < by);
+      return due ? a + toEur(c.amount, c.currency) : a;
+    }, 0);
+    old.forEach(function (c) { delete scenario.off[c.id]; });
+    if (eur > 0) {
+      scenario.cycleExtra = { start: isoOf(m.cycle.start), eur: cycleExtraFor(m.cycle.start) + eur };
     }
   }
 
@@ -2311,7 +2333,7 @@
 
     /* The add form lives in static markup above the ledger list, so a
      * re-render of the list never wipes what is being typed. */
-    var addKind = 'income';
+    var addKind = 'income';   // expenses go on the cycle card, not here
     function showAddForm(open) {
       var form = $('custom-form');
       form.hidden = !open;
@@ -2330,26 +2352,14 @@
       $('add-date-label').textContent = when === 'monthly' ? 'First on' : 'On';
       $('add-hint').textContent = {
         'next-pay': 'Lands the day the next pay does, once.',
-        'date': 'Lands on that day, once. An expense waits for money if there is none yet.',
+        'date': 'Lands on that day, once.',
         'every-pay': 'With every pay from the next one on — until you remove it.',
         'monthly': 'First on the day you pick, then the same day every month.',
       }[when] || '';
-      $('add-go').textContent = addKind === 'income' ? 'Add income' : 'Add expense';
     }
     $('custom-add').addEventListener('click', function () { showAddForm(true); });
     $('custom-cancel').addEventListener('click', function () { showAddForm(false); });
     $('add-when').addEventListener('change', syncAddForm);
-    Array.prototype.forEach.call(document.querySelectorAll('.seg-btn'), function (btn) {
-      btn.addEventListener('click', function () {
-        addKind = btn.dataset.kind;
-        Array.prototype.forEach.call(document.querySelectorAll('.seg-btn'), function (b) {
-          var on = b === btn;
-          b.classList.toggle('is-on', on);
-          b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
-        syncAddForm();
-      });
-    });
     $('custom-form').addEventListener('submit', function (ev) {
       ev.preventDefault();
       var label = $('add-label').value.trim();
@@ -2639,6 +2649,7 @@
 
     // After the slider bounds, which the saved values are checked against.
     loadScenario();
+    foldCustomExpenses();
     syncCurrencyButtons();
 
     bind();

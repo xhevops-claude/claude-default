@@ -375,8 +375,10 @@ cycle" (`scenario.cycleExtra`, `{ start, eur }` keyed to the cycle's start so it
 lapses when the next pay lands; it goes out today and is never held), the what-if sliders, the ledger's
 excluded ids and the amounts typed over its additional-income, budget and
 unplanned-expense rows (`scenario.amounts`, id → native amount; the engine
-reads those rows through `amountOf()`), plus the income and expenses the user
-adds on the Ledger (`scenario.custom`: `{ id, kind, label, amount, currency,
+reads those rows through `amountOf()`), plus the extra income the user
+adds on the Ledger (the Ledger adds income only — extra expenses are the cycle
+card's field, and `foldCustomExpenses()` moves any old saved expense rows into
+it at boot) (`scenario.custom`: `{ id, kind, label, amount, currency,
 when }` with `when` one of `next-pay`/`every-pay` + `from` or `date`/`monthly`
 + `date`; the calendar ones join the additional/extras lists in `build()` via
 `customCalendarItems()`, the pay-linked ones are pushed off each pay arrival,
