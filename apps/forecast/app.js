@@ -68,6 +68,8 @@
     rateKnob: null,
     budgetOverride: null,   // EUR/month, null = whatever budget.json says
     cycleExtra: null,       // { start: ISO cycle start, eur } — this cycle only
+    cycleIncome: null,      // { start, items: { id: { off, eur } } } — this cycle only
+    monthOff: Object.create(null),   // ym → { id: true }: additional income off that month
     dayAdjust: 0,
     extraToDebt: 0,
     horizon: 36,
@@ -518,6 +520,26 @@
     }
     var cycleCommittedEur = cycleCommitted.reduce(function (a, e) { return a - e.eur; }, 0);
     var cycleExtraEur = cycleOverride != null ? cycleOverride : cycleCommittedEur;
+
+    /* Additional income can be switched off, and inside the current cycle
+     * typed over, from the Timeline. Inside the cycle the card's row wins;
+     * in a later month the month's own toggles do. Returns the EUR to land,
+     * or null when the item is off for that date. */
+    var cycleInc = cycleIncomeFor(floor);
+    var cycleIncome = [];       // the card's rows: every addition landing in the cycle
+    function incomeAt(it, date, eur) {
+      var t = date.getTime();
+      if (t >= floor.getTime() && (cycleEnd == null || t < cycleEnd)) {
+        var o = cycleInc[it.id];
+        var off = !!(o && o.off);
+        var use = o && o.eur != null ? o.eur : eur;
+        cycleIncome.push({ id: it.id, label: it.label, base: eur, eur: use, off: off,
+          overridden: !!(o && o.eur != null) });
+        return off ? null : use;
+      }
+      var m = scenario.monthOff[ymOf(date)];
+      return m && m[it.id] ? null : eur;
+    }
     var cumulative = data.meta.startingSavings || 0;
     var totals = { income: 0, loan: 0, interest: 0, budget: 0, extra: 0, saved: 0 };
 
@@ -574,15 +596,25 @@
         });
       }
 
+      var monthChoices = [];      // the month's additions, for its toggles
       (data.income.additional || []).concat(customCalendarItems('income')).forEach(function (it) {
         if (!isOn(it) || !hits(it, ym)) return;
         var day = Math.min(it.day || 1, daysInMonth(monthDate.getUTCFullYear(),
           monthDate.getUTCMonth()));
+        var date = mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day);
+        var once = it.cadence === 'once';
+        var lands = once && date.getTime() < floor.getTime() ? rollTo : date;
+        var inCyc = lands.getTime() >= floor.getTime() &&
+          (cycleEnd == null || lands.getTime() < cycleEnd);
+        if (!inCyc && lands.getTime() >= floor.getTime()) {
+          monthChoices.push({ id: it.id, label: it.label,
+            off: !!(scenario.monthOff[ym] && scenario.monthOff[ym][it.id]) });
+        }
+        var eur = incomeAt(it, lands, toEur(amountOf(it), it.currency));
+        if (eur == null) return;
         events.push({
-          date: mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day),
-          kind: 'income', label: it.label, detail: it.note || '',
-          eur: toEur(amountOf(it), it.currency),
-          once: it.cadence === 'once',
+          date: date, kind: 'income', label: it.label, detail: it.note || '',
+          eur: eur, once: once,
         });
       });
 
@@ -616,6 +648,16 @@
             nextPaid[c.id] = true;
           }
           var cEur = toEur(c.amount, c.currency);
+          if (c.kind === 'income') {
+            var inCycC = per.arrival.getTime() >= floor.getTime() &&
+              (cycleEnd == null || per.arrival.getTime() < cycleEnd);
+            if (!inCycC && per.arrival.getTime() >= floor.getTime()) {
+              monthChoices.push({ id: c.id, label: c.label,
+                off: !!(scenario.monthOff[ym] && scenario.monthOff[ym][c.id]) });
+            }
+            cEur = incomeAt(c, per.arrival, cEur);
+            if (cEur == null) return;
+          }
           events.push({
             date: per.arrival, kind: c.kind === 'income' ? 'income' : 'extra', withPay: true,
             label: c.label, detail: 'with the ' + per.rangeLabel + ' pay · added by you',
@@ -871,6 +913,7 @@
         rows.push({
           ym: ym,
           events: applied,
+          choices: monthChoices,
           income: sums.income, loan: sums.loan, budget: sums.budget,
           extras: sums.extra, interest: monthInterest,
           saved: saved, cumulative: cumulative, outstanding: outstanding,
@@ -923,7 +966,7 @@
 
     return {
       cycle: { start: floor, pay: cyclePay, next: cycleNext, events: cycleEvents,
-        extras: cycleExtraEur, extrasCommitted: cycleCommittedEur },
+        extras: cycleExtraEur, extrasCommitted: cycleCommittedEur, income: cycleIncome },
       rows: rows,
       debts: debts,
       byPriority: byPriority,
@@ -1286,10 +1329,25 @@
       blocks.push({ row: r, visible: visible, partial: partial, income: income, spent: spent });
     });
 
+    // Which months are unfolded survives a recompute (a toggle inside one).
+    var wasOpen = null;
+    Array.prototype.forEach.call(document.querySelectorAll('#timeline-list .mrow'), function (d) {
+      wasOpen = wasOpen || Object.create(null);
+      if (d.open) wasOpen[d.dataset.ym] = true;
+    });
+
     $('timeline-list').innerHTML = blocks.map(function (bl, i) {
       var r = bl.row;
       var saved = bl.income - bl.spent;
       var tone = saved < 0 ? 'is-neg' : 'is-pos';
+      var open = wasOpen ? !!wasOpen[r.ym] : i < 2;
+      // The month's additional income, each one on or off for this month.
+      var choices = (r.choices || []).map(function (c) {
+        return '<button class="mchip' + (c.off ? ' is-off' : '') + '" type="button"' +
+          ' data-month-toggle="' + esc(c.id) + '" data-ym="' + esc(r.ym) + '"' +
+          ' aria-pressed="' + (c.off ? 'false' : 'true') + '">' +
+          '<span class="lcheck" aria-hidden="true"></span>' + esc(c.label) + '</button>';
+      }).join('');
       var evs = bl.visible.map(function (e) {
         var past = e.date.getTime() < today.getTime();
         return '<div class="tl-ev is-' + e.kind + (past ? ' is-past' : '') + '">' +
@@ -1306,7 +1364,7 @@
         '</div>';
       }).join('');
 
-      return '<details class="mrow"' + (i < 2 ? ' open' : '') + '>' +
+      return '<details class="mrow" data-ym="' + esc(r.ym) + '"' + (open ? ' open' : '') + '>' +
         '<summary class="mrow-head">' +
           '<span class="mrow-month">' +
             (bl.partial ? 'Rest of ' : '') + esc(ymLabel(r.ym, { long: true })) +
@@ -1317,7 +1375,9 @@
             '<span class="mrow-cum">' + esc(money(r.cumulative)) + ' saved up</span>' +
           '</span>' +
         '</summary>' +
-        '<div class="mrow-body">' + (evs || '<div class="empty-note">No movements.</div>') +
+        '<div class="mrow-body">' +
+          (choices ? '<div class="mrow-choices">' + choices + '</div>' : '') +
+          (evs || '<div class="empty-note">No movements.</div>') +
           '<div class="mrow-total"><span>Savings after</span><b>' +
             esc(money(r.cumulative)) + '</b></div>' +
         '</div>' +
@@ -1366,6 +1426,68 @@
 
     syncBudgetField();
     syncExtraField();
+    syncIncomeRows();
+  }
+
+  /* One row per addition landing in this cycle: a tick for whether it lands
+   * at all, and its amount, typed over for this cycle only. The rows are
+   * rebuilt only when the set of additions changes so a field keeps focus. */
+  function syncIncomeRows() {
+    var box = $('np-income');
+    var list = model.cycle.income;
+    box.hidden = !list.length;
+    var key = list.map(function (r) { return r.id; }).join('|');
+    if (box.dataset.key !== key) {
+      box.dataset.key = key;
+      box.innerHTML = '<div class="np-budget-label np-income-head">Additional income this cycle</div>' +
+        list.map(function (r) {
+          return '<label class="np-inc-row" data-inc="' + esc(r.id) + '">' +
+            '<input class="np-inc-on" type="checkbox" data-inc-on="' + esc(r.id) + '"' +
+              ' aria-label="' + esc(r.label) + ' lands this cycle">' +
+            '<span class="np-inc-label">' + esc(r.label) + '</span>' +
+            '<span class="np-budget-field np-inc-field">' +
+              '<input class="np-budget-input np-inc-in" type="text" inputmode="numeric"' +
+                ' pattern="[0-9]*" autocomplete="off" enterkeyhint="done"' +
+                ' data-inc-amount="' + esc(r.id) + '" aria-label="' + esc(r.label) + ' this cycle">' +
+              '<span class="np-cur np-inc-cur"></span>' +
+            '</span>' +
+          '</label>';
+        }).join('');
+    }
+    list.forEach(function (r) {
+      var row = box.querySelector('[data-inc="' + r.id + '"]');
+      if (!row) return;
+      row.classList.toggle('is-off', r.off);
+      row.classList.toggle('is-over', r.overridden);
+      row.querySelector('[data-inc-on]').checked = !r.off;
+      var input = row.querySelector('[data-inc-amount]');
+      if (document.activeElement !== input) {
+        input.value = String(Math.round(fromEur(r.eur, currency)));
+      }
+      row.querySelector('.np-inc-cur').textContent = currency === 'EUR' ? '€' : 'ден';
+    });
+  }
+
+  function cycleIncomeFor(start) {
+    var c = scenario.cycleIncome;
+    return c && c.start === isoOf(start) && c.items ? c.items : {};
+  }
+
+  // Set one addition's tick or amount for this cycle; an amount equal to the
+  // committed one clears the override, and an empty entry is dropped.
+  function setCycleIncome(id, patch) {
+    var start = isoOf(model.cycle.start);
+    var c = scenario.cycleIncome;
+    if (!c || c.start !== start) c = { start: start, items: Object.create(null) };
+    var o = c.items[id] || { off: false, eur: null };
+    if ('off' in patch) o.off = !!patch.off;
+    if ('eur' in patch) {
+      var base = model.cycle.income.filter(function (r) { return r.id === id; })[0];
+      o.eur = (base && patch.eur === base.base) ? null : patch.eur;
+    }
+    if (!o.off && o.eur == null) delete c.items[id]; else c.items[id] = o;
+    scenario.cycleIncome = Object.keys(c.items).length ? c : null;
+    recompute();
   }
 
   // The budget field carries the display currency, so it is rewritten on a
@@ -2038,6 +2160,10 @@
       currency: currency,
       budgetOverride: scenario.budgetOverride,
       cycleExtra: scenario.cycleExtra,
+      cycleIncome: scenario.cycleIncome,
+      monthOff: Object.keys(scenario.monthOff).map(function (ym) {
+        return [ym, Object.keys(scenario.monthOff[ym])];
+      }),
       pricePerM2: scenario.pricePerM2,
       rateKnob: same('rateKnob') ? null : scenario.rateKnob,
       dayAdjust: scenario.dayAdjust,
@@ -2073,6 +2199,24 @@
     if (saved.cycleExtra && typeof saved.cycleExtra.start === 'string' &&
         (v = num(saved.cycleExtra.eur, 0, Infinity)) != null) {
       scenario.cycleExtra = { start: saved.cycleExtra.start, eur: v };
+    }
+    var ci = saved.cycleIncome;
+    if (ci && typeof ci.start === 'string' && ci.items && typeof ci.items === 'object') {
+      var items = Object.create(null);
+      Object.keys(ci.items).forEach(function (id) {
+        var o = ci.items[id] || {};
+        var eur = num(o.eur, 0, Infinity);
+        if (o.off === true || eur != null) items[id] = { off: o.off === true, eur: eur };
+      });
+      if (Object.keys(items).length) scenario.cycleIncome = { start: ci.start, items: items };
+    }
+    if (Array.isArray(saved.monthOff)) {
+      saved.monthOff.forEach(function (pair) {
+        if (!Array.isArray(pair) || !/^\d{4}-\d{2}$/.test(pair[0] || '') || !Array.isArray(pair[1])) return;
+        var m = Object.create(null);
+        pair[1].forEach(function (id) { if (typeof id === 'string') m[id] = true; });
+        if (Object.keys(m).length) scenario.monthOff[pair[0]] = m;
+      });
     }
     if ((v = num(saved.rateKnob, 0, Number($('sc-rate').max))) != null) scenario.rateKnob = v;
     if ((v = num(saved.dayAdjust, -6, 6)) != null) scenario.dayAdjust = v;
@@ -2147,6 +2291,8 @@
   function scenarioTouched() {
     return scenario.budgetOverride != null ||
       scenario.cycleExtra != null ||
+      scenario.cycleIncome != null ||
+      Object.keys(scenario.monthOff).length > 0 ||
       scenario.pricePerM2 != null ||
       scenario.rateKnob !== defaults.rateKnob ||
       scenario.dayAdjust !== 0 ||
@@ -2344,6 +2490,33 @@
     });
     $('np-extra').addEventListener('blur', syncExtraField);
 
+    $('np-income').addEventListener('change', function (ev) {
+      var t = ev.target;
+      if (t.dataset.incOn) setCycleIncome(t.dataset.incOn, { off: !t.checked });
+    });
+    $('np-income').addEventListener('input', function (ev) {
+      var t = ev.target;
+      if (!t.dataset.incAmount) return;
+      digitsOnly(t);
+      var v = Number(t.value);
+      if (t.value === '' || !isFinite(v) || v < 0) return;
+      setCycleIncome(t.dataset.incAmount, { eur: toEur(v, currency) });
+    });
+    $('np-income').addEventListener('focusout', function (ev) {
+      if (ev.target.dataset.incAmount) syncIncomeRows();
+    });
+
+    $('timeline-list').addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-month-toggle]');
+      if (!btn) return;
+      var ym = btn.dataset.ym;
+      var id = btn.dataset.monthToggle;
+      var m = scenario.monthOff[ym] || Object.create(null);
+      if (m[id]) delete m[id]; else m[id] = true;
+      if (Object.keys(m).length) scenario.monthOff[ym] = m; else delete scenario.monthOff[ym];
+      recompute();
+    });
+
     $('inv-price').addEventListener('input', function () {
       digitsOnly(this);
       var v = Number(this.value);
@@ -2423,6 +2596,8 @@
     $('sc-reset').addEventListener('click', function () {
       scenario.budgetOverride = null;
       scenario.cycleExtra = null;
+      scenario.cycleIncome = null;
+      scenario.monthOff = Object.create(null);
       scenario.pricePerM2 = null;
       scenario.rateKnob = defaults.rateKnob;
       scenario.dayAdjust = 0;

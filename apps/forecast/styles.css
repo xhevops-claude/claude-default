@@ -829,6 +829,71 @@ body.sheet-open { overflow: hidden; }
   -moz-appearance: textfield;
 }
 
+/* Additional income landing in this cycle: tick, name, amount for the cycle. */
+.np-income {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.np-income-head { display: block; margin-bottom: 6px; }
+
+.np-inc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.np-inc-on {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.np-inc-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.np-inc-row.is-off .np-inc-label { color: rgba(255, 255, 255, 0.4); text-decoration: line-through; }
+.np-inc-row.is-off .np-inc-field { opacity: 0.45; }
+.np-inc-row.is-over .np-inc-in { color: var(--accent); }
+
+/* A month's additional income, each one on or off for that month. */
+.mrow-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 4px;
+}
+
+.mchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mchip .lcheck { width: 14px; height: 14px; border-radius: 4px; }
+.mchip .lcheck::after { left: 4px; top: 1px; width: 3px; height: 6px; }
+.mchip.is-off { color: var(--ink-3); text-decoration: line-through; }
+.mchip.is-off .lcheck { background: transparent; border-color: var(--ink-3); }
+.mchip.is-off .lcheck::after { display: none; }
+
 .np-budget-input::-webkit-outer-spin-button,
 .np-budget-input::-webkit-inner-spin-button { appearance: none; margin: 0; }
 .np-budget-input:focus { outline: 2px solid #8ec5ff; outline-offset: 2px; border-radius: 6px; }
