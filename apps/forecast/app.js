@@ -1370,6 +1370,20 @@
     input.setAttribute('aria-label', 'Extra expenses this cycle in ' + currency);
   }
 
+  /* The stepper fields are plain text inputs with the numeric keypad rather
+   * than type="number", which on iOS will not let the caret move inside the
+   * digits. Anything that is not a digit is dropped as it is typed, and the
+   * caret stays where the user put it. */
+  function digitsOnly(input) {
+    var v = input.value;
+    var clean = v.replace(/\D+/g, '');
+    if (clean === v) return;
+    var caret = input.selectionStart == null ? clean.length
+      : v.slice(0, input.selectionStart).replace(/\D+/g, '').length;
+    input.value = clean;
+    try { input.setSelectionRange(caret, caret); } catch (e) { /* not focused */ }
+  }
+
   function nudgeExtra(dir) {
     setCycleExtra(Math.max(0, cycleExtraFor(model.cycle.start) + (dir * BUDGET_STEP_EUR)));
   }
@@ -2259,6 +2273,7 @@
       scenario.rollover = this.checked; recompute();
     });
     $('np-budget').addEventListener('input', function () {
+      digitsOnly(this);
       var v = Number(this.value);
       if (this.value === '' || !isFinite(v) || v < 0) return;
       scenario.budgetOverride = toEur(v, currency);
@@ -2266,6 +2281,7 @@
     });
     $('np-budget').addEventListener('blur', syncBudgetField);
     $('np-extra').addEventListener('input', function () {
+      digitsOnly(this);
       var v = Number(this.value);
       if (this.value === '' || !isFinite(v) || v < 0) return;
       setCycleExtra(toEur(v, currency));
@@ -2273,6 +2289,7 @@
     $('np-extra').addEventListener('blur', syncExtraField);
 
     $('inv-price').addEventListener('input', function () {
+      digitsOnly(this);
       var v = Number(this.value);
       if (this.value === '' || !isFinite(v) || v < 0) return;
       scenario.pricePerM2 = toEur(v, currency);

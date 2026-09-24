@@ -767,19 +767,23 @@ body.sheet-open { overflow: hidden; }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
   margin-top: 12px;
   padding-top: 11px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+/* Label left, stepper right, on one row — the label wraps before the field
+ * ever drops below it. */
 .np-budget-label {
+  flex: 1;
+  min-width: 0;
   font-size: 12.5px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .np-budget-field {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1041,7 +1045,6 @@ body.sheet-open { overflow: hidden; }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
   background: linear-gradient(150deg, #2a2f52 0%, #1b1f38 100%);
   border-radius: 14px;
   padding: 12px 14px;

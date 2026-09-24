@@ -179,7 +179,7 @@
             <label class="np-budget-label" for="np-budget">Monthly budget allowance</label>
             <div class="np-budget-field">
               <button class="np-step" type="button" data-nudge="budget" data-step="-1" aria-label="Lower the budget">−</button>
-              <input class="np-budget-input" id="np-budget" type="number" min="0" inputmode="numeric">
+              <input class="np-budget-input" id="np-budget" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done">
               <span class="np-cur" id="np-cur" aria-hidden="true">€</span>
               <button class="np-step" type="button" data-nudge="budget" data-step="1" aria-label="Raise the budget">+</button>
             </div>
@@ -188,7 +188,7 @@
             <label class="np-budget-label" for="np-extra">Extra expenses this cycle</label>
             <div class="np-budget-field">
               <button class="np-step" type="button" data-nudge="extra" data-step="-1" aria-label="Lower the extra expenses">−</button>
-              <input class="np-budget-input" id="np-extra" type="number" min="0" inputmode="numeric">
+              <input class="np-budget-input" id="np-extra" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done">
               <span class="np-cur" id="np-extra-cur" aria-hidden="true">€</span>
               <button class="np-step" type="button" data-nudge="extra" data-step="1" aria-label="Raise the extra expenses">+</button>
             </div>
@@ -211,7 +211,7 @@
           <label class="np-budget-label" for="inv-price">Target sale price</label>
           <div class="np-budget-field">
             <button class="np-step" type="button" data-nudge="price" data-step="-1" aria-label="Lower the target price by €50">−</button>
-            <input class="np-budget-input" id="inv-price" type="number" min="0" inputmode="numeric">
+            <input class="np-budget-input" id="inv-price" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done">
             <span class="np-cur" id="inv-cur" aria-hidden="true">€ / m²</span>
             <button class="np-step" type="button" data-nudge="price" data-step="1" aria-label="Raise the target price by €50">+</button>
           </div>
