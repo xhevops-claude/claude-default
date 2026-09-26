@@ -751,6 +751,9 @@ body.sheet-open { overflow: hidden; }
 .nextpay-out i { font-style: normal; color: rgba(255, 255, 255, 0.55); font-weight: 500; }
 .nextpay-out small { font-size: 11px; color: rgba(255, 255, 255, 0.38); margin-left: 4px; }
 .nextpay-out .is-in { color: #8ee8b4; }
+/* A figure that moved nothing this cycle keeps its line, dimmed. */
+.nextpay-out .is-idle { color: rgba(255, 255, 255, 0.32); }
+.nextpay-out .is-idle i { color: rgba(255, 255, 255, 0.3); }
 
 .nextpay-out .is-total {
   margin-top: 4px;
@@ -896,6 +899,9 @@ body.sheet-open { overflow: hidden; }
 
 .np-row-field { flex: none; display: inline-flex; align-items: center; gap: 5px; }
 .np-row.is-off .np-row-label { color: rgba(255, 255, 255, 0.4); text-decoration: line-through; }
+/* Zero for this cycle: dimmed but still editable, no strike-through. */
+.np-row.is-idle .np-row-label { color: rgba(255, 255, 255, 0.4); }
+.np-row.is-idle .amt { opacity: 0.55; }
 
 /* A month's additional income, each one on or off for that month. */
 .mrow-choices {

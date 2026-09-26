@@ -620,7 +620,7 @@
 
       if (cycleExtraEur > 0 && ym === ymOf(rollTo)) {
         events.push({
-          date: rollTo, kind: 'extra', label: 'Extra expenses',
+          date: rollTo, kind: 'extra', field: 'extras', label: 'Extra expenses',
           detail: cycleOverride != null ? 'this cycle · set by you'
             : cycleCommitted.map(function (e) { return e.label; }).join(' · '),
           eur: -cycleExtraEur, spentNow: true,
@@ -643,7 +643,7 @@
         var eur = incomeAt(it, lands, toEur(amountOf(it), it.currency));
         if (eur == null) return;
         events.push({
-          date: date, kind: 'income', label: it.label, detail: it.note || '',
+          date: date, kind: 'income', field: it.id, label: it.label, detail: it.note || '',
           eur: eur, once: once,
         });
       });
@@ -683,7 +683,7 @@
             : 'no pay lands this month', eur: -utilEur });
       }
       if (cycleUtil && cycleUtil.out > 0 && ym === ymOf(cycleUtil.date)) {
-        events.push({ date: cycleUtil.date, kind: 'utilities', label: util.label,
+        events.push({ date: cycleUtil.date, kind: 'utilities', field: 'utilities', label: util.label,
           detail: cycleUtil.overridden ? 'this cycle · set by you' : 'with the first pay of the month',
           eur: -cycleUtil.out, spentNow: true });
         cycleUtil.out = 0;     // pushed once
@@ -720,6 +720,7 @@
           }
           events.push({
             date: per.arrival, kind: c.kind === 'income' ? 'income' : 'extra', withPay: true,
+            field: c.kind === 'income' ? c.id : undefined,
             label: c.label, detail: 'with the ' + per.rangeLabel + ' pay · added by you',
             eur: c.kind === 'income' ? cEur : -cEur,
           });
@@ -774,7 +775,7 @@
         if (payEvents.length) {
           payEvents.forEach(function (pe, pIdx) {
             events.push({
-              date: pe.date, kind: 'budget', budgetDraw: true,
+              date: pe.date, kind: 'budget', field: 'budget', budgetDraw: true,
               isLastPay: pIdx === payEvents.length - 1,
               label: budgetLabel, detail: 'what the ' + pe.period.rangeLabel +
                 ' pay has left after loans',
@@ -786,7 +787,7 @@
             daysInMonth(monthDate.getUTCFullYear(), monthDate.getUTCMonth()));
           events.push({
             date: mkDate(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), fallbackDay),
-            kind: 'budget', label: budgetLabel, detail: 'no pay lands this month',
+            kind: 'budget', field: 'budget', label: budgetLabel, detail: 'no pay lands this month',
             eur: -budgetTotal,
           });
         }
@@ -1484,6 +1485,12 @@
       : 'No pay has landed in this cycle yet' +
         (cyc.next ? ' — the next one is ' + dateLabel(cyc.next.date, { full: true }) : '') + '.';
 
+    // A figure the cycle carries but that moved no money — typed to zero, or
+    // ticked off — keeps its line, dimmed, so the math never loses a label.
+    var idle = cyc.fields.filter(function (f) {
+      return !lines.some(function (e) { return e.field === f.id; });
+    });
+
     $('np-out').innerHTML =
       (pay ? '<span class="is-in"><i>' + esc(pay.label) + '</i>' +
         esc(money(pay.eur, { signed: true })) + '</span>' : '') +
@@ -1491,6 +1498,10 @@
         return '<span' + (e.eur > 0 ? ' class="is-in"' : '') + '><i>' + esc(e.label) +
           (e.date.getTime() !== cyc.start.getTime() ? ' <small>' + esc(dateLabel(e.date)) + '</small>' : '') +
           '</i>' + esc(money(e.eur, { signed: true })) + '</span>';
+      }).join('') +
+      idle.map(function (f) {
+        return '<span class="is-idle"><i>' + esc(f.label) +
+          (f.off ? ' <small>off</small>' : '') + '</i>' + esc(money(0)) + '</span>';
       }).join('') +
       '<span class="is-total"><i>Left at the end</i>' + esc(money(left, { signed: true })) + '</span>';
 
@@ -1527,6 +1538,7 @@
       var row = box.querySelector('[data-cf="' + r.id + '"]');
       if (!row) return;
       row.classList.toggle('is-off', r.off);
+      row.classList.toggle('is-idle', !r.off && r.eur <= 0);   // zero: dimmed, still editable
       row.classList.toggle('is-edited', r.overridden);
       row.querySelector('[data-cf-on]').checked = !r.off;
       // The field is built once so it keeps focus while the figure is being
