@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Planner</title>
+  <script>
+    if (window.self !== window.top) document.documentElement.classList.add('embedded');
+  </script>
+  <style>
+    /* Critical inline CSS — paints black on the very first frame, before
+       styles.css resolves. Do not move this to styles.css. */
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      touch-action: manipulation;
+      background: #000; color: #cfe9f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+    }
+    #app-loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.3s ease;
+    }
+    #app-loading.hidden { opacity: 0; pointer-events: none; }
+    #app-loading .gl-bar {
+      position: relative; width: 160px; height: 1px;
+      background: rgba(143, 216, 255, 0.18); overflow: hidden;
+    }
+    #app-loading .gl-bar::after {
+      content: ""; position: absolute; top: 0; left: -40%;
+      width: 40%; height: 100%; background: #8fd8ff;
+      animation: gl-bar 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    }
+    @keyframes gl-bar { 0% { left: -40%; } 100% { left: 100%; } }
+  </style>
+  <link rel="stylesheet" href="styles.css?v=85c0b68" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app-loading"><div class="gl-bar" aria-label="Loading"></div></div>
+
+  <!-- No project in the address: the launcher. Organizations are
+       namespaces; each holds its projects. main.js fills the list. -->
+  <section class="launcher" id="launcher" hidden>
+    <header class="launch-head">
+      <h1>Planner</h1>
+      <p data-i18n="A viewer for sites and the buildings drawn for them. Pick a project.">A viewer for sites and the buildings drawn for them. Pick a project.</p>
+    </header>
+    <div id="launcher-list"></div>
+    <button type="button" class="ghost launch-quit" id="launch-quit" aria-label="Quit">&#10005;</button>
+  </section>
+
+  <!-- The workspace: a top bar, a left dock, the scene, a bottom bar.
+       Full screen (the top bar's button) first drops the browser's own
+       chrome and keeps these; pressed again it hides them too and the
+       scene has the whole screen, with one small button to come back. -->
+  <main class="wf">
+    <header class="bar bar--top">
+      <div class="hud-title">
+        <span id="wf-name">Planner</span>
+        <span class="hud-dim" id="wf-dims"></span>
+        <span class="hud-sel" id="wf-sel"></span>
+      </div>
+      <button type="button" class="ghost ghost--icon" id="fs" aria-label="Full screen" title="Full screen">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="fs-0" fill="currentColor" d="M4 4h6v2H6v4H4V4Zm10 0h6v6h-2V6h-4V4ZM4 14h2v4h4v2H4v-6Zm14 0h2v6h-6v-2h4v-4Z"/><path class="fs-1" fill="currentColor" d="M3 5h18v14H3V5Zm2 2v10h14V7H5Zm3 3h8v4H8v-4Z"/><path class="fs-2" fill="currentColor" d="M10 4v6H4V8h4V4h2Zm4 0h2v4h4v2h-6V4ZM4 14h6v6H8v-4H4v-2Zm10 0h6v2h-4v4h-2v-6Z"/></svg>
+      </button>
+      <button type="button" class="ghost ghost--icon" id="settings-open" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.7 7.7 0 0 0-1.7-1L15 3.3H9l-.4 2.6a7.7 7.7 0 0 0-1.7 1l-2.5-1-2 3.5L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.7 7.7 0 0 0 1.7 1l.4 2.6h6l.4-2.6a7.7 7.7 0 0 0 1.7-1l2.5 1 2-3.5L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+      </button>
+      <button type="button" class="ghost" id="quit" aria-label="Quit">&#10005;</button>
+    </header>
+
+    <!-- The left dock: every layer as a tree — the drawing's parts, then
+         each object group with its objects under it (a building with its
+         floors), then the relief's layers. A checkbox shows or hides;
+         tapping an object's name selects it and flies the camera to it.
+         viewer.js fills the tree. -->
+    <aside class="dock dock--left" id="dock-left">
+      <div class="dock-head">
+        <span class="dock-title" data-i18n="Layers">Layers</span>
+        <span class="setting-actions">
+          <button type="button" class="ghost" id="layers-save" data-i18n="Save" disabled>Save</button>
+          <button type="button" class="ghost" id="layers-reset" data-i18n="Reset">Reset</button>
+        </span>
+        <button type="button" class="ghost ghost--icon dock-fold" id="dock-left-fold" aria-label="Collapse" title="Collapse">&#8249;</button>
+      </div>
+      <div class="dock-row">
+        <label class="check check--all"><input type="checkbox" id="layers-all" /><span data-i18n="All layers">All layers</span></label>
+      </div>
+      <div class="dock-body">
+        <ul class="tree" id="tree"></ul>
+      </div>
+    </aside>
+    <button type="button" class="dock-rail" id="dock-left-open" aria-label="Expand" title="Expand" hidden>&#8250;</button>
+
+    <!-- The right dock: the tapped object's properties. Folded until
+         asked for; its rail lights up while something is selected. -->
+    <aside class="dock dock--right" id="dock-right" hidden>
+      <div class="dock-head">
+        <span class="dock-title" data-i18n="Properties">Properties</span>
+        <button type="button" class="ghost ghost--icon dock-fold" id="dock-right-fold" aria-label="Collapse" title="Collapse">&#8250;</button>
+      </div>
+      <div class="dock-body props" id="props"></div>
+    </aside>
+    <button type="button" class="dock-rail dock-rail--right" id="dock-right-open" aria-label="Expand" title="Expand">&#8249;</button>
+
+    <div class="stage" id="stage">
+      <div class="canvas-host" id="canvas-host"></div>
+      <div class="fail" id="fail" hidden>
+        Could not start the 3D view — three.js did not load.
+      </div>
+      <!-- Sits over the gizmo's corner of the canvas and takes its taps,
+           so snapping a view never fights the orbit drag underneath. -->
+      <div class="gizmo-hit" id="gizmo-hit" title="Snap to an axis"></div>
+      <!-- Only in scene-only full screen: the way back. -->
+      <button type="button" class="ghost ghost--icon fs-exit" id="fs-exit" aria-label="Exit full screen" title="Exit full screen">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M10 4v6H4V8h4V4h2Zm4 0h2v4h4v2h-6V4ZM4 14h6v6H8v-4H4v-2Zm10 0h6v2h-4v4h-2v-6Z"/></svg>
+      </button>
+    </div>
+
+    <!-- Settings: how the view moves, and the language. Opened by the gear. -->
+    <div class="sheet" id="settings" hidden>
+      <div class="sheet-backdrop" id="settings-backdrop"></div>
+      <div class="sheet-panel" role="dialog" aria-labelledby="settings-title">
+        <div class="sheet-head">
+          <span class="sheet-title" id="settings-title" data-i18n="Settings">Settings</span>
+          <button type="button" class="ghost" id="settings-close" data-i18n="Close">Close</button>
+        </div>
+        <div class="setting">
+          <div class="setting-label" data-i18n="Projects">Projects</div>
+          <a class="ghost" id="settings-projects" href="#" data-i18n="All projects">All projects</a>
+        </div>
+        <div class="setting">
+          <div class="setting-label" data-i18n="Navigation">Navigation</div>
+          <div class="seg" id="seg-mode">
+            <button type="button" class="seg-btn is-on" data-mode="object" data-i18n="Object">Object</button>
+            <button type="button" class="seg-btn" data-mode="camera" data-i18n="Camera">Camera</button>
+          </div>
+          <div class="setting-hint" id="mode-hint"></div>
+        </div>
+        <div class="setting">
+          <div class="setting-label" data-i18n="Language">Language</div>
+          <div class="seg" id="seg-lang">
+            <button type="button" class="seg-btn is-on" data-lang="en">EN</button>
+            <button type="button" class="seg-btn" data-lang="de">DE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="bar bar--bottom">
+      <!-- One chip per object group, in its colour; tap to hide the group. -->
+      <nav class="bar-row legend" id="legend" aria-label="Object groups"></nav>
+      <div class="bar-row">
+        <button type="button" class="ghost" id="fit" data-i18n="Fit">Fit</button>
+        <button type="button" class="ghost is-on" id="t-faces" data-i18n="Facade">Facade</button>
+        <button type="button" class="ghost is-on" id="t-interior" data-i18n="Interior floors">Interior floors</button>
+        <button type="button" class="ghost is-on" id="t-wire" data-i18n="Wireframe">Wireframe</button>
+        <button type="button" class="ghost is-on" id="t-floors" data-i18n="Floor lines">Floor lines</button>
+        <button type="button" class="ghost is-on" id="t-dots" data-i18n="Dots">Dots</button>
+        <button type="button" class="ghost is-on" id="t-grid" data-i18n="Ground">Ground</button>
+        <button type="button" class="ghost" id="t-spin" data-i18n="Spin">Spin</button>
+        <a class="ghost" id="defects-link" href="#" target="_blank" rel="noopener" data-i18n="Defects">Defects</a>
+        <span class="axis-key" id="axis-key">
+          <b class="ax-x">X</b> east · <b class="ax-y">Y</b> up · <b class="ax-z">Z</b> south
+        </span>
+      </div>
+    </footer>
+  </main>
+
+  <script type="module" src="main.js?v=85c0b68"></script>
+</body>
+</html>
