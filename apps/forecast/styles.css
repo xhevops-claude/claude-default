@@ -43,7 +43,7 @@ html, body {
  * other iOS zoom, into a focused field under 16px, is handled by keeping every
  * field at 16px. */
 button, input, select, textarea, a, label,
-.lrow, .tab, .cur-btn, .seg-btn, .np-step, .icon-btn { touch-action: manipulation; }
+.lrow, .tab, .cur-btn, .seg-btn, .amt-step, .amt-revert, .icon-btn { touch-action: manipulation; }
 
 body.sheet-open { overflow: hidden; }
 
@@ -782,9 +782,15 @@ body.sheet-open { overflow: hidden; }
   color: rgba(255, 255, 255, 0.6);
 }
 
-.np-budget-field {
+/* The one editable amount in the app — the cycle card, the target price and
+ * every Ledger row that can be typed over all use this same field: a −/+
+ * stepper around a text input with the numeric keypad (digitsOnly() in
+ * app.js filters it; type="number" would not let the iOS caret move), the
+ * currency beside it, and the figure in the accent colour once it has been
+ * typed over (.is-edited on the row). Keep the three surfaces identical. */
+.amt {
   flex: none;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
   background: rgba(255, 255, 255, 0.08);
@@ -792,13 +798,14 @@ body.sheet-open { overflow: hidden; }
   padding: 3px;
 }
 
-.np-step {
+.amt-step {
+  flex: none;
   width: 30px;
   height: 30px;
   border: 0;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  color: inherit;
   font: inherit;
   font-size: 17px;
   font-weight: 700;
@@ -806,20 +813,23 @@ body.sheet-open { overflow: hidden; }
   cursor: pointer;
 }
 
-.np-step:active { background: rgba(255, 255, 255, 0.2); }
+.amt-step:active { background: rgba(255, 255, 255, 0.2); }
 
-.np-cur {
+.amt-cur {
+  flex: none;
   font-size: 12.5px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.5);
   padding-right: 4px;
 }
 
-.np-budget-input {
+.amt-in {
   width: 72px;
+  min-width: 0;
+  padding: 0;
   border: 0;
   background: transparent;
-  color: #fff;
+  color: inherit;
   font: inherit;
   font-size: 16px;
   font-weight: 800;
@@ -827,6 +837,28 @@ body.sheet-open { overflow: hidden; }
   font-variant-numeric: tabular-nums;
   appearance: textfield;
   -moz-appearance: textfield;
+}
+
+.amt-in::-webkit-outer-spin-button,
+.amt-in::-webkit-inner-spin-button { appearance: none; margin: 0; }
+.amt-in:focus { outline: 2px solid #8ec5ff; outline-offset: 2px; border-radius: 6px; }
+.np-row.is-off .amt { opacity: 0.45; }
+.is-edited .amt-in { color: var(--accent); }
+
+/* ↺ beside the field once the figure has been typed over. */
+.amt-revert {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  opacity: 0.8;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 /* The cycle card's editors: tick, name, amount for the cycle. */
@@ -862,9 +894,8 @@ body.sheet-open { overflow: hidden; }
   color: rgba(255, 255, 255, 0.85);
 }
 
+.np-row-field { flex: none; display: inline-flex; align-items: center; gap: 5px; }
 .np-row.is-off .np-row-label { color: rgba(255, 255, 255, 0.4); text-decoration: line-through; }
-.np-row.is-off .np-budget-field { opacity: 0.45; }
-.np-row.is-over .np-budget-input { color: var(--accent); }
 
 /* A month's additional income, each one on or off for that month. */
 .mrow-choices {
@@ -893,10 +924,6 @@ body.sheet-open { overflow: hidden; }
 .mchip.is-off { color: var(--ink-3); text-decoration: line-through; }
 .mchip.is-off .lcheck { background: transparent; border-color: var(--ink-3); }
 .mchip.is-off .lcheck::after { display: none; }
-
-.np-budget-input::-webkit-outer-spin-button,
-.np-budget-input::-webkit-inner-spin-button { appearance: none; margin: 0; }
-.np-budget-input:focus { outline: 2px solid #8ec5ff; outline-offset: 2px; border-radius: 6px; }
 
 /* ---------------------------------------------------------- timeline rows */
 
@@ -1119,8 +1146,6 @@ body.sheet-open { overflow: hidden; }
 }
 
 .inv-price-bar .np-budget-label { color: rgba(255, 255, 255, 0.72); }
-/* Centred, like the budget field — it sits between the two step arrows. */
-.inv-price-bar .np-budget-input { width: 84px; text-align: center; }
 
 .inv-facts {
   font-size: 11.5px;
@@ -1251,45 +1276,13 @@ body.sheet-open { overflow: hidden; }
   padding: 1px 5px;
 }
 
-/* Editable amount: the figure is a field, with the currency beside it and a
- * ↺ to go back once it has been typed over. */
-.ledit { display: inline-flex; align-items: center; gap: 5px; }
-
-.ledit-in {
-  width: 78px;
-  padding: 5px 7px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-2);
-  color: var(--ink);
-  font: inherit;
-  font-size: 16px;
-  font-weight: 700;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-.ledit-in::-webkit-outer-spin-button,
-.ledit-in::-webkit-inner-spin-button { appearance: none; margin: 0; }
-.ledit-in:focus { outline: 2px solid #8ec5ff; outline-offset: 1px; }
-.lrow.is-edited .ledit-in { border-color: var(--accent); }
-
-.ledit-cur { font-size: 12px; font-weight: 700; color: var(--ink-3); }
-
-.lrevert {
-  width: 26px;
-  height: 26px;
-  border: 0;
-  border-radius: 7px;
-  background: var(--surface-2);
-  color: var(--ink-2);
-  font: inherit;
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-}
+/* A Ledger row whose figure is the shared .amt field. Tapping inside .ledit
+ * types rather than toggles the row; on a narrow screen the field drops
+ * under the name rather than squeezing it. */
+.lrow.is-editable { flex-wrap: wrap; }
+.lrow.is-editable .lbody { flex: 1 1 150px; }
+.ledit { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
+.lrow.is-off .ledit { text-decoration: none; }
 
 .lremove {
   width: 26px;
@@ -1383,6 +1376,8 @@ body.sheet-open { overflow: hidden; }
 
 .add-row { display: flex; gap: 8px; }
 .add-row .add-in { min-width: 0; }
+/* The figure reads like every other amount field. */
+.add-in-amount { font-weight: 800; font-variant-numeric: tabular-nums; }
 .add-sel { flex: none; width: 92px; }
 
 .add-hint {

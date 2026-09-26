@@ -1519,14 +1519,7 @@
           '<input class="np-on" type="checkbox" data-cf-on="' + esc(r.id) + '"' +
             ' aria-label="' + esc(r.label) + ' counts this cycle">' +
           '<span class="np-row-label">' + esc(r.label) + '</span>' +
-          '<span class="np-budget-field">' +
-            '<button class="np-step" type="button" data-cf-step="-1" aria-label="Lower ' + esc(r.label) + '">−</button>' +
-            '<input class="np-budget-input" type="text" inputmode="numeric" pattern="[0-9]*"' +
-              ' autocomplete="off" enterkeyhint="done" data-cf-amount="' + esc(r.id) + '"' +
-              ' aria-label="' + esc(r.label) + ' this cycle">' +
-            '<span class="np-cur"></span>' +
-            '<button class="np-step" type="button" data-cf-step="1" aria-label="Raise ' + esc(r.label) + '">+</button>' +
-          '</span>' +
+          '<span class="np-row-field"></span>' +
         '</div>';
       }).join('');
     }
@@ -1534,13 +1527,24 @@
       var row = box.querySelector('[data-cf="' + r.id + '"]');
       if (!row) return;
       row.classList.toggle('is-off', r.off);
-      row.classList.toggle('is-over', r.overridden);
+      row.classList.toggle('is-edited', r.overridden);
       row.querySelector('[data-cf-on]').checked = !r.off;
+      // The field is built once so it keeps focus while the figure is being
+      // typed; ↺ is shown or hidden in place.
+      var slot = row.querySelector('.np-row-field');
+      if (!slot.firstChild) {
+        slot.innerHTML = amountField({
+          label: r.label + ' this cycle', cur: '', step: 'data-cf-step',
+          attrs: 'data-cf-amount="' + esc(r.id) + '" aria-label="' + esc(r.label) + ' this cycle"',
+          revert: 'data-cf-revert="' + esc(r.id) + '"',
+        });
+      }
+      row.querySelector('[data-cf-revert]').hidden = !r.overridden;
       var input = row.querySelector('[data-cf-amount]');
       if (document.activeElement !== input) {
         input.value = String(Math.round(fromEur(r.eur, currency)));
       }
-      row.querySelector('.np-cur').textContent = currency === 'EUR' ? '€' : 'ден';
+      row.querySelector('.amt-cur').textContent = currency === 'EUR' ? '€' : 'ден';
     });
   }
 
@@ -1573,18 +1577,53 @@
     recompute();
   }
 
-  /* The stepper fields are plain text inputs with the numeric keypad rather
+  /* The one editable amount field, used wherever a figure can be typed over:
+   * the cycle card, the target price and the Ledger rows. A −/+ stepper
+   * around a text input with the numeric keypad, and the currency beside it.
+   * `attrs` is spliced onto the input (data-* hooks, aria-label), `step` onto
+   * the two buttons; `revert` adds a ↺ before the field. */
+  function amountField(opts) {
+    return (opts.revert ? '<button class="amt-revert" type="button" ' + opts.revert +
+        ' aria-label="Back to the committed amount">↺</button>' : '') +
+      '<span class="amt">' +
+        '<button class="amt-step" type="button" ' + opts.step + '="-1" aria-label="Lower ' +
+          esc(opts.label) + '">−</button>' +
+        '<input class="amt-in" type="text" inputmode="decimal" autocomplete="off"' +
+          ' enterkeyhint="done" ' + opts.attrs +
+          (opts.value != null ? ' value="' + esc(String(opts.value)) + '"' : '') + '>' +
+        '<span class="amt-cur">' + esc(opts.cur) + '</span>' +
+        '<button class="amt-step" type="button" ' + opts.step + '="1" aria-label="Raise ' +
+          esc(opts.label) + '">+</button>' +
+      '</span>';
+  }
+
+  /* The amount fields are plain text inputs with the numeric keypad rather
    * than type="number", which on iOS will not let the caret move inside the
-   * digits. Anything that is not a digit is dropped as it is typed, and the
-   * caret stays where the user put it. */
+   * digits. Anything that is not a digit or the first decimal point is
+   * dropped as it is typed (a comma counts as the point), and the caret stays
+   * where the user put it. */
+  function cleanAmount(s) {
+    var seen = false;
+    return s.replace(/,/g, '.').replace(/[^\d.]+|\./g, function (m) {
+      if (m !== '.' || seen) return '';
+      seen = true;
+      return '.';
+    });
+  }
   function digitsOnly(input) {
     var v = input.value;
-    var clean = v.replace(/\D+/g, '');
+    var clean = cleanAmount(v);
     if (clean === v) return;
     var caret = input.selectionStart == null ? clean.length
-      : v.slice(0, input.selectionStart).replace(/\D+/g, '').length;
+      : cleanAmount(v.slice(0, input.selectionStart)).length;
     input.value = clean;
     try { input.setSelectionRange(caret, caret); } catch (e) { /* not focused */ }
+  }
+
+  // The value of an amount field, or null while it is blank or half-typed.
+  function amountValue(input) {
+    var v = Number(input.value);
+    return input.value === '' || !isFinite(v) || v < 0 ? null : v;
   }
 
   /* ----------------------------------------------------------------- debts */
@@ -2032,20 +2071,20 @@
     var off = !isOn(item);
     var edited = scenario.amounts[item.id] != null;
     var cur = item.currency || 'EUR';
-    return '<div class="lrow' + (off ? ' is-off' : '') + (edited ? ' is-edited' : '') +
+    return '<div class="lrow is-editable' + (off ? ' is-off' : '') + (edited ? ' is-edited' : '') +
         '" data-toggle="' + esc(item.id) + '">' +
       '<span class="lcheck" aria-hidden="true"></span>' +
       '<span class="lbody"><span class="lname">' + esc(item.label) +
         (item.sample ? '<span class="tag">sample</span>' : '') + '</span>' +
         '<span class="lnote">' + esc(sub) +
           (edited ? ' · was ' + esc(nativeMoney(item.amount, cur)) : '') + '</span></span>' +
-      '<span class="lright ledit">' +
-        (edited ? '<button class="lrevert" type="button" data-revert="' + esc(item.id) +
-          '" aria-label="Back to the committed amount">↺</button>' : '') +
-        '<input class="ledit-in" type="number" min="0" step="any" inputmode="decimal"' +
-          ' data-amount="' + esc(item.id) + '" value="' + esc(String(amountOf(item))) +
-          '" aria-label="' + esc(item.label) + ' amount in ' + esc(cur) + '">' +
-        '<span class="ledit-cur">' + esc(curSymbol(cur)) + '</span>' +
+      '<span class="ledit">' +
+        amountField({
+          label: item.label, cur: curSymbol(cur), step: 'data-lstep', value: amountOf(item),
+          attrs: 'data-amount="' + esc(item.id) + '" aria-label="' + esc(item.label) +
+            ' amount in ' + esc(cur) + '"',
+          revert: 'data-revert="' + esc(item.id) + '"' + (edited ? '' : ' hidden'),
+        }) +
       '</span>' +
       '</div>';
   }
@@ -2086,16 +2125,17 @@
   function customRow(c) {
     var off = !isOn(c);
     var income = c.kind === 'income';
-    return '<div class="lrow' + (off ? ' is-off' : '') + '" data-toggle="' + esc(c.id) + '">' +
+    return '<div class="lrow is-editable' + (off ? ' is-off' : '') + '" data-toggle="' + esc(c.id) + '">' +
       '<span class="lcheck" aria-hidden="true"></span>' +
       '<span class="lbody"><span class="lname">' + esc(c.label) +
         '<span class="tag ' + (income ? 'is-in' : 'is-out') + '">' + (income ? 'in' : 'out') + '</span></span>' +
         '<span class="lnote">' + esc(customWhenLabel(c)) + '</span></span>' +
-      '<span class="lright ledit">' +
-        '<input class="ledit-in" type="number" min="0" step="any" inputmode="decimal"' +
-          ' data-custom-amount="' + esc(c.id) + '" value="' + esc(String(c.amount)) +
-          '" aria-label="' + esc(c.label) + ' amount in ' + esc(c.currency) + '">' +
-        '<span class="ledit-cur">' + esc(curSymbol(c.currency)) + '</span>' +
+      '<span class="ledit">' +
+        amountField({
+          label: c.label, cur: curSymbol(c.currency), step: 'data-lstep', value: c.amount,
+          attrs: 'data-custom-amount="' + esc(c.id) + '" aria-label="' + esc(c.label) +
+            ' amount in ' + esc(c.currency) + '"',
+        }) +
         '<button class="lremove" type="button" data-remove="' + esc(c.id) +
           '" aria-label="Remove ' + esc(c.label) + '">×</button>' +
       '</span>' +
@@ -2500,6 +2540,19 @@
         recompute();
         return;
       }
+      var step = ev.target.closest('[data-lstep]');
+      if (step) {
+        var inp = step.parentNode.querySelector('.amt-in');
+        var cur = (editableItem(inp.dataset.amount) || customEntry(inp.dataset.customAmount) ||
+          {}).currency || 'EUR';
+        var was = amountValue(inp) || 0;
+        inp.value = String(Math.max(0, was +
+          (Number(step.dataset.lstep) * Math.round(fromEur(BUDGET_STEP_EUR, cur)))));
+        commitLedgerAmount(inp);
+        renderLedger();
+        recompute();
+        return;
+      }
       if (ev.target.closest('.ledit')) return;   // typing, not toggling
       var row = ev.target.closest('[data-toggle]');
       if (!row) return;
@@ -2514,11 +2567,9 @@
     // row is left alone so the field keeps focus; the ledger redraws once the
     // value is committed (blur or Enter), which also refreshes the section
     // totals.
-    $('ledger-list').addEventListener('input', function (ev) {
-      var inp = ev.target.closest('.ledit-in');
-      if (!inp) return;
-      var v = Number(inp.value);
-      if (inp.value === '' || !isFinite(v) || v < 0) return;
+    function commitLedgerAmount(inp) {
+      var v = amountValue(inp);
+      if (v == null) return;
       if (inp.dataset.customAmount) {
         var entry = customEntry(inp.dataset.customAmount);
         if (entry) { entry.amount = v; model = build(); saveScenario(); }
@@ -2530,9 +2581,15 @@
       else scenario.amounts[id] = v;
       model = build();
       saveScenario();
+    }
+    $('ledger-list').addEventListener('input', function (ev) {
+      var inp = ev.target.closest('.amt-in');
+      if (!inp) return;
+      digitsOnly(inp);
+      commitLedgerAmount(inp);
     });
     $('ledger-list').addEventListener('change', function (ev) {
-      if (!ev.target.closest('.ledit-in')) return;
+      if (!ev.target.closest('.amt-in')) return;
       renderLedger();
       recompute();
     });
@@ -2565,14 +2622,19 @@
       var t = ev.target;
       if (!t.dataset.cfAmount) return;
       digitsOnly(t);
-      var v = Number(t.value);
-      if (t.value === '' || !isFinite(v) || v < 0) return;
-      setCycle(t.dataset.cfAmount, { eur: toEur(v, currency) });
+      var v = amountValue(t);
+      if (v != null) setCycle(t.dataset.cfAmount, { eur: toEur(v, currency) });
     });
     $('np-fields').addEventListener('focusout', function (ev) {
       if (ev.target.dataset.cfAmount) syncCycleFields();
     });
     $('np-fields').addEventListener('click', function (ev) {
+      var revert = ev.target.closest('[data-cf-revert]');
+      if (revert) {
+        var rf = cycleField(revert.dataset.cfRevert);
+        if (rf) setCycle(rf.id, { eur: rf.base });
+        return;
+      }
       var btn = ev.target.closest('[data-cf-step]');
       if (!btn) return;
       var id = btn.closest('[data-cf]').dataset.cf;
@@ -2603,7 +2665,10 @@
         ? (data.investments.salePricePerM2 || 0) : scenario.pricePerM2);
     });
 
-    Array.prototype.forEach.call(document.querySelectorAll('.np-step'), function (btn) {
+    // Same keypad and typing rules as every other amount in the app.
+    $('add-amount').addEventListener('input', function () { digitsOnly(this); });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-nudge]'), function (btn) {
       btn.addEventListener('click', function () {
         var dir = Number(btn.dataset.step);
         if (btn.dataset.nudge === 'price') nudgePrice(dir);

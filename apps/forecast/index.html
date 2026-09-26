@@ -38,7 +38,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=245ff51">
+  <link rel="stylesheet" href="styles.css?v=3f9f549">
 </head>
 <body>
   <div id="app-loading">
@@ -192,12 +192,12 @@
       <section id="view-invest" class="view" aria-label="Investments">
         <div class="inv-price-bar">
           <label class="np-budget-label" for="inv-price">Target sale price</label>
-          <div class="np-budget-field">
-            <button class="np-step" type="button" data-nudge="price" data-step="-1" aria-label="Lower the target price by €50">−</button>
-            <input class="np-budget-input" id="inv-price" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done">
-            <span class="np-cur" id="inv-cur" aria-hidden="true">€ / m²</span>
-            <button class="np-step" type="button" data-nudge="price" data-step="1" aria-label="Raise the target price by €50">+</button>
-          </div>
+          <span class="amt">
+            <button class="amt-step" type="button" data-nudge="price" data-step="-1" aria-label="Lower the target price by €50">−</button>
+            <input class="amt-in" id="inv-price" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done">
+            <span class="amt-cur" id="inv-cur" aria-hidden="true">€ / m²</span>
+            <button class="amt-step" type="button" data-nudge="price" data-step="1" aria-label="Raise the target price by €50">+</button>
+          </span>
         </div>
         <div id="invest-summary"></div>
         <div id="invest-list"></div>
@@ -226,7 +226,7 @@
             <input class="add-in" id="add-label" type="text" maxlength="60" placeholder="Freelance invoice, bonus…" autocomplete="off">
             <label class="add-label" for="add-amount">How much</label>
             <div class="add-row">
-              <input class="add-in" id="add-amount" type="number" min="0" step="any" inputmode="decimal" placeholder="0">
+              <input class="add-in add-in-amount" id="add-amount" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="0">
               <select class="add-in add-sel" id="add-cur" aria-label="Currency"></select>
             </div>
             <label class="add-label" for="add-when">When</label>
@@ -308,6 +308,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=245ff51"></script>
+  <script src="app.js?v=3f9f549"></script>
 </body>
 </html>
