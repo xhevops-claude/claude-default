@@ -596,11 +596,23 @@ async function boot() {
       EXC.push({ id: `dig-${w.id}`, name: `${t('Excavation for')} ${t(w.name)}`, ring: [[w.x0, zAt(w.x0)], [w.x1, zAt(w.x1)], [w.x1, w.z1], [w.x0, w.z1]], level: w.y0 });
     }
     for (const c of PLAN.excavations || []) EXC.push({ ...c, name: t(c.name) });
+    /* What each cut takes out is measured right here, on the relief
+       points themselves: every point stands for one lattice cell
+       (|u × v| m²), and the cut's volume is the sum over the points it
+       lowers of how far it lowers them, times that cell. Cuts are
+       applied in order, each against the ground as the ones before it
+       left it, so where two pits overlap — a garage under a building's
+       own dig — the shared ground is counted once, by the first cut to
+       reach it, and the cuts' volumes add up to exactly the ground's
+       total lowering. `deep` is measured from the original survey, the
+       true depth of the pit. */
+    const dug = new Map(EXC.map((c) => [c, { vol: 0, area: 0, deep: 0 }]));
     const worked = new Map();
     for (const F of R.fields) {
       const [nx, ny] = F.size;
       const W = Array.from(F.heights);
-      const cellM = Math.sqrt(Math.abs(F.u[0] * F.v[1] - F.u[1] * F.v[0]));
+      const cellA = Math.abs(F.u[0] * F.v[1] - F.u[1] * F.v[0]);
+      const cellM = Math.sqrt(cellA);
       if (EXC.length) {
         for (let j = 0; j < ny; j++) {
           for (let i = 0; i < nx; i++) {
@@ -611,7 +623,12 @@ async function boot() {
             for (const c of EXC) {
               if (!nearRing(c.ring, x, z, c.margin ?? Math.max(cellM, 0.5))) continue;
               const cut = c.depth != null ? W[k] - c.depth : c.level + R.datum;
-              if (cut < W[k]) W[k] = cut;
+              if (cut >= W[k]) continue;
+              const s = dug.get(c);
+              s.vol += (W[k] - cut) * cellA;
+              s.area += cellA;
+              s.deep = Math.max(s.deep, F.heights[k] - cut);
+              W[k] = cut;
             }
           }
         }
@@ -781,42 +798,34 @@ async function boot() {
     for (let Y = Math.ceil(sy0 / EVERY) * EVERY; Y <= sy1; Y += EVERY) drape(span(sx0, sx1).map((X) => [X, Y]));
     o.node.add(tagged(segments(gridSegs, new THREE.LineBasicMaterial({ color: o.col.clone().lerp(WHITE, 0.25), transparent: true, opacity: 0.45 })), 'relief-grid'));
 
-    /* The dug ground: one object per excavation, the volume between
-       the original surface and the cut, with its depth and its m³ on
-       tap. Nothing is drawn where the ground was already below the cut. */
+    /* The dug ground: one object per excavation, drawn as the volume
+       between the original surface and the cut at its ring, and on tap
+       the figures measured above on the relief points — its m³, the
+       ground it lowers in m², its depth, and the total over every cut,
+       which is what actually has to be carted away. Nothing is drawn
+       where the ground was already below the cut. */
     const groundAt0 = (x, z) => {
       const [X, Y] = toSurvey(x, z);
       for (const f of fields) { const h = f.heightAt0(X, Y); if (h != null) return h - R.datum; }
       return null;
     };
-    for (const c of EXC) {
+    const m3 = (v) => `${fmt(Math.round(v))} m³`;
+    const cuts = EXC.filter((c) => dug.get(c).deep >= 0.05);
+    const total = cuts.reduce((sum, c) => sum + dug.get(c).vol, 0);
+    for (const c of cuts) {
+      const { vol, area, deep } = dug.get(c);
       const floorAt = (x, z) => (c.depth != null ? (groundAt0(x, z) ?? 0) - c.depth : c.level);
       const bottom = c.ring.map(([x, z]) => [x, floorAt(x, z), z]);
       const top = c.ring.map(([x, z], k) => [x, Math.max(groundAt0(x, z) ?? bottom[k][1], bottom[k][1]), z]);
-      let vol = 0, deep = 0;
-      for (const f of fields) {
-        const cell = Math.abs(f.F.u[0] * f.F.v[1] - f.F.u[1] * f.F.v[0]);
-        const m = c.margin ?? Math.max(Math.sqrt(cell), 0.5);
-        for (let j = 0; j < f.ny; j++) {
-          for (let i = 0; i < f.nx; i++) {
-            const k = j * f.nx + i, h0 = f.F.heights[k];
-            if (h0 == null) continue;
-            const [X, Y] = surveyOf(f.F, i, j);
-            const [x, , z] = toModel(X, Y, h0);
-            if (!nearRing(c.ring, x, z, m)) continue;
-            const d = h0 - R.datum - floorAt(x, z);
-            if (d > 0) { vol += d * cell; deep = Math.max(deep, d); }
-          }
-        }
-      }
-      if (deep < 0.05) continue;
       const eo = makeObject({ id: c.id, name: c.name, group: 'excavation', opacity: 0.16 });
       addVolume(eo, bottom, top, { dots: false });
+      eo.props.push(['Volume', m3(vol)], ['Area', `${fmt(Math.round(area * 10) / 10)} m²`], ['Deepest', mLabel(deep)]);
+      if (cuts.length > 1) eo.props.push(['All excavations', m3(total)]);
       let kd = 0;
       top.forEach((p, k) => { if (p[1] - bottom[k][1] > top[kd][1] - bottom[kd][1]) kd = k; });
       eo.dims = [
         { a: bottom[kd], b: top[kd], label: `${t('depth')} ${mLabel(top[kd][1] - bottom[kd][1])}` },
-        { a: bottom[0], b: bottom[1], label: `${fmt(Math.round(vol))} m³` },
+        { a: bottom[0], b: bottom[1], label: m3(vol) },
       ];
     }
   }
