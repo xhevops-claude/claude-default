@@ -1,0 +1,273 @@
+{
+ "name": "House — wireframe",
+ "notes": [
+  "A 10 × 6 m house on a sloped parcel: garage under a cantilever, the driveway cut into the hill and ramped down to the road.",
+  "The house is turned 8.06° about its south-east corner to lie parallel to the north-east boundary, 1 m off it (D6).",
+  "Heights are metres above the garage-floor datum: real 991.11 m a.s.l. is y 0. The parcel and relief come from the terrain app's survey.",
+  "Levels in a terrain profile are finished surfaces; a slab's top is that number, its underside `slab` below; a wall is `wall` thick on the hill side of the line it holds." ],
+ "assets": {
+  "relief": "relief.json"
+ },
+ "tracker": "defects.html",
+ "defaults": {
+  "layers": {
+   "dots": true,
+   "relief-minor": false,
+   "relief-major": false,
+   "relief-labels": false
+  }
+ },
+ "envelope": {
+  "x0": 0,
+  "y0": 0,
+  "x1": 10,
+  "y1": 6
+ },
+ "turn": 8.06,
+ "slab": 0.2,
+ "wall": 0.3,
+ "groups": {
+  "house": {
+   "name": "House",
+   "color": "#8fd8ff"
+  },
+  "canopy": {
+   "name": "Cantilever",
+   "color": "#ff8c5a"
+  },
+  "drive": {
+   "name": "Driveway",
+   "color": "#f5e663"
+  },
+  "wall": {
+   "name": "Retaining walls",
+   "color": "#d28cff"
+  },
+  "road": {
+   "name": "Road",
+   "color": "#9aa4b2"
+  },
+  "parcel": {
+   "name": "Parcel",
+   "color": "#ff4d3d"
+  },
+  "relief": {
+   "name": "Relief",
+   "color": "#6fbf9a"
+  },
+  "excavation": {
+   "name": "Excavation",
+   "color": "#c9a86a"
+  }
+ },
+ "parcel": {
+  "id": "parcel",
+  "group": "parcel",
+  "name": "Parcel boundary, 705 m²",
+  "sides": [
+   [ 0, 3 ],
+   [ 3, 11 ],
+   [ 11, 16 ],
+   [ 16, 0 ] ],
+  "points": [
+   [ -27.62, 11.63, 17.62 ],
+   [ -27.43, 11.75, 16.21 ],
+   [ -26.84, 10.44, 10.19 ],
+   [ -26.65, 10.31, 7.64 ],
+   [ -20.25, 9.08, 5.57 ],
+   [ -13.8, 6.89, 3.49 ],
+   [ -7.25, 4.84, 1.31 ],
+   [ 1.21, 0.67, -0.02 ],
+   [ 7.59, -0.26, -0.73 ],
+   [ 10.25, -2.02, -1.3 ],
+   [ 12.52, -3.5, -1.61 ],
+   [ 16, -6.08, -2.49 ],
+   [ 16.19, -5.7, 0.01 ],
+   [ 16.21, -5.28, 5.04 ],
+   [ 16.11, -4.87, 12.8 ],
+   [ 16.06, -4.91, 14.8 ],
+   [ 16, -4.48, 16.85 ],
+   [ 12.73, -2.58, 17.81 ],
+   [ 9.95, -0.86, 17.35 ],
+   [ 7.25, 0.47, 17.23 ],
+   [ -9.8, 7.22, 19.3 ],
+   [ -14.53, 9.69, 18.81 ],
+   [ -21.47, 10.58, 18.18 ] ]
+ },
+ "existing": {
+  "id": "existing",
+  "group": "parcel",
+  "name": "Existing building",
+  "sides": [
+   [ 0, 1 ],
+   [ 1, 2 ] ],
+  "points": [
+   [ -26.84, 10.44, 10.19 ],
+   [ -18.88, 9.23, 10.83 ],
+   [ -19.24, 10.08, 16.86 ],
+   [ -27.43, 11.75, 16.21 ] ]
+ },
+ "excavations": [],
+ "levels": [
+  {
+   "id": "garage",
+   "name": "Garage",
+   "elevation": -2.9,
+   "height": 2.7
+  },
+  {
+   "id": "ground",
+   "name": "Ground floor",
+   "elevation": 0,
+   "height": 2.7
+  },
+  {
+   "id": "first",
+   "name": "First floor",
+   "elevation": 2.9,
+   "height": 2.7
+  } ],
+ "terrain": {
+  "front": "+X",
+  "backLevel": 0,
+  "road": [
+   [ -2.49, -6.08 ],
+   [ 16.85, -4.48 ] ],
+  "profile": [
+   [ 6,
+    "road" ],
+   [ 9,
+    "road" ] ],
+  "cut": {
+   "from": [
+    [ -8.79, -0.02 ],
+    [ -2.41, -0.73 ],
+    [ 0.25, -1.3 ],
+    [ 2.52, -1.61 ],
+    [ 6, -2.49 ] ],
+   "to": 16.85,
+   "profile": [
+    [ 0, -2.9 ],
+    [ 6, -2.9 ],
+    [ 6,
+     "road" ],
+    [ 9,
+     "road" ] ],
+   "ramp": {
+    "from": 6,
+    "to": 14.68,
+    "dFrom": 3,
+    "ease": 0.2
+   },
+   "fillet": {},
+   "mouth": {
+    "flare": 6
+   }
+  }
+ },
+ "works": [
+  {
+   "id": "canopy",
+   "group": "canopy",
+   "house": true,
+   "name": "Cantilever over the door",
+   "x0": 10,
+   "x1": 13,
+   "y0": -0.2,
+   "y1": 0,
+   "z0": 0,
+   "z1": 6
+  },
+  {
+   "id": "driveway",
+   "group": "drive",
+   "name": "Apron, in front of the door",
+   "x0": 10,
+   "x1": 16,
+   "y0": -3.1,
+   "y1": -2.9,
+   "z0": "cut",
+   "z1": 6,
+   "excavate": true
+  },
+  {
+   "id": "garage-wall-south",
+   "group": "wall",
+   "house": true,
+   "name": "Garage wall, south",
+   "x0": -0.3,
+   "x1": 10,
+   "z0": 6,
+   "z1": 6.3,
+   "y0": -3.1,
+   "y1": 0
+  },
+  {
+   "id": "garage-wall-west",
+   "group": "wall",
+   "house": true,
+   "name": "Garage wall, west",
+   "x0": -0.3,
+   "x1": 0,
+   "z0": 0,
+   "z1": 6,
+   "y0": -3.1,
+   "y1": 0
+  },
+  {
+   "id": "garage-wall-north",
+   "group": "wall",
+   "house": true,
+   "name": "Garage wall, north",
+   "x0": -0.3,
+   "x1": 10,
+   "z0": -0.3,
+   "z1": 0,
+   "y0": -3.1,
+   "y1": 0
+  },
+  {
+   "id": "retainer",
+   "group": "wall",
+   "name": "Retaining wall",
+   "x0": 15.7,
+   "x1": 16,
+   "y0": {
+    "road": 0
+   },
+   "y1": -3.1,
+   "z0": "cut",
+   "z1": 6
+  },
+  {
+   "id": "retainer-ramp",
+   "group": "wall",
+   "name": "Retaining wall, tapering out",
+   "x0": 15.7,
+   "x1": 16,
+   "z0": 6,
+   "z1": 14.68,
+   "y0": {
+    "road": 0
+   },
+   "y1": {
+    "floor": -0.2
+   }
+  },
+  {
+   "id": "road",
+   "group": "road",
+   "name": "Road",
+   "x0": 16,
+   "x1": 20,
+   "z0": -6,
+   "z1": 24,
+   "y0": {
+    "road": -0.2
+   },
+   "y1": {
+    "road": 0
+   },
+   "frame": false
+  } ]
+}
