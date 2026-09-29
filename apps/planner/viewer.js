@@ -539,8 +539,7 @@ async function boot() {
       return [org[0] + dX * ex[0] + dY * ex[1], h - R.datum, org[1] + dX * ez[0] + dY * ez[1]];
     };
     const surveyOf = (F, i, j) => [F.origin[0] + i * F.u[0] + j * F.v[0], F.origin[1] + i * F.u[1] + j * F.v[1]];
-    /* A model point back to the survey's frame, for reading the ground
-       under a vertex. */
+    /* A model point back to the survey's frame. */
     const toSurvey = (x, z) => {
       const det = ex[0] * ez[1] - ex[1] * ez[0];
       const dX = ((x - org[0]) * ez[1] - (z - org[1]) * ex[1]) / det, dY = ((z - org[1]) * ex[0] - (x - org[0]) * ez[0]) / det;
@@ -552,11 +551,18 @@ async function boot() {
     /* relief.js is the original, and stays it. The ground the model
        shows is worked from it in order — original, then what the
        objects need dug out (a building's lowest floor, a house's
-       garage, a work marked `excavate`), then whatever else plan.js
-       lists under `excavations` for later (a path carved, a terrace) —
-       so moving a building means recomputing, never redrawing the
-       survey. A cut is a ring in plan with a `level` (the model's y the
-       ground is taken down to) or a `depth` below the ground as found. */
+       garage), then the ground the terrain model designs in front of
+       the house (the driveway's cut: apron, ramp, fillet and mouth,
+       wherever groundY() departs from the natural hill), then a work
+       marked `excavate`, then whatever else plan.js lists under
+       `excavations` for later (a path carved, a terrace) — so moving a
+       building means recomputing, never redrawing the survey. A cut is
+       a ring in plan with a `level` (the model's y the ground is taken
+       down to) or a `depth` below the ground as found; each becomes a
+       `floor(x, z, w, cell)` — the survey height it takes a point down
+       to, or null where it does not reach — and the ground only ever
+       goes down, so a relief point that ends up lower than the survey
+       found it is excavation, whichever cut got there. */
     const inRing = (ring, x, z) => {
       let inn = false;
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -581,26 +587,57 @@ async function boot() {
       return false;
     };
     const EXC = [];
+    const ringCut = (c) => ({
+      ...c,
+      floor: (x, z, w, cell) => (nearRing(c.ring, x, z, c.margin ?? Math.max(cell, 0.5)) ? (c.depth != null ? w - c.depth : c.level + R.datum) : null),
+    });
     for (const b of PLAN.buildings || []) {
       if (!b.floors?.length) continue;
       const low = b.floors.reduce((m, f) => (f.elevation < m.elevation ? f : m));
-      EXC.push({ id: `dig-${b.id}`, name: `${t('Excavation for')} ${t(b.name)}`, ring: low.ring, level: low.elevation - SLAB });
+      EXC.push(ringCut({ key: b.id, what: t(b.name), ring: low.ring, level: low.elevation - SLAB }));
     }
     if (PLAN.levels?.length && e.x1 > e.x0) {
       const ring = [[e.x0, e.y0], [e.x1, e.y0], [e.x1, e.y1], [e.x0, e.y1]].map(([x, z]) => H(x, z));
-      EXC.push({ id: 'dig-house', name: t('Excavation for the house'), ring, level: Math.min(...PLAN.levels.map((l) => l.elevation)) - SLAB });
+      EXC.push(ringCut({ key: 'house', what: t('the house'), ring, level: Math.min(...PLAN.levels.map((l) => l.elevation)) - SLAB }));
+    }
+    if (CUT) {
+      /* the designed ground: wherever the terrain model's groundY() is
+         not the natural hill, the survey comes down to it */
+      const designed = (x, z) => {
+        const along = FRONT.axis === 'x' ? x : z, across = FRONT.axis === 'x' ? z : x;
+        const g = groundY(x, z);
+        return Math.abs(g - natural((along - FACE) * FRONT.sign, across)) < 1e-9 ? null : g + R.datum;
+      };
+      EXC.push({ key: 'driveway-cut', what: t('the driveway'), floor: designed, fill: true });
     }
     for (const w of PLAN.works || []) {
       if (!w.excavate || typeof w.y0 !== 'number') continue;
       const zAt = (x) => (w.z0 === 'cut' && CUT ? cutFrom((x - FACE) * FRONT.sign) : w.z0);
-      EXC.push({ id: `dig-${w.id}`, name: `${t('Excavation for')} ${t(w.name)}`, ring: [[w.x0, zAt(w.x0)], [w.x1, zAt(w.x1)], [w.x1, w.z1], [w.x0, w.z1]], level: w.y0 });
+      EXC.push(ringCut({ key: w.id, what: t(w.name), ring: [[w.x0, zAt(w.x0)], [w.x1, zAt(w.x1)], [w.x1, w.z1], [w.x0, w.z1]], level: w.y0 }));
     }
-    for (const c of PLAN.excavations || []) EXC.push({ ...c, name: t(c.name) });
+    for (const c of PLAN.excavations || []) EXC.push(ringCut({ ...c, key: c.id, what: t(c.what || c.name) }));
+    /* What each cut takes out is measured right here, on the relief
+       points themselves: every point stands for one lattice cell
+       (|u × v| m²), and the cut's volume is the sum over the points it
+       lowers of how far it lowers them, times that cell. Cuts are
+       applied in order, each against the ground as the ones before it
+       left it, so where two pits overlap — a garage under a building's
+       own dig — the shared ground is counted once, by the first cut to
+       reach it, and the cuts' volumes add up to exactly the ground's
+       total lowering. `deep` is measured from the original survey, the
+       true depth of the pit, and `at` is where. Where the designed
+       ground stands above the survey there is nothing to dig: that
+       point is `raised` instead — fill, the land to be added — and the
+       relief itself is left as found. Each lowered point is
+       kept, with the ground before and after the cut, so the pit can be
+       drawn as exactly that soil. */
+    const dug = new Map(EXC.map((c) => [c, { vol: 0, area: 0, deep: 0, at: null, lowered: new Map(), raised: new Map() }]));
     const worked = new Map();
     for (const F of R.fields) {
       const [nx, ny] = F.size;
       const W = Array.from(F.heights);
-      const cellM = Math.sqrt(Math.abs(F.u[0] * F.v[1] - F.u[1] * F.v[0]));
+      const cellA = Math.abs(F.u[0] * F.v[1] - F.u[1] * F.v[0]);
+      const cellM = Math.sqrt(cellA);
       if (EXC.length) {
         for (let j = 0; j < ny; j++) {
           for (let i = 0; i < nx; i++) {
@@ -609,9 +646,22 @@ async function boot() {
             const [X, Y] = surveyOf(F, i, j);
             const [x, , z] = toModel(X, Y, W[k]);
             for (const c of EXC) {
-              if (!nearRing(c.ring, x, z, c.margin ?? Math.max(cellM, 0.5))) continue;
-              const cut = c.depth != null ? W[k] - c.depth : c.level + R.datum;
-              if (cut < W[k]) W[k] = cut;
+              const cut = c.floor(x, z, W[k], cellM);
+              if (cut == null) continue;
+              const s = dug.get(c);
+              /* designed ground above the survey as found is fill, not
+                 excavation; above a pit dug earlier it is the pit's slab */
+              if (c.fill && cut > W[k] && W[k] === F.heights[k]) {
+                if (!s.raised.has(F)) s.raised.set(F, new Map());
+                s.raised.get(F).set(k, [W[k], cut]);
+              }
+              if (cut >= W[k]) continue;
+              s.vol += (W[k] - cut) * cellA;
+              s.area += cellA;
+              if (F.heights[k] - cut > s.deep) { s.deep = F.heights[k] - cut; s.at = [F, k]; }
+              if (!s.lowered.has(F)) s.lowered.set(F, new Map());
+              s.lowered.get(F).set(k, [W[k], cut]);
+              W[k] = cut;
             }
           }
         }
@@ -626,7 +676,7 @@ async function boot() {
     let sx0 = Infinity, sx1 = -Infinity, sy0 = Infinity, sy1 = -Infinity;
     const fields = R.fields.map((F) => {
       const [nx, ny] = F.size;
-      const H = worked.get(F), H0 = F.heights;
+      const H = worked.get(F);
       const has = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && H[j * nx + i] != null;
       const survey = (i, j) => [F.origin[0] + i * F.u[0] + j * F.v[0], F.origin[1] + i * F.u[1] + j * F.v[1]];
       const vid = new Int32Array(nx * ny).fill(-1);
@@ -661,9 +711,9 @@ async function boot() {
         const s = fu - i, t = fv - j;
         return A[j * nx + i] * (1 - s) * (1 - t) + A[j * nx + i + 1] * s * (1 - t) + A[(j + 1) * nx + i] * (1 - s) * t + A[(j + 1) * nx + i + 1] * s * t;
       };
-      /* worked ground, and the original under it */
-      const heightAt = sampler(H), heightAt0 = sampler(H0);
-      return { pos, tri, heightAt, heightAt0, F, W: H, nx, ny };
+      /* the worked ground */
+      const heightAt = sampler(H);
+      return { pos, tri, heightAt, F, W: H, nx, ny };
     });
     /* Tinted by height; and outside the parcel — a ray cast from the
        point against the boundary in plan — dimmed, as the terrain app
@@ -781,44 +831,194 @@ async function boot() {
     for (let Y = Math.ceil(sy0 / EVERY) * EVERY; Y <= sy1; Y += EVERY) drape(span(sx0, sx1).map((X) => [X, Y]));
     o.node.add(tagged(segments(gridSegs, new THREE.LineBasicMaterial({ color: o.col.clone().lerp(WHITE, 0.25), transparent: true, opacity: 0.45 })), 'relief-grid'));
 
-    /* The dug ground: one object per excavation, the volume between
-       the original surface and the cut, with its depth and its m³ on
-       tap. Nothing is drawn where the ground was already below the cut. */
-    const groundAt0 = (x, z) => {
-      const [X, Y] = toSurvey(x, z);
-      for (const f of fields) { const h = f.heightAt0(X, Y); if (h != null) return h - R.datum; }
-      return null;
-    };
-    for (const c of EXC) {
-      const floorAt = (x, z) => (c.depth != null ? (groundAt0(x, z) ?? 0) - c.depth : c.level);
-      const bottom = c.ring.map(([x, z]) => [x, floorAt(x, z), z]);
-      const top = c.ring.map(([x, z], k) => [x, Math.max(groundAt0(x, z) ?? bottom[k][1], bottom[k][1]), z]);
-      let vol = 0, deep = 0;
-      for (const f of fields) {
-        const cell = Math.abs(f.F.u[0] * f.F.v[1] - f.F.u[1] * f.F.v[0]);
-        const m = c.margin ?? Math.max(Math.sqrt(cell), 0.5);
-        for (let j = 0; j < f.ny; j++) {
-          for (let i = 0; i < f.nx; i++) {
-            const k = j * f.nx + i, h0 = f.F.heights[k];
-            if (h0 == null) continue;
-            const [X, Y] = surveyOf(f.F, i, j);
-            const [x, , z] = toModel(X, Y, h0);
-            if (!nearRing(c.ring, x, z, m)) continue;
-            const d = h0 - R.datum - floorAt(x, z);
-            if (d > 0) { vol += d * cell; deep = Math.max(deep, d); }
-          }
+    /* The earthworks. Every relief point that ends up below the survey
+       is excavation, and every point the designed ground stands above
+       the survey is fill — the land to be added — so both come off the
+       same lattice, and one patch of touching cells is one object: a
+       hole roofed by the survey and floored by the worked ground, a fill
+       floored by the survey and roofed by the designed ground, each
+       walled wherever a cell in it meets one that is not. So the house
+       pit and the apron beside it are one body, not two with a wall
+       between them, and the made ground under the ramp is one body in
+       the Fill group. On tap: the body's m³, the ground it covers in m²,
+       its depth or height, each cut's share of it, and the total over
+       the site. */
+    const m3 = (v) => `${fmt(Math.round(v))} m³`;
+    const m2 = (a) => `${fmt(Math.round(a * 10) / 10)} m²`;
+    /* Which cuts touched a point, gathered from each cut's own list:
+       field → k → [cut, ...] in order. */
+    const gather = (listOf) => {
+      const byPoint = new Map();
+      for (const c of EXC) {
+        for (const [F, pts] of listOf(dug.get(c))) {
+          if (!byPoint.has(F)) byPoint.set(F, new Map());
+          const m = byPoint.get(F);
+          for (const k of pts.keys()) { if (m.has(k)) m.get(k).push(c); else m.set(k, [c]); }
         }
       }
-      if (deep < 0.05) continue;
-      const eo = makeObject({ id: c.id, name: c.name, group: 'excavation', opacity: 0.16 });
-      addVolume(eo, bottom, top, { dots: false });
-      let kd = 0;
-      top.forEach((p, k) => { if (p[1] - bottom[k][1] > top[kd][1] - bottom[kd][1]) kd = k; });
-      eo.dims = [
-        { a: bottom[kd], b: top[kd], label: `${t('depth')} ${mLabel(top[kd][1] - bottom[kd][1])}` },
-        { a: bottom[0], b: bottom[1], label: `${fmt(Math.round(vol))} m³` },
-      ];
-    }
+      return byPoint;
+    };
+    /* The patches of touching points (8 neighbours), field by field. */
+    const patchesOf = (byPoint) => {
+      const out = [];
+      for (const [F, pts] of byPoint) {
+        const [nx, ny] = F.size;
+        const seen = new Set();
+        for (const k0 of pts.keys()) {
+          if (seen.has(k0)) continue;
+          const patch = [], stack = [k0];
+          seen.add(k0);
+          while (stack.length) {
+            const k = stack.pop();
+            patch.push(k);
+            const i = k % nx, j = (k - i) / nx;
+            for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+              const ii = i + di, jj = j + dj;
+              if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue;
+              const kk = jj * nx + ii;
+              if (pts.has(kk) && !seen.has(kk)) { seen.add(kk); stack.push(kk); }
+            }
+          }
+          out.push({ F, pts, patch });
+        }
+      }
+      return out;
+    };
+    /* One body: a patch's cells between two surfaces, `pair(k)` giving
+       [top, bottom] as survey heights — the glass over the top, the
+       bottom and the walls, the walls' rims as floor lines, and the
+       thickness as an upright at the thickest point, with the m³ along
+       the bottom from there to the point farthest away in plan. */
+    const body = (eo, F, patch, pair, { vol, thick, at, thickLabel }) => {
+      const [nx] = F.size;
+      const pos = [], vid = new Map(), rim = [];
+      for (const k of patch) {
+        const [X, Y] = surveyOf(F, k % nx, Math.floor(k / nx));
+        const [top, bottom] = pair(k);
+        vid.set(k, pos.length / 6);
+        pos.push(...toModel(X, Y, top), ...toModel(X, Y, bottom));
+      }
+      const on = (k) => vid.has(k);
+      const full = (k) => on(k) && on(k + 1) && on(k + nx) && on(k + nx + 1);
+      const idx = [];
+      const wall = (p, q) => { idx.push(2 * p, 2 * q, 2 * q + 1, 2 * p, 2 * q + 1, 2 * p + 1); rim.push(pos[6 * p], pos[6 * p + 1], pos[6 * p + 2], pos[6 * q], pos[6 * q + 1], pos[6 * q + 2], pos[6 * p + 3], pos[6 * p + 4], pos[6 * p + 5], pos[6 * q + 3], pos[6 * q + 4], pos[6 * q + 5]); };
+      for (const k of patch) {
+        const i = k % nx;
+        if (i === nx - 1 || !full(k)) continue;
+        const a = vid.get(k), b = vid.get(k + 1), d = vid.get(k + nx), e = vid.get(k + nx + 1);
+        idx.push(2 * a, 2 * b, 2 * e, 2 * a, 2 * e, 2 * d, 2 * a + 1, 2 * e + 1, 2 * b + 1, 2 * a + 1, 2 * d + 1, 2 * e + 1);
+        if (!(k >= nx && full(k - nx))) wall(a, b);
+        if (i === 0 || !full(k - 1)) wall(a, d);
+        if (!full(k + nx)) wall(d, e);
+        if (i === nx - 2 || !full(k + 1)) wall(b, e);
+      }
+      if (idx.length) {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setIndex(idx);
+        eo.node.add(tagged(new THREE.Mesh(geo, eo.glass), 'faces'));
+        eo.node.add(tagged(segments(rim, eo.line(0.6)), 'floors'));
+      }
+      /* A metre grid over the body, on the model's own x and z: an
+         upright at every node — its height on tap — and the grid's
+         lines walked on the floor and on the top. Nothing runs
+         diagonally: a line is either a level or a height. The m³ sits
+         on the longest run along the floor; the thickest point keeps
+         its own upright. */
+      const [, ny] = F.size;
+      const det = F.u[0] * F.v[1] - F.u[1] * F.v[0];
+      const sample = (x, z) => {
+        const [X, Y] = toSurvey(x, z);
+        const dx = X - F.origin[0], dy = Y - F.origin[1];
+        const fu = (dx * F.v[1] - dy * F.v[0]) / det, fv = (dy * F.u[0] - dx * F.u[1]) / det;
+        const i = Math.floor(fu), j = Math.floor(fv), k = j * nx + i;
+        if (i < 0 || j < 0 || i >= nx - 1 || j >= ny - 1 || !full(k)) return null;
+        const sx = fu - i, sz = fv - j;
+        const w = [(1 - sx) * (1 - sz), sx * (1 - sz), (1 - sx) * sz, sx * sz];
+        let top = 0, bottom = 0;
+        [k, k + 1, k + nx, k + nx + 1].forEach((kk, n) => { const [a, b] = pair(kk); top += a * w[n]; bottom += b * w[n]; });
+        return [top - R.datum, bottom - R.datum];
+      };
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (let v = 0; v < pos.length; v += 6) { x0 = Math.min(x0, pos[v]); x1 = Math.max(x1, pos[v]); z0 = Math.min(z0, pos[v + 2]); z1 = Math.max(z1, pos[v + 2]); }
+      const gridSegs = [], GSTEP = 0.2;
+      let longest = null;
+      const walk = (pts) => {
+        let prev = null, run = null;
+        for (const [x, z] of pts) {
+          const h = sample(x, z);
+          const p = h ? [[x, h[0], z], [x, h[1], z]] : null;
+          if (prev && p) {
+            gridSegs.push(...prev[0], ...p[0], ...prev[1], ...p[1]);
+            run = run || { a: prev[1] };
+            run.b = p[1];
+            const len = Math.hypot(run.b[0] - run.a[0], run.b[2] - run.a[2]);
+            if (!longest || len > longest.len) longest = { ...run, len };
+          } else run = null;
+          prev = p;
+        }
+      };
+      for (let z = Math.ceil(z0); z <= z1; z++) { const pts = []; for (let x = x0; x <= x1 + 1e-9; x += GSTEP) pts.push([x, z]); walk(pts); }
+      for (let x = Math.ceil(x0); x <= x1; x++) { const pts = []; for (let z = z0; z <= z1 + 1e-9; z += GSTEP) pts.push([x, z]); walk(pts); }
+      eo.node.add(tagged(segments(gridSegs, eo.line(0.5)), 'edges'));
+      const ups = [];
+      eo.dims = [];
+      for (let x = Math.ceil(x0); x <= x1; x++) {
+        for (let z = Math.ceil(z0); z <= z1; z++) {
+          const h = sample(x, z);
+          if (!h || h[0] - h[1] < 0.05) continue;
+          ups.push(x, h[1], z, x, h[0], z);
+          eo.dims.push({ a: [x, h[1], z], b: [x, h[0], z], label: `${thickLabel} ${mLabel(h[0] - h[1])}`, quiet: true });
+        }
+      }
+      const v0 = vid.get(at);
+      const topPt = [pos[6 * v0], pos[6 * v0 + 1], pos[6 * v0 + 2]], bottomPt = [pos[6 * v0 + 3], pos[6 * v0 + 4], pos[6 * v0 + 5]];
+      ups.push(...bottomPt, ...topPt);
+      eo.node.add(tagged(segments(ups, eo.line(0.95)), 'edges'));
+      eo.dims.push({ a: bottomPt, b: topPt, label: `${thickLabel} ${mLabel(thick)}` });
+      if (longest) eo.dims.push({ a: longest.a, b: longest.b, label: m3(vol) });
+    };
+    /* The bodies of one kind — holes from the lowered points, fills
+       from the raised — biggest first, each named for the cuts that
+       made it, with each cut's share when there are several. */
+    const earthwork = ({ list, group, prefix, thickLabel, thickName }) => {
+      const patches = patchesOf(gather(list)).map((p) => {
+        const { F, pts, patch } = p;
+        const cellA = Math.abs(F.u[0] * F.v[1] - F.u[1] * F.v[0]);
+        const share = new Map();
+        let vol = 0, thick = 0, at = patch[0];
+        const pair = new Map();
+        for (const k of patch) {
+          /* the cuts' own records, first to last: the top is where the
+             first found the ground, the bottom where the last left it */
+          const recs = pts.get(k).map((c) => [c, list(dug.get(c)).get(F).get(k)]);
+          const top = Math.max(...recs.map(([, r]) => Math.max(r[0], r[1])));
+          const bottom = Math.min(...recs.map(([, r]) => Math.min(r[0], r[1])));
+          pair.set(k, [top, bottom]);
+          const t0 = top - bottom;
+          vol += t0 * cellA;
+          if (t0 > thick) { thick = t0; at = k; }
+          for (const [c, r] of recs) share.set(c, (share.get(c) || 0) + Math.abs(r[0] - r[1]) * cellA);
+        }
+        const cuts = [...share.keys()].sort((a, b) => share.get(b) - share.get(a));
+        return { F, patch, pair, vol, area: patch.length * cellA, thick, at, share, cuts };
+      }).filter((p) => p.thick >= 0.05 && p.vol >= 0.5).sort((a, b) => b.vol - a.vol);
+      const total = patches.reduce((s, p) => s + p.vol, 0);
+      const ids = new Map();
+      for (const p of patches) {
+        const { F, patch, pair, vol, area, thick, at, share, cuts } = p;
+        const base = `${prefix}-${cuts.map((c) => c.key).join('+')}`;
+        const n = ids.get(base) || 0;
+        ids.set(base, n + 1);
+        const eo = makeObject({ id: n ? `${base}-${n + 1}` : base, name: `${t(prefix === 'dig' ? 'Excavation for' : 'Fill under')} ${cuts.map((c) => c.what).join(' + ')}`, group, opacity: 0.16 });
+        body(eo, F, patch, (k) => pair.get(k), { vol, thick, at, thickLabel });
+        eo.props.push(['Volume', m3(vol)], ['Area', m2(area)], [thickName, mLabel(thick)]);
+        if (cuts.length > 1) for (const c of cuts) eo.props.push([c.what, m3(share.get(c))]);
+        if (patches.length > 1) eo.props.push([prefix === 'dig' ? 'All excavations' : 'All fill', m3(total)]);
+      }
+    };
+    earthwork({ list: (s) => s.lowered, group: 'excavation', prefix: 'dig', thickLabel: t('depth'), thickName: 'Deepest' });
+    earthwork({ list: (s) => s.raised, group: 'fill', prefix: 'fill', thickLabel: 'h', thickName: 'Thickest' });
   }
   /* A contour label's text, in the language of the moment. */
   function paintReliefLabels() {
@@ -1199,7 +1399,7 @@ async function boot() {
       rowOf('Top', tDim(`${fmt(propBox.max.y)}${PLAN.datum ? ` · ${fmt(propBox.max.y + PLAN.datum)}` : ''} m`));
     }
     rowOf('Id', o.id);
-    const dims = (o.dims || []).filter((d) => d.a !== d.b);
+    const dims = (o.dims || []).filter((d) => d.a !== d.b && !d.quiet);
     if (dims.length) {
       propsEl.appendChild(el('div', 'props-sub', t('Dimensions')));
       const ul = el('ul', 'props-dims');
