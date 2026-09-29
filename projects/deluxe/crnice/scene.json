@@ -48,6 +48,10 @@
   "excavation": {
    "name": "Excavation",
    "color": "#c9a86a"
+  },
+  "fill": {
+   "name": "Fill",
+   "color": "#b47cff"
   }
  },
  "parcel": {
