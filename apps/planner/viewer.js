@@ -539,6 +539,12 @@ async function boot() {
       return [org[0] + dX * ex[0] + dY * ex[1], h - R.datum, org[1] + dX * ez[0] + dY * ez[1]];
     };
     const surveyOf = (F, i, j) => [F.origin[0] + i * F.u[0] + j * F.v[0], F.origin[1] + i * F.u[1] + j * F.v[1]];
+    /* A model point back to the survey's frame. */
+    const toSurvey = (x, z) => {
+      const det = ex[0] * ez[1] - ex[1] * ez[0];
+      const dX = ((x - org[0]) * ez[1] - (z - org[1]) * ex[1]) / det, dY = ((z - org[1]) * ex[0] - (x - org[0]) * ez[0]) / det;
+      return [mid[0] + dX, mid[1] + dY];
+    };
 
     /* ── the worked ground ──────────────────────────────── */
 
@@ -913,18 +919,64 @@ async function boot() {
         eo.node.add(tagged(new THREE.Mesh(geo, eo.glass), 'faces'));
         eo.node.add(tagged(segments(rim, eo.line(0.6)), 'floors'));
       }
+      /* A metre grid over the body, on the model's own x and z: an
+         upright at every node — its height on tap — and the grid's
+         lines walked on the floor and on the top. Nothing runs
+         diagonally: a line is either a level or a height. The m³ sits
+         on the longest run along the floor; the thickest point keeps
+         its own upright. */
+      const [, ny] = F.size;
+      const det = F.u[0] * F.v[1] - F.u[1] * F.v[0];
+      const sample = (x, z) => {
+        const [X, Y] = toSurvey(x, z);
+        const dx = X - F.origin[0], dy = Y - F.origin[1];
+        const fu = (dx * F.v[1] - dy * F.v[0]) / det, fv = (dy * F.u[0] - dx * F.u[1]) / det;
+        const i = Math.floor(fu), j = Math.floor(fv), k = j * nx + i;
+        if (i < 0 || j < 0 || i >= nx - 1 || j >= ny - 1 || !full(k)) return null;
+        const sx = fu - i, sz = fv - j;
+        const w = [(1 - sx) * (1 - sz), sx * (1 - sz), (1 - sx) * sz, sx * sz];
+        let top = 0, bottom = 0;
+        [k, k + 1, k + nx, k + nx + 1].forEach((kk, n) => { const [a, b] = pair(kk); top += a * w[n]; bottom += b * w[n]; });
+        return [top - R.datum, bottom - R.datum];
+      };
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (let v = 0; v < pos.length; v += 6) { x0 = Math.min(x0, pos[v]); x1 = Math.max(x1, pos[v]); z0 = Math.min(z0, pos[v + 2]); z1 = Math.max(z1, pos[v + 2]); }
+      const gridSegs = [], GSTEP = 0.2;
+      let longest = null;
+      const walk = (pts) => {
+        let prev = null, run = null;
+        for (const [x, z] of pts) {
+          const h = sample(x, z);
+          const p = h ? [[x, h[0], z], [x, h[1], z]] : null;
+          if (prev && p) {
+            gridSegs.push(...prev[0], ...p[0], ...prev[1], ...p[1]);
+            run = run || { a: prev[1] };
+            run.b = p[1];
+            const len = Math.hypot(run.b[0] - run.a[0], run.b[2] - run.a[2]);
+            if (!longest || len > longest.len) longest = { ...run, len };
+          } else run = null;
+          prev = p;
+        }
+      };
+      for (let z = Math.ceil(z0); z <= z1; z++) { const pts = []; for (let x = x0; x <= x1 + 1e-9; x += GSTEP) pts.push([x, z]); walk(pts); }
+      for (let x = Math.ceil(x0); x <= x1; x++) { const pts = []; for (let z = z0; z <= z1 + 1e-9; z += GSTEP) pts.push([x, z]); walk(pts); }
+      eo.node.add(tagged(segments(gridSegs, eo.line(0.5)), 'edges'));
+      const ups = [];
+      eo.dims = [];
+      for (let x = Math.ceil(x0); x <= x1; x++) {
+        for (let z = Math.ceil(z0); z <= z1; z++) {
+          const h = sample(x, z);
+          if (!h || h[0] - h[1] < 0.05) continue;
+          ups.push(x, h[1], z, x, h[0], z);
+          eo.dims.push({ a: [x, h[1], z], b: [x, h[0], z], label: `${thickLabel} ${mLabel(h[0] - h[1])}`, quiet: true });
+        }
+      }
       const v0 = vid.get(at);
       const topPt = [pos[6 * v0], pos[6 * v0 + 1], pos[6 * v0 + 2]], bottomPt = [pos[6 * v0 + 3], pos[6 * v0 + 4], pos[6 * v0 + 5]];
-      let far = bottomPt, farD = 0;
-      for (const v of vid.values()) {
-        const dd = Math.hypot(pos[6 * v + 3] - bottomPt[0], pos[6 * v + 5] - bottomPt[2]);
-        if (dd > farD) { farD = dd; far = [pos[6 * v + 3], pos[6 * v + 4], pos[6 * v + 5]]; }
-      }
-      eo.node.add(tagged(segments([...bottomPt, ...topPt], eo.line(0.95)), 'edges'));
-      eo.dims = [
-        { a: bottomPt, b: topPt, label: `${thickLabel} ${mLabel(thick)}` },
-        { a: bottomPt, b: far, label: m3(vol) },
-      ];
+      ups.push(...bottomPt, ...topPt);
+      eo.node.add(tagged(segments(ups, eo.line(0.95)), 'edges'));
+      eo.dims.push({ a: bottomPt, b: topPt, label: `${thickLabel} ${mLabel(thick)}` });
+      if (longest) eo.dims.push({ a: longest.a, b: longest.b, label: m3(vol) });
     };
     /* The bodies of one kind — holes from the lowered points, fills
        from the raised — biggest first, each named for the cuts that
@@ -1347,7 +1399,7 @@ async function boot() {
       rowOf('Top', tDim(`${fmt(propBox.max.y)}${PLAN.datum ? ` · ${fmt(propBox.max.y + PLAN.datum)}` : ''} m`));
     }
     rowOf('Id', o.id);
-    const dims = (o.dims || []).filter((d) => d.a !== d.b);
+    const dims = (o.dims || []).filter((d) => d.a !== d.b && !d.quiet);
     if (dims.length) {
       propsEl.appendChild(el('div', 'props-sub', t('Dimensions')));
       const ul = el('ul', 'props-dims');
