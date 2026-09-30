@@ -51,7 +51,8 @@ export function deriveModel(PLAN) {
      finished floor up to the top of its height, and the slab under it,
      `slab` thick, whose underside meets the top of the storey below —
      the concrete deck between a garage and the ground floor above it,
-     with its top the floor you walk on inside and out. A level fills
+     with its top the floor you walk on inside and out — in the house's
+     group, listed under "Slabs", in concrete grey. A level fills
      the envelope unless it gives its own `x0`/`x1`/`z0`/`z1` — a garage
      that stops short of the back, leaving the hill in place — and one
      with `extendFront` is pushed out of the downhill face by that much. */
@@ -70,7 +71,7 @@ export function deriveModel(PLAN) {
       if (FRONT.sign > 0) v[hi] += out; else v[lo] -= out;
     }
     VOLS.push(v);
-    SLABS.push({ ...v, id: `${l.id}-slab`, name: `${l.name} slab`, group: 'slab', slab: l.id, opacity: 0.3, y0: l.elevation - SLAB, y1: l.elevation });
+    SLABS.push({ ...v, id: `${l.id}-slab`, name: `${l.name} slab`, slab: l.id, color: '#c9ced6', opacity: 0.3, parent: { id: 'slabs', name: 'Slabs' }, short: l.name, y0: l.elevation - SLAB, y1: l.elevation });
   }
   VOLS.push(...SLABS);
 

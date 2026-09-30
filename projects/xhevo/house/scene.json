@@ -5,7 +5,8 @@
   "The house is turned 8.06° about its south-east corner to lie parallel to the north-east boundary, 1 m off it (D6).",
   "Heights are metres above the garage-floor datum: real 991.11 m a.s.l. is y 0. The parcel and relief come from the terrain app's survey.",
   "Levels in a terrain profile are finished surfaces; a slab's top is that number, its underside `slab` below; a wall is `wall` thick on the hill side of the line it holds.",
-  "The garage is 6 m deep, x 4–10: the back 4 m of the hill stay in place under the ground floor, so the pit is shallower there and the retaining walls behind it shorter." ],
+  "The garage is 6 m deep, x 4–10: the back 4 m of the hill stay in place under the ground floor, so the pit is shallower there and the retaining walls behind it shorter.",
+  "The yard south of the house — from the line of its west end to the line of its front corner (due south, not the turned face, so it never drifts east of the corner) and out to the parcel boundary — is cut down to the ground floor's 0 where the hill stands above it; where the ground lies below, no fill is planned yet — that is decided once the house is built (`fill: true` and a `taper` band on the east edge would add it) — `excavations` carries it with `fill: true`, so the hill is dug where it stands above and made up where it lies below, a seamless floor inside and out." ],
  "assets": {
   "relief": "relief.json"
  },
@@ -31,14 +32,6 @@
   "house": {
    "name": "House",
    "color": "#8fd8ff"
-  },
-  "slab": {
-   "name": "Slabs",
-   "color": "#c9ced6"
-  },
-  "canopy": {
-   "name": "Cantilever",
-   "color": "#ff8c5a"
   },
   "drive": {
    "name": "Driveway",
@@ -116,7 +109,15 @@
    [ -19.24, 10.08, 16.86 ],
    [ -27.43, 11.75, 16.21 ] ]
  },
- "excavations": [],
+ "excavations": [
+  {
+   "id": "yard",
+   "what": "the yard",
+   "ring": [ [ 10, 17.36 ], [ 9.95, 17.35 ], [ 7.25, 17.23 ], [ 1.59, 17.92 ], [ 0.1, 7.4 ], [ 10, 6 ] ],
+   "level": 0,
+   "margin": 0
+  }
+ ],
  "levels": [
   {
    "id": "garage",
@@ -178,7 +179,8 @@
  "works": [
   {
    "id": "canopy",
-   "group": "canopy",
+   "group": "house",
+   "color": "#ff8c5a",
    "house": true,
    "name": "Cantilever over the door",
    "x0": 10,
@@ -202,7 +204,10 @@
   },
   {
    "id": "garage-wall-south",
-   "group": "wall",
+   "group": "house",
+   "color": "#d28cff",
+   "parent": { "id": "garage-walls", "name": "Garage walls" },
+   "short": "South",
    "house": true,
    "name": "Garage wall, south",
    "x0": 3.7,
@@ -214,7 +219,10 @@
   },
   {
    "id": "garage-wall-west",
-   "group": "wall",
+   "group": "house",
+   "color": "#d28cff",
+   "parent": { "id": "garage-walls", "name": "Garage walls" },
+   "short": "West",
    "house": true,
    "name": "Garage wall, west",
    "x0": 3.7,
@@ -226,7 +234,10 @@
   },
   {
    "id": "garage-wall-north",
-   "group": "wall",
+   "group": "house",
+   "color": "#d28cff",
+   "parent": { "id": "garage-walls", "name": "Garage walls" },
+   "short": "North",
    "house": true,
    "name": "Garage wall, north",
    "x0": 3.7,
