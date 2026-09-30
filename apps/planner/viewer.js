@@ -900,7 +900,7 @@ async function boot() {
        `hull`: it owns the cells whose origin corner is its own, and
        walls only where the hole ends, so the parts sit side by side
        with no wall between them. */
-    const body = (eo, F, patch, pair, { vol, thick, at, thickLabel }, hull = null) => {
+    const body = (eo, F, patch, pair, { vol, thick, at, thickLabel, fromTop = false }, hull = null) => {
       const [nx] = F.size;
       const mine = new Set(patch);
       const inHull = hull ? (k) => hull.has(k) : (k) => mine.has(k);
@@ -978,6 +978,11 @@ async function boot() {
       for (let z = Math.ceil(z0); z <= z1; z++) { const pts = []; for (let x = x0; x <= x1 + 1e-9; x += GSTEP) pts.push([x, z]); walk(pts); }
       for (let x = Math.ceil(x0); x <= x1; x++) { const pts = []; for (let z = z0; z <= z1 + 1e-9; z += GSTEP) pts.push([x, z]); walk(pts); }
       eo.node.add(tagged(segments(gridSegs, eo.line(0.5)), 'edges'));
+      /* a pole's metre dots count from its start: up from the floor of
+         a hole, down from the top of a fill */
+      const pole = (bottom, top, label, quiet) => (fromTop
+        ? { a: top, b: bottom, label, quiet, every: 1 }
+        : { a: bottom, b: top, label, quiet, every: 1 });
       const ups = [];
       eo.dims = [];
       for (let x = Math.ceil(x0); x <= x1; x++) {
@@ -985,14 +990,14 @@ async function boot() {
           const h = sample(x, z);
           if (!h || h[0] - h[1] < 0.05) continue;
           ups.push(x, h[1], z, x, h[0], z);
-          eo.dims.push({ a: [x, h[1], z], b: [x, h[0], z], label: `${thickLabel} ${mLabel(h[0] - h[1])}`, quiet: true, every: 1 });
+          eo.dims.push(pole([x, h[1], z], [x, h[0], z], `${thickLabel} ${mLabel(h[0] - h[1])}`, true));
         }
       }
       const v0 = vid.get(at);
       const topPt = [pos[6 * v0], pos[6 * v0 + 1], pos[6 * v0 + 2]], bottomPt = [pos[6 * v0 + 3], pos[6 * v0 + 4], pos[6 * v0 + 5]];
       ups.push(...bottomPt, ...topPt);
       eo.node.add(tagged(segments(ups, eo.line(0.95)), 'edges'));
-      eo.dims.push({ a: bottomPt, b: topPt, label: `${thickLabel} ${mLabel(thick)}`, every: 1 });
+      eo.dims.push(pole(bottomPt, topPt, `${thickLabel} ${mLabel(thick)}`, false));
       if (longest) eo.dims.push({ a: longest.a, b: longest.b, label: m3(vol) });
     };
     /* The bodies of one kind — holes from the lowered points, fills
@@ -1032,7 +1037,7 @@ async function boot() {
         const id = n ? `${base}-${n + 1}` : base;
         if (cuts.length === 1) {
           const eo = makeObject({ id, name: named(cuts), group, opacity: 0.16 });
-          body(eo, F, patch, (k) => pair.get(k), { vol, thick, at, thickLabel });
+          body(eo, F, patch, (k) => pair.get(k), { vol, thick, at, thickLabel, fromTop: !kind });
           eo.props.push(['Volume', m3(vol)], ['Area', m2(area)], [thickName, mLabel(thick)]);
           if (patches.length > 1) eo.props.push([kind ? 'All excavations' : 'All fill', m3(total)]);
           continue;
@@ -1050,7 +1055,7 @@ async function boot() {
           for (const k of mine) { const [top, bottom] = pairC(k); volC += (top - bottom) * cellA; if (top - bottom > thickC) { thickC = top - bottom; atC = k; } }
           if (thickC < 0.05) continue;
           const eo = makeObject({ id: `${id}:${c.key}`, name: named([c]), group, opacity: 0.16, parent, short: c.what });
-          body(eo, F, mine, pairC, { vol: volC, thick: thickC, at: atC, thickLabel }, hull);
+          body(eo, F, mine, pairC, { vol: volC, thick: thickC, at: atC, thickLabel, fromTop: !kind }, hull);
           eo.props.push(['Volume', m3(volC)], ['Area', m2(mine.length * cellA)], [thickName, mLabel(thickC)], [kind ? 'Whole hole' : 'Whole fill', m3(vol)]);
           if (patches.length > 1) eo.props.push([kind ? 'All excavations' : 'All fill', m3(total)]);
         }
