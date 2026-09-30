@@ -32,7 +32,7 @@ export const DE = {
   Facade: 'Fassade', 'Interior floors': 'Innere Geschossdecken', Wireframe: 'Drahtgitter', 'Floor lines': 'Geschosslinien',
   Properties: 'Eigenschaften', 'Nothing selected. Tap an object in the scene or in the layer tree.': 'Nichts ausgewählt. Tippe ein Objekt in der Szene oder im Ebenenbaum an.',
   Group: 'Gruppe', Building: 'Gebäude', Level: 'Niveau', Height: 'Höhe', Footprint: 'Grundfläche', Extent: 'Ausdehnung', Top: 'Oberkante', Dimensions: 'Maße', 'Fly to': 'Anfliegen', Hide: 'Ausblenden',
-  Volume: 'Volumen', Area: 'Fläche', Deepest: 'Tiefste Stelle', Thickest: 'Dickste Stelle', Fill: 'Auffüllung', 'Fill under': 'Auffüllung unter', Hole: 'Grube', 'Whole hole': 'Ganze Grube', 'Whole fill': 'Ganze Auffüllung', 'All excavations': 'Gesamter Aushub', 'All fill': 'Gesamte Auffüllung',
+  Volume: 'Volumen', Area: 'Fläche', Deepest: 'Tiefste Stelle', Thickest: 'Dickste Stelle', Fill: 'Auffüllung', 'Fill under': 'Auffüllung unter', Floor: 'Sohle', Surface: 'Oberfläche', 'floor at': 'Sohle', 'top at': 'Oberkante', 'All excavations': 'Gesamter Aushub', 'All fill': 'Gesamte Auffüllung',
   'Full screen': 'Vollbild', 'Scene only': 'Nur die Szene', 'Exit full screen': 'Vollbild verlassen', Collapse: 'Einklappen', Expand: 'Ausklappen',
   Drawing: 'Zeichnung', Objects: 'Objekte', 'Ground grid': 'Bodenraster',
   'Relief points': 'Reliefpunkte', 'Relief surface': 'Reliefoberfläche', 'Contours 10 cm': 'Höhenlinien 10 cm', 'Contours 1 m': 'Höhenlinien 1 m', 'Contours 5 m': 'Höhenlinien 5 m', 'Contour labels': 'Höhenbeschriftung', 'Relief grid': 'Reliefraster',
