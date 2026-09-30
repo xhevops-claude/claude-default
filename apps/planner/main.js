@@ -42,6 +42,7 @@ async function launcher() {
 const r = route();
 if (r) {
   try { recentPush(`${r.org}/${r.slug}`); } catch (err) { /* private mode */ }
+  if (typeof window.plannerStage === 'function') window.plannerStage('loading the viewer');
   import('./viewer.js').catch((err) => {
     console.error(err);
     $('fail').textContent = `${t('This project could not be loaded.')} ${err.message}`;
