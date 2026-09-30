@@ -895,29 +895,39 @@ async function boot() {
        [top, bottom] as survey heights — the glass over the top, the
        bottom and the walls, the walls' rims as floor lines, and the
        thickness as an upright at the thickest point, with the m³ along
-       the bottom from there to the point farthest away in plan. */
-    const body = (eo, F, patch, pair, { vol, thick, at, thickLabel }) => {
+       the bottom from there to the point farthest away in plan. A body
+       that is one cut's part of a larger hole gets the hole's points as
+       `hull`: it owns the cells whose origin corner is its own, and
+       walls only where the hole ends, so the parts sit side by side
+       with no wall between them. */
+    const body = (eo, F, patch, pair, { vol, thick, at, thickLabel }, hull = null) => {
       const [nx] = F.size;
+      const mine = new Set(patch);
+      const inHull = hull ? (k) => hull.has(k) : (k) => mine.has(k);
+      const fullH = (k) => k >= 0 && k % nx < nx - 1 && inHull(k) && inHull(k + 1) && inHull(k + nx) && inHull(k + nx + 1);
+      const owned = (k) => mine.has(k) && fullH(k);
+      /* one vertex pair per point: every corner of an owned cell, and
+         every point of the patch itself */
+      const keys = new Set(patch);
+      for (const k of patch) if (owned(k)) { keys.add(k + 1); keys.add(k + nx); keys.add(k + nx + 1); }
       const pos = [], vid = new Map(), rim = [];
-      for (const k of patch) {
+      for (const k of keys) {
         const [X, Y] = surveyOf(F, k % nx, Math.floor(k / nx));
         const [top, bottom] = pair(k);
         vid.set(k, pos.length / 6);
         pos.push(...toModel(X, Y, top), ...toModel(X, Y, bottom));
       }
-      const on = (k) => vid.has(k);
-      const full = (k) => on(k) && on(k + 1) && on(k + nx) && on(k + nx + 1);
       const idx = [];
       const wall = (p, q) => { idx.push(2 * p, 2 * q, 2 * q + 1, 2 * p, 2 * q + 1, 2 * p + 1); rim.push(pos[6 * p], pos[6 * p + 1], pos[6 * p + 2], pos[6 * q], pos[6 * q + 1], pos[6 * q + 2], pos[6 * p + 3], pos[6 * p + 4], pos[6 * p + 5], pos[6 * q + 3], pos[6 * q + 4], pos[6 * q + 5]); };
       for (const k of patch) {
+        if (!owned(k)) continue;
         const i = k % nx;
-        if (i === nx - 1 || !full(k)) continue;
         const a = vid.get(k), b = vid.get(k + 1), d = vid.get(k + nx), e = vid.get(k + nx + 1);
         idx.push(2 * a, 2 * b, 2 * e, 2 * a, 2 * e, 2 * d, 2 * a + 1, 2 * e + 1, 2 * b + 1, 2 * a + 1, 2 * d + 1, 2 * e + 1);
-        if (!(k >= nx && full(k - nx))) wall(a, b);
-        if (i === 0 || !full(k - 1)) wall(a, d);
-        if (!full(k + nx)) wall(d, e);
-        if (i === nx - 2 || !full(k + 1)) wall(b, e);
+        if (!fullH(k - nx)) wall(a, b);
+        if (i === 0 || !fullH(k - 1)) wall(a, d);
+        if (!fullH(k + nx)) wall(d, e);
+        if (!fullH(k + 1)) wall(b, e);
       }
       if (idx.length) {
         const geo = new THREE.BufferGeometry();
@@ -939,7 +949,7 @@ async function boot() {
         const dx = X - F.origin[0], dy = Y - F.origin[1];
         const fu = (dx * F.v[1] - dy * F.v[0]) / det, fv = (dy * F.u[0] - dx * F.u[1]) / det;
         const i = Math.floor(fu), j = Math.floor(fv), k = j * nx + i;
-        if (i < 0 || j < 0 || i >= nx - 1 || j >= ny - 1 || !full(k)) return null;
+        if (i < 0 || j < 0 || i >= nx - 1 || j >= ny - 1 || !owned(k)) return null;
         const sx = fu - i, sz = fv - j;
         const w = [(1 - sx) * (1 - sz), sx * (1 - sz), (1 - sx) * sz, sx * sz];
         let top = 0, bottom = 0;
@@ -1008,20 +1018,42 @@ async function boot() {
           for (const [c, r] of recs) share.set(c, (share.get(c) || 0) + Math.abs(r[0] - r[1]) * cellA);
         }
         const cuts = [...share.keys()].sort((a, b) => share.get(b) - share.get(a));
-        return { F, patch, pair, vol, area: patch.length * cellA, thick, at, share, cuts };
+        return { F, patch, pair, cellA, vol, area: patch.length * cellA, thick, at, share, cuts };
       }).filter((p) => p.thick >= 0.05 && p.vol >= 0.5).sort((a, b) => b.vol - a.vol);
       const total = patches.reduce((s, p) => s + p.vol, 0);
       const ids = new Map();
+      const kind = prefix === 'dig';
+      const named = (cs) => `${t(kind ? 'Excavation for' : 'Fill under')} ${cs.map((c) => c.what).join(' + ')}`;
       for (const p of patches) {
-        const { F, patch, pair, vol, area, thick, at, share, cuts } = p;
+        const { F, patch, pair, cellA, vol, area, thick, at, share, cuts } = p;
         const base = `${prefix}-${cuts.map((c) => c.key).join('+')}`;
         const n = ids.get(base) || 0;
         ids.set(base, n + 1);
-        const eo = makeObject({ id: n ? `${base}-${n + 1}` : base, name: `${t(prefix === 'dig' ? 'Excavation for' : 'Fill under')} ${cuts.map((c) => c.what).join(' + ')}`, group, opacity: 0.16 });
-        body(eo, F, patch, (k) => pair.get(k), { vol, thick, at, thickLabel });
-        eo.props.push(['Volume', m3(vol)], ['Area', m2(area)], [thickName, mLabel(thick)]);
-        if (cuts.length > 1) for (const c of cuts) eo.props.push([c.what, m3(share.get(c))]);
-        if (patches.length > 1) eo.props.push([prefix === 'dig' ? 'All excavations' : 'All fill', m3(total)]);
+        const id = n ? `${base}-${n + 1}` : base;
+        if (cuts.length === 1) {
+          const eo = makeObject({ id, name: named(cuts), group, opacity: 0.16 });
+          body(eo, F, patch, (k) => pair.get(k), { vol, thick, at, thickLabel });
+          eo.props.push(['Volume', m3(vol)], ['Area', m2(area)], [thickName, mLabel(thick)]);
+          if (patches.length > 1) eo.props.push([kind ? 'All excavations' : 'All fill', m3(total)]);
+          continue;
+        }
+        /* several cuts: each one's share is its own part, tapped on its
+           own, listed under the hole in the tree; the hole's points are
+           the hull the parts wall against */
+        const hull = new Set(patch);
+        const parent = { id, name: named(cuts), label: kind ? 'Hole' : 'Fill' };
+        for (const c of cuts) {
+          const rec = list(dug.get(c)).get(F);
+          const mine = patch.filter((k) => rec.has(k));
+          const pairC = (k) => { const r = rec.get(k); return r ? [Math.max(r[0], r[1]), Math.min(r[0], r[1])] : pair.get(k); };
+          let volC = 0, thickC = 0, atC = mine[0];
+          for (const k of mine) { const [top, bottom] = pairC(k); volC += (top - bottom) * cellA; if (top - bottom > thickC) { thickC = top - bottom; atC = k; } }
+          if (thickC < 0.05) continue;
+          const eo = makeObject({ id: `${id}:${c.key}`, name: named([c]), group, opacity: 0.16, parent, short: c.what });
+          body(eo, F, mine, pairC, { vol: volC, thick: thickC, at: atC, thickLabel }, hull);
+          eo.props.push(['Volume', m3(volC)], ['Area', m2(mine.length * cellA)], [thickName, mLabel(thickC)], [kind ? 'Whole hole' : 'Whole fill', m3(vol)]);
+          if (patches.length > 1) eo.props.push([kind ? 'All excavations' : 'All fill', m3(total)]);
+        }
       }
     };
     earthwork({ list: (s) => s.lowered, group: 'excavation', prefix: 'dig', thickLabel: t('depth'), thickName: 'Deepest' });
@@ -1397,7 +1429,7 @@ async function boot() {
     const rowOf = (label, value) => { const r = el('div', 'props-row'); r.append(el('b', null, t(label)), el('span', null, value)); propsEl.appendChild(r); };
     propsEl.appendChild(el('div', 'props-name', t(o.name)));
     rowOf('Group', t(GROUPS[o.group]?.name || o.group));
-    if (o.parent) rowOf('Building', t(o.parent.name));
+    if (o.parent) rowOf(o.parent.label || 'Building', t(o.parent.name));
     for (const [k, v] of o.props) rowOf(k, tDim(v));
     propBox.makeEmpty().expandByObject(o.node);
     if (!propBox.isEmpty()) {
