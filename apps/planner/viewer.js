@@ -96,6 +96,10 @@ async function boot() {
   const WHITE = new THREE.Color(0xffffff);
   const parts = new THREE.Group();
   const objects = [];
+  /* the tapped object; declared here, ahead of the layers, because a
+     saved layer set applied at boot can switch a group off and must be
+     able to ask whether the selection is in it */
+  let selected = null;
   /* `color` overrides the group's; `opacity` is the glass's — 0.05 for
      a wireframe's whisper of a face, more for a building whose walls
      should read as walls. */
@@ -1276,7 +1280,7 @@ async function boot() {
     if (!objects.some((o) => o.group === key)) continue;
     /* switching a group off also drops a selection in it, so the
        selected body's poles and labels go with it */
-    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v && !o.hidden; if (!v && selected?.group === key) select(null); }, 'Objects', { color: g.color });
+    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v && !o.hidden; if (!v && selected && selected.group === key) select(null); }, 'Objects', { color: g.color });
   }
   if (reliefLabels.length || objects.some((o) => o.id === 'relief')) {
     /* The surface alone by default; the rest is there to switch on. */
@@ -1569,7 +1573,6 @@ async function boot() {
     transparent: true, alphaTest: 0.35, depthTest: false, depthWrite: false,
   });
   const raycaster = new THREE.Raycaster();
-  let selected = null;
 
   function paintSelection(o, on) {
     o.node.traverse((n) => {
