@@ -2,11 +2,11 @@
    interface — layers, settings, tap-to-measure, navigation. One project
    at a time, named by the address; main.js decides whether to load it. */
 
-import { loadCurrent } from './load.js?v=70f1b88';
-import { $, fmt, hideLoader } from './util.js?v=70f1b88';
-import { LANG, t, tDim, setLang } from './i18n.js?v=70f1b88';
-import { deriveModel } from './model.js?v=70f1b88';
-import { dotTexture, labelTexture, tipTexture } from './textures.js?v=70f1b88';
+import { loadCurrent, stage } from './load.js?v=6eebdd7';
+import { $, fmt, hideLoader } from './util.js?v=6eebdd7';
+import { LANG, t, tDim, setLang } from './i18n.js?v=6eebdd7';
+import { deriveModel } from './model.js?v=6eebdd7';
+import { dotTexture, labelTexture, tipTexture } from './textures.js?v=6eebdd7';
 
 const { PLAN, RELIEF, PROJECT } = await loadCurrent();
 const M = deriveModel(PLAN);
@@ -44,13 +44,20 @@ boot();
 async function boot() {
   let THREE, OrbitControls;
   try {
-    THREE = await import('three');
-    ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+    /* three.js comes from the app's own vendor folder; still, give it
+       a deadline, so a fetch that never answers ends in the message
+       below rather than a bar that runs forever */
+    stage('loading three.js');
+    const deadline = new Promise((_, reject) => setTimeout(() => reject(new Error('three.js took too long to load')), 30000));
+    THREE = await Promise.race([import('three'), deadline]);
+    ({ OrbitControls } = await Promise.race([import('three/addons/controls/OrbitControls.js'), deadline]));
   } catch (err) {
+    $('fail').textContent = `${t('This project could not be loaded.')} ${err.message}`;
     $('fail').hidden = false;
     hideLoader();
     return;
   }
+  stage('building the scene');
 
   const host = $('canvas-host');
   /* No context menu on a long press or right-click: the press is a
@@ -89,6 +96,10 @@ async function boot() {
   const WHITE = new THREE.Color(0xffffff);
   const parts = new THREE.Group();
   const objects = [];
+  /* the tapped object; declared here, ahead of the layers, because a
+     saved layer set applied at boot can switch a group off and must be
+     able to ask whether the selection is in it */
+  let selected = null;
   /* `color` overrides the group's; `opacity` is the glass's — 0.05 for
      a wireframe's whisper of a face, more for a building whose walls
      should read as walls. */
@@ -1269,7 +1280,7 @@ async function boot() {
     if (!objects.some((o) => o.group === key)) continue;
     /* switching a group off also drops a selection in it, so the
        selected body's poles and labels go with it */
-    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v && !o.hidden; if (!v && selected?.group === key) select(null); }, 'Objects', { color: g.color });
+    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v && !o.hidden; if (!v && selected && selected.group === key) select(null); }, 'Objects', { color: g.color });
   }
   if (reliefLabels.length || objects.some((o) => o.id === 'relief')) {
     /* The surface alone by default; the rest is there to switch on. */
@@ -1562,7 +1573,6 @@ async function boot() {
     transparent: true, alphaTest: 0.35, depthTest: false, depthWrite: false,
   });
   const raycaster = new THREE.Raycaster();
-  let selected = null;
 
   function paintSelection(o, on) {
     o.node.traverse((n) => {
