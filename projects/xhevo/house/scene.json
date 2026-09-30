@@ -32,6 +32,10 @@
    "name": "House",
    "color": "#8fd8ff"
   },
+  "slab": {
+   "name": "Slabs",
+   "color": "#c9ced6"
+  },
   "canopy": {
    "name": "Cantilever",
    "color": "#ff8c5a"
