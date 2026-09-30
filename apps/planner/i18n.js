@@ -23,7 +23,7 @@ export const DE = {
   'Entrance mouth, wall': 'Einfahrtstrichter, Mauer',
   run: 'Lauf', flare: 'Trichter', along: 'entlang', over: 'über', rise: 'Anstieg',
   Parcel: 'Parzelle', 'Parcel boundary, 705 m²': 'Parzellengrenze, 705 m²', 'Existing building': 'Bestandsgebäude',
-  Relief: 'Relief', Excavation: 'Aushub', 'Excavation for': 'Aushub für', 'the house': 'das Haus', 'the driveway': 'die Einfahrt', depth: 'Tiefe', 'Nothing built yet': 'Noch nichts gebaut', buildings: 'Gebäude', floor: 'Geschoss',
+  Relief: 'Relief', Excavation: 'Aushub', 'Excavation for': 'Aushub für', 'the house': 'das Haus', 'the driveway': 'die Einfahrt', 'the yard': 'der Hof', depth: 'Tiefe', 'Nothing built yet': 'Noch nichts gebaut', buildings: 'Gebäude', floor: 'Geschoss',
   Buildings: 'Gebäude', 'Buildable areas': 'Bebaubare Flächen', Parcels: 'Parzellen', Cadastre: 'Kataster', Street: 'Straße',
   'Ground floor': 'Erdgeschoss', '1st floor': '1. Obergeschoss', '2nd floor': '2. Obergeschoss', Attic: 'Dachgeschoss',
   'Basement −1': 'Untergeschoss −1', 'Basement −2': 'Untergeschoss −2', 'Garage floor': 'Garagengeschoss', 'Cadastral line': 'Katasterlinie',
