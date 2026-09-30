@@ -597,8 +597,15 @@ async function boot() {
       EXC.push(ringCut({ key: b.id, what: t(b.name), ring: low.ring, level: low.elevation - SLAB }));
     }
     if (PLAN.levels?.length && e.x1 > e.x0) {
-      const ring = [[e.x0, e.y0], [e.x1, e.y0], [e.x1, e.y1], [e.x0, e.y1]].map(([x, z]) => H(x, z));
-      EXC.push(ringCut({ key: 'house', what: t('the house'), ring, level: Math.min(...PLAN.levels.map((l) => l.elevation)) - SLAB }));
+      /* each level digs to its own underside over its own extent — a
+         garage that stops short of the back leaves the hill there for
+         the storey above to sit on, dug only to that storey's slab */
+      const pits = VOLS.filter((v) => PLAN.levels.some((l) => l.id === v.id))
+        .map((v) => ({ ring: [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]].map(([x, z]) => H(x, z)), level: v.y0 + R.datum }));
+      EXC.push({
+        key: 'house', what: t('the house'),
+        floor: (x, z, w, cell) => pits.reduce((f, p) => (nearRing(p.ring, x, z, Math.max(cell, 0.5)) && (f == null || p.level < f) ? p.level : f), null),
+      });
     }
     if (CUT) {
       /* the designed ground: wherever the terrain model's groundY() is
