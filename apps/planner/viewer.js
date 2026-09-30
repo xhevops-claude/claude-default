@@ -1238,7 +1238,9 @@ async function boot() {
   if (TER) layer('grid', 'Ground grid', true, (v) => { ground.visible = v; }, 'Drawing');
   for (const [key, g] of Object.entries(GROUPS)) {
     if (!objects.some((o) => o.group === key)) continue;
-    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v && !o.hidden; }, 'Objects', { color: g.color });
+    /* switching a group off also drops a selection in it, so the
+       selected body's poles and labels go with it */
+    layer(`group:${key}`, g.name, true, (v) => { for (const o of objects) if (o.group === key) o.node.visible = v && !o.hidden; if (!v && selected?.group === key) select(null); }, 'Objects', { color: g.color });
   }
   if (reliefLabels.length || objects.some((o) => o.id === 'relief')) {
     /* The surface alone by default; the rest is there to switch on. */
