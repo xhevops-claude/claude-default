@@ -47,25 +47,32 @@ export function deriveModel(PLAN) {
     return ROAD[ROAD.length - 1][1];
   }
 
-  /* One solid per level, stacked without gaps: a level owns the slab
-     under it, so its underside meets the top of the level below. A level
-     fills the envelope unless it gives its own `x0`/`x1`/`z0`/`z1` — a
-     garage that stops short of the back, leaving the hill in place — and
-     one with `extendFront` is pushed out of the downhill face by that much. */
-  const VOLS = PLAN.levels.map((l) => {
+  /* Two solids per level, stacked without gaps: the storey, from its
+     finished floor up to the top of its height, and the slab under it,
+     `slab` thick, whose underside meets the top of the storey below —
+     the concrete deck between a garage and the ground floor above it,
+     with its top the floor you walk on inside and out. A level fills
+     the envelope unless it gives its own `x0`/`x1`/`z0`/`z1` — a garage
+     that stops short of the back, leaving the hill in place — and one
+     with `extendFront` is pushed out of the downhill face by that much. */
+  const VOLS = [];
+  const SLABS = [];
+  for (const l of PLAN.levels) {
     const out = l.extendFront || 0;
     const v = {
       id: l.id, name: l.name, group: l.group || 'house', house: true,
       x0: l.x0 ?? e.x0, x1: l.x1 ?? e.x1, z0: l.z0 ?? e.y0, z1: l.z1 ?? e.y1,
-      y0: l.elevation - SLAB,
+      y0: l.elevation,
       y1: l.elevation + l.height,
     };
     if (out) {
       const lo = FRONT.axis === 'x' ? 'x0' : 'z0', hi = FRONT.axis === 'x' ? 'x1' : 'z1';
       if (FRONT.sign > 0) v[hi] += out; else v[lo] -= out;
     }
-    return v;
-  });
+    VOLS.push(v);
+    SLABS.push({ ...v, id: `${l.id}-slab`, name: `${l.name} slab`, group: 'slab', slab: l.id, opacity: 0.3, y0: l.elevation - SLAB, y1: l.elevation });
+  }
+  VOLS.push(...SLABS);
 
   for (const w of PLAN.works || []) VOLS.push({ ...w });
 

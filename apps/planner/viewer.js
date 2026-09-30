@@ -600,7 +600,7 @@ async function boot() {
       /* each level digs to its own underside over its own extent — a
          garage that stops short of the back leaves the hill there for
          the storey above to sit on, dug only to that storey's slab */
-      const pits = VOLS.filter((v) => PLAN.levels.some((l) => l.id === v.id))
+      const pits = VOLS.filter((v) => v.slab)
         .map((v) => ({ ring: [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]].map(([x, z]) => H(x, z)), level: v.y0 + R.datum }));
       EXC.push({
         key: 'house', what: t('the house'),
