@@ -841,35 +841,49 @@ async function boot() {
     /* The earthworks. Every relief point that ends up below the survey
        is excavation, and every point the designed ground stands above
        the survey is fill — the land to be added — so both come off the
-       same lattice, and one patch of touching cells is one object: a
-       hole roofed by the survey and floored by the worked ground, a fill
-       floored by the survey and roofed by the designed ground, each
-       walled wherever a cell in it meets one that is not. So the house
-       pit and the apron beside it are one body, not two with a wall
-       between them, and the made ground under the ramp is one body in
-       the Fill group. On tap: the body's m³, the ground it covers in m²,
-       its depth or height, each cut's share of it, and the total over
-       the site. */
+       same lattice. A hole is a patch of touching cells whose floor runs
+       on without a step: the garage pit and the apron dug flush with it
+       are one hole; the driveway's band, which meets the apron over the
+       slab's 20 cm step, is another; the shallow cut for the back of the
+       ground floor a third. Which cut dug a column does not divide it —
+       a column belongs to one hole whole, and each cut's share is a line
+       on the panel. A fill is the same the other way up, its designed
+       top the surface that must run on. Each is one body, roofed and
+       floored by its two surfaces and walled wherever a cell in it meets
+       one that is not. On tap: its m³, the ground it covers in m², its
+       depth or height, each cut's share, and the total over the site. */
     const m3 = (v) => `${fmt(Math.round(v))} m³`;
     const m2 = (a) => `${fmt(Math.round(a * 10) / 10)} m²`;
-    /* Which cuts touched a point, gathered from each cut's own list:
-       field → k → [cut, ...] in order. */
+    /* Every touched point, field by field: k → { cuts, top, bottom },
+       the cuts in order and the column between the ground the first
+       found and the ground the last left. */
     const gather = (listOf) => {
       const byPoint = new Map();
       for (const c of EXC) {
         for (const [F, pts] of listOf(dug.get(c))) {
           if (!byPoint.has(F)) byPoint.set(F, new Map());
           const m = byPoint.get(F);
-          for (const k of pts.keys()) { if (m.has(k)) m.get(k).push(c); else m.set(k, [c]); }
+          for (const [k, r] of pts) {
+            const lo = Math.min(r[0], r[1]), hi = Math.max(r[0], r[1]);
+            const q = m.get(k);
+            if (q) { q.cuts.push(c); q.top = Math.max(q.top, hi); q.bottom = Math.min(q.bottom, lo); } else m.set(k, { cuts: [c], top: hi, bottom: lo });
+          }
         }
       }
       return byPoint;
     };
-    /* The patches of touching points (8 neighbours), field by field. */
-    const patchesOf = (byPoint) => {
+    /* The patches, grown cell by cell: every touched point seeds one,
+       each grows into the neighbours it shares an edge with, and two
+       that meet are one. The growth stops at a step: `level` — the
+       surface the cuts made — must run on from one point to the next,
+       and a jump of more than three-quarters of a cell (a slope past
+       about 37°) is a wall between two holes. Corners alone do not
+       join: a slab's 20 cm step must not leak through diagonally. */
+    const patchesOf = (byPoint, level) => {
       const out = [];
       for (const [F, pts] of byPoint) {
         const [nx, ny] = F.size;
+        const cellM = Math.sqrt(Math.abs(F.u[0] * F.v[1] - F.u[1] * F.v[0]));
         const seen = new Set();
         for (const k0 of pts.keys()) {
           if (seen.has(k0)) continue;
@@ -878,12 +892,15 @@ async function boot() {
           while (stack.length) {
             const k = stack.pop();
             patch.push(k);
-            const i = k % nx, j = (k - i) / nx;
-            for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+            const i = k % nx, j = (k - i) / nx, y = level(pts.get(k));
+            for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
               const ii = i + di, jj = j + dj;
               if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue;
               const kk = jj * nx + ii;
-              if (pts.has(kk) && !seen.has(kk)) { seen.add(kk); stack.push(kk); }
+              if (!pts.has(kk) || seen.has(kk)) continue;
+              if (Math.abs(level(pts.get(kk)) - y) > 0.75 * cellM) continue;
+              seen.add(kk);
+              stack.push(kk);
             }
           }
           out.push({ F, pts, patch });
@@ -896,8 +913,10 @@ async function boot() {
        bottom and the walls, the walls' rims as floor lines, and the
        thickness as an upright at the thickest point, with the m³ along
        the bottom from there to the point farthest away in plan. */
-    const body = (eo, F, patch, pair, { vol, thick, at, thickLabel }) => {
-      const [nx] = F.size;
+    const body = (eo, F, patch, pair, { vol, thick, at, thickLabel, fromTop = false }) => {
+      const [nx, ny] = F.size;
+      const mine = new Set(patch);
+      const full = (k) => k >= 0 && k % nx < nx - 1 && mine.has(k) && mine.has(k + 1) && mine.has(k + nx) && mine.has(k + nx + 1);
       const pos = [], vid = new Map(), rim = [];
       for (const k of patch) {
         const [X, Y] = surveyOf(F, k % nx, Math.floor(k / nx));
@@ -905,19 +924,17 @@ async function boot() {
         vid.set(k, pos.length / 6);
         pos.push(...toModel(X, Y, top), ...toModel(X, Y, bottom));
       }
-      const on = (k) => vid.has(k);
-      const full = (k) => on(k) && on(k + 1) && on(k + nx) && on(k + nx + 1);
       const idx = [];
       const wall = (p, q) => { idx.push(2 * p, 2 * q, 2 * q + 1, 2 * p, 2 * q + 1, 2 * p + 1); rim.push(pos[6 * p], pos[6 * p + 1], pos[6 * p + 2], pos[6 * q], pos[6 * q + 1], pos[6 * q + 2], pos[6 * p + 3], pos[6 * p + 4], pos[6 * p + 5], pos[6 * q + 3], pos[6 * q + 4], pos[6 * q + 5]); };
       for (const k of patch) {
+        if (!full(k)) continue;
         const i = k % nx;
-        if (i === nx - 1 || !full(k)) continue;
         const a = vid.get(k), b = vid.get(k + 1), d = vid.get(k + nx), e = vid.get(k + nx + 1);
         idx.push(2 * a, 2 * b, 2 * e, 2 * a, 2 * e, 2 * d, 2 * a + 1, 2 * e + 1, 2 * b + 1, 2 * a + 1, 2 * d + 1, 2 * e + 1);
-        if (!(k >= nx && full(k - nx))) wall(a, b);
+        if (!full(k - nx)) wall(a, b);
         if (i === 0 || !full(k - 1)) wall(a, d);
         if (!full(k + nx)) wall(d, e);
-        if (i === nx - 2 || !full(k + 1)) wall(b, e);
+        if (!full(k + 1)) wall(b, e);
       }
       if (idx.length) {
         const geo = new THREE.BufferGeometry();
@@ -932,7 +949,6 @@ async function boot() {
          diagonally: a line is either a level or a height. The m³ sits
          on the longest run along the floor; the thickest point keeps
          its own upright. */
-      const [, ny] = F.size;
       const det = F.u[0] * F.v[1] - F.u[1] * F.v[0];
       const sample = (x, z) => {
         const [X, Y] = toSurvey(x, z);
@@ -968,6 +984,11 @@ async function boot() {
       for (let z = Math.ceil(z0); z <= z1; z++) { const pts = []; for (let x = x0; x <= x1 + 1e-9; x += GSTEP) pts.push([x, z]); walk(pts); }
       for (let x = Math.ceil(x0); x <= x1; x++) { const pts = []; for (let z = z0; z <= z1 + 1e-9; z += GSTEP) pts.push([x, z]); walk(pts); }
       eo.node.add(tagged(segments(gridSegs, eo.line(0.5)), 'edges'));
+      /* a pole's metre dots count from its start: up from the floor of
+         a hole, down from the top of a fill */
+      const pole = (bottom, top, label, quiet) => (fromTop
+        ? { a: top, b: bottom, label, quiet, every: 1 }
+        : { a: bottom, b: top, label, quiet, every: 1 });
       const ups = [];
       eo.dims = [];
       for (let x = Math.ceil(x0); x <= x1; x++) {
@@ -975,53 +996,57 @@ async function boot() {
           const h = sample(x, z);
           if (!h || h[0] - h[1] < 0.05) continue;
           ups.push(x, h[1], z, x, h[0], z);
-          eo.dims.push({ a: [x, h[1], z], b: [x, h[0], z], label: `${thickLabel} ${mLabel(h[0] - h[1])}`, quiet: true, every: 1 });
+          eo.dims.push(pole([x, h[1], z], [x, h[0], z], `${thickLabel} ${mLabel(h[0] - h[1])}`, true));
         }
       }
       const v0 = vid.get(at);
       const topPt = [pos[6 * v0], pos[6 * v0 + 1], pos[6 * v0 + 2]], bottomPt = [pos[6 * v0 + 3], pos[6 * v0 + 4], pos[6 * v0 + 5]];
       ups.push(...bottomPt, ...topPt);
       eo.node.add(tagged(segments(ups, eo.line(0.95)), 'edges'));
-      eo.dims.push({ a: bottomPt, b: topPt, label: `${thickLabel} ${mLabel(thick)}`, every: 1 });
+      eo.dims.push(pole(bottomPt, topPt, `${thickLabel} ${mLabel(thick)}`, false));
       if (longest) eo.dims.push({ a: longest.a, b: longest.b, label: m3(vol) });
     };
     /* The bodies of one kind — holes from the lowered points, fills
-       from the raised — biggest first, each named for the cuts that
-       made it, with each cut's share when there are several. */
+       from the raised — biggest first, each named for the cut that did
+       most of it; two with the same name are told apart by their
+       floor or top. */
     const earthwork = ({ list, group, prefix, thickLabel, thickName }) => {
-      const patches = patchesOf(gather(list)).map((p) => {
+      const kind = prefix === 'dig';
+      const patches = patchesOf(gather(list), (q) => (kind ? q.bottom : q.top)).map((p) => {
         const { F, pts, patch } = p;
         const cellA = Math.abs(F.u[0] * F.v[1] - F.u[1] * F.v[0]);
         const share = new Map();
-        let vol = 0, thick = 0, at = patch[0];
-        const pair = new Map();
+        let vol = 0, thick = 0, at = patch[0], lo = Infinity, hi = -Infinity;
         for (const k of patch) {
-          /* the cuts' own records, first to last: the top is where the
-             first found the ground, the bottom where the last left it */
-          const recs = pts.get(k).map((c) => [c, list(dug.get(c)).get(F).get(k)]);
-          const top = Math.max(...recs.map(([, r]) => Math.max(r[0], r[1])));
-          const bottom = Math.min(...recs.map(([, r]) => Math.min(r[0], r[1])));
-          pair.set(k, [top, bottom]);
-          const t0 = top - bottom;
+          const q = pts.get(k), t0 = q.top - q.bottom, lv = (kind ? q.bottom : q.top) - R.datum;
           vol += t0 * cellA;
+          lo = Math.min(lo, lv); hi = Math.max(hi, lv);
           if (t0 > thick) { thick = t0; at = k; }
-          for (const [c, r] of recs) share.set(c, (share.get(c) || 0) + Math.abs(r[0] - r[1]) * cellA);
+          for (const c of q.cuts) { const r = list(dug.get(c)).get(F).get(k); share.set(c, (share.get(c) || 0) + Math.abs(r[0] - r[1]) * cellA); }
         }
         const cuts = [...share.keys()].sort((a, b) => share.get(b) - share.get(a));
-        return { F, patch, pair, vol, area: patch.length * cellA, thick, at, share, cuts };
+        return { F, pts, patch, cellA, vol, area: patch.length * cellA, thick, at, share, cuts, lo, hi };
       }).filter((p) => p.thick >= 0.05 && p.vol >= 0.5).sort((a, b) => b.vol - a.vol);
       const total = patches.reduce((s, p) => s + p.vol, 0);
+      const named = (p) => `${t(kind ? 'Excavation for' : 'Fill under')} ${p.cuts[0].what}`;
+      const names = new Map();
+      for (const p of patches) names.set(named(p), (names.get(named(p)) || 0) + 1);
       const ids = new Map();
       for (const p of patches) {
-        const { F, patch, pair, vol, area, thick, at, share, cuts } = p;
-        const base = `${prefix}-${cuts.map((c) => c.key).join('+')}`;
+        const { F, pts, patch, vol, area, thick, at, share, cuts, lo, hi } = p;
+        const base = `${prefix}-${cuts[0].key}`;
         const n = ids.get(base) || 0;
         ids.set(base, n + 1);
-        const eo = makeObject({ id: n ? `${base}-${n + 1}` : base, name: `${t(prefix === 'dig' ? 'Excavation for' : 'Fill under')} ${cuts.map((c) => c.what).join(' + ')}`, group, opacity: 0.16 });
-        body(eo, F, patch, (k) => pair.get(k), { vol, thick, at, thickLabel });
-        eo.props.push(['Volume', m3(vol)], ['Area', m2(area)], [thickName, mLabel(thick)]);
+        /* the level, when the name alone would not tell two apart */
+        const level = hi - lo < 0.05 ? `${fmt(lo)} m` : `${fmt(lo)}…${fmt(hi)} m`;
+        const name = names.get(named(p)) > 1 ? `${named(p)} · ${t(kind ? 'floor at' : 'top at')} ${level}` : named(p);
+        const eo = makeObject({ id: n ? `${base}-${n + 1}` : base, name, group, opacity: 0.16 });
+        /* its poles, wires and labels in its own colour when tapped */
+        eo.ink = true;
+        body(eo, F, patch, (k) => { const q = pts.get(k); return [q.top, q.bottom]; }, { vol, thick, at, thickLabel, fromTop: !kind });
+        eo.props.push(['Volume', m3(vol)], ['Area', m2(area)], [thickName, mLabel(thick)], [kind ? 'Floor' : 'Surface', level]);
         if (cuts.length > 1) for (const c of cuts) eo.props.push([c.what, m3(share.get(c))]);
-        if (patches.length > 1) eo.props.push([prefix === 'dig' ? 'All excavations' : 'All fill', m3(total)]);
+        if (patches.length > 1) eo.props.push([kind ? 'All excavations' : 'All fill', m3(total)]);
       }
     };
     earthwork({ list: (s) => s.lowered, group: 'excavation', prefix: 'dig', thickLabel: t('depth'), thickName: 'Deepest' });
@@ -1528,7 +1553,7 @@ async function boot() {
     if (selected) paintSelection(selected, false);
     while (dimGroup.children.length) {
       const c = dimGroup.children.pop();
-      if (c.isMesh) { c.material.map.dispose(); c.material.dispose(); } else c.geometry.dispose();
+      if (c.isMesh) { c.material.map.dispose(); c.material.dispose(); } else { c.geometry.dispose(); if (c.material !== dimLineMat && c.material !== dimDotMat) c.material.dispose(); }
     }
     labels.length = 0;
     selected = o && o !== selected ? o : null;
@@ -1537,8 +1562,15 @@ async function boot() {
     paintProps();
     if (!selected) return;
     paintSelection(selected, true);
+    /* The dimensions' ink: the one pale yellow for most things, but an
+       earthwork body's own colour, so a fill's poles and wires read
+       purple like the fill and a hole's like the hole. */
+    const ink = selected.ink ? selected.col.clone().lerp(WHITE, 0.35) : null;
+    const lineMat = ink ? new THREE.LineBasicMaterial({ color: ink, transparent: true, opacity: 0.95, depthTest: false }) : dimLineMat;
+    const dotMat = ink ? new THREE.PointsMaterial({ color: ink, size: 6, sizeAttenuation: false, map: dotMap, transparent: true, alphaTest: 0.35, depthTest: false, depthWrite: false }) : dimDotMat;
+    const inkHex = ink ? `#${ink.getHexString()}` : undefined;
     for (const d of selected.dims || []) {
-      dimGroup.add(segments([...d.a, ...d.b], dimLineMat));
+      dimGroup.add(segments([...d.a, ...d.b], lineMat));
       /* a dot at each end, and, for a line marked `every`, one at each
          such step from its start — a pole reads off metre by metre */
       const dots = [...d.a, ...d.b];
@@ -1551,13 +1583,13 @@ async function boot() {
       }
       dimGroup.add(new THREE.Points(
         new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(dots, 3)),
-        dimDotMat,
+        dotMat,
       ));
       /* The label lies along its line, in metres, sized to fit inside
          it — small on a small thing, so you zoom in to read it, like
          letters on a grain of rice. It turns about the line to face
          you (see orientLabels), never off it. */
-      const tex = labelTexture(THREE, tDim(d.label));
+      const tex = labelTexture(THREE, tDim(d.label), inkHex);
       const aspect = tex.image.width / tex.image.height;
       const len = dist3(d.a, d.b);
       const h = Math.max(0.04, Math.min(0.35, Math.max(0.06, len * 0.05), (0.85 * len) / aspect));
