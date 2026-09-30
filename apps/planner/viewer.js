@@ -587,9 +587,33 @@ async function boot() {
       return false;
     };
     const EXC = [];
+    /* Beyond a levelled ring, a `taper` band — `width` metres out from
+       the ring's listed `edges` (all of them if none are listed) —
+       blends the ring's level into the ground as found, so the fill
+       under the yard's edge is a slope, not a wall, and never reaches
+       further than that width. */
+    const taperT = (ring, edges, width, x, z) => {
+      let best = Infinity;
+      for (let i = 0; i < ring.length; i++) {
+        if (edges && !edges.includes(i)) continue;
+        const [ax, az] = ring[i], [bx, bz] = ring[(i + 1) % ring.length];
+        const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+        const u = ((x - ax) * dx + (z - az) * dz) / l2;
+        if (u < 0 || u > 1) continue;
+        best = Math.min(best, Math.hypot(x - ax - u * dx, z - az - u * dz));
+      }
+      return best < width ? best / width : null;
+    };
     const ringCut = (c) => ({
       ...c,
-      floor: (x, z, w, cell) => (nearRing(c.ring, x, z, c.margin ?? Math.max(cell, 0.5)) ? (c.depth != null ? w - c.depth : c.level + R.datum) : null),
+      floor: (x, z, w, cell) => {
+        if (nearRing(c.ring, x, z, c.margin ?? Math.max(cell, 0.5))) return c.depth != null ? w - c.depth : c.level + R.datum;
+        if (!c.taper || c.depth != null) return null;
+        const t0 = taperT(c.ring, c.taper.edges || null, c.taper.width ?? 1, x, z);
+        if (t0 == null) return null;
+        const lv = c.level + R.datum;
+        return lv + (w - lv) * t0;
+      },
     });
     for (const b of PLAN.buildings || []) {
       if (!b.floors?.length) continue;
@@ -876,10 +900,14 @@ async function boot() {
        each grows into the neighbours it shares an edge with, and two
        that meet are one. The growth stops at a step: `level` — the
        surface the cuts made — must run on from one point to the next,
-       and a jump of more than three-quarters of a cell (a slope past
-       about 37°) is a wall between two holes. Corners alone do not
-       join: a slab's 20 cm step must not leak through diagonally. */
-    const patchesOf = (byPoint, level) => {
+       and a jump of more than `steep` cells is a wall between two
+       bodies. For a hole that is three-quarters of a cell (a slope past
+       about 37°): a slab's 20 cm step parts the ramp's band from the
+       apron. A fill's top is a designed grade and may be a batter as
+       steep as 70° (2.75 cells), while the near-3 m drop from the yard
+       to the driveway still parts the two. Corners alone do not join:
+       a step must not leak through diagonally. */
+    const patchesOf = (byPoint, level, steep) => {
       const out = [];
       for (const [F, pts] of byPoint) {
         const [nx, ny] = F.size;
@@ -898,7 +926,7 @@ async function boot() {
               if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue;
               const kk = jj * nx + ii;
               if (!pts.has(kk) || seen.has(kk)) continue;
-              if (Math.abs(level(pts.get(kk)) - y) > 0.75 * cellM) continue;
+              if (Math.abs(level(pts.get(kk)) - y) > steep * cellM) continue;
               seen.add(kk);
               stack.push(kk);
             }
@@ -1012,7 +1040,7 @@ async function boot() {
        floor or top. */
     const earthwork = ({ list, group, prefix, thickLabel, thickName }) => {
       const kind = prefix === 'dig';
-      const patches = patchesOf(gather(list), (q) => (kind ? q.bottom : q.top)).map((p) => {
+      const patches = patchesOf(gather(list), (q) => (kind ? q.bottom : q.top), kind ? 0.75 : 2.75).map((p) => {
         const { F, pts, patch } = p;
         const cellA = Math.abs(F.u[0] * F.v[1] - F.u[1] * F.v[0]);
         const share = new Map();
