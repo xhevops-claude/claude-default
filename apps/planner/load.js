@@ -12,8 +12,17 @@ export function route() {
   return m ? { org: m[1], slug: m[2] } : null;
 }
 
+/* A fetch that says what it is fetching and gives up after a while,
+   so a request a network never answers ends in a message, not a bar
+   that runs forever. */
+export const stage = (what) => { if (typeof window.plannerStage === 'function') window.plannerStage(what); };
 export async function fetchJSON(url) {
-  const res = await fetch(url, { cache: 'no-cache' });
+  const name = String(url).split('/').slice(-2).join('/');
+  stage(`loading ${name}`);
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 30000);
+  let res;
+  try { res = await fetch(url, { cache: 'no-cache', signal: ctl.signal }); } catch (err) { throw new Error(`${err.name === 'AbortError' ? 'timed out' : err.message}: ${name}`); } finally { clearTimeout(timer); }
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return res.json();
 }

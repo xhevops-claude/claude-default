@@ -2,7 +2,7 @@
    interface — layers, settings, tap-to-measure, navigation. One project
    at a time, named by the address; main.js decides whether to load it. */
 
-import { loadCurrent } from './load.js';
+import { loadCurrent, stage } from './load.js';
 import { $, fmt, hideLoader } from './util.js';
 import { LANG, t, tDim, setLang } from './i18n.js';
 import { deriveModel } from './model.js';
@@ -44,13 +44,20 @@ boot();
 async function boot() {
   let THREE, OrbitControls;
   try {
-    THREE = await import('three');
-    ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+    /* three.js comes from the app's own vendor folder; still, give it
+       a deadline, so a fetch that never answers ends in the message
+       below rather than a bar that runs forever */
+    stage('loading three.js');
+    const deadline = new Promise((_, reject) => setTimeout(() => reject(new Error('three.js took too long to load')), 30000));
+    THREE = await Promise.race([import('three'), deadline]);
+    ({ OrbitControls } = await Promise.race([import('three/addons/controls/OrbitControls.js'), deadline]));
   } catch (err) {
+    $('fail').textContent = `${t('This project could not be loaded.')} ${err.message}`;
     $('fail').hidden = false;
     hideLoader();
     return;
   }
+  stage('building the scene');
 
   const host = $('canvas-host');
   /* No context menu on a long press or right-click: the press is a
