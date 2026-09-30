@@ -33,14 +33,6 @@
    "name": "House",
    "color": "#8fd8ff"
   },
-  "slab": {
-   "name": "Slabs",
-   "color": "#c9ced6"
-  },
-  "canopy": {
-   "name": "Cantilever",
-   "color": "#ff8c5a"
-  },
   "drive": {
    "name": "Driveway",
    "color": "#f5e663"
@@ -187,7 +179,8 @@
  "works": [
   {
    "id": "canopy",
-   "group": "canopy",
+   "group": "house",
+   "color": "#ff8c5a",
    "house": true,
    "name": "Cantilever over the door",
    "x0": 10,
@@ -211,7 +204,10 @@
   },
   {
    "id": "garage-wall-south",
-   "group": "wall",
+   "group": "house",
+   "color": "#d28cff",
+   "parent": { "id": "garage-walls", "name": "Garage walls" },
+   "short": "South",
    "house": true,
    "name": "Garage wall, south",
    "x0": 3.7,
@@ -223,7 +219,10 @@
   },
   {
    "id": "garage-wall-west",
-   "group": "wall",
+   "group": "house",
+   "color": "#d28cff",
+   "parent": { "id": "garage-walls", "name": "Garage walls" },
+   "short": "West",
    "house": true,
    "name": "Garage wall, west",
    "x0": 3.7,
@@ -235,7 +234,10 @@
   },
   {
    "id": "garage-wall-north",
-   "group": "wall",
+   "group": "house",
+   "color": "#d28cff",
+   "parent": { "id": "garage-walls", "name": "Garage walls" },
+   "short": "North",
    "house": true,
    "name": "Garage wall, north",
    "x0": 3.7,
