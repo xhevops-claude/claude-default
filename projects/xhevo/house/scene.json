@@ -6,7 +6,7 @@
   "Heights are metres above the garage-floor datum: real 991.11 m a.s.l. is y 0. The parcel and relief come from the terrain app's survey.",
   "Levels in a terrain profile are finished surfaces; a slab's top is that number, its underside `slab` below; a wall is `wall` thick on the hill side of the line it holds.",
   "The garage is 6 m deep, x 4–10: the back 4 m of the hill stay in place under the ground floor, so the pit is shallower there and the retaining walls behind it shorter.",
-  "The yard south of the house — from the line of its west end to the line of its front corner (due south, not the turned face, so it never drifts east of the corner) and out to the parcel boundary — is levelled at the ground floor's 0; along that east edge a one-metre `taper` band rolls the fill down into the ground rather than standing it up as a wall — `excavations` carries it with `fill: true`, so the hill is dug where it stands above and made up where it lies below, a seamless floor inside and out." ],
+  "The yard south of the house — from the line of its west end to the line of its front corner (due south, not the turned face, so it never drifts east of the corner) and out to the parcel boundary — is cut down to the ground floor's 0 where the hill stands above it; where the ground lies below, no fill is planned yet — that is decided once the house is built (`fill: true` and a `taper` band on the east edge would add it) — `excavations` carries it with `fill: true`, so the hill is dug where it stands above and made up where it lies below, a seamless floor inside and out." ],
  "assets": {
   "relief": "relief.json"
  },
@@ -123,9 +123,7 @@
    "what": "the yard",
    "ring": [ [ 10, 17.36 ], [ 9.95, 17.35 ], [ 7.25, 17.23 ], [ 1.59, 17.92 ], [ 0.1, 7.4 ], [ 10, 6 ] ],
    "level": 0,
-   "margin": 0,
-   "fill": true,
-   "taper": { "width": 1, "edges": [ 5 ] }
+   "margin": 0
   }
  ],
  "levels": [
