@@ -4,7 +4,8 @@
   "A 10 × 6 m house on a sloped parcel: garage under a cantilever, the driveway cut into the hill and ramped down to the road.",
   "The house is turned 8.06° about its south-east corner to lie parallel to the north-east boundary, 1 m off it (D6).",
   "Heights are metres above the garage-floor datum: real 991.11 m a.s.l. is y 0. The parcel and relief come from the terrain app's survey.",
-  "Levels in a terrain profile are finished surfaces; a slab's top is that number, its underside `slab` below; a wall is `wall` thick on the hill side of the line it holds." ],
+  "Levels in a terrain profile are finished surfaces; a slab's top is that number, its underside `slab` below; a wall is `wall` thick on the hill side of the line it holds.",
+  "The garage is 6 m deep, x 4–10: the back 4 m of the hill stay in place under the ground floor, so the pit is shallower there and the retaining walls behind it shorter." ],
  "assets": {
   "relief": "relief.json"
  },
@@ -117,7 +118,8 @@
    "id": "garage",
    "name": "Garage",
    "elevation": -2.9,
-   "height": 2.7
+   "height": 2.7,
+   "x0": 4
   },
   {
    "id": "ground",
@@ -199,7 +201,7 @@
    "group": "wall",
    "house": true,
    "name": "Garage wall, south",
-   "x0": -0.3,
+   "x0": 3.7,
    "x1": 10,
    "z0": 6,
    "z1": 6.3,
@@ -211,8 +213,8 @@
    "group": "wall",
    "house": true,
    "name": "Garage wall, west",
-   "x0": -0.3,
-   "x1": 0,
+   "x0": 3.7,
+   "x1": 4,
    "z0": 0,
    "z1": 6,
    "y0": -3.1,
@@ -223,7 +225,7 @@
    "group": "wall",
    "house": true,
    "name": "Garage wall, north",
-   "x0": -0.3,
+   "x0": 3.7,
    "x1": 10,
    "z0": -0.3,
    "z1": 0,

@@ -49,12 +49,14 @@ export function deriveModel(PLAN) {
 
   /* One solid per level, stacked without gaps: a level owns the slab
      under it, so its underside meets the top of the level below. A level
-     with `extendFront` is pushed out of the downhill face by that much. */
+     fills the envelope unless it gives its own `x0`/`x1`/`z0`/`z1` — a
+     garage that stops short of the back, leaving the hill in place — and
+     one with `extendFront` is pushed out of the downhill face by that much. */
   const VOLS = PLAN.levels.map((l) => {
     const out = l.extendFront || 0;
     const v = {
       id: l.id, name: l.name, group: l.group || 'house', house: true,
-      x0: e.x0, x1: e.x1, z0: e.y0, z1: e.y1,
+      x0: l.x0 ?? e.x0, x1: l.x1 ?? e.x1, z0: l.z0 ?? e.y0, z1: l.z1 ?? e.y1,
       y0: l.elevation - SLAB,
       y1: l.elevation + l.height,
     };
