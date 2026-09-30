@@ -589,9 +589,10 @@ async function boot() {
     const EXC = [];
     /* Beyond a levelled ring, a `taper` band — `width` metres out from
        the ring's listed `edges` (all of them if none are listed) —
-       blends the ring's level into the ground as found, so the fill
-       under the yard's edge is a slope, not a wall, and never reaches
-       further than that width. */
+       rolls the ring's level down into the ground as found on an
+       S-curve, level at the edge and flat again where it lands, so the
+       fill under the yard's edge is a rounded shoulder, not a wall, and
+       never reaches further than that width. */
     const taperT = (ring, edges, width, x, z) => {
       let best = Infinity;
       for (let i = 0; i < ring.length; i++) {
@@ -612,7 +613,7 @@ async function boot() {
         const t0 = taperT(c.ring, c.taper.edges || null, c.taper.width ?? 1, x, z);
         if (t0 == null) return null;
         const lv = c.level + R.datum;
-        return lv + (w - lv) * t0;
+        return lv + (w - lv) * (1 - Math.cos(Math.PI * t0)) / 2;
       },
     });
     for (const b of PLAN.buildings || []) {
