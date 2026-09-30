@@ -1041,6 +1041,8 @@ async function boot() {
         const level = hi - lo < 0.05 ? `${fmt(lo)} m` : `${fmt(lo)}…${fmt(hi)} m`;
         const name = names.get(named(p)) > 1 ? `${named(p)} · ${t(kind ? 'floor at' : 'top at')} ${level}` : named(p);
         const eo = makeObject({ id: n ? `${base}-${n + 1}` : base, name, group, opacity: 0.16 });
+        /* its poles, wires and labels in its own colour when tapped */
+        eo.ink = true;
         body(eo, F, patch, (k) => { const q = pts.get(k); return [q.top, q.bottom]; }, { vol, thick, at, thickLabel, fromTop: !kind });
         eo.props.push(['Volume', m3(vol)], ['Area', m2(area)], [thickName, mLabel(thick)], [kind ? 'Floor' : 'Surface', level]);
         if (cuts.length > 1) for (const c of cuts) eo.props.push([c.what, m3(share.get(c))]);
@@ -1551,7 +1553,7 @@ async function boot() {
     if (selected) paintSelection(selected, false);
     while (dimGroup.children.length) {
       const c = dimGroup.children.pop();
-      if (c.isMesh) { c.material.map.dispose(); c.material.dispose(); } else c.geometry.dispose();
+      if (c.isMesh) { c.material.map.dispose(); c.material.dispose(); } else { c.geometry.dispose(); if (c.material !== dimLineMat && c.material !== dimDotMat) c.material.dispose(); }
     }
     labels.length = 0;
     selected = o && o !== selected ? o : null;
@@ -1560,8 +1562,15 @@ async function boot() {
     paintProps();
     if (!selected) return;
     paintSelection(selected, true);
+    /* The dimensions' ink: the one pale yellow for most things, but an
+       earthwork body's own colour, so a fill's poles and wires read
+       purple like the fill and a hole's like the hole. */
+    const ink = selected.ink ? selected.col.clone().lerp(WHITE, 0.35) : null;
+    const lineMat = ink ? new THREE.LineBasicMaterial({ color: ink, transparent: true, opacity: 0.95, depthTest: false }) : dimLineMat;
+    const dotMat = ink ? new THREE.PointsMaterial({ color: ink, size: 6, sizeAttenuation: false, map: dotMap, transparent: true, alphaTest: 0.35, depthTest: false, depthWrite: false }) : dimDotMat;
+    const inkHex = ink ? `#${ink.getHexString()}` : undefined;
     for (const d of selected.dims || []) {
-      dimGroup.add(segments([...d.a, ...d.b], dimLineMat));
+      dimGroup.add(segments([...d.a, ...d.b], lineMat));
       /* a dot at each end, and, for a line marked `every`, one at each
          such step from its start — a pole reads off metre by metre */
       const dots = [...d.a, ...d.b];
@@ -1574,13 +1583,13 @@ async function boot() {
       }
       dimGroup.add(new THREE.Points(
         new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(dots, 3)),
-        dimDotMat,
+        dotMat,
       ));
       /* The label lies along its line, in metres, sized to fit inside
          it — small on a small thing, so you zoom in to read it, like
          letters on a grain of rice. It turns about the line to face
          you (see orientLabels), never off it. */
-      const tex = labelTexture(THREE, tDim(d.label));
+      const tex = labelTexture(THREE, tDim(d.label), inkHex);
       const aspect = tex.image.width / tex.image.height;
       const len = dist3(d.a, d.b);
       const h = Math.max(0.04, Math.min(0.35, Math.max(0.06, len * 0.05), (0.85 * len) / aspect));
