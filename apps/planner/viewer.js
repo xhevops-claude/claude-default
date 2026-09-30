@@ -975,14 +975,14 @@ async function boot() {
           const h = sample(x, z);
           if (!h || h[0] - h[1] < 0.05) continue;
           ups.push(x, h[1], z, x, h[0], z);
-          eo.dims.push({ a: [x, h[1], z], b: [x, h[0], z], label: `${thickLabel} ${mLabel(h[0] - h[1])}`, quiet: true });
+          eo.dims.push({ a: [x, h[1], z], b: [x, h[0], z], label: `${thickLabel} ${mLabel(h[0] - h[1])}`, quiet: true, every: 1 });
         }
       }
       const v0 = vid.get(at);
       const topPt = [pos[6 * v0], pos[6 * v0 + 1], pos[6 * v0 + 2]], bottomPt = [pos[6 * v0 + 3], pos[6 * v0 + 4], pos[6 * v0 + 5]];
       ups.push(...bottomPt, ...topPt);
       eo.node.add(tagged(segments(ups, eo.line(0.95)), 'edges'));
-      eo.dims.push({ a: bottomPt, b: topPt, label: `${thickLabel} ${mLabel(thick)}` });
+      eo.dims.push({ a: bottomPt, b: topPt, label: `${thickLabel} ${mLabel(thick)}`, every: 1 });
       if (longest) eo.dims.push({ a: longest.a, b: longest.b, label: m3(vol) });
     };
     /* The bodies of one kind — holes from the lowered points, fills
@@ -1539,8 +1539,18 @@ async function boot() {
     paintSelection(selected, true);
     for (const d of selected.dims || []) {
       dimGroup.add(segments([...d.a, ...d.b], dimLineMat));
+      /* a dot at each end, and, for a line marked `every`, one at each
+         such step from its start — a pole reads off metre by metre */
+      const dots = [...d.a, ...d.b];
+      if (d.every) {
+        const len = dist3(d.a, d.b);
+        for (let m = d.every; m < len - 1e-6; m += d.every) {
+          const f = m / len;
+          dots.push(d.a[0] + (d.b[0] - d.a[0]) * f, d.a[1] + (d.b[1] - d.a[1]) * f, d.a[2] + (d.b[2] - d.a[2]) * f);
+        }
+      }
       dimGroup.add(new THREE.Points(
-        new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([...d.a, ...d.b], 3)),
+        new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(dots, 3)),
         dimDotMat,
       ));
       /* The label lies along its line, in metres, sized to fit inside
