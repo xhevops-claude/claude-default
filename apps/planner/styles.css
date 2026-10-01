@@ -374,15 +374,47 @@ body.fs-2 .gizmo-hit { top: calc(var(--gizmo-inset) + env(safe-area-inset-top));
    it, so the scene keeps its width; it starts folded (viewer.js). */
 @media (orientation: portrait) and (max-width: 700px) {
   /* Absolutely placed, a grid item's area is its containing block: the
-     dock fills the middle row without widening the first column. */
+     dock fills the middle row without widening the first column. Both
+     lines of the row are named — for an absolutely placed item an open
+     end line means the container's edge, and the dock would run on
+     under the bottom bar, its last rows unreachable. */
   .dock {
     position: absolute;
     left: 0; top: 0; bottom: 0;
+    grid-row: 2 / 3;
     grid-column: 1 / -1;
     width: min(var(--dock-w), 80vw);
     box-shadow: 12px 0 40px rgba(0, 0, 0, 0.6);
   }
   .dock--right { left: auto; right: 0; box-shadow: -12px 0 40px rgba(0, 0, 0, 0.6); }
+  /* The folded rails are small tabs on the scene's edges, not columns
+     of their own: the scene keeps the whole width, and a lit tab is a
+     glow on the tab, not a bar down the side of the screen. */
+  .dock-rail {
+    position: absolute;
+    grid-row: 2 / 3;
+    grid-column: 1 / -1;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 22px; height: 52px;
+    background: var(--hud-bg);
+    border: 1px solid var(--hud-edge);
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+    backdrop-filter: blur(8px);
+    z-index: 3;
+  }
+  .dock-rail--right {
+    left: auto; right: 0;
+    border-left: 1px solid var(--hud-edge);
+    border-right: none;
+    border-radius: 10px 0 0 10px;
+  }
+  .dock-rail.is-lit {
+    box-shadow: 0 0 0 1px rgba(255, 243, 176, 0.35), 0 0 12px rgba(255, 243, 176, 0.25);
+    border-color: rgba(255, 243, 176, 0.55);
+    background: rgba(255, 243, 176, 0.1);
+  }
 }
 
 /* ── launcher ─────────────────────────────────────────── */
