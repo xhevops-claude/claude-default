@@ -2,11 +2,11 @@
    interface — layers, settings, tap-to-measure, navigation. One project
    at a time, named by the address; main.js decides whether to load it. */
 
-import { loadCurrent, stage } from './load.js?v=6eebdd7';
-import { $, fmt, hideLoader } from './util.js?v=6eebdd7';
-import { LANG, t, tDim, setLang } from './i18n.js?v=6eebdd7';
-import { deriveModel } from './model.js?v=6eebdd7';
-import { dotTexture, labelTexture, tipTexture } from './textures.js?v=6eebdd7';
+import { loadCurrent, stage } from './load.js?v=5c4807f';
+import { $, fmt, hideLoader } from './util.js?v=5c4807f';
+import { LANG, t, tDim, setLang } from './i18n.js?v=5c4807f';
+import { deriveModel } from './model.js?v=5c4807f';
+import { dotTexture, labelTexture, tipTexture } from './textures.js?v=5c4807f';
 
 const { PLAN, RELIEF, PROJECT } = await loadCurrent();
 const M = deriveModel(PLAN);
@@ -282,10 +282,11 @@ async function boot() {
       o.dims = walkedDims(bottom, top, n);
       continue;
     }
-    let corners = [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
+    /* A work with its own `ring` is that footprint; a box otherwise. */
+    let corners = v.ring ? v.ring.map((p) => p.slice()) : [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
     /* A part of the house is drawn in the house's frame, turned. */
     if (v.house) corners = corners.map(([x, z]) => H(x, z));
-    if (onCut) {
+    if (onCut && !v.ring) {
       /* The near edge is the cut line itself: its end points at the
          volume's two sides, and every bend of the line between them.
          With the house turned, the west side is its east face, from
@@ -312,7 +313,7 @@ async function boot() {
     const bottom = corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]);
     const top = corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]);
     addVolume(o, bottom, top);
-    if (onCut) {
+    if (onCut || v.ring) {
       /* Every straight side of the footprint, and the height. */
       o.dims = [];
       top.forEach((a, i) => {
@@ -656,7 +657,8 @@ async function boot() {
     for (const w of PLAN.works || []) {
       if (!w.excavate || typeof w.y0 !== 'number') continue;
       const zAt = (x) => (w.z0 === 'cut' && CUT ? cutFrom((x - FACE) * FRONT.sign) : w.z0);
-      EXC.push(ringCut({ key: w.id, what: t(w.name), ring: [[w.x0, zAt(w.x0)], [w.x1, zAt(w.x1)], [w.x1, w.z1], [w.x0, w.z1]], level: w.y0 }));
+      const ring = w.ring ? (w.house ? w.ring.map(([x, z]) => H(x, z)) : w.ring) : [[w.x0, zAt(w.x0)], [w.x1, zAt(w.x1)], [w.x1, w.z1], [w.x0, w.z1]];
+      EXC.push(ringCut({ key: w.id, what: t(w.name), ring, level: w.y0 }));
     }
     for (const c of PLAN.excavations || []) EXC.push(ringCut({ ...c, key: c.id, what: t(c.what || c.name) }));
     /* What each cut takes out is measured right here, on the relief

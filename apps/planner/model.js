@@ -75,7 +75,20 @@ export function deriveModel(PLAN) {
   }
   VOLS.push(...SLABS);
 
-  for (const w of PLAN.works || []) VOLS.push({ ...w });
+  /* A work may give its footprint as a `ring` of [x, z] points instead
+     of a box — the apron left in front of a garage that stands out of
+     the house's face is no rectangle — in the house's frame when the
+     work is part of the house, the model's otherwise. Its box extents
+     are then read off the ring, for the framing. */
+  for (const w of PLAN.works || []) {
+    const v = { ...w };
+    if (v.ring) {
+      const pts = v.house ? v.ring.map(([x, z]) => H(x, z)) : v.ring;
+      v.x0 ??= Math.min(...pts.map(([x]) => x)); v.x1 ??= Math.max(...pts.map(([x]) => x));
+      v.z0 ??= Math.min(...pts.map(([, z]) => z)); v.z1 ??= Math.max(...pts.map(([, z]) => z));
+    }
+    VOLS.push(v);
+  }
 
   /* The camera frames everything except volumes that ask to be left out
      of it — a road that runs off the edge of the site would otherwise
