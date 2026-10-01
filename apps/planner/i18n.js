@@ -15,7 +15,7 @@ export const DE = {
   east: 'Ost', up: 'oben', south: 'Süd', 'site falls': 'Gelände fällt',
   House: 'Haus', Cantilever: 'Auskragung', Driveway: 'Einfahrt', 'Retaining walls': 'Stützmauern', Road: 'Straße',
   Garage: 'Garage', 'Ground floor': 'Erdgeschoss', Slabs: 'Decken', 'Garage slab': 'Bodenplatte Garage', 'Ground floor slab': 'Decke über der Garage', 'First floor slab': 'Decke über dem Erdgeschoss', 'First floor': 'Obergeschoss',
-  'Cantilever over the door': 'Auskragung über dem Tor', 'Apron, in front of the door': 'Vorplatz vor dem Tor',
+  'Garage roof, in front of the house': 'Garagendecke vor dem Haus', 'Garage roof': 'Garagendecke', 'Apron, in front of the door': 'Vorplatz vor dem Tor',
   'Driveway, down to the road': 'Einfahrt hinunter zur Straße',
   'Garage walls': 'Garagenwände', South: 'Süd', West: 'West', North: 'Nord', 'Garage wall, south': 'Garagenwand Süd', 'Garage wall, west': 'Garagenwand West', 'Garage wall, north': 'Garagenwand Nord',
   'Retaining wall': 'Stützmauer', 'Retaining wall, tapering out': 'Stützmauer, auslaufend',
