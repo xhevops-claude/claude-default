@@ -5,7 +5,7 @@
   "The house is turned 8.06° about its south-east corner to lie parallel to the north-east boundary, 1 m off it (D6).",
   "Heights are metres above the garage-floor datum: real 991.11 m a.s.l. is y 0. The parcel and relief come from the terrain app's survey.",
   "Levels in a terrain profile are finished surfaces; a slab's top is that number, its underside `slab` below; a wall is `wall` thick on the hill side of the line it holds.",
-  "The garage is 6 m deep and moved 3 m forward, x 7–13 (`x0` 7, `extendFront` 3): the back 6 m of the hill stay in place under the ground floor, so the pit is shallower there and the retaining walls behind it shorter. The ground and first floors are moved 1 m forward, x 1–11 (`x0` 1, `extendFront` 1), so the ground floor's slab covers the garage to x 11 and the garage's own roof slab (`garage-roof`) the last 2 m; there is no cantilever any more. The envelope stays x 0–10: it is the frame the turn and the cut are measured from, not the house's outline.",
+  "The garage is 6 m deep and moved 3 m forward, x 7–13 (`x0` 7, `extendFront` 3): the back 4 m of the hill stay in place under the ground floor, so the pit is shallower there and the retaining walls behind it shorter. The ground and first floors are moved 1 m forward and shortened 2 m at the back, x 3–11, 8 m long (`x0` 3, `extendFront` 1), so the ground floor's slab covers the garage to x 11 and the garage's own roof slab (`garage-roof`) the last 2 m; there is no cantilever any more. The envelope stays x 0–10: it is the frame the turn and the cut are measured from, not the house's outline.",
   "The apron is what the cut leaves in front of the garage door, so it carries its own `ring` (model frame): the fillet's corner (13, 6), the outer wall, the cut's north edge back to the house face (9, −1.03), the face down to the garage's north band, the band's outer edge to its corner (12.09, −0.66) and the garage's turned face to its south-east corner (12.97, 5.58). Recompute those four turned points if the turn or the garage's depth changes.",
   "The yard south of the house — from the line of its west end to the line of its front corner (due south, not the turned face, so it never drifts east of the corner) and out to the parcel boundary — is cut down to the ground floor's 0 where the hill stands above it; where the ground lies below, no fill is planned yet — that is decided once the house is built (`fill: true` and a `taper` band on the east edge would add it) — `excavations` carries it with `fill: true`, so the hill is dug where it stands above and made up where it lies below, a seamless floor inside and out." ],
  "assets": {
@@ -133,7 +133,7 @@
    "name": "Ground floor",
    "elevation": 0,
    "height": 2.7,
-   "x0": 1,
+   "x0": 3,
    "extendFront": 1
   },
   {
@@ -141,7 +141,7 @@
    "name": "First floor",
    "elevation": 2.9,
    "height": 2.7,
-   "x0": 1,
+   "x0": 3,
    "extendFront": 1
   } ],
  "terrain": {
