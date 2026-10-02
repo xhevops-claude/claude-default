@@ -15,7 +15,7 @@ Every built thing is its own object, coloured by group (`scene.json` →
 
 | Group | Colour | Objects |
 |---|---|---|
-| House | cyan | garage, ground, first, garage-roof (the slab over the garage's last 2 m, beyond the ground floor) |
+| House | cyan | garage, ground, first, balcony (2 m at ground-floor level over the garage, in front of the ground floor) |
 | Driveway | yellow | driveway (apron), driveway-ramp (one slab from the apron to the road, fillet and mouth included) |
 | Retaining walls | violet | garage-wall-south / -west / -north, retainer, retainer-ramp, fillet-wall, ramp-wall, mouth-wall |
 | Road | grey | road |
