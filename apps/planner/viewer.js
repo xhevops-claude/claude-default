@@ -2,11 +2,11 @@
    interface — layers, settings, tap-to-measure, navigation. One project
    at a time, named by the address; main.js decides whether to load it. */
 
-import { loadCurrent, stage } from './load.js?v=a7bd768';
-import { $, fmt, hideLoader } from './util.js?v=a7bd768';
-import { LANG, t, tDim, setLang } from './i18n.js?v=a7bd768';
-import { deriveModel } from './model.js?v=a7bd768';
-import { dotTexture, labelTexture, tipTexture } from './textures.js?v=a7bd768';
+import { loadCurrent, stage } from './load.js?v=c07aa10';
+import { $, fmt, hideLoader } from './util.js?v=c07aa10';
+import { LANG, t, tDim, setLang } from './i18n.js?v=c07aa10';
+import { deriveModel } from './model.js?v=c07aa10';
+import { dotTexture, labelTexture, tipTexture } from './textures.js?v=c07aa10';
 
 const { PLAN, RELIEF, PROJECT } = await loadCurrent();
 const M = deriveModel(PLAN);
