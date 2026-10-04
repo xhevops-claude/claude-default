@@ -165,6 +165,12 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
     </section>
 
     <section class="sheet wide">
+      <h2>Second vehicle beside the Passat, 16 ways</h2>
+      <p class="lead">The everyday Passat stays on the left, backed in, 0.25 off its wall. The second vehicle changes on three axes: its size (quad, Polo, Passat, biggest), which way it faces (tail in or nose in), and where the free width goes (in the middle, or between it and the railing). Each card says which driver's doors can open; a door with less than 0.50 m is blocked, and that driver gets out before the other car parks.</p>
+      <div class="cases" id="matrix"></div>
+    </section>
+
+    <section class="sheet wide">
       <h2>How far a door needs</h2>
       <p class="lead">A driver's door is about 1.00 m long. What it can open to depends on what stands beside the car; the four marks are the German bands, the orange one is this garage with two Passats driver to driver.</p>
       <div class="doors">
@@ -325,9 +331,10 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
     // a parking slot, lightest shade
     const slot = (z0, z1) => rect(6, 12, z0, z1, { fill: 'var(--car-slot)', stroke: 'var(--car)', 'stroke-width': 0.8, 'stroke-dasharray': '2 4' });
     // the quad, 1.20 × 2.10
-    const quad = (x0, z0) => {
+    const quad = (x0, z0, facing = null) => {
       rect(x0, x0 + 2.1, z0, z0 + 1.2, { fill: 'var(--car-soft)', stroke: 'var(--car)', 'stroke-width': 1.2, rx: 4 });
-      text(x0 + 1.05, z0 + 0.6, 'quad', { class: 'ca', 'font-size': 10 });
+      if (facing) line(facing === 'in' ? x0 + 0.5 : x0 + 1.6, z0 + 0.15, facing === 'in' ? x0 + 0.5 : x0 + 1.6, z0 + 1.05, { stroke: 'var(--car)', 'stroke-width': 1 });
+      text(x0 + 1.05, z0 + 0.6, facing ? (facing === 'in' ? 'quad, nose in' : 'quad, tail in') : 'quad', { class: 'ca', 'font-size': facing ? 8 : 10 });
       text(x0 + 1.05, z0 + 0.6, '1.20 × 2.10', { class: 'ca', 'font-size': 8, dy: 11 });
     };
     /* A car: body `w` × `l`, a windscreen line and a rear line, the driver's door
@@ -450,6 +457,45 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
     CASES.push({ title: `${A.name} + ${B.name}, both tail in`, width: A.w + B.w, free, draw: pair(A, B) });
   }
   CASES.sort((a, b) => a.width - b.width);
+  const SECOND = [QUAD, POLO, PASSAT, BIG];
+  const MATRIX = [];
+  for (const v of SECOND) for (const orient of ['out', 'in']) for (const where of ['middle', 'stairs']) {
+    const wall = 0.25, zA = 6.7 - wall - PASSAT.w;
+    const free = zA - 1.35 - v.w;
+    const mid = where === 'middle' ? free - 0.1 : 0.1, right = where === 'middle' ? 0.1 : free - 0.1;
+    const zB = zA - mid - v.w;
+    const isQuad = v === QUAD;
+    const passatDoor = mid >= 0.5;
+    const secondDoor = isQuad ? null : (orient === 'out' ? right >= 0.5 : mid >= 0.5);
+    const faces = orient === 'out' ? 'the railing' : 'the middle';
+    const doors = isQuad
+      ? `Passat's door ${passatDoor ? `opens into the middle (${fmt(mid)})` : 'blocked, its driver gets out first'}; the quad has no doors`
+      : `Passat's door ${passatDoor ? `opens into the middle (${fmt(mid)})` : 'blocked'}; the ${v.name}'s door faces ${faces} and ${secondDoor ? `opens (${fmt(orient === 'out' ? right : mid)})` : 'is blocked'}` + (!passatDoor || !secondDoor ? '; a blocked door means that driver gets out before the other car parks' : '');
+    MATRIX.push({
+      title: `Passat + ${v.name} · ${orient === 'out' ? 'tail in' : 'nose in'} · gap ${where === 'middle' ? 'in the middle' : 'at the stairs'}`,
+      lead: `Free ${fmt(free)}: ${fmt(mid)} in the middle, ${fmt(right)} at the railing. ${doors}.`,
+      draw: (g) => {
+        g.car(6.8, zA, 'out', 'n', { ...PASSAT, blocked: !passatDoor, gap: mid });
+        if (isQuad) g.quad(x0Of(QUAD) - 0.6, zB, orient);
+        else g.car(x0Of(v), zB, orient, orient === 'out' ? 'n' : 's', { ...v, blocked: !secondDoor, gap: orient === 'out' ? right : mid });
+        g.dimZ(4.45, zA + PASSAT.w, 6.7, '0.25');
+        g.dimZ(4.45, zB + v.w, zA, `middle ${fmt(mid)}`);
+        g.dimZ(4.45, 1.35, zB, `stairs ${fmt(right)}`);
+      },
+    });
+  }
+  function matrix(root) {
+    MATRIX.forEach((c, i) => {
+      const card = document.createElement('section');
+      card.className = 'case';
+      const h = document.createElement('h3'); h.textContent = `${i + 1} · ${c.title}`;
+      const pp = document.createElement('p'); pp.className = 'lead'; pp.textContent = c.lead;
+      const svg = el('svg', { role: 'img', 'aria-label': `Second vehicle case ${i + 1}: ${c.title}` });
+      card.append(h, pp, svg);
+      root.appendChild(card);
+      c.draw(sheet(svg, `mx${i}`, { compact: true }));
+    });
+  }
   function cases(root) {
     CASES.forEach((c, i) => {
       const card = document.createElement('section');
@@ -573,6 +619,7 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
   plan(document.getElementById('plan-daily'), 'daily');
   plan(document.getElementById('plan-gathering'), 'gathering');
   cases(document.getElementById('cases'));
+  matrix(document.getElementById('matrix'));
   section(document.getElementById('section'));
 })();
 </script>
