@@ -234,12 +234,15 @@ async function boot() {
   const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
   const plan2 = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
   const mLabel = (n) => `${fmt(n)} m`;
+  /* A box whose top or bottom slopes (y0End / y1End at its z1 edge) is
+     measured at that edge, and its width is the slope's true length. */
   const boxDims = (v, turn = null) => {
     const P = (x, y, z) => { const [px, pz] = turn ? turn(x, z) : [x, z]; return [px, y, pz]; };
+    const y0e = v.y0End ?? v.y0, y1e = v.y1End ?? v.y1;
     return [
-      { a: P(v.x0, v.y1, v.z1), b: P(v.x1, v.y1, v.z1), label: mLabel(v.x1 - v.x0) },
-      { a: P(v.x1, v.y1, v.z0), b: P(v.x1, v.y1, v.z1), label: mLabel(v.z1 - v.z0) },
-      { a: P(v.x1, v.y0, v.z1), b: P(v.x1, v.y1, v.z1), label: `h ${mLabel(v.y1 - v.y0)}` },
+      { a: P(v.x0, y1e, v.z1), b: P(v.x1, y1e, v.z1), label: mLabel(v.x1 - v.x0) },
+      { a: P(v.x1, v.y1, v.z0), b: P(v.x1, y1e, v.z1), label: mLabel(Math.hypot(v.z1 - v.z0, y1e - v.y1)) },
+      { a: P(v.x1, y0e, v.z1), b: P(v.x1, y1e, v.z1), label: `h ${mLabel(y1e - y0e)}` },
     ];
   };
   /* A walked volume: thickness and length read off its top, and the
@@ -286,6 +289,9 @@ async function boot() {
     }
     /* A work with its own `ring` is that footprint; a box otherwise. */
     let corners = v.ring ? v.ring.map((p) => p.slice()) : [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
+    /* Which corners are on the z1 edge, where y0End / y1End apply — read
+       before the turn, which moves every z. */
+    let atEnd = corners.map(([, z]) => z === v.z1);
     /* A part of the house is drawn in the house's frame, turned. */
     if (v.house) corners = corners.map(([x, z]) => H(x, z));
     if (onCut && !v.ring) {
@@ -311,9 +317,10 @@ async function boot() {
         }
       }
       corners = [[v.x0, v.z1], ...dip, [v.x1, v.z1], [v.x1, cutAt(v.x1)], ...bends, westX || [v.x0, cutAt(v.x0)]];
+      atEnd = corners.map(([, z]) => z === v.z1);
     }
-    const bottom = corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]);
-    const top = corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]);
+    const bottom = corners.map(([x, z], i) => [x, atEnd[i] ? v.y0End ?? v.y0 : v.y0, z]);
+    const top = corners.map(([x, z], i) => [x, atEnd[i] ? v.y1End ?? v.y1 : v.y1, z]);
     addVolume(o, bottom, top);
     if (onCut || v.ring) {
       /* Every straight side of the footprint, and the height. */
