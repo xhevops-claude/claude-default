@@ -2,11 +2,11 @@
    interface — layers, settings, tap-to-measure, navigation. One project
    at a time, named by the address; main.js decides whether to load it. */
 
-import { loadCurrent, stage } from './load.js?v=9d27ef3';
-import { $, fmt, hideLoader } from './util.js?v=9d27ef3';
-import { LANG, t, tDim, setLang } from './i18n.js?v=9d27ef3';
-import { deriveModel } from './model.js?v=9d27ef3';
-import { dotTexture, labelTexture, tipTexture } from './textures.js?v=9d27ef3';
+import { loadCurrent, stage } from './load.js?v=7e1391a';
+import { $, fmt, hideLoader } from './util.js?v=7e1391a';
+import { LANG, t, tDim, setLang } from './i18n.js?v=7e1391a';
+import { deriveModel } from './model.js?v=7e1391a';
+import { dotTexture, labelTexture, tipTexture } from './textures.js?v=7e1391a';
 
 const { PLAN, RELIEF, PROJECT } = await loadCurrent();
 const M = deriveModel(PLAN);
@@ -104,8 +104,10 @@ async function boot() {
      a wireframe's whisper of a face, more for a building whose walls
      should read as walls. */
   /* `parent` and `short` are for the dock's tree: a floor lists under
-     its building by its short name. `hidden` is the object's own switch
-     there, on top of its group's. */
+     its building by its short name. `parent` is one `{ id, name }` or a
+     path of them, top down — a wall under its floor's "Walls" under the
+     floor. `hidden` is the object's own switch there, on top of its
+     group's. */
   function makeObject({ id, name, group, color = null, opacity = 0.05, parent = null, short = null }) {
     const col = new THREE.Color(color || GROUPS[group]?.color || '#8fd8ff');
     const node = new THREE.Group();
@@ -1340,6 +1342,7 @@ async function boot() {
     return { li, row: r, cb, ul };
   };
   const groupOn = (o) => LAYERS.find((L) => L.id === `group:${o.group}`)?.on ?? true;
+  const pathOf = (o) => (!o.parent ? [] : Array.isArray(o.parent) ? o.parent : [o.parent]);
   const objectRows = [];
   function showObject(o, v) {
     o.hidden = !v;
@@ -1381,20 +1384,26 @@ async function boot() {
     L.checkbox = r.cb;
     r.cb.addEventListener('change', () => setLayerOn(L, r.cb.checked));
     tree.appendChild(r.li);
-    const parents = new Map();
-    for (const o of listed) {
-      if (!o.parent) { objectRow(r.ul, o); continue; }
-      let p = parents.get(o.parent.id);
-      if (!p) {
-        const kids = listed.filter((k) => k.parent?.id === o.parent.id);
-        p = row({ name: o.parent.name, kids: true, onName: () => goTo(kids) });
-        p.cb.addEventListener('change', () => { for (const k of kids) { k.hidden = !p.cb.checked; k.node.visible = groupOn(k) && !k.hidden; } if (!p.cb.checked && kids.includes(selected)) select(null); paintObjectRows(); });
-        r.ul.appendChild(p.li);
-        objectRows.push({ kids, cb: p.cb, row: p.row });
-        parents.set(o.parent.id, p);
+    /* Each step of an object's parent path is a row of its own, made
+       once, holding every object whose path passes through it. */
+    const keyOf = (path) => path.map((p) => p.id).join('/');
+    const nodes = new Map();
+    const nodeFor = (path) => {
+      if (!path.length) return r;
+      const key = keyOf(path);
+      let n = nodes.get(key);
+      if (!n) {
+        const up = nodeFor(path.slice(0, -1));
+        const kids = listed.filter((k) => (keyOf(pathOf(k)) + '/').startsWith(key + '/'));
+        n = row({ name: path[path.length - 1].name, kids: true, onName: () => goTo(kids) });
+        n.cb.addEventListener('change', () => { for (const k of kids) { k.hidden = !n.cb.checked; k.node.visible = groupOn(k) && !k.hidden; } if (!n.cb.checked && kids.includes(selected)) select(null); paintObjectRows(); });
+        up.ul.appendChild(n.li);
+        objectRows.push({ kids, cb: n.cb, row: n.row });
+        nodes.set(key, n);
       }
-      objectRow(p.ul, o);
-    }
+      return n;
+    };
+    for (const o of listed) objectRow(nodeFor(pathOf(o)).ul, o);
   }
   paintObjectRows();
   /* The selected object's row lit, its branch opened and scrolled to. */
@@ -1466,7 +1475,7 @@ async function boot() {
     const rowOf = (label, value) => { const r = el('div', 'props-row'); r.append(el('b', null, t(label)), el('span', null, value)); propsEl.appendChild(r); };
     propsEl.appendChild(el('div', 'props-name', t(o.name)));
     rowOf('Group', t(GROUPS[o.group]?.name || o.group));
-    if (o.parent) rowOf('Building', t(o.parent.name));
+    if (o.parent) rowOf('Part of', pathOf(o).map((p) => t(p.name)).join(' · '));
     for (const [k, v] of o.props) rowOf(k, tDim(v));
     propBox.makeEmpty().expandByObject(o.node);
     if (!propBox.isEmpty()) {

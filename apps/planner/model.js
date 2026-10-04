@@ -62,6 +62,7 @@ export function deriveModel(PLAN) {
     const out = l.extendFront || 0;
     const v = {
       id: l.id, name: l.name, group: l.group || 'house', house: true,
+      parent: [{ id: l.id, name: l.name }], short: 'Storey',
       x0: l.x0 ?? e.x0, x1: l.x1 ?? e.x1, z0: l.z0 ?? e.y0, z1: l.z1 ?? e.y1,
       y0: l.elevation,
       y1: l.elevation + l.height,
@@ -71,7 +72,7 @@ export function deriveModel(PLAN) {
       if (FRONT.sign > 0) v[hi] += out; else v[lo] -= out;
     }
     VOLS.push(v);
-    SLABS.push({ ...v, id: `${l.id}-slab`, name: `${l.name} slab`, slab: l.id, color: '#c9ced6', opacity: 0.3, parent: { id: 'slabs', name: 'Slabs' }, short: l.name, y0: l.elevation - SLAB, y1: l.elevation });
+    SLABS.push({ ...v, id: `${l.id}-slab`, name: `${l.name} slab`, slab: l.id, color: '#c9ced6', opacity: 0.3, parent: [{ id: l.id, name: l.name }], short: 'Slab', y0: l.elevation - SLAB, y1: l.elevation });
   }
   VOLS.push(...SLABS);
 
