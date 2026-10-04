@@ -43,6 +43,7 @@
   --room-hall: rgba(201, 170, 40, 0.16);
   --room-wc: rgba(93, 102, 117, 0.14);
   --room-bed: rgba(124, 84, 200, 0.12);
+  --room-closet: rgba(124, 84, 200, 0.06);
   --room-living: rgba(42, 122, 88, 0.09);
   --furniture: #9a8f7c;
   --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
@@ -57,7 +58,7 @@
     --glass: #86b5e8; --glass-soft: rgba(134, 181, 232, 0.22);
     --stair: #6fc79c; --stair-soft: rgba(111, 199, 156, 0.18);
     --yard: rgba(111, 199, 156, 0.08);
-    --room-hall: rgba(245, 230, 99, 0.14); --room-wc: rgba(154, 164, 178, 0.14); --room-bed: rgba(180, 124, 255, 0.14); --room-living: rgba(111, 199, 156, 0.1);
+    --room-hall: rgba(245, 230, 99, 0.14); --room-wc: rgba(154, 164, 178, 0.14); --room-bed: rgba(180, 124, 255, 0.14); --room-closet: rgba(180, 124, 255, 0.07); --room-living: rgba(111, 199, 156, 0.1);
     --furniture: #8d9aa8;
     color-scheme: dark;
   }
@@ -69,7 +70,7 @@
   --glass: #86b5e8; --glass-soft: rgba(134, 181, 232, 0.22);
   --stair: #6fc79c; --stair-soft: rgba(111, 199, 156, 0.18);
   --yard: rgba(111, 199, 156, 0.08);
-  --room-hall: rgba(245, 230, 99, 0.14); --room-wc: rgba(154, 164, 178, 0.14); --room-bed: rgba(180, 124, 255, 0.14); --room-living: rgba(111, 199, 156, 0.1);
+  --room-hall: rgba(245, 230, 99, 0.14); --room-wc: rgba(154, 164, 178, 0.14); --room-bed: rgba(180, 124, 255, 0.14); --room-closet: rgba(180, 124, 255, 0.07); --room-living: rgba(111, 199, 156, 0.1);
   --furniture: #8d9aa8;
   color-scheme: dark;
 }
@@ -115,17 +116,17 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
 <div class="wrap">
   <header>
     <h1>Ground floor study</h1>
-    <p class="sub">Where the garage stair lands, and the floor planned around it: a tall living room behind a pentagon of glass. Metres, to scale, house frame: x along the house (the valley at the bottom), z across (north to the right).</p>
+    <p class="sub">Where the garage stair lands, and the floor planned around it: a tall living room behind a pentagon of glass, the stair up at the back beside the toilet, the house a metre deeper into the hill. Metres, to scale, house frame: x along the house (the valley at the bottom), z across (north to the right).</p>
   </header>
 
   <div class="numbers">
-    <div><b>8.00 × 7.00</b><span>over all; 7.40 × 6.40 clear, 47.4 m²</span></div>
-    <div><b>x 5.70</b><span>where the garage flight lands: the back wall line, 2.40 to the hill wall</span></div>
-    <div><b>3.48 × 1.20</b><span>opening in both decks, from the 5th riser; headroom 2.00</span></div>
-    <div><b>6.40 × 9.10</b><span>the panorama: one pentagon of glass, 5.90 at the walls, 9.10 at the apex</span></div>
+    <div><b>9.00 × 7.00</b><span>over all, a metre further into the hill; 8.40 × 6.40 clear, 53.8 m²</span></div>
+    <div><b>x 5.70</b><span>where the garage flight lands: the back wall line, 2.30 of landing to the stair wall</span></div>
+    <div><b>x 2.3–3.3</b><span>the stair up: one flight along the back wall, 17 × 17.1 on 0.27 treads, beside the toilet</span></div>
+    <div><b>6.40 × 9.10</b><span>the panorama: one pentagon of glass, 5.90 at the walls, 9.10 at the apex, the living room's alone</span></div>
     <div><b>45°</b><span>the roof: eaves at 5.60 on the walls, ridge at 9.10; the living room is open to it</span></div>
-    <div><b>20.8 · 10.6 · 6.9 · 2.2</b><span>living room with kitchen, bedroom, hall, toilet, m²</span></div>
-    <div><b>21.8</b><span>first floor left behind the tall room, m² clear: 3.40 × 6.40</span></div>
+    <div><b>22.6 · 10.2 · 7.8 · 2.2</b><span>living room with kitchen, bedroom, hall, toilet, m²; and a 3.2 closet under the stair</span></div>
+    <div><b>24.9</b><span>first floor behind the tall room, m² clear: 4.40 × 6.40 less the stairwell</span></div>
   </div>
 
   <div class="sheets">
@@ -133,38 +134,38 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
       <h2>Plan, 1 m above the floor</h2>
       <p class="lead">The hill is at the top, the valley and the balcony at the bottom, the yard to the left (south), the neighbour's boundary 1 m off the right (north) wall. Walls 0.30, partitions 0.10.</p>
       <div class="plan-wrap"><svg id="plan" role="img" aria-label="Ground floor plan"></svg></div>
-      <p class="key"><span class="sw" style="background: var(--room-hall)"></span>hall <span class="sw" style="background: var(--room-wc)"></span>toilet <span class="sw" style="background: var(--room-bed)"></span>bedroom <span class="sw" style="background: var(--room-living)"></span>living room with kitchen, open to the roof <span class="sw" style="background: var(--glass-soft); border-color: var(--glass)"></span>glass</p>
+      <p class="key"><span class="sw" style="background: var(--room-hall)"></span>hall <span class="sw" style="background: var(--room-wc)"></span>toilet <span class="sw" style="background: var(--room-bed)"></span>bedroom and its closet under the stair <span class="sw" style="background: var(--room-living)"></span>living room with kitchen, open to the roof <span class="sw" style="background: var(--glass-soft); border-color: var(--glass)"></span>glass</p>
       <ul>
-        <li><b>The hall is where the stair lands.</b> You come up facing the hill at x 5.7, with 2.40 to the back wall; the lobby south of the landing has the toilet door on its west side and the bedroom door on its south side, and opens east into the living room. Nothing else is at the back, because the back has no light: the hill behind, the boundary beside.</li>
-        <li><b>The living room is the whole front</b>, 4.00 × 5.20, and it is tall: the first floor stops at x 6.7, on the bedroom wall, so from the kitchen to the glass the room rises past the first floor to the roof — 5.90 at the walls, 9.10 under the ridge. Its east wall is the panorama: one pentagon of glass, 6.40 wide, from the floor to the roof, with a 1.00 door to the balcony at its south end.</li>
+        <li><b>The hall is where the stair lands.</b> You come up facing the hill at x 5.7, with 2.30 of landing to the stair wall; at the landing's west end the stair up turns south along the back wall. The lobby south of the landing has the toilet door on its west side and the bedroom door on its south side, and opens east into the living room.</li>
+        <li><b>The stair up</b> is one straight flight along the back wall, x 2.3–3.3, beside the toilet: 17 risers of 17.1 on 0.27 treads, foot at z 1.4, top riser at z 5.72, 0.98 of landing to the south wall at the top, so it arrives at the first floor's south-west corner with the bathroom over the toilet beside it. A wall on its east side is the toilet's and the bedroom's west wall; under its upper half is the bedroom's closet, 1.00 × 3.20, 1.2 to 2.7 high, with its door at z 5.5.</li>
+        <li><b>The living room is the whole front</b>, 4.00 × 5.20 plus the nook by the garage opening, and it is tall: the first floor stops at x 6.7, on the bedroom wall, so from the kitchen to the glass the room rises past the first floor to the roof — 5.90 at the walls, 9.10 under the ridge. Its east wall is the panorama, and nothing else stands behind it: one pentagon of glass, 6.40 wide, from the floor to the roof, with a 1.00 door to the balcony at its south end. The garage opening is railed on its south edge and at its east end.</li>
         <li><b>The entrance from the yard</b> is a 0.90 glazed door in the south wall beside the kitchen; a 1.40 window further along lights the sofa.</li>
-        <li><b>The kitchen</b> stands against the bedroom wall, 3.20 of counter with the fridge at the hall end. The table sits by the stair opening, the sofa faces the glass.</li>
-        <li><b>The bedroom</b> is 3.30 × 3.20 in the south-west corner with a 1.40 window to the yard: a 1.60 × 2.00 bed with its head to the hill wall, 0.70 past its foot to a 0.60 wardrobe. Its west wall and the toilet's are against the hill.</li>
-        <li><b>The stair up</b> stacks on the garage flight: same 17 risers, foot at x 10.34 in the north-east corner, top at x 5.7 again. It climbs inside the tall room along its north wall and arrives on the first floor's landing at the back. It is entered from the side, so treads 1 and 2 stay open to the room and the balustrade starts at riser 3.</li>
-        <li><b>The first floor keeps the back 3.70 m</b> (x 3–6.7): 3.40 × 6.40 clear, 21.8 m², a landing, a bedroom and a bathroom, with a gallery rail on its edge over the living room. If that is too little, a gallery out to x 7.9 with the kitchen under it wins 8 m² back.</li>
+        <li><b>The kitchen</b> stands against the bedroom wall, 3.20 of counter with the fridge at the hall end. The table sits by the garage opening, the sofa faces the glass, an armchair in the nook.</li>
+        <li><b>The bedroom</b> is 3.20 × 3.20 in the south-west corner with a 1.40 window to the yard: a 1.60 × 2.00 bed with its head to the stair wall, and the closet under the stair instead of a wardrobe. Its west side and the toilet's are the stair; the back wall beyond it is against the hill.</li>
+        <li><b>The first floor keeps the back 4.70 m</b> (x 2–6.7): 4.40 × 6.40 clear less the stairwell, 24.9 m², with a gallery rail on its edge over the living room and the stair arriving in its south-west corner.</li>
       </ul>
     </section>
 
     <section class="sheet wide" id="sheet-section">
-      <h2>Where the garage stair lands: section along the flights, looking south</h2>
-      <p class="lead">Cut 0.8 m from the north wall, through both flights. Garage floor −2.90, ground floor 0.00, first floor 2.90, eaves 5.60, ridge 9.10. The roof is cut where it is 6.40 up; the ridge is beyond.</p>
-      <div style="overflow-x: auto;"><svg id="section" role="img" aria-label="Section along the stairs"></svg></div>
+      <h2>Where the garage stair lands: section along it, looking south</h2>
+      <p class="lead">Cut 0.8 m from the north wall, through the garage flight. Garage floor −2.90, ground floor 0.00, first floor 2.90, eaves 5.60, ridge 9.10. The roof is cut where it is 6.40 up; the ridge is beyond, and so is the stair up, seen rising along the back wall.</p>
+      <div style="overflow-x: auto;"><svg id="section" role="img" aria-label="Section along the garage stair"></svg></div>
       <ul>
-        <li><b>The top riser is the garage's back wall line</b>, x 5.7: the 17th step up lands on the ground floor over the garage's west wall, facing west into the hill side of the house with 2.40 m of floor ahead before the back wall. That is the landing, 2.40 × 1.20, in the floor's north-west corner.</li>
-        <li><b>The opening</b> runs from the 5th riser to the top, 3.48 × 1.20 along the north wall. The ground floor's deck stays over treads 1 to 4: 1.52 × 1.20 in the north-east corner, which is exactly the foot the next flight needs. So the stair to the first floor stacks on this one and arrives at the same spot one storey up; the first floor's deck ends at x 6.7, so its opening is the last metre, x 5.7–6.7, and the rest of the flight climbs in the open.</li>
-        <li><b>Headroom is 2.00</b> over the 4th tread under each deck, the minimum. Starting the opening one riser earlier would give 0.17 more and leave a 1.23 foot.</li>
+        <li><b>The top riser is the garage's back wall line</b>, x 5.7: the 17th step up lands on the ground floor over the garage's west wall, facing west with 2.30 m of landing before the stair wall and 3.40 before the back wall. That is the hall, in the floor's north-west corner, and the stair up leaves it at its far end, turning south.</li>
+        <li><b>The opening</b> runs from the 5th riser to the top, 3.48 × 1.20 along the north wall, in the ground floor's deck only: the first floor's deck is whole above it, 2.70 over the landing. The deck stays over treads 1 to 4, which is the nook by the glass.</li>
+        <li><b>Headroom is 2.00</b> over the 4th tread, the minimum. Starting the opening one riser earlier would give 0.17 more and leave a 1.23 nook.</li>
         <li><b>The door between garage and house</b> belongs at the foot of the garage flight, on the 1.36 landing inside the garage door, swinging onto that landing; a door at the top would open onto the stair.</li>
-        <li><b>What this does to the plan:</b> the whole north strip from x 5.7 to the east wall is stairs, so the hall, the toilet and the bedroom door gather at the back, and the front belongs to the living room — which, with the first floor ending at x 6.7, is open to the roof.</li>
+        <li><b>The stair up</b> mirrors this one: the same 17 risers on 0.27 treads, 4.32 of run, climbing south along the back wall from z 1.4 to z 5.72, through an opening in the first floor's deck from its 5th riser (z 2.48) with the same 2.00 over its 4th tread.</li>
       </ul>
     </section>
 
     <section class="sheet" id="sheet-elevation">
       <h2>East face, from the valley: the pentagon</h2>
-      <p class="lead">Looking west at the glass, north to the right as in the plan. The garage door under the balcony, the balcony at the living room's floor, the glass from there to the ridge.</p>
+      <p class="lead">Looking west at the glass, north to the right as in the plan. The garage door under the balcony, the balcony at the living room's floor, the glass from there to the ridge — and only the living room behind it.</p>
       <svg id="elevation" role="img" aria-label="East elevation with the glass gable"></svg>
       <ul>
         <li><b>One pentagon of glass</b>, 6.40 wide between the north and south walls, 5.90 at the walls, 9.10 at the apex: about 47 m² of glazing, split by mullions every 1.60 and transoms at the first floor's level and the eaves line.</li>
-        <li><b>Seen through it:</b> the stair climbing the north wall, the first floor's edge 3.70 back with its rail, and the roof's underside.</li>
+        <li><b>Seen through it:</b> the first floor's edge 4.70 back with its rail, the kitchen, and the rail of the garage opening at the nook.</li>
         <li><b>The balcony door</b> is at the south end of the glass, 1.00 × 2.30, where the balcony and the yard meet at the house corner.</li>
       </ul>
     </section>
@@ -174,14 +175,15 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
       <table class="rooms">
         <thead><tr><th>Room</th><th>Clear</th><th>m²</th><th>Light and doors</th></tr></thead>
         <tbody>
-          <tr><td>Living room with kitchen</td><td>4.00 × 5.20</td><td>20.8</td><td>open to the roof, 5.90 to 9.10; the glass pentagon east with a 1.00 door to the balcony; yard door 0.90 and window 1.40 south; open to the hall</td></tr>
-          <tr><td>Bedroom</td><td>3.30 × 3.20</td><td>10.6</td><td>window 1.40 to the yard; door 0.90 from the lobby</td></tr>
-          <tr><td>Hall: landing and lobby</td><td>2.40 × 1.20 + 2.10 × 1.90</td><td>6.9</td><td>the garage flight lands in it; borrows light from the living room</td></tr>
-          <tr><td>Toilet</td><td>1.20 × 1.80</td><td>2.2</td><td>door 0.80 from the lobby; no window, mechanical vent</td></tr>
-          <tr><td>Stair opening</td><td>3.48 × 1.20</td><td>4.2</td><td>the garage flight below, the flight up above</td></tr>
-          <tr><td>Stair foot, on the deck</td><td>1.52 × 1.20</td><td>1.8</td><td>treads 1 to 4 of the flight up</td></tr>
-          <tr><td>Partitions</td><td></td><td>1.0</td><td></td></tr>
-          <tr class="sum"><td>Inside the outer walls</td><td>7.40 × 6.40</td><td>47.4</td><td></td></tr>
+          <tr><td>Living room with kitchen</td><td>4.00 × 5.20 + 1.52 × 1.20</td><td>22.6</td><td>open to the roof, 5.90 to 9.10; the glass pentagon east with a 1.00 door to the balcony; yard door 0.90 and window 1.40 south; open to the hall</td></tr>
+          <tr><td>Bedroom</td><td>3.20 × 3.20</td><td>10.2</td><td>window 1.40 to the yard; door 0.90 from the lobby</td></tr>
+          <tr><td>Closet under the stair</td><td>1.00 × 3.20</td><td>3.2</td><td>from the bedroom; 1.2 high at its north end, 2.7 under the top landing</td></tr>
+          <tr><td>Hall: landing, stair foot and lobby</td><td>2.30 × 1.20 + 1.10 × 1.10 + 2.00 × 1.90</td><td>7.8</td><td>the garage flight lands in it, the stair up leaves it; borrows light from the living room</td></tr>
+          <tr><td>Toilet</td><td>1.20 × 1.80</td><td>2.2</td><td>door 0.80 from the lobby; no window, mechanical vent; beside the stair</td></tr>
+          <tr><td>Stair up, its lower half</td><td>1.00 × 2.10</td><td>2.1</td><td>treads 1 to 8; nothing fits under them</td></tr>
+          <tr><td>Garage opening</td><td>3.48 × 1.20</td><td>4.2</td><td>the garage flight below, railed</td></tr>
+          <tr><td>Partitions</td><td></td><td>1.5</td><td></td></tr>
+          <tr class="sum"><td>Inside the outer walls</td><td>8.40 × 6.40</td><td>53.8</td><td></td></tr>
         </tbody>
       </table>
     </section>
@@ -190,14 +192,13 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
   <div class="open">
     <h2>Still open</h2>
     <ul>
-      <li>The first floor: only the back 3.70 m is left under a tall living room — a landing, one bedroom and a bathroom (21.8 m² clear). A gallery out to x 7.9, with the kitchen in the low part under it, would win 8 m² back; the attic over it is another room if the roof is kept at 45°.</li>
+      <li>The first floor: 4.40 × 6.40 clear behind the tall room, less the stairwell, 24.9 m² — the stair arrives in its south-west corner, so the bathroom goes over the toilet beside it and the rest is bedroom; the attic over it is another room if the roof is kept at 45°.</li>
+      <li>The back wall now stands a metre deeper in the hill (about +1.9 of ground against it), and the yard's west edge followed it to x 2: more retaining wall and more cut, for 6.4 m² a floor.</li>
       <li>The roof pitch: 45° drawn, which puts the apex at 9.10. At 35° it is 8.05 and the glass loses a metre.</li>
       <li>47 m² of east glass: heat in winter and sun in summer want a plan — triple glazing, and shading or a deep roof overhang at the gable.</li>
-      <li>The yard door: a plain door in the south wall by the kitchen, as drawn, or in the glass beside the balcony door.</li>
       <li>The door at the foot of the garage flight: self-closing, fire-rated where the rules ask.</li>
       <li>A north window: the wall is 1 m from the boundary; the rules decide.</li>
-      <li>The west wall stands against the hill (about +1.5 there), so the bedroom's and the toilet's back walls are retaining walls and need tanking.</li>
-      <li>Whether the outer walls sit inside the 8 × 7 (drawn) or outside it: outside would give 8.00 × 7.00 clear and push the east glass onto the balcony's first 0.30.</li>
+      <li>Whether the outer walls sit inside the 9 × 7 (drawn) or outside it: outside would give 9.00 × 7.00 clear and push the east glass onto the balcony's first 0.30.</li>
     </ul>
   </div>
 </div>
@@ -223,7 +224,8 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     return { hatch: `url(#hatch-${id})`, earth: `url(#earth-${id})` };
   };
   const fmt = (n) => n.toFixed(2);
-  const RISE = 2.9 / 17, TREAD = 0.29, FOOT = 10.34;
+  const RISE = 2.9 / 17, TREAD = 0.29, FOOT = 10.34;           // the garage flight
+  const UP_T = 0.27, UP_FOOT = 1.4, UP_TOP = UP_FOOT + 16 * UP_T; // the stair up, along the back wall
   const EAVES = 5.6, RIDGE = 9.1;
   const roofAt = (z) => RIDGE - Math.abs(z - 3.5); // the roof's underside across the house, 45°
 
@@ -232,7 +234,7 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
      right), so the two studies lie over each other. */
   function plan(svg) {
     const S = 58, M = 34, ML = 40;
-    const Z1 = 8.0, Z0 = -1.7, XT = 2.4, XB = 14.0;
+    const Z1 = 8.0, Z0 = -1.7, XT = 1.0, XB = 14.0;
     const X = (z) => ML + (Z1 - z) * S;
     const Y = (x) => M + (x - XT) * S;
     const W = ML + (Z1 - Z0) * S + 36, Hh = M * 2 + (XB - XT) * S;
@@ -270,37 +272,44 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     const FUR = { fill: 'none', stroke: 'var(--furniture)', 'stroke-width': 1 };
 
     /* ── the site around the floor ── */
-    rect(XT, 3, Z0, Z1, { fill: pat.earth });
-    text(2.7, 3.2, 'the hill, about +1.5 at the back wall', { class: 'mu', 'font-size': 10 });
-    rect(3, 11, 7, Z1, { fill: 'var(--yard)' });
+    rect(XT, 2, Z0, Z1, { fill: pat.earth });
+    text(1.25, 4.6, 'the hill, about +1.9 at the back wall now', { class: 'mu', 'font-size': 10 });
+    rect(2, 11, 7, Z1, { fill: 'var(--yard)' });
     vtext(9.3, 7.5, 'yard, level 0', { class: 'st', 'font-size': 11 });
     rect(11, 13, 0, 7, { fill: 'var(--hill)' });
     line(13, 0, 13, 7, { stroke: 'var(--muted)', 'stroke-width': 1.2, 'stroke-dasharray': '2 3' });
     text(12.05, 2.2, 'balcony over the garage, level 0, 2.00 deep, its rail at the edge', { class: 'mu', 'font-size': 10 });
     text(13.12, 2.6, 'apron 2.90 below, the garage door under the balcony', { class: 'mu', 'font-size': 9 });
-    line(3, -1, 13, -1, { stroke: 'var(--accent)', 'stroke-width': 1, 'stroke-dasharray': '7 4' });
+    line(2, -1, 13, -1, { stroke: 'var(--accent)', 'stroke-width': 1, 'stroke-dasharray': '7 4' });
     vtext(9.0, -1.25, 'neighbour’s boundary, 1.00 off the wall', { class: 'ac', 'font-size': 10 });
 
     /* ── the floor and its rooms ── */
-    rect(3, 11, 0, 7, { fill: 'var(--sheet)' });
-    poly([[3.3, 0.3], [5.7, 0.3], [5.7, 1.5], [6.7, 1.5], [6.7, 3.4], [4.6, 3.4], [4.6, 1.5], [3.3, 1.5]], { fill: 'var(--room-hall)' });
-    rect(3.3, 4.5, 1.6, 3.4, { fill: 'var(--room-wc)' });
-    rect(3.3, 6.6, 3.5, 6.7, { fill: 'var(--room-bed)' });
-    rect(6.7, 10.7, 1.5, 6.7, { fill: 'var(--room-living)' });
+    rect(2, 11, 0, 7, { fill: 'var(--sheet)' });
+    poly([[2.3, 0.3], [5.7, 0.3], [5.7, 1.5], [6.7, 1.5], [6.7, 3.4], [4.7, 3.4], [4.7, 1.5], [3.4, 1.5], [3.4, UP_FOOT], [2.3, UP_FOOT]], { fill: 'var(--room-hall)' });
+    rect(3.4, 4.6, 1.6, 3.4, { fill: 'var(--room-wc)' });
+    rect(3.4, 6.6, 3.5, 6.7, { fill: 'var(--room-bed)' });
+    rect(2.3, 3.3, 3.5, 6.7, { fill: 'var(--room-closet)' });
+    poly([[6.7, 1.5], [9.18, 1.5], [9.18, 0.3], [10.7, 0.3], [10.7, 6.7], [6.7, 6.7]], { fill: 'var(--room-living)' });
 
-    /* ── the stairs: the opening, the garage flight seen through it, the
-       flight up cut 1 m above the floor ── */
+    /* ── the garage opening, the flight seen through it, its rails ── */
     rect(5.7, 9.18, 0.3, 1.5, { fill: 'none', stroke: 'var(--stair)', 'stroke-width': 1, 'stroke-dasharray': '4 3' });
     for (let i = 5; i <= 16; i++) line(FOOT - (i - 1) * TREAD, 0.3, FOOT - (i - 1) * TREAD, 1.3, { stroke: 'var(--stair)', 'stroke-width': 0.6, 'stroke-opacity': 0.55 });
-    for (let i = 0; i <= 4; i++) line(FOOT - i * TREAD, 0.3, FOOT - i * TREAD, 1.3, { stroke: 'var(--stair)', 'stroke-width': i === 4 ? 1 : 1.3 });
-    path([[9.1, 0.25], [8.95, 0.55], [9.05, 0.8], [8.95, 1.05], [9.1, 1.35]], { fill: 'none', stroke: 'var(--stair)', 'stroke-width': 1.2 });
-    arrow(10.55, 0.8, 9.35, 0.8, { stroke: 'var(--stair)' });
-    text(10.0, 0.8, 'up 17', { class: 'st halo', 'font-size': 10 });
-    arrow(6.0, 1.2, 8.8, 1.2, { stroke: 'var(--stair)', 'stroke-opacity': 0.7 });
-    vtext(7.4, 0.65, 'opening 3.48 × 1.20 · down 17 to the garage', { class: 'st halo', 'font-size': 9 });
-    /* the balustrade on the opening's edge, from riser 3 to the top */
-    rect(5.7, 9.76, 1.45, 1.5, { fill: 'var(--stair)' });
-    for (let x = 5.85; x < 9.76; x += 0.78) rect(x - 0.035, x + 0.035, 1.42, 1.53, { fill: 'var(--stair)' });
+    arrow(6.0, 1.0, 8.8, 1.0, { stroke: 'var(--stair)', 'stroke-opacity': 0.7 });
+    vtext(7.4, 0.6, 'opening 3.48 × 1.20 · down 17 to the garage', { class: 'st halo', 'font-size': 9 });
+    rect(5.7, 9.18, 1.45, 1.5, { fill: 'var(--stair)' });
+    rect(9.18, 9.23, 0.3, 1.5, { fill: 'var(--stair)' });
+    for (let x = 5.85; x < 9.18; x += 0.78) rect(x - 0.035, x + 0.035, 1.42, 1.53, { fill: 'var(--stair)' });
+    text(9.95, 0.9, 'nook', { class: 'st halo', 'font-size': 9 });
+
+    /* ── the stair up, along the back wall: treads 1 to 5 below the cut,
+       the rest dashed over the closet ── */
+    rect(2.3, 3.3, UP_FOOT, UP_TOP, { fill: 'var(--stair-soft)', 'fill-opacity': 0.5 });
+    for (let i = 0; i <= 5; i++) line(2.3, UP_FOOT + i * UP_T, 3.3, UP_FOOT + i * UP_T, { stroke: 'var(--stair)', 'stroke-width': i === 5 ? 1 : 1.3 });
+    for (let i = 6; i <= 16; i++) line(2.3, UP_FOOT + i * UP_T, 3.3, UP_FOOT + i * UP_T, { stroke: 'var(--stair)', 'stroke-width': 0.7, 'stroke-dasharray': '2 2', 'stroke-opacity': 0.7 });
+    path([[2.25, 2.85], [2.55, 2.75], [2.8, 2.85], [3.05, 2.75], [3.35, 2.85]], { fill: 'none', stroke: 'var(--stair)', 'stroke-width': 1.2 });
+    arrow(2.8, 0.75, 2.8, 2.5, { stroke: 'var(--stair)' });
+    text(2.8, 1.05, 'up 17', { class: 'st halo', 'font-size': 10 });
+    text(2.8, 5.1, 'closet under the stair, 1.00 × 3.20, from the bedroom', { class: 'mu halo', 'font-size': 8 });
 
     /* ── the first floor's edge above, on the bedroom wall's line ── */
     line(6.7, 1.5, 6.7, 6.7, { stroke: 'var(--stair)', 'stroke-width': 1.2, 'stroke-dasharray': '6 3' });
@@ -308,9 +317,9 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
 
     /* ── outer walls, 0.30, hatched; the windows and the yard door cut into them; the east wall is glass ── */
     const wall = (x0, x1, z0, z1) => rect(x0, x1, z0, z1, { fill: pat.hatch, stroke: 'var(--wall)', 'stroke-width': 0.8 });
-    wall(3, 11, 0, 0.3);
-    wall(3, 3.3, 0.3, 6.7);
-    wall(3, 11, 6.7, 7);
+    wall(2, 11, 0, 0.3);
+    wall(2, 2.3, 0.3, 6.7);
+    wall(2, 11, 6.7, 7);
     const window = (x0, x1, z0, z1) => {
       rect(x0, x1, z0, z1, { fill: 'var(--sheet)' });
       line(x0, (z0 + z1) / 2 - 0.04, x1, (z0 + z1) / 2 - 0.04, { stroke: 'var(--glass)', 'stroke-width': 1.4 });
@@ -328,9 +337,10 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     text(11.6, 6.0, 'door 1.00', { class: 'ac halo', 'font-size': 9 });
 
     /* ── partitions, 0.10, and the doors in them; the yard door in the south wall ── */
-    wall(3.3, 4.5, 1.5, 1.6);
-    wall(4.5, 4.6, 1.5, 3.4);
-    wall(3.3, 6.7, 3.4, 3.5);
+    wall(3.3, 3.4, UP_FOOT, 6.7);
+    wall(3.4, 4.6, 1.5, 1.6);
+    wall(4.6, 4.7, 1.5, 3.4);
+    wall(3.4, 6.7, 3.4, 3.5);
     wall(6.6, 6.7, 3.5, 6.7);
     /* a door: the opening cleared, the leaf open at 90°, its swing.
        Hinge at (hx, hz); closed, the leaf lies along (ux, uz) in the
@@ -341,10 +351,12 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
       path(pts, { fill: 'none', stroke: 'var(--accent)', 'stroke-width': 0.8, 'stroke-dasharray': '3 3' });
       line(hx, hz, hx + w * ox, hz + w * oz, { stroke: 'var(--accent)', 'stroke-width': 2 });
     };
-    rect(4.5, 4.6, 2.1, 2.9, { fill: 'var(--sheet)' });
-    swing(4.55, 2.9, 0, -1, -1, 0, 0.8); // into the toilet, west
-    rect(4.7, 5.6, 3.4, 3.5, { fill: 'var(--sheet)' });
-    swing(4.7, 3.45, 1, 0, 0, 1, 0.9); // into the bedroom, south
+    rect(4.6, 4.7, 2.1, 2.9, { fill: 'var(--sheet)' });
+    swing(4.65, 2.9, 0, -1, -1, 0, 0.8); // into the toilet, west
+    rect(4.8, 5.7, 3.4, 3.5, { fill: 'var(--sheet)' });
+    swing(4.8, 3.45, 1, 0, 0, 1, 0.9); // into the bedroom, south
+    rect(3.3, 3.4, 5.5, 6.4, { fill: 'var(--sheet)' });
+    swing(3.35, 6.4, 0, -1, -1, 0, 0.9); // into the closet, west
     rect(7.5, 8.4, 6.7, 7, { fill: 'var(--sheet)' });
     swing(8.4, 6.85, -1, 0, 0, -1, 0.9); // into the living room, north
     text(7.95, 7.3, 'yard door 0.90', { class: 'ac halo', 'font-size': 9 });
@@ -353,10 +365,9 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     text(6.95, 2.45, 'open', { class: 'ac', 'font-size': 9 });
 
     /* ── furniture, to show the fit ── */
-    rect(3.3, 5.3, 4.5, 6.1, { ...FUR, rx: 3 }); line(3.55, 4.5, 3.55, 6.1, FUR); text(5.05, 5.3, 'bed 1.60 × 2.00', { class: 'mu', 'font-size': 9 });
-    rect(6.0, 6.6, 4.5, 6.1, FUR); text(6.3, 5.3, 'wardrobe', { class: 'mu', 'font-size': 8, transform: `rotate(-90 ${X(5.3)} ${Y(6.3)})` });
-    rect(3.7, 4.1, 2.75, 3.4, { ...FUR, rx: 6 }); circle(3.9, 3.0, 0.18, FUR);
-    rect(3.3, 3.65, 1.65, 2.1, { ...FUR, rx: 2 });
+    rect(3.4, 5.4, 4.5, 6.1, { ...FUR, rx: 3 }); line(3.65, 4.5, 3.65, 6.1, FUR); text(5.15, 5.3, 'bed 1.60 × 2.00', { class: 'mu', 'font-size': 9 });
+    rect(3.8, 4.2, 2.75, 3.4, { ...FUR, rx: 6 }); circle(4.0, 3.0, 0.18, FUR);
+    rect(3.4, 3.75, 1.65, 2.1, { ...FUR, rx: 2 });
     rect(6.7, 7.3, 3.5, 6.7, FUR);
     rect(6.72, 7.28, 3.52, 4.1, { ...FUR, 'stroke-dasharray': '2 2' }); text(7.0, 3.8, 'fridge', { class: 'mu', 'font-size': 7 });
     rect(6.82, 7.18, 4.4, 5.0, { ...FUR, rx: 3 }); circle(7.0, 4.7, 0.05, FUR); // sink
@@ -366,25 +377,27 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     for (const [x, z] of [[7.75, 1.65], [8.45, 1.65], [7.75, 3.05], [8.45, 3.05]]) rect(x, x + 0.4, z - 0.2, z + 0.2, { ...FUR, rx: 2 });
     rect(8.2, 9.1, 3.7, 5.7, { ...FUR, rx: 4 }); line(8.4, 3.7, 8.4, 5.7, FUR); text(8.65, 4.7, 'sofa', { class: 'mu', 'font-size': 8, transform: `rotate(-90 ${X(4.7)} ${Y(8.65)})` });
     rect(9.4, 10.0, 4.2, 5.2, { ...FUR, rx: 2 });
+    rect(9.7, 10.5, 0.45, 1.25, { ...FUR, rx: 4 }); line(9.9, 0.45, 9.9, 1.25, FUR);
 
     /* ── room labels ── */
     const label = (x, z, a, b) => { text(x, z, a, { class: 'halo', 'font-size': 11, 'font-weight': 600 }); text(x + 0.3, z, b, { class: 'mu halo', 'font-size': 10 }); };
-    label(3.65, 0.9, 'hall', 'landing');
-    text(4.25, 0.9, '2.40 × 1.20', { class: 'mu halo', 'font-size': 9 });
-    text(4.75, 2.45, 'you arrive here', { class: 'halo', 'font-size': 9 });
-    text(4.98, 2.45, 'facing the hill', { class: 'halo', 'font-size': 9 });
+    label(3.85, 0.9, 'hall', 'landing');
+    text(4.45, 0.9, '2.30 × 1.20', { class: 'mu halo', 'font-size': 9 });
+    text(4.85, 2.45, 'you arrive here', { class: 'halo', 'font-size': 9 });
+    text(5.08, 2.45, 'facing the hill', { class: 'halo', 'font-size': 9 });
     arrow(5.9, 0.6, 5.1, 0.6, {});
-    text(5.3, 2.45, 'door 0.80 · door 0.90', { class: 'ac halo', 'font-size': 8 });
-    label(5.6, 2.45, 'lobby', '2.10 × 1.90');
-    label(3.95, 2.45, 'WC', '2.2 m²');
-    label(4.05, 5.3, 'bedroom', '10.6 m² · 3.30 × 3.20');
-    label(9.6, 3.2, 'living room with kitchen', '20.8 m² · open to the roof');
+    text(5.4, 2.45, 'door 0.80 · door 0.90', { class: 'ac halo', 'font-size': 8 });
+    label(5.7, 2.45, 'lobby', '2.00 × 1.90');
+    label(4.05, 2.45, 'WC', '2.2 m²');
+    label(4.15, 5.3, 'bedroom', '10.2 m² · 3.20 × 3.20');
+    label(9.6, 3.2, 'living room with kitchen', '22.6 m² · open to the roof');
     text(10.2, 3.2, '5.90 at the walls, 9.10 under the ridge', { class: 'mu halo', 'font-size': 9 });
 
     /* ── dimensions ── */
-    dimX(-0.35, 3, 3.3, '', 0); dimX(-0.35, 3.3, 4.5, '1.20', -8); dimX(-0.35, 4.5, 4.6, '', 0); dimX(-0.35, 4.6, 6.7, '2.10', -8); dimX(-0.35, 6.7, 10.7, '4.00', -8); dimX(-0.35, 10.7, 11, '', 0);
-    dimX(-0.7, 3.3, 5.7, 'landing 2.40', -8); dimX(-0.7, 5.7, 9.18, 'opening 3.48', -8); dimX(-0.7, 9.18, 10.34, '1.16', -8); dimX(-0.7, 10.34, 10.7, '', 0);
-    dimX(7.6, 3, 11, 'house 8.00', -8);
+    dimX(-0.35, 2, 2.3, '', 0); dimX(-0.35, 2.3, 3.3, '1.00', -8); dimX(-0.35, 3.3, 3.4, '', 0); dimX(-0.35, 3.4, 4.6, '1.20', -8); dimX(-0.35, 4.6, 4.7, '', 0); dimX(-0.35, 4.7, 6.7, '2.00', -8); dimX(-0.35, 6.7, 10.7, '4.00', -8); dimX(-0.35, 10.7, 11, '', 0);
+    dimX(-0.7, 2.3, 3.3, 'stair', -8); dimX(-0.7, 3.4, 5.7, 'landing 2.30', -8); dimX(-0.7, 5.7, 9.18, 'opening 3.48', -8); dimX(-0.7, 9.18, 10.7, 'nook 1.52', -8);
+    dimX(7.6, 2, 11, 'house 9.00', -8);
+    dimZ(1.75, 0.3, UP_FOOT, 'foot 1.10', -6, 9); dimZ(1.75, UP_FOOT, UP_TOP, 'flight 4.32 · 16 × 0.27', -6, 9); dimZ(1.75, UP_TOP, 6.7, '0.98', -6, 9);
     dimZ(13.3, 0, 0.3, '', 0); dimZ(13.3, 0.3, 1.5, '1.20', 12); dimZ(13.3, 1.5, 3.4, '1.90', 12); dimZ(13.3, 3.4, 3.5, '', 0); dimZ(13.3, 3.5, 6.7, '3.20', 12); dimZ(13.3, 6.7, 7, '', 0);
     dimZ(13.65, 0, 7, 'house 7.00', 12);
 
@@ -394,12 +407,13 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     svg.appendChild(el('text', { x: nx - 32, y: ny + 4, 'font-size': 11, 'text-anchor': 'end' }, 'N'));
   }
 
-  /* ── the section ── along the stairs at z 0.8, looking south: x to the
-     right (the garage door on the right), y up. The roof is cut where
-     the north slope is 6.40 up; the ridge and the far slope are beyond. */
+  /* ── the section ── along the garage flight at z 0.8, looking south:
+     x to the right (the garage door on the right), y up. The roof is cut
+     where the north slope is 6.40 up; the ridge, the far slope and the
+     stair up along the back wall are beyond. */
   function section(svg) {
     const S = 50, M = 30;
-    const X0 = 2.4, X1 = 13.6, Y0 = -3.8, Y1 = 9.9;
+    const X0 = 1.4, X1 = 13.6, Y0 = -3.8, Y1 = 9.9;
     const X = (x) => M + (x - X0) * S;
     const Y = (y) => M + (Y1 - y) * S;
     const W = M * 2 + (X1 - X0) * S, Hh = M * 2 + (Y1 - Y0) * S;
@@ -426,11 +440,11 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
 
     /* the ground: the hill kept at the back and under the back of the
        ground floor, the garage pit, the apron; the hill as found dashed */
-    poly([[X0, Y0], [X0, 1.5], [3, 1.5], [3, -0.2], [5.4, -0.2], [5.4, -3.1], [12, -3.1], [X1, -3.1], [X1, Y0]], { fill: pat.earth, stroke: 'var(--wall)', 'stroke-width': 1 });
-    path([[X0, 1.6], [3, 1.5]], { fill: 'none', stroke: 'var(--wall)', 'stroke-width': 1, 'stroke-dasharray': '6 4' });
+    poly([[X0, Y0], [X0, 1.9], [2, 1.9], [2, -0.2], [5.4, -0.2], [5.4, -3.1], [12, -3.1], [X1, -3.1], [X1, Y0]], { fill: pat.earth, stroke: 'var(--wall)', 'stroke-width': 1 });
+    path([[X0, 2.0], [2, 1.9]], { fill: 'none', stroke: 'var(--wall)', 'stroke-width': 1, 'stroke-dasharray': '6 4' });
     path([[11, -0.7], [X1, -2.8]], { fill: 'none', stroke: 'var(--wall)', 'stroke-width': 1, 'stroke-dasharray': '6 4' });
     text(13.2, -2.3, 'hill as found', { class: 'mu', 'font-size': 10, transform: `rotate(39 ${X(13.2)} ${Y(-2.3)})` });
-    text(4.2, -1.6, 'hill kept', { class: 'mu', 'font-size': 10 });
+    text(3.7, -1.6, 'hill kept', { class: 'mu', 'font-size': 10 });
     /* garage: slab, west wall, front wall with the door and its lintel, the apron */
     rect(5.7, 12, -3.1, -2.9, { fill: 'var(--wall)' });
     rect(5.4, 5.7, -3.1, -0.2, { fill: pat.hatch, stroke: 'var(--wall)', 'stroke-width': 0.8 });
@@ -441,20 +455,23 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     rect(12, X1, -3.1, -2.9, { fill: 'var(--accent-soft)', stroke: 'var(--accent)', 'stroke-width': 1 });
     text(12.4, -2.6, 'apron', { class: 'ac', 'font-size': 10 });
     /* decks: the ground floor's with its opening, the balcony; the first
-       floor's, which ends at x 6.7 — at the cut its last metre is the
-       stair's opening, the deck beyond it dashed */
-    rect(3, 5.7, -0.2, 0, { fill: 'var(--wall)' });
+       floor's, whole over the hall, ending at x 6.7 */
+    rect(2, 5.7, -0.2, 0, { fill: 'var(--wall)' });
     rect(9.18, 11, -0.2, 0, { fill: 'var(--wall)' });
     rect(11, 13, -0.2, 0, { fill: 'var(--wall)', 'fill-opacity': 0.75 });
-    rect(3, 5.7, 2.7, 2.9, { fill: 'var(--wall)' });
-    rect(5.7, 6.7, 2.7, 2.9, { fill: 'none', stroke: 'var(--wall)', 'stroke-width': 1, 'stroke-dasharray': '4 3' });
+    rect(2, 6.7, 2.7, 2.9, { fill: 'var(--wall)' });
     rect(6.6, 6.7, 2.9, 3.9, { fill: 'none', stroke: 'var(--stair)', 'stroke-width': 1, 'stroke-dasharray': '4 3' });
+    /* the stair up, beyond the cut: its treads rising away along the back wall, its wall */
+    for (let i = 1; i <= 16; i++) line(2.3, i * RISE, 3.3, i * RISE, { stroke: 'var(--stair)', 'stroke-width': 0.8, 'stroke-opacity': 0.75 });
+    rect(2.3, 3.3, 0, 2.9, { fill: 'none', stroke: 'var(--stair)', 'stroke-width': 0.8, 'stroke-dasharray': '3 3' });
+    rect(3.3, 3.4, 0, 2.7, { fill: 'none', stroke: 'var(--wall)', 'stroke-width': 0.8, 'stroke-dasharray': '3 3' });
+    text(2.8, 1.45, 'stair up, beyond: south along the back wall', { class: 'st halo', 'font-size': 9, transform: `rotate(-90 ${X(2.8)} ${Y(1.45)})` });
     /* the roof at the cut, and the ridge beyond */
-    rect(2.6, 11.4, CUT, CUT + 0.2, { fill: 'var(--roof)' });
-    line(2.6, RIDGE, 11.4, RIDGE, { stroke: 'var(--roof)', 'stroke-width': 1.2, 'stroke-dasharray': '7 4' });
-    rect(3, 3.3, CUT, RIDGE, { fill: 'none', stroke: 'var(--wall)', 'stroke-width': 0.8, 'stroke-dasharray': '4 3' });
+    rect(1.6, 11.4, CUT, CUT + 0.2, { fill: 'var(--roof)' });
+    line(1.6, RIDGE, 11.4, RIDGE, { stroke: 'var(--roof)', 'stroke-width': 1.2, 'stroke-dasharray': '7 4' });
+    rect(2, 2.3, CUT, RIDGE, { fill: 'none', stroke: 'var(--wall)', 'stroke-width': 0.8, 'stroke-dasharray': '4 3' });
     /* walls: west against the hill, up to the roof; the east is glass */
-    rect(3, 3.3, 0, CUT, { fill: pat.hatch, stroke: 'var(--wall)', 'stroke-width': 0.8 });
+    rect(2, 2.3, 0, CUT, { fill: pat.hatch, stroke: 'var(--wall)', 'stroke-width': 0.8 });
     rect(10.7, 11, 0, CUT, { fill: 'var(--glass-soft)', stroke: 'var(--glass)', 'stroke-width': 1.2 });
     rect(10.7, 11, CUT, RIDGE, { fill: 'none', stroke: 'var(--glass)', 'stroke-width': 1, 'stroke-dasharray': '4 3' });
     /* levels */
@@ -465,33 +482,21 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     level(EAVES, 'eaves 5.60');
     level(RIDGE, 'ridge 9.10, beyond');
     text(12.0, 0.5, 'balcony', { class: 'mu', 'font-size': 10 });
-    /* the flights: one shape each, 17 risers, the same run */
-    const flight = (y0, attrs) => {
-      const pts = [[FOOT, y0]];
-      for (let i = 0; i < 17; i++) { const [x, y] = pts[pts.length - 1]; pts.push([x, y + RISE]); if (i < 16) pts.push([x - TREAD, y + RISE]); }
-      return poly([...pts, [5.7, y0]], attrs);
-    };
-    flight(-2.9, { fill: 'var(--stair-soft)', stroke: 'var(--stair)', 'stroke-width': 1.4, 'stroke-linejoin': 'round' });
-    flight(0, { fill: 'var(--stair-soft)', stroke: 'var(--stair)', 'stroke-width': 1.4, 'stroke-linejoin': 'round' });
+    /* the garage flight: one shape, 17 risers; the landing inside the door */
+    { const pts = [[FOOT, -2.9]]; for (let i = 0; i < 17; i++) { const [x, y] = pts[pts.length - 1]; pts.push([x, y + RISE]); if (i < 16) pts.push([x - TREAD, y + RISE]); } poly([...pts, [5.7, -2.9]], { fill: 'var(--stair-soft)', stroke: 'var(--stair)', 'stroke-width': 1.4, 'stroke-linejoin': 'round' }); }
     rect(FOOT, 11.7, -2.9, -2.75, { fill: 'var(--stair-soft)', stroke: 'var(--stair)', 'stroke-width': 1 });
     text(11.02, -2.45, 'landing 1.36', { class: 'st', 'font-size': 9 });
     /* storage under the garage flight */
     poly([[5.7, -2.9], [5.7, -0.37], [7.95, -1.69], [7.95, -2.9]], { fill: 'var(--accent-soft)' });
     text(6.8, -2.0, 'storage under', { class: 'ac', 'font-size': 10 });
-    /* the balustrades: stepped panels on the opening's edge, from riser 3 */
-    const bal = (y0, color) => {
-      const pts = [];
-      for (const [a, b] of [[3, 4], [5, 8], [9, 12], [13, 16]]) pts.push([FOOT - (a - 1) * TREAD, y0 + b * RISE + 1], [FOOT - b * TREAD, y0 + b * RISE + 1]);
-      path(pts, { fill: 'none', stroke: color, 'stroke-width': 1.2, 'stroke-dasharray': '5 3' });
-      line(FOOT - 2 * TREAD, y0, FOOT - 2 * TREAD, y0 + 4 * RISE + 1, { stroke: color, 'stroke-width': 1, 'stroke-dasharray': '5 3' });
-    };
-    bal(0, 'var(--stair)');
+    /* the garage flight's railing, treads 1 to 16 from the garage floor; the opening's rail above */
     { const pts = []; for (const [a, b] of [[1, 4], [5, 8], [9, 12], [13, 16]]) pts.push([FOOT - (a - 1) * TREAD, -2.9 + b * RISE + 1], [FOOT - b * TREAD, -2.9 + b * RISE + 1]); path(pts, { fill: 'none', stroke: 'var(--stair)', 'stroke-width': 1.2, 'stroke-dasharray': '5 3' }); }
-    /* openings and headroom */
+    rect(5.7, 9.18, 0, 1.0, { fill: 'none', stroke: 'var(--stair)', 'stroke-width': 1, 'stroke-dasharray': '5 3' });
+    line(9.18, 0, 9.18, 1.0, { stroke: 'var(--stair)', 'stroke-width': 1.4 });
+    text(7.44, 1.25, 'rail 1.00 on the opening’s edge, beyond', { class: 'st', 'font-size': 9 });
+    /* opening and headroom */
     line(5.7, 0.05, 9.18, 0.05, { stroke: 'var(--stair)', 'stroke-width': 1, 'stroke-dasharray': '4 3' });
     text(7.44, 0.37, 'opening 3.48', { class: 'st', 'font-size': 10 });
-    line(5.7, 2.95, 6.7, 2.95, { stroke: 'var(--stair)', 'stroke-width': 1, 'stroke-dasharray': '4 3' });
-    text(6.75, 3.6, 'opening 1.00', { class: 'st halo', 'font-size': 9 });
     const hx = FOOT - 3.5 * TREAD;
     for (const [lo, hi] of [[-2.9 + 4 * RISE, -0.2]]) {
       line(hx, lo, hx, hi, { stroke: 'var(--stair)', 'stroke-width': 1 });
@@ -499,27 +504,26 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
       line(hx - 0.1, hi, hx + 0.1, hi, { stroke: 'var(--stair)', 'stroke-width': 1 });
       text(hx + 0.27, (lo + hi) / 2 + 0.2, `headroom ${fmt(hi - lo)}`, { class: 'st', 'font-size': 10, transform: `rotate(-90 ${X(hx + 0.27)} ${Y((lo + hi) / 2 + 0.2)})` });
     }
-    /* the hall where the flights land, and the words */
-    text(4.5, 1.6, 'hall · landing', { class: 'mu' });
-    text(4.5, 1.2, '2.40 to the hill wall', { class: 'mu', 'font-size': 10 });
-    text(4.85, 4.6, 'first floor, the back 3.70', { class: 'mu' });
-    text(4.85, 4.2, 'same corner, one storey up', { class: 'mu', 'font-size': 10 });
+    /* the hall where the flight lands, and the words */
+    text(4.75, 2.1, 'hall · landing 2.30', { class: 'mu' });
+    text(4.75, 1.75, 'the stair up at its far end', { class: 'mu', 'font-size': 10 });
+    text(5.0, 4.6, 'first floor, the back 4.70', { class: 'mu' });
+    text(5.0, 4.2, 'the stair arrives in its south-west corner', { class: 'mu', 'font-size': 10 });
     text(8.8, 5.2, 'living room, open to the roof', { class: 'mu' });
     text(8.8, 4.8, '5.90 at the walls, 9.10 under the ridge', { class: 'mu', 'font-size': 10 });
     text(7.0, CUT + 0.5, 'roof at the cut, 6.40 up · 45°', { class: 'mu', 'font-size': 10 });
     text(9.1, -1.4, 'garage', { class: 'mu' });
-    text(9.95, 2.3, 'living room', { class: 'mu', 'font-size': 10 });
+    text(9.95, 2.3, 'living room, the nook', { class: 'mu', 'font-size': 10 });
     text(5.95, 0.35, 'x 5.70', { class: 'st halo', 'font-size': 10, 'font-weight': 600 });
-    text(5.95, 3.25, 'x 5.70', { class: 'st halo', 'font-size': 10, 'font-weight': 600 });
     text(10.95, -0.5, 'door here, at the foot', { class: 'ac halo', 'font-size': 9 });
     line(FOOT, -2.9, FOOT, -0.85, { stroke: 'var(--accent)', 'stroke-width': 2 });
     text(11.3, 4.5, 'panorama glass, floor to ridge', { class: 'gl', 'font-size': 10, transform: `rotate(-90 ${X(11.3)} ${Y(4.5)})` });
     /* dims */
     vdim(13.0, -2.9, 0, 'rise 2.90 · 17 × 17.1');
-    vdim(13.0, 0, 2.9, 'rise 2.90 · 17 × 17.1');
     hdim(-3.5, 5.7, FOOT, 'run 4.64 · 16 × 0.29');
     hdim(-3.5, FOOT, 11.7, 'landing 1.36');
-    hdim(-3.5, 3.3, 5.7, 'hall 2.40');
+    hdim(-3.5, 3.4, 5.7, 'landing 2.30');
+    hdim(-3.5, 2.3, 3.4, 'stair 1.00');
     hdim(-3.5, 11.7, 12, '', 0);
   }
 
@@ -537,7 +541,6 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     const line = (z0, y0, z1, y1, attrs) => svg.appendChild(el('line', { x1: X(z0), y1: Y(y0), x2: X(z1), y2: Y(y1), ...attrs }));
     const text = (z, y, s, attrs = {}) => svg.appendChild(el('text', { x: X(z), y: Y(y), 'font-size': 11, 'text-anchor': 'middle', 'dominant-baseline': 'middle', ...attrs }, s));
     const poly = (pts, attrs) => svg.appendChild(el('path', { d: pts.map(([z, y], i) => `${i ? 'L' : 'M'} ${X(z)} ${Y(y)}`).join(' ') + ' Z', ...attrs }));
-    const path = (pts, attrs) => svg.appendChild(el('path', { d: pts.map(([z, y], i) => `${i ? 'L' : 'M'} ${X(z)} ${Y(y)}`).join(' '), ...attrs }));
     const vdim = (z, y0, y1, label, dx = -0.35) => {
       line(z, y0, z, y1, { stroke: 'var(--muted)', 'stroke-width': 1 });
       line(z - 0.1, y0, z + 0.1, y0, { stroke: 'var(--muted)', 'stroke-width': 1 });
@@ -573,15 +576,14 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     text(4.1, -1.8, 'garage door 5.00 × 2.25', { class: 'ac halo', 'font-size': 10 });
     text(4.1, -2.65, 'apron −2.90', { class: 'ac halo', 'font-size': 9 });
     /* seen through the glass: the first floor's edge and its rail, the
-       stair up the north wall, the kitchen counter */
+       kitchen counter, the rail of the garage opening at the nook */
     rect(0.3, 6.7, 2.7, 2.9, { fill: 'var(--wall)', 'fill-opacity': 0.45 });
     line(1.5, 3.9, 6.7, 3.9, { stroke: 'var(--stair)', 'stroke-width': 1, 'stroke-opacity': 0.7 });
     for (let z = 1.5; z <= 6.7; z += 1.3) line(z, 2.9, z, 3.9, { stroke: 'var(--stair)', 'stroke-width': 0.8, 'stroke-opacity': 0.7 });
-    for (let i = 1; i <= 16; i++) line(0.3, i * RISE, 1.3, i * RISE, { stroke: 'var(--stair)', 'stroke-width': 0.7, 'stroke-opacity': 0.8 });
-    { const pts = [[1.475, 0]]; for (const [a, b] of [[3, 4], [5, 8], [9, 12], [13, 16]]) { void a; pts.push([1.475, b * RISE + 1]); } path(pts, { fill: 'none', stroke: 'var(--stair)', 'stroke-width': 1.4, 'stroke-opacity': 0.8 }); }
+    rect(0.3, 1.45, 0, 1.0, { fill: 'none', stroke: 'var(--stair)', 'stroke-width': 0.9, 'stroke-opacity': 0.8 });
     rect(3.5, 6.7, 0, 0.9, { fill: 'none', stroke: 'var(--furniture)', 'stroke-width': 0.8, 'stroke-opacity': 0.8 });
-    text(0.8, 2.0, 'stair, seen through the glass', { class: 'st halo', 'font-size': 8, transform: `rotate(-90 ${X(0.8)} ${Y(2.0)})` });
-    text(4.6, 3.35, 'first floor edge, 3.70 back, with its rail', { class: 'mu halo', 'font-size': 9 });
+    text(0.9, 1.3, 'rail at the nook', { class: 'st halo', 'font-size': 8 });
+    text(4.6, 3.35, 'first floor edge, 4.70 back, with its rail', { class: 'mu halo', 'font-size': 9 });
     text(5.1, 0.45, 'kitchen', { class: 'mu halo', 'font-size': 8 });
     /* the glass pentagon, its mullions and transoms, the balcony door */
     poly([[0.3, 0], [6.7, 0], [6.7, roofAt(6.7)], [3.5, RIDGE], [0.3, roofAt(0.3)]], { fill: 'var(--glass-soft)', stroke: 'var(--glass)', 'stroke-width': 1.6, 'stroke-linejoin': 'round' });
@@ -601,7 +603,7 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     line(0, 1.0, 7, 1.0, { stroke: 'var(--muted)', 'stroke-width': 1.2 });
     line(0, 0.1, 7, 0.1, { stroke: 'var(--muted)', 'stroke-width': 0.8 });
     for (let z = 0.1; z <= 7; z += 0.86) line(z, 0, z, 1.0, { stroke: 'var(--muted)', 'stroke-width': 0.8 });
-    text(0.9, 0.55, 'balcony rail', { class: 'mu halo', 'font-size': 8 });
+    text(2.6, 0.55, 'balcony rail', { class: 'mu halo', 'font-size': 8 });
     poly([[-0.4, roofAt(-0.4)], [3.5, RIDGE], [7.4, roofAt(7.4)], [7.4, roofAt(7.4) + 0.2], [3.5, RIDGE + 0.2], [-0.4, roofAt(-0.4) + 0.2]], { fill: 'var(--roof)' });
     text(1.1, 8.0, 'roof 45°', { class: 'mu', 'font-size': 10 });
     /* levels and dims */
