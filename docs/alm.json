@@ -1,0 +1,25 @@
+{
+  "$schema": "https://github.com/xhevops-homelab/homelab-setup/tree/main/alm/templates/alm.json",
+  "name": "claude-default",
+  "repo": "https://github.com/xhevops-claude/claude-default",
+  "profile": "standard",
+  "status": "live",
+  "idPrefix": null,
+  "started": "2026-05-05",
+  "tags": ["static", "github-pages", "arcade", "apps", "games", "planner"],
+  "ledger": {
+    "roadmap": "docs/roadmap.md",
+    "features": "docs/features.md",
+    "decisions": "docs/decisions.md",
+    "changelog": null,
+    "notes": null,
+    "tasks": "docs/tasks/"
+  },
+  "references": [
+    { "project": "AchiTech", "url": "https://github.com/xhevops-claude/AchiTech", "why": "Unity rebuild of apps/planner; this repo is its spec and fixture" },
+    { "project": "homelab-setup", "url": "https://github.com/xhevops-homelab/homelab-setup/blob/main/PROJECTS.md", "why": "index and ALM process" }
+  ],
+  "overrides": [
+    "direct pushes allowed (standard) → PRs only with green CI → repo rule in CLAUDE.md, predates the ALM profile"
+  ]
+}
