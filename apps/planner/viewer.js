@@ -103,6 +103,15 @@ async function boot() {
   /* `color` overrides the group's; `opacity` is the glass's — 0.05 for
      a wireframe's whisper of a face, more for a building whose walls
      should read as walls. */
+  /* A face is painted darker than its lines, not paler: alpha blending
+     can only ever move a pixel towards the face's own colour, so a
+     hundred faces deep (a house of rooms, walls and treads seen through
+     each other) the stack settles on that colour and no further. Pale
+     faces settled on white, and the Facade layer was blinding; half
+     the tint keeps the stack a muted shade the lines still read over.
+     The selected object alone goes light, so it stands out of it. */
+  const FACE_SHADE = 0.5;
+  const faceColor = (col, on = false) => (on ? col.clone().lerp(WHITE, 0.2) : col.clone().multiplyScalar(FACE_SHADE));
   /* `parent` and `short` are for the dock's tree: a floor lists under
      its building by its short name. `parent` is one `{ id, name }` or a
      path of them, top down — a wall under its floor's "Walls" under the
@@ -116,14 +125,14 @@ async function boot() {
     const o = {
       id, name, group, node, col, dotPos: [], opacity, parent, short: short || name, hidden: false, props: [],
       glass: new THREE.MeshBasicMaterial({
-        color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity,
+        color: faceColor(col), transparent: true, opacity,
         side: THREE.DoubleSide, depthWrite: false,
       }),
       /* An interior floor: the slab between two storeys, seen through
          the facade and the storeys above, so far fainter than a wall —
          two of them stacked still read lighter than the roof. */
       glassIn: new THREE.MeshBasicMaterial({
-        color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity: opacity * 0.4,
+        color: faceColor(col), transparent: true, opacity: opacity * 0.4,
         side: THREE.DoubleSide, depthWrite: false,
       }),
       line: (opacity) => new THREE.LineBasicMaterial({ color: col, transparent: true, opacity }),
@@ -1600,7 +1609,7 @@ async function boot() {
         n.material.opacity = on ? 1 : (layer === 'edges' ? 0.95 : 0.6);
       } else if (layer === 'faces' || layer === 'interior') {
         const base = layer === 'faces' ? o.opacity : o.opacity * 0.4;
-        n.material.color.copy(o.col.clone().lerp(WHITE, on ? 0.2 : 0.35));
+        n.material.color.copy(faceColor(o.col, on));
         n.material.opacity = on ? Math.max(0.22, base + 0.15) : base;
       } else if (layer === 'dots') {
         n.material.color.copy(on ? WHITE : o.col.clone().lerp(WHITE, 0.55));
