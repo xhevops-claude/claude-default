@@ -473,3 +473,14 @@ their projects. Changing the hash reloads the page (one scene at a time).
 - Prefer adding `comingSoon: true` (with no `url`) over removing entries — the shell renders these as locked tiles with a shake animation on tap.
 - Tile colors come from CSS variables `--tile-<slug>` defined in `themes.css` — these are constant across themes so each card keeps its identity. Add a `--tile-<newslug>` when adding a tile.
 - Don't introduce a build tool, package, or framework just to add one feature. The "no build step" property is what makes preview deploys, deep links, and the static CDN model work.
+
+## ALM
+
+Profile: **standard** — rules: https://github.com/xhevops-homelab/homelab-setup/tree/main/alm (read `alm/README.md`, then `alm/profiles/standard.md`, then the overrides below, then `docs/`).
+
+Ledger: `docs/roadmap.md` · `docs/features.md` · `docs/decisions.md` · tasks in `docs/tasks/<codename>/` · manifest `docs/alm.json`.
+
+Overrides (rule → replacement → why):
+- direct pushes allowed → **PRs only, green CI, human merge** → the repo rule above protects the live site.
+
+Working rule: a task or decision given in a session is written into the ledger and committed in that same session.
