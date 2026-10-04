@@ -2,9 +2,11 @@
   "$schema": "https://github.com/xhevops-homelab/homelab-setup/tree/main/alm/templates/alm.json",
   "name": "claude-default",
   "repo": "https://github.com/xhevops-claude/claude-default",
+  "type": "project",
   "profile": "standard",
   "status": "live",
   "idPrefix": null,
+  "from": null,
   "started": "2026-05-05",
   "tags": ["static", "github-pages", "arcade", "apps", "games", "planner"],
   "ledger": {
