@@ -171,6 +171,12 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
     </section>
 
     <section class="sheet wide">
+      <h2>Everything that fits, 1 to 8 vehicles</h2>
+      <p class="lead">Every combination of quads, Polos, Passats and the biggest car that packs across the 5.35 m, laid out like a flex row: each car is a column, quads go two to a column along the 6.00 m, and the free width is split into equal gaps of at least 0.10 m. All tail in, driver's doors to the right; the order in a row is biggest to smallest from the left wall, and a mirrored order fits the same. Sorted by how many vehicles, then by width taken. Beyond 8 nothing fits.</p>
+      <div class="cases" id="packs"></div>
+    </section>
+
+    <section class="sheet wide">
       <h2>How far a door needs</h2>
       <p class="lead">A driver's door is about 1.00 m long. What it can open to depends on what stands beside the car; the four marks are the German bands, the orange one is this garage with two Passats driver to driver.</p>
       <div class="doors">
@@ -250,6 +256,7 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
     const rect = (x0, x1, z0, z1, attrs) => svg.appendChild(el('rect', { x: X(z1), y: Y(x0), width: (z1 - z0) * S, height: (x1 - x0) * S, ...attrs }));
     const text = (x, z, s, attrs = {}) => svg.appendChild(el('text', { x: X(z), y: Y(x), 'font-size': 11, 'text-anchor': 'middle', 'dominant-baseline': 'middle', ...attrs }, s));
     const line = (x0, z0, x1, z1, attrs) => svg.appendChild(el('line', { x1: X(z0), y1: Y(x0), x2: X(z1), y2: Y(x1), ...attrs }));
+    const poly = (pts, attrs) => svg.appendChild(el('path', { d: pts.map(([x, z], i) => `${i ? 'L' : 'M'} ${X(z)} ${Y(x)}`).join(' ') + ' Z', ...attrs }));
     const dimZ = (x, z0, z1, label, dy = -6) => {
       line(x, z0, x, z1, { stroke: 'var(--muted)', 'stroke-width': 1 });
       line(x - 0.12, z0, x + 0.12, z0, { stroke: 'var(--muted)', 'stroke-width': 1 });
@@ -331,11 +338,17 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
     // a parking slot, lightest shade
     const slot = (z0, z1) => rect(6, 12, z0, z1, { fill: 'var(--car-slot)', stroke: 'var(--car)', 'stroke-width': 0.8, 'stroke-dasharray': '2 4' });
     // the quad, 1.20 × 2.10
-    const quad = (x0, z0, facing = null) => {
-      rect(x0, x0 + 2.1, z0, z0 + 1.2, { fill: 'var(--car-soft)', stroke: 'var(--car)', 'stroke-width': 1.2, rx: 4 });
-      if (facing) line(facing === 'in' ? x0 + 0.5 : x0 + 1.6, z0 + 0.15, facing === 'in' ? x0 + 0.5 : x0 + 1.6, z0 + 1.05, { stroke: 'var(--car)', 'stroke-width': 1 });
-      text(x0 + 1.05, z0 + 0.6, facing ? (facing === 'in' ? 'quad, nose in' : 'quad, tail in') : 'quad', { class: 'ca', 'font-size': facing ? 8 : 10 });
-      text(x0 + 1.05, z0 + 0.6, '1.20 × 2.10', { class: 'ca', 'font-size': 8, dy: 11 });
+    const quad = (x0, z0, facing = 'in') => {
+      const L = 2.1, Wd = 1.2;
+      const at = (a) => (facing === 'in' ? x0 + a : x0 + L - a); // a: distance back from the nose
+      const span = (a, b) => [Math.min(at(a), at(b)), Math.max(at(a), at(b))];
+      // wheels at the corners, the body over the middle, the seat, the handlebars near the nose
+      for (const [a, b] of [[0.15, 0.6], [L - 0.6, L - 0.15]]) for (const zz of [z0, z0 + Wd - 0.28]) { const [u, v] = span(a, b); rect(u, v, zz, zz + 0.28, { fill: 'var(--car)', 'fill-opacity': 0.55, rx: 3 }); }
+      rect(x0 + 0.1, x0 + L - 0.1, z0 + 0.3, z0 + Wd - 0.3, { fill: 'var(--car-soft)', stroke: 'var(--car)', 'stroke-width': 1.1, rx: 5 });
+      { const [u, v] = span(1.0, 1.75); rect(u, v, z0 + 0.42, z0 + Wd - 0.42, { fill: 'var(--car)', 'fill-opacity': 0.25, rx: 3 }); }
+      line(at(0.55), z0 + 0.15, at(0.55), z0 + Wd - 0.15, { stroke: 'var(--car)', 'stroke-width': 1.6 });
+      text(x0 + L / 2, z0 + Wd / 2, 'quad', { class: 'ca', 'font-size': 8, dy: -2 });
+      text(x0 + L / 2, z0 + Wd / 2, facing === 'in' ? 'nose in' : 'tail in', { class: 'ca', 'font-size': 7, dy: 7 });
       if (compact) {
         dimX(z0 + 0.25, 6, x0, '', 0); text((6 + x0) / 2, z0 + 0.6, fmt(x0 - 6), { class: 'mu', 'font-size': 9 });
         dimX(z0 + 0.25, x0 + 2.1, 12, '', 0); text((x0 + 2.1 + 12) / 2, z0 + 0.6, fmt(12 - x0 - 2.1), { class: 'mu', 'font-size': 9 });
@@ -349,11 +362,20 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
         const mx0 = facing === 'in' ? 6.27 : x0 + l - 5.33;
         rect(mx0, mx0 + 5.33, maxZ0, maxZ0 + 2.2, { fill: 'var(--car-max)', stroke: 'var(--car)', 'stroke-width': 0.8, 'stroke-dasharray': '4 3', rx: 8 });
       }
-      rect(x0, x0 + l, z0, z0 + w, { fill: 'var(--car-soft)', stroke: 'var(--car)', 'stroke-width': 1.2, rx: 6 });
       const nose = facing === 'in' ? x0 : x0 + l; // 'in' = nose toward the back wall
       const sgn = facing === 'in' ? 1 : -1;
-      line(nose + sgn * 1.1, z0 + 0.15, nose + sgn * 1.1, z0 + w - 0.15, { stroke: 'var(--car)', 'stroke-width': 1 });
-      line(nose + sgn * (l - 1.2), z0 + 0.15, nose + sgn * (l - 1.2), z0 + w - 0.15, { stroke: 'var(--car)', 'stroke-width': 1 });
+      const at = (a) => nose + sgn * a; // a: distance back from the nose
+      const span = (a, b) => [Math.min(at(a), at(b)), Math.max(at(a), at(b))];
+      // wheels first, under the body, 0.6 long, tucked just inside the sides
+      for (const [a, b] of [[0.7, 1.3], [l - 1.4, l - 0.8]]) for (const zz of [z0 + 0.03, z0 + w - 0.25]) { const [u, v] = span(a, b); rect(u, v, zz, zz + 0.22, { fill: 'var(--car)', 'fill-opacity': 0.55, rx: 3 }); }
+      // the body: an outline whose nose is 0.3 narrower each side than the tail
+      poly([[at(0), z0 + 0.3], [at(0.35), z0 + 0.06], [at(l - 0.35), z0], [at(l), z0 + 0.12], [at(l), z0 + w - 0.12], [at(l - 0.35), z0 + w], [at(0.35), z0 + w - 0.06], [at(0), z0 + w - 0.3]], { fill: 'var(--car-soft)', stroke: 'var(--car)', 'stroke-width': 1.2, 'stroke-linejoin': 'round' });
+      // glass: windscreen, roof, rear window
+      poly([[at(1.0), z0 + 0.18], [at(1.0), z0 + w - 0.18], [at(1.65), z0 + w - 0.32], [at(1.65), z0 + 0.32]], { fill: 'var(--car)', 'fill-opacity': 0.3 });
+      { const [u, v] = span(1.65, l - 1.25); rect(u, v, z0 + 0.3, z0 + w - 0.3, { fill: 'var(--car)', 'fill-opacity': 0.12 }); }
+      poly([[at(l - 1.25), z0 + 0.32], [at(l - 1.25), z0 + w - 0.32], [at(l - 0.75), z0 + w - 0.2], [at(l - 0.75), z0 + 0.2]], { fill: 'var(--car)', 'fill-opacity': 0.3 });
+      // mirrors at the A-pillars
+      for (const zz of [z0 - 0.1, z0 + w]) { const [u, v] = span(1.15, 1.35); rect(u, v, zz, zz + 0.1, { fill: 'var(--car)' }); }
       const hx = nose + sgn * 1.2, hz = driverSide === 'n' ? z0 : z0 + w, out = driverSide === 'n' ? 1 : -1;
       const r = 1.0 * S, cx = X(hz), cy = Y(hx);
       if (blocked) {
@@ -493,6 +515,64 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
       },
     });
   }
+  /* ── everything that fits ── every multiset of the four vehicles that
+     packs across the 5.35 m like a flex row: cars one column each, quads
+     two to a column along the 6.00 m, the free width split into equal
+     gaps of at least 0.10. All tail in, driver's doors to the north. */
+  const PACKS = [];
+  for (let b = 0; b <= 2; b++) for (let sN = 0; sN <= 3; sN++) for (let pN = 0; pN <= 3; pN++) for (let q = 0; q <= 8; q++) {
+    const n = b + sN + pN + q;
+    if (!n) continue;
+    const qc = Math.ceil(q / 2), cols = b + sN + pN + qc;
+    const wsum = b * BIG.w + sN * PASSAT.w + pN * POLO.w + qc * QUAD.w;
+    const gap = (PARK - wsum) / (cols + 1);
+    if (gap < 0.1 - 1e-9) continue;
+    PACKS.push({ n, b, s: sN, p: pN, q, qc, cols, wsum, gap });
+  }
+  PACKS.sort((a, c) => a.n - c.n || a.wsum - c.wsum);
+  const plural = (k, name) => (k ? `${k} ${name}${k > 1 ? (name === 'biggest' ? '' : 's') : ''}` : '');
+  function packCard(k) {
+    const parts = [plural(k.b, 'biggest'), plural(k.s, 'Passat'), plural(k.p, 'Polo'), plural(k.q, 'quad')].filter(Boolean).join(' + ');
+    const cars = k.b + k.s + k.p;
+    const deg = Math.round(Math.asin(Math.min(1, k.gap)) * 180 / Math.PI);
+    const doors = !cars ? 'Quads only, nothing to open.'
+      : k.gap >= 1.0 ? "Every driver's door opens fully."
+      : k.gap >= 0.5 ? `Every driver's door opens to ${deg}°.`
+      : `Driver's doors are blocked at ${fmt(k.gap)}: each driver gets out before the next car parks.`;
+    return {
+      title: `${k.n} vehicle${k.n > 1 ? 's' : ''}: ${parts}`,
+      lead: `${fmt(k.wsum)} of ${fmt(PARK)} taken across, ${k.cols + 1} gaps of ${fmt(k.gap)}. ${doors}`,
+      draw: (g) => {
+        let z = 6.7 - k.gap;
+        const col = (v) => { const z0 = z - v.w; g.car(x0Of(v), z0, 'out', 'n', { ...v, gap: k.gap, blocked: k.gap < 0.5 }); g.dimZ(4.45, z0 + v.w, z0 + v.w + k.gap, fmt(k.gap)); z = z0 - k.gap; };
+        for (let i = 0; i < k.b; i++) col(BIG);
+        for (let i = 0; i < k.s; i++) col(PASSAT);
+        for (let i = 0; i < k.p; i++) col(POLO);
+        let left = k.q;
+        for (let i = 0; i < k.qc; i++) {
+          const z0 = z - QUAD.w;
+          g.quad(6.2, z0); left--;
+          if (left > 0) { g.quad(9.47, z0); left--; }
+          g.dimZ(4.45, z0 + QUAD.w, z0 + QUAD.w + k.gap, fmt(k.gap));
+          z = z0 - k.gap;
+        }
+        g.dimZ(4.45, 1.35, 1.35 + k.gap, fmt(k.gap));
+      },
+    };
+  }
+  function packs(root) {
+    PACKS.forEach((k, i) => {
+      const c = packCard(k);
+      const card = document.createElement('section');
+      card.className = 'case';
+      const h = document.createElement('h3'); h.textContent = `${i + 1} · ${c.title}`;
+      const pp = document.createElement('p'); pp.className = 'lead'; pp.textContent = c.lead;
+      const svg = el('svg', { role: 'img', 'aria-label': `Packing ${i + 1}: ${c.title}` });
+      card.append(h, pp, svg);
+      root.appendChild(card);
+      c.draw(sheet(svg, `pk${i}`, { compact: true }));
+    });
+  }
   function matrix(root) {
     MATRIX.forEach((c, i) => {
       const card = document.createElement('section');
@@ -629,6 +709,7 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
   plan(document.getElementById('plan-gathering'), 'gathering');
   cases(document.getElementById('cases'));
   matrix(document.getElementById('matrix'));
+  packs(document.getElementById('packs'));
   section(document.getElementById('section'));
 })();
 </script>
