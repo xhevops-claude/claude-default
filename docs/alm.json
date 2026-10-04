@@ -5,7 +5,7 @@
   "type": "project",
   "profile": "standard",
   "status": "live",
-  "idPrefix": null,
+  "idPrefix": "CD",
   "from": null,
   "started": "2026-05-05",
   "tags": ["static", "github-pages", "arcade", "apps", "games", "planner"],

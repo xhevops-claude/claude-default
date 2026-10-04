@@ -2,9 +2,9 @@
 
 <!-- Task folder — rules: https://github.com/xhevops-homelab/homelab-setup/tree/main/alm#tasks-one-folder-each-with-a-codename -->
 
-| Codename | Title | Project | Tier | Status | Created | Done |
+| ID | Title | Project | Tier | Status | Created | Done |
 |---|---|---|---|---|---|---|
-| `spring-clean` | claude-default housekeeping | claude-default | T0 | backlog | 2026-10-04 | — |
+| CD-002 | claude-default housekeeping | claude-default | T0 | backlog | 2026-10-04 | — |
 
 ## Goal
 

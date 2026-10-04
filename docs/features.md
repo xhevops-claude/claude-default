@@ -2,7 +2,7 @@
 
 <!-- Profile: standard. Rules: https://github.com/xhevops-homelab/homelab-setup/tree/main/alm -->
 
-One row per tile in the shell (`app.js` registry). `exists` = live on Pages. Migration destination per tile is decided by its task from [`migration-map`](tasks/migration-map/).
+One row per tile in the shell (`app.js` registry). `exists` = live on Pages. Migration destination per tile is decided by its task from [CD-003](tasks/CD-003/).
 
 | Feature | State | Notes / spec |
 |---|---|---|

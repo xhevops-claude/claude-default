@@ -2,9 +2,9 @@
 
 <!-- Task folder — rules: https://github.com/xhevops-homelab/homelab-setup/tree/main/alm#tasks-one-folder-each-with-a-codename -->
 
-| Codename | Title | Project | Tier | Status | Created | Done |
+| ID | Title | Project | Tier | Status | Created | Done |
 |---|---|---|---|---|---|---|
-| `ledger-arcade` | Give claude-default an ALM ledger | claude-default | T0 | ready | 2026-10-04 | — |
+| CD-001 | Give claude-default an ALM ledger | claude-default | T0 | ready | 2026-10-04 | — |
 
 ## Goal
 
