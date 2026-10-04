@@ -160,13 +160,13 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
 
     <section class="sheet wide">
       <h2>Parking cases, least to most width taken</h2>
-      <p class="lead">Every way the garage gets used, sorted by the metres of the 5.35 m parking width the vehicles take, with what stays free across and along the 6.00 m. With two cars both go in tail first and the free width is shared between the two driver's doors; only when a door would get less than 0.50 m does the left car hug its neighbour and the right driver take the lot. </p>
+      <p class="lead">Every way the garage gets used, sorted by the metres of the 5.35 m parking width the vehicles take, with what stays free across and along the 6.00 m. With two cars both go in tail first and the free width is shared between the two driver's doors; only when a door would get less than 0.50 m does the left car hug its neighbour and the right driver take the lot. Along the length, each vehicle carries its own two figures: from its nose to the back wall, and from its tail to the door.</p>
       <div class="cases" id="cases"></div>
     </section>
 
     <section class="sheet wide">
       <h2>Second vehicle beside the Passat, 16 ways</h2>
-      <p class="lead">The everyday Passat stays on the left, backed in, 0.25 off its wall. The second vehicle changes on three axes: its size (quad, Polo, Passat, biggest), which way it faces (tail in or nose in), and where the free width goes (in the middle, or between it and the railing). Each card says which driver's doors can open; a door with less than 0.50 m is blocked, and that driver gets out before the other car parks.</p>
+      <p class="lead">The everyday Passat stays on the left, backed in, 0.25 off its wall. The second vehicle changes on three axes: its size (quad, Polo, Passat, biggest), which way it faces (tail in or nose in), and where the free width goes (in the middle, or between it and the railing). Each card says which driver's doors can open; a door with less than 0.50 m is blocked, and that driver gets out before the other car parks. Along the length, each vehicle carries its metres to the back wall and to the door.</p>
       <div class="cases" id="matrix"></div>
     </section>
 
@@ -336,6 +336,10 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
       if (facing) line(facing === 'in' ? x0 + 0.5 : x0 + 1.6, z0 + 0.15, facing === 'in' ? x0 + 0.5 : x0 + 1.6, z0 + 1.05, { stroke: 'var(--car)', 'stroke-width': 1 });
       text(x0 + 1.05, z0 + 0.6, facing ? (facing === 'in' ? 'quad, nose in' : 'quad, tail in') : 'quad', { class: 'ca', 'font-size': facing ? 8 : 10 });
       text(x0 + 1.05, z0 + 0.6, '1.20 × 2.10', { class: 'ca', 'font-size': 8, dy: 11 });
+      if (compact) {
+        dimX(z0 + 0.25, 6, x0, '', 0); text((6 + x0) / 2, z0 + 0.6, fmt(x0 - 6), { class: 'mu', 'font-size': 9 });
+        dimX(z0 + 0.25, x0 + 2.1, 12, '', 0); text((x0 + 2.1 + 12) / 2, z0 + 0.6, fmt(12 - x0 - 2.1), { class: 'mu', 'font-size': 9 });
+      }
     };
     /* A car: body `w` × `l`, a windscreen line and a rear line, the driver's door
        on `driverSide` ('n' or 's') swinging out — or marked blocked. `maxZ0`
@@ -370,6 +374,11 @@ svg .halo { paint-order: stroke; stroke: var(--sheet); stroke-width: 4px; stroke
         text(x0 + l / 2, z0 + w / 2, size.join(' '), { class: 'ca', 'font-size': 9, dy: 23 });
       }
       dimZ(x0 + l - 0.35, z0, z0 + w, `car ${fmt(w)}`, -6);
+      // on a case card, the metres left along: nose to the back wall, tail to the door
+      if (compact) {
+        dimX(z0 + 0.3, 6, x0, '', 0); text((6 + x0) / 2, z0 + w / 2, fmt(x0 - 6), { class: 'mu', 'font-size': 9 });
+        dimX(z0 + 0.3, x0 + l, 12, '', 0); text((x0 + l + 12) / 2, z0 + w / 2, fmt(12 - x0 - l), { class: 'mu', 'font-size': 9 });
+      }
       if (maxZ0 != null) dimZ((facing === 'in' ? 6.27 : x0 + l - 5.33) + 0.45, maxZ0, maxZ0 + 2.2, 'biggest 2.20', -6);
     };
     return { X, Y, rect, text, line, dimZ, dimX, slot, quad, car };
