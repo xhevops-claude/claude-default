@@ -58,6 +58,27 @@ export function deriveModel(PLAN) {
      with `extendFront` is pushed out of the downhill face by that much. */
   const VOLS = [];
   const SLABS = [];
+  /* A level may list `holes` in its slab — a stair's opening — each a
+     box in the house's frame. The slab is then the rectangles left
+     around them (the bands north and south of a hole, the pieces west
+     and east of it), so a flight can rise through the deck instead of
+     meeting it. */
+  const lessHoles = (box, holes) => {
+    let pieces = [{ x0: box.x0, x1: box.x1, z0: box.z0, z1: box.z1 }];
+    for (const h of holes) {
+      const next = [];
+      for (const p of pieces) {
+        if (h.x1 <= p.x0 || h.x0 >= p.x1 || h.z1 <= p.z0 || h.z0 >= p.z1) { next.push(p); continue; }
+        const x0 = Math.max(h.x0, p.x0), x1 = Math.min(h.x1, p.x1), z0 = Math.max(h.z0, p.z0), z1 = Math.min(h.z1, p.z1);
+        if (z0 > p.z0) next.push({ x0: p.x0, x1: p.x1, z0: p.z0, z1: z0 });
+        if (z1 < p.z1) next.push({ x0: p.x0, x1: p.x1, z0: z1, z1: p.z1 });
+        if (x0 > p.x0) next.push({ x0: p.x0, x1: x0, z0, z1 });
+        if (x1 < p.x1) next.push({ x0: x1, x1: p.x1, z0, z1 });
+      }
+      pieces = next;
+    }
+    return pieces;
+  };
   for (const l of PLAN.levels) {
     const out = l.extendFront || 0;
     const v = {
@@ -72,7 +93,10 @@ export function deriveModel(PLAN) {
       if (FRONT.sign > 0) v[hi] += out; else v[lo] -= out;
     }
     VOLS.push(v);
-    SLABS.push({ ...v, id: `${l.id}-slab`, name: `${l.name} slab`, slab: l.id, color: '#c9ced6', opacity: 0.3, parent: [{ id: l.id, name: l.name }], short: 'Slab', y0: l.elevation - SLAB, y1: l.elevation });
+    const slab = { ...v, id: `${l.id}-slab`, name: `${l.name} slab`, slab: l.id, color: '#c9ced6', opacity: 0.3, parent: [{ id: l.id, name: l.name }], short: 'Slab', y0: l.elevation - SLAB, y1: l.elevation };
+    const pieces = lessHoles(v, l.holes || []);
+    if (pieces.length === 1) SLABS.push({ ...slab, ...pieces[0] });
+    else pieces.forEach((p, i) => SLABS.push({ ...slab, ...p, id: `${slab.id}-${i + 1}`, short: `Slab ${i + 1}` }));
   }
   VOLS.push(...SLABS);
 
