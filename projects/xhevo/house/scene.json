@@ -1824,12 +1824,12 @@
    "short": "Partition 11",
    "house": true,
    "name": "Partition 11, 1.45 to the roof",
-   "x0": 3.3,
-   "x1": 3.4,
-   "z0": 4.8,
+   "x0": 3.15,
+   "x1": 3.25,
+   "z0": 4.4,
    "z1": 6.7,
    "y0": 1.45,
-   "y1": 4.04,
+   "y1": 4.32,
    "y1End": 2.71
   },
   {
@@ -1841,12 +1841,12 @@
    "short": "Partition 12",
    "house": true,
    "name": "Partition 12, 1.45 to the roof",
-   "x0": 3.3,
-   "x1": 3.4,
-   "z0": 4.7,
-   "z1": 4.8,
+   "x0": 3.15,
+   "x1": 3.3,
+   "z0": 4.4,
+   "z1": 4.5,
    "y0": 1.45,
-   "y1": 4.075
+   "y1": 4.285
   },
   {
    "id": "hl-part-13",
@@ -1857,12 +1857,12 @@
    "short": "Partition 13",
    "house": true,
    "name": "Partition 13, 1.45 to the roof",
-   "x0": 4,
+   "x0": 3.9,
    "x1": 4.8,
-   "z0": 4.7,
-   "z1": 4.8,
+   "z0": 4.4,
+   "z1": 4.5,
    "y0": 1.45,
-   "y1": 4.075
+   "y1": 4.285
   },
   {
    "id": "hl-furn-1",
@@ -1884,7 +1884,7 @@
    "y1": 2
   },
   {
-   "id": "hl-furn-2",
+   "id": "hl-soft-2",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -1892,15 +1892,15 @@
     { "id": "half", "name": "Bedrooms, half level" },
     { "id": "hl-ensuite", "name": "Ensuite, yard bedroom" }
    ],
-   "short": "wc",
+   "short": "shower",
    "house": true,
-   "name": "wc",
-   "x0": 4.15,
+   "name": "shower",
+   "x0": 3.25,
    "x1": 4.8,
-   "z0": 6.2,
-   "z1": 6.6,
+   "z0": 5.9,
+   "z1": 6.7,
    "y0": 1.45,
-   "y1": 1.87
+   "y1": 1.55
   },
   {
    "id": "hl-furn-3",
@@ -1916,13 +1916,13 @@
    "name": "basin",
    "x0": 4.35,
    "x1": 4.8,
-   "z0": 5.65,
-   "z1": 6.1,
+   "z0": 5.3,
+   "z1": 5.8,
    "y0": 1.45,
    "y1": 2.3
   },
   {
-   "id": "hl-soft-4",
+   "id": "hl-furn-4",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -1930,15 +1930,15 @@
     { "id": "half", "name": "Bedrooms, half level" },
     { "id": "hl-ensuite", "name": "Ensuite, yard bedroom" }
    ],
-   "short": "shower",
+   "short": "wc",
    "house": true,
-   "name": "shower",
-   "x0": 4,
-   "x1": 4.8,
-   "z0": 4.8,
-   "z1": 5.6,
+   "name": "wc",
+   "x0": 3.25,
+   "x1": 3.9,
+   "z0": 5.35,
+   "z1": 5.75,
    "y0": 1.45,
-   "y1": 1.55
+   "y1": 1.87
   },
   {
    "id": "hl-soft-5",

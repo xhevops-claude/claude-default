@@ -243,7 +243,7 @@ for (const e of G2) {
   } else if (t === 'furn' || t === 'soft') {
     const label = e[5] || t;
     const [y0, y1] = heightOf(label, t);
-    const room = x >= 3.63 ? (y >= 3.8 ? ['landing', 'Landing'] : y < 2.8 && x < 5.0 ? ['bath', 'Bathroom, shared'] : ['bed-north', 'Bedroom, north side']) : x < 2.2 && y >= 3.35 ? ['ensuite', 'Ensuite, yard bedroom'] : ['bed-yard', 'Bedroom, yard side'];
+    const room = x >= 3.63 ? (y >= 3.8 ? ['landing', 'Landing'] : y < 2.8 && x < 5.0 ? ['bath', 'Bathroom, shared'] : ['bed-north', 'Bedroom, north side']) : x < 2.5 && y >= 3.2 ? ['ensuite', 'Ensuite, yard bedroom'] : ['bed-yard', 'Bedroom, yard side'];
     const k = ++furn2;
     /* Nothing stands through the roof: a tall piece against a side wall is cut at the roof's underside there. */
     const under = Math.min(roofAt(7 - x), roofAt(7 - x - w));
