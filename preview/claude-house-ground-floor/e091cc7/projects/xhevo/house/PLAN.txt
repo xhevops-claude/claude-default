@@ -1,0 +1,62 @@
+XHEVO HOUSE — WORKING PLAN (text only; we commit when there is a decision)
+Metres. House frame: x along the house (hill at the top, glass at the bottom), z across (yard left, north right).
+Drawings: 0.25 m per character across, 0.5 m per row down. '=' glass or window, a gap in a wall is a door.
+
+GROUND FLOOR  (0.30 outer walls, 0.10 partitions; 8.40 x 6.40 clear = 53.8)
+    yard (S)                 north
+   2 +---------------------------+
+ 2.5 |+-----------+------+-+----+|
+   3 ||           |  WC  st|    ||
+ 3.5 ||           |  2.6 | | UP ||
+   4 ||  BEDROOM  +-  ---+-+    ||
+ 4.5 =| 3.30x2.90 |  HALL  +----+|
+   5 =|    9.6        5.8  |LAND||
+ 5.5 =+-----------+--------+----+|
+   6 ||  kitchen  |        |    ||
+ 6.5 |+-----------+        |    ||
+   7 ||                  +-+    ||
+ 7.5 ||      LIVING      | DOWN ||
+   8  |     5.00x5.20    TV|    ||
+ 8.5  |       26.0       | |    ||
+   9 ||   open to roof   +-+    ||
+ 9.5 =|                    +----+|
+  10 =|       sofa         free ||
+10.5 =+--------------------+----+|
+  11 +=     =====================+
+     ^ glass gable 6.40 wide, 3.61 at the walls, 5.85 at the apex
+
+  Hall        5.8   landing 1.30 x 1.10 where the garage flight arrives, the room south of it 1.80 x 1.80, a bay
+  Toilet      2.6   1.50 x 1.70 under the stair's west leg: ceiling 1.61 at its north wall rising to 2.68; door 0.80 from the hall
+  Store       0.5   1.00 x 0.50 under the winders, up to 1.5; a 0.50 hatch from the hall's bay
+  Bedroom     9.6   3.30 x 2.90; door 0.90 from the hall; window 1.40 to the yard
+                    minimum for a 2.00 x 1.80 bed: 2.40 x 2.60 (one side free, no wardrobe) ... 3.00 x 3.20 (both sides free, wardrobe)
+  Kitchen           2.90 along the bedroom wall + a 0.90 return on the south wall
+  Living     26.0   5.00 x 5.20, open to the roof: 3.40 at the walls, 5.85 under the ridge
+  Garage stair      closed in: 3.48 x 1.10 hole + 0.10 walls, lid at 2.90; arrives in the hall at x 5.7 facing the hill
+  Breast            2.20 x 0.50 in front of the closed stair, stone on a frame, up to the roof
+                    fire 1.00 x 0.50, opening 0.20-0.70 | mantel at 0.85, 0.35 deep | TV 75" at 1.15-2.10 (pull-down: 0.70-1.65 in summer)
+                    chimney 0.80 x 0.50 through the north slope to 6.65 (0.80 over the ridge) | sofa 2.7 m from the breast
+  Glass gable       6.40 wide, 3.61 at the walls, 5.85 at the apex (about 30 m2); balcony door 1.00 x 2.30 at its south end
+  Yard door   0.90  south wall, beside the kitchen | south window 1.40, the table under it
+  OPEN              the bathroom: there is no shower in the house yet
+
+FIRST FLOOR  (under the roof: 0.50 at the north and south walls, 2.95 under the ridge; 2.00 high over the middle 2.7 m, 1.50 over 4.1 m)
+    yard (S)                 north
+   2 +---------------------------+
+ 2.5 |+--------+--+-------------+|
+   3 ||        |  |    STAIR    ||
+ 3.5 || S BED  |  + ------------+|
+   4 ||3.3x2.1 |ld||            ||
+ 4.5 ||  6.9   +  +  NORTH BED  ||
+   5 |roof wdw |  || 2.20x3.30  ||
+ 5.5 ++---======--++====7.3=----++
+     the living room is below here, open to the roof; the bedrooms' windows (=) look into it and through the glass
+
+  North bedroom  7.3   2.20 x 3.30; bed under the north slope; window 1.60 onto the tall room; nothing to the neighbour (wall 1 m off the boundary)
+  South bedroom  6.9   3.30 x 2.10; bed under the south slope; window 1.20 onto the tall room; roof window 1.40 x 0.80 to the yard
+  Landing              0.77 deep at the stair's top, the two doors facing each other across it; cupboard 1.00 x 0.80 at its end
+  Stairwell            1.00 x 3.43 along the back wall
+
+ROOF          gable along the house, 35 deg, off the first floor with a 0.50 knee wall: eaves 3.40, ridge 5.85 over z 3.5, overhang 0.40
+STAIR UP      17 risers of 2.90/17 = 0.171 on 0.27 treads: 4 west along the north wall from x 4.4, 3 winders in the corner, 9 south along the back wall to z 3.73
+GARAGE FLIGHT 17 risers of 0.171 on 0.29 treads, from the garage floor (-2.90) up to x 5.7; headroom 2.02 under the deck over tread 4
