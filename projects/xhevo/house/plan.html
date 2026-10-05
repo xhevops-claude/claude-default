@@ -366,7 +366,7 @@ function drawSide() {
     txt('lbl', 8.6, 2.3, 'LIVING, open to the roof') + txt('dim', 8.6, 2.0, 'roof 2.50 at the wall, here 2.85, ridge 4.95') +
     txt('dim', 5.25, 0.25, 'landing') + txt('dim', 4.3, 0.85, 'flight up,') + txt('dim', 4.3, 0.6, 'end-on') + txt('dim', 7.4, 0.45, 'wedge lid, 2.02 over the flight') +
     txt('dim', 10.65, 1.4, 'fire 170') + txt('dim', 11.85, 2.2, 'glass', 'start') + txt('dim', 12.5, 3.13, 'roof to x 13') +
-    txt('dim', -0.9, 3.13, 'roof from x 0.6', 'start') + txt('dim', 1.4, 0.6, 'back wall at x 1, on the fill, in the hill', 'start');
+    txt('dim', -0.9, 3.13, 'roof from x 0.6', 'start') + txt('dim', 1.4, 0.6, 'back wall at x 1, on the fill', 'start');
   // dimension lines: house 11.00 outside, garage 6.00 clear, hole 3.48
   const dim = (x0, x1, z, label) => `<line class="dline" x1="${X(x0)}" y1="${Z(z)}" x2="${X(x1)}" y2="${Z(z)}"/><line class="dline" x1="${X(x0)}" y1="${Z(z - 0.08)}" x2="${X(x0)}" y2="${Z(z + 0.08)}"/><line class="dline" x1="${X(x1)}" y1="${Z(z - 0.08)}" x2="${X(x1)}" y2="${Z(z + 0.08)}"/>` + txt('dtext', (x0 + x1) / 2, z + 0.08, label);
   s += dim(1.0, 12.0, 3.4, '11.00 outside, x 1 to 12') + dim(5.7, 11.7, -3.25, '6.00 clear') + dim(5.7, 9.18, 2.6, 'hole 3.48') + dim(12.0, 13.0, 3.4, '1.00') + dim(1.3, 3.7, 1.6, '2.40, the north bedroom');
