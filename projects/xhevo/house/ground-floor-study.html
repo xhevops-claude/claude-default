@@ -137,7 +137,7 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
       <h2>Plan, 1 m above the floor</h2>
       <p class="lead">The hill is at the top, the valley and the balcony at the bottom, the yard to the left (south), the neighbour's boundary 1 m off the right (north) wall. Walls 0.30, partitions 0.10.</p>
       <div class="plan-wrap"><svg id="plan" role="img" aria-label="Ground floor plan"></svg></div>
-      <p class="key"><span class="sw" style="background: var(--room-hall)"></span>hall <span class="sw" style="background: var(--room-wc)"></span>toilet under the stair <span class="sw" style="background: var(--room-store)"></span>store under the winders <span class="sw" style="background: var(--room-bed)"></span>bedroom <span class="sw" style="background: var(--room-living)"></span>living room with kitchen, open to the roof <span class="sw" style="background: var(--glass-soft); border-color: var(--glass)"></span>glass <span class="sw" style="background: var(--stone)"></span>fireplace</p>
+      <p class="key"><span class="sw" style="background: var(--room-hall)"></span>hall <span class="sw" style="background: var(--room-wc)"></span>toilet under the stair <span class="sw" style="background: var(--room-store)"></span>store under the winders <span class="sw" style="background: var(--room-wc)"></span>bathroom <span class="sw" style="background: var(--room-bed)"></span>utility <span class="sw" style="background: var(--room-living)"></span>living room with kitchen, open to the roof <span class="sw" style="background: var(--glass-soft); border-color: var(--glass)"></span>glass <span class="sw" style="background: var(--stone)"></span>fireplace</p>
       <ul>
         <li><b>The living room has the metre.</b> It is the whole front from the bedroom wall to the glass, 5.00 × 5.20, and it is tall: the first floor stops at x 5.7, so from the kitchen to the glass the room rises past the first floor to the roof — 5.90 at the walls, 9.10 under the ridge. Its east wall is the panorama, and nothing else stands behind it: one pentagon of glass, 6.40 wide, from the floor to the roof, with a 1.00 door to the balcony at its south end.</li>
         <li><b>The fireplace</b> is turned 45° into the north-east corner, between the north wall and the glass: a right-triangle hearth with 1.42 legs, its 2.01 front facing the room diagonally, the 0.80 fire centred on it 0.35 off the floor and 0.50 deep, and a 0.70 × 0.70 chimney in the corner behind it, up through the north slope to 9.90. It covers the glass's first 1.42 at the floor and 0.70 above the ceiling line; its west leg meets the closed stair's east wall.</li>
@@ -241,12 +241,12 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
   const RISE = 2.9 / 17, TREAD = 0.29, FOOT = 10.34;           // the garage flight
   const T = 0.27, UFOOT = 4.4, WELLZ = 1.3, UTOP = WELLZ + 9 * T; // the stair up: four treads west, winders, nine treads south to z 3.73
   const LIV = 5.7;                                               // the living room's west edge, the first floor's end
-  const D = 1.42, HA = [10.7 - D, 0.3], HB = [10.7, 0.3 + D], HC = [10.7, 0.3]; // the corner hearth: a right triangle from the closed stair's east wall, its front HA–HB
-  const CX0 = 10.0, CX1 = 10.7, CZ0 = 0.3, CZ1 = 1.0, CHIM = 9.9;                 // the chimney's square in the corner
-  const HCUT = 10.7 - (D - (0.8 - 0.3));                                           // where the section at z 0.8 meets the hearth's front: x 9.7
-  const TV = [7.1, 8.77];                                                          // a 75″ set on the north wall
-  const EAVES = 5.6, RIDGE = 9.1;
-  const roofAt = (z) => RIDGE - Math.abs(z - 3.5); // the roof's underside across the house, 45°
+  const BX0 = 7.0, BX1 = 9.2, BZ0 = 1.5, BZ1 = 2.0;                               // the chimney breast in front of the closed stair, 2.20 × 0.50
+  const CX0 = 7.7, CX1 = 8.5, CZ0 = BZ0, CZ1 = BZ1, CHIM = 6.65;                   // the chimney through the north slope, 0.80 over the ridge
+  const TV = [7.265, 8.935];                                                       // a 75″ set above the mantel
+  const D = 0, HCUT = 10.7;                                                        // (the corner hearth is gone)
+  const KNEE = 0.5, EAVES = 2.9 + KNEE, TAN = Math.tan(35 * Math.PI / 180), RIDGE = EAVES + 3.5 * TAN;
+  const roofAt = (z) => EAVES + (3.5 - Math.abs(z - 3.5)) * TAN; // the roof's underside across the house, 35° off the first floor
 
   /* ── the plan ── the garage study's frame: x down the sheet (the hill
      at the top, the valley at the bottom), z to the left (north on the
@@ -295,7 +295,7 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     rect(XT, 2, Z0, Z1, { fill: pat.earth });
     text(1.25, 4.6, 'the hill, about +1.9 at the back wall now', { class: 'mu', 'font-size': 10 });
     rect(2, 11, 7, Z1, { fill: 'var(--yard)' });
-    vtext(3.0, 7.32, 'yard, level 0', { class: 'st', 'font-size': 9 });
+    vtext(5.6, 7.32, 'yard, level 0', { class: 'st', 'font-size': 9 });
     rect(11, 13, 0, 7, { fill: 'var(--hill)' });
     line(13, 0, 13, 7, { stroke: 'var(--muted)', 'stroke-width': 1.2, 'stroke-dasharray': '2 3' });
     text(12.05, 2.2, 'balcony over the garage, level 0, 2.00 deep, its rail at the edge', { class: 'mu', 'font-size': 10 });
@@ -308,7 +308,8 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     poly([[UFOOT, 0.3], [LIV, 0.3], [LIV, 3.7], [3.9, 3.7], [3.9, 1.9], [3.4, 1.9], [3.4, 1.4], [UFOOT, 1.4]], { fill: 'var(--room-hall)' });
     rect(2.3, 3.8, 2.0, 3.7, { fill: 'var(--room-wc)' });
     rect(2.3, 3.3, 1.4, 1.9, { fill: 'var(--room-store)' });
-    rect(2.3, LIV - 0.1, 3.8, 6.7, { fill: 'var(--room-bed)' });
+    rect(2.3, 4.5, 3.8, 6.7, { fill: 'var(--room-wc)' });
+    rect(4.6, LIV - 0.1, 3.8, 6.7, { fill: 'var(--room-bed)' });
     rect(LIV, 10.7, 1.5, 6.7, { fill: 'var(--room-living)' });
 
     /* ── the garage opening, the flight seen through it, its rail ── */
@@ -316,8 +317,7 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     for (let i = 5; i <= 16; i++) line(FOOT - (i - 1) * TREAD, 0.3, FOOT - (i - 1) * TREAD, 1.3, { stroke: 'var(--stair)', 'stroke-width': 0.6, 'stroke-opacity': 0.55 });
     arrow(6.0, 0.85, 8.8, 0.85, { stroke: 'var(--stair)', 'stroke-opacity': 0.7 });
     vtext(7.45, 0.58, 'closed stair · down 17 · lid 2.90', { class: 'st halo', 'font-size': 8 });
-    vtext(7.45, 1.12, 'TV 75″ on the room side of this wall', { class: 'ac halo', 'font-size': 8 });
-    rect(TV[0], TV[1], 1.5, 1.57, { fill: 'var(--accent)' });
+    vtext(7.45, 1.12, 'the breast stands against this wall', { class: 'mu halo', 'font-size': 8 });
 
     /* ── the stair up: four treads west, below the cut; the winders and the
        west leg above it, dashed — the store and the toilet are under them ── */
@@ -338,7 +338,7 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
 
     /* ── the first floor's edge above, on the bedroom wall's line ── */
     line(LIV, 1.5, LIV, 6.7, { stroke: 'var(--stair)', 'stroke-width': 1.2, 'stroke-dasharray': '6 3' });
-    text(LIV + 0.75, 3.3, 'first floor edge above, gallery rail', { class: 'st halo', 'font-size': 8 });
+    text(LIV + 0.75, 2.9, 'first floor’s windows above, onto this room', { class: 'st halo', 'font-size': 7.5 });
 
     /* ── outer walls, 0.30, hatched; the windows and the yard door cut into them; the east wall is glass ── */
     const wall = (x0, x1, z0, z1) => rect(x0, x1, z0, z1, { fill: pat.hatch, stroke: 'var(--wall)', 'stroke-width': 0.8 });
@@ -350,23 +350,25 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
       line(x0, (z0 + z1) / 2 - 0.04, x1, (z0 + z1) / 2 - 0.04, { stroke: 'var(--glass)', 'stroke-width': 1.4 });
       line(x0, (z0 + z1) / 2 + 0.04, x1, (z0 + z1) / 2 + 0.04, { stroke: 'var(--glass)', 'stroke-width': 1.4 });
     };
-    window(4.0, 5.4, 6.7, 7);
+    window(2.9, 4.1, 6.7, 7);
     window(8.9, 10.3, 6.7, 7);
-    text(4.7, 7.15, 'window 1.40', { class: 'gl', 'font-size': 9 });
+    text(3.5, 7.15, 'window 1.20', { class: 'gl', 'font-size': 9 });
     text(9.6, 7.15, 'window 1.40', { class: 'gl', 'font-size': 9 });
     /* the panorama: the whole east wall between the north and south walls */
     rect(10.7, 11, 0.3, 6.7, { fill: 'var(--glass-soft)', stroke: 'var(--glass)', 'stroke-width': 1.4 });
     for (const z of [1.9, 3.5, 5.1]) line(10.7, z, 11, z, { stroke: 'var(--glass)', 'stroke-width': 1 });
     line(10.85, 5.5, 10.85, 6.5, { stroke: 'var(--accent)', 'stroke-width': 4 });
-    text(11.3, 3.1, 'panorama glass, a pentagon 6.40 wide: 5.90 at the walls, 9.10 at the ridge', { class: 'gl halo', 'font-size': 9 });
+    text(11.3, 3.1, 'panorama glass, a pentagon 6.40 wide: 3.61 at the walls, 5.85 at the ridge', { class: 'gl halo', 'font-size': 9 });
     text(11.6, 6.0, 'door 1.00', { class: 'ac halo', 'font-size': 9 });
 
-    /* ── the fireplace: a corner hearth turned 45°, the fire centred on its front, the chimney's square in the corner ── */
-    poly([HA, HB, HC], { fill: pat.stone, stroke: 'var(--wall)', 'stroke-width': 1 });
-    { const f = Math.SQRT1_2, M = [10.7 - D / 2, 0.3 + D / 2]; const L1 = [M[0] - 0.4 * f, M[1] - 0.4 * f], R1 = [M[0] + 0.4 * f, M[1] + 0.4 * f]; poly([L1, R1, [R1[0] + 0.5 * f, R1[1] - 0.5 * f], [L1[0] + 0.5 * f, L1[1] - 0.5 * f]], { fill: 'var(--accent-soft)', stroke: 'var(--accent)', 'stroke-width': 1 }); }
-    rect(CX0, CX1, CZ0, CZ1, { fill: 'var(--sheet)', stroke: 'var(--wall)', 'stroke-width': 1 });
-    text((CX0 + CX1) / 2, (CZ0 + CZ1) / 2, 'flue', { class: 'mu', 'font-size': 7 });
-    text(11.6, 1.0, 'corner fireplace, 45°, chimney to 9.90', { class: 'ac halo', 'font-size': 9 });
+    /* ── the chimney breast in front of the closed stair, cut at 1 m: the fire below it (dashed), the mantel seen below the cut, the TV and the chimney above it (dashed) ── */
+    rect(BX0, BX1, BZ0, BZ1, { fill: pat.stone, stroke: 'var(--wall)', 'stroke-width': 1 });
+    rect(7.6, 8.6, 1.55, BZ1, { fill: 'var(--accent-soft)', stroke: 'var(--accent)', 'stroke-width': 1, 'stroke-dasharray': '3 2' });
+    rect(6.9, 9.3, BZ1, 2.35, { fill: 'none', stroke: 'var(--wall)', 'stroke-width': 1 });
+    rect(TV[0], TV[1], BZ1 + 0.02, 2.06, { fill: 'none', stroke: 'var(--accent)', 'stroke-width': 1.2, 'stroke-dasharray': '4 2' });
+    rect(CX0, CX1, CZ0, CZ1, { fill: 'none', stroke: 'var(--wall)', 'stroke-width': 1, 'stroke-dasharray': '3 2' });
+    text(8.1, 1.75, 'fire · TV above', { class: 'ac halo', 'font-size': 8 });
+    text(6.75, 2.7, 'breast to the roof, 2.20 × 0.50 · chimney 6.65', { class: 'mu halo', 'font-size': 7.5 });
 
     /* ── partitions, 0.10, and the doors in them; the yard door in the south wall ── */
     wall(5.7, 9.28, 1.4, 1.5);
@@ -377,6 +379,7 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     wall(3.8, 3.9, 2.0, 3.7);
     wall(2.3, LIV, 3.7, 3.8);
     wall(LIV - 0.1, LIV, 3.8, 6.7);
+    wall(4.5, 4.6, 3.8, 6.7);
     const swing = (hx, hz, ux, uz, ox, oz, w) => {
       const pts = [];
       for (let i = 0; i <= 12; i++) { const a = (i / 12) * Math.PI / 2; pts.push([hx + w * (ux * Math.cos(a) + ox * Math.sin(a)), hz + w * (uz * Math.cos(a) + oz * Math.sin(a))]); }
@@ -388,7 +391,9 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     rect(3.3, 3.4, 1.4, 1.9, { fill: 'var(--sheet)' });
     line(3.35, 1.4, 3.35, 1.9, { stroke: 'var(--accent)', 'stroke-width': 2, 'stroke-dasharray': '3 2' }); // the store's hatch, from the hall's bay
     rect(4.6, 5.5, 3.7, 3.8, { fill: 'var(--sheet)' });
-    swing(5.5, 3.75, -1, 0, 0, 1, 0.9); // into the bedroom, the leaf against its east wall
+    swing(5.5, 3.75, -1, 0, 0, 1, 0.9); // into the utility room, the leaf against its east wall
+    rect(4.5, 4.6, 4.0, 4.8, { fill: 'var(--sheet)' });
+    swing(4.55, 4.8, 0, -1, -1, 0, 0.8); // into the bathroom, the leaf along its east wall
     rect(7.5, 8.4, 6.7, 7, { fill: 'var(--sheet)' });
     swing(8.4, 6.85, -1, 0, 0, -1, 0.9); // into the living room, north
     text(7.95, 7.15, 'yard door 0.90', { class: 'ac halo', 'font-size': 9 });
@@ -396,8 +401,11 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     text(LIV + 0.25, 2.6, 'open', { class: 'ac', 'font-size': 9 });
 
     /* ── furniture, to show the fit ── */
-    rect(2.4, 4.4, 4.75, 6.35, { ...FUR, rx: 3 }); line(2.65, 4.75, 2.65, 6.35, FUR); text(3.45, 5.55, 'bed 1.60 × 2.00', { class: 'mu', 'font-size': 9 });
-    rect(2.4, 4.4, 3.85, 4.45, FUR); text(3.4, 4.15, 'wardrobe', { class: 'mu', 'font-size': 8 });
+    rect(2.35, 3.25, 5.75, 6.65, FUR); line(2.35, 5.75, 3.25, 6.65, FUR); text(2.8, 6.2, 'shower', { class: 'mu halo', 'font-size': 7 });
+    rect(2.6, 3.0, 4.55, 5.2, { ...FUR, rx: 6 }); rect(2.33, 2.48, 4.5, 5.25, FUR);
+    rect(3.5, 4.1, 3.85, 4.3, { ...FUR, rx: 3 }); circle(3.8, 3.95, 0.05, FUR);
+    rect(4.7, 5.3, 6.0, 6.6, FUR); circle(5.0, 6.3, 0.2, FUR);
+    circle(4.95, 4.05, 0.2, FUR);
     rect(2.6, 3.0, 2.12, 2.75, { ...FUR, rx: 6 }); rect(2.55, 3.05, 2.0, 2.12, FUR); // the pan under the low end of the flight, facing south, its cistern against the north wall
     rect(3.35, 3.75, 2.05, 2.5, { ...FUR, rx: 3 }); circle(3.55, 2.27, 0.05, FUR);  // the basin by the door
     rect(LIV, LIV + 0.6, 3.8, 6.7, FUR); rect(LIV + 0.6, 7.2, 6.1, 6.7, FUR);
@@ -405,10 +413,10 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     rect(LIV + 0.12, LIV + 0.48, 4.7, 5.3, { ...FUR, rx: 3 }); circle(LIV + 0.3, 5.0, 0.05, FUR);
     circle(LIV + 0.18, 5.75, 0.08, FUR); circle(LIV + 0.42, 5.75, 0.08, FUR); circle(LIV + 0.18, 6.2, 0.08, FUR); circle(LIV + 0.42, 6.2, 0.08, FUR);
     text(LIV + 0.95, 5.45, 'kitchen 2.90 + 0.90', { class: 'mu halo', 'font-size': 8, transform: `rotate(-90 ${X(5.45)} ${Y(LIV + 0.95)})` });
-    rect(7.1, 8.9, 4.1, 5.0, { ...FUR, rx: 4 }); line(7.1, 4.75, 8.9, 4.75, FUR); text(8.1, 4.45, 'sofa, facing the TV', { class: 'mu halo', 'font-size': 8 });
+    rect(7.1, 8.9, 4.1, 5.0, { ...FUR, rx: 4 }); line(7.1, 4.75, 8.9, 4.75, FUR); text(8.1, 4.45, 'sofa, 2.7 m from the fire and the TV', { class: 'mu halo', 'font-size': 8 });
     rect(8.6, 10.0, 5.65, 6.45, FUR); text(9.3, 6.05, 'table', { class: 'mu', 'font-size': 8 });
     for (const x of [8.85, 9.45]) rect(x, x + 0.4, 5.2, 5.6, { ...FUR, rx: 2 });
-    rect(9.0, 9.7, 2.2, 2.9, { ...FUR, rx: 4 }); line(9.0, 2.35, 9.7, 2.35, FUR);
+    rect(9.7, 10.4, 0.5, 1.2, { ...FUR, rx: 4 }); line(9.7, 0.65, 10.4, 0.65, FUR); text(10.05, 1.55, 'chair', { class: 'mu', 'font-size': 7 });
 
     /* ── room labels ── */
     const label = (x, z, a, b) => { text(x, z, a, { class: 'halo', 'font-size': 11, 'font-weight': 600 }); text(x + 0.3, z, b, { class: 'mu halo', 'font-size': 10 }); };
@@ -418,18 +426,19 @@ svg .halo2 { paint-order: stroke; stroke: var(--sheet); stroke-width: 7px; strok
     text(4.75, 2.7, 'hall', { class: 'halo', 'font-size': 11, 'font-weight': 600 });
     text(5.05, 2.7, '5.8 m² with the landing', { class: 'mu halo', 'font-size': 9 });
     text(3.0, 3.15, 'WC 2.6 m²', { class: 'halo', 'font-size': 10, 'font-weight': 600 });
-    text(4.95, 5.25, 'bedroom', { class: 'halo', 'font-size': 11, 'font-weight': 600 });
-    text(5.25, 5.25, '9.6 m² · 3.30 × 2.90', { class: 'mu halo', 'font-size': 10 });
-    text(7.3, 2.7, 'living room with kitchen', { class: 'halo', 'font-size': 10, 'font-weight': 600 });
-    text(7.6, 2.7, '26.0 m² · 5.00 × 5.20', { class: 'mu halo', 'font-size': 9 });
-    text(7.9, 2.7, 'open to the roof, 5.90 to 9.10', { class: 'mu halo', 'font-size': 8 });
+    text(3.6, 5.0, 'bathroom', { class: 'halo', 'font-size': 10, 'font-weight': 600 });
+    text(3.9, 5.0, '6.4 m² · 2.20 × 2.90', { class: 'mu halo', 'font-size': 8 });
+    vtext(5.1, 5.3, 'utility 2.9 m²', { class: 'halo', 'font-size': 8, 'font-weight': 600 });
+    text(9.5, 3.2, 'living room with kitchen', { class: 'halo', 'font-size': 10, 'font-weight': 600 });
+    text(9.8, 3.2, '26.0 m² · 5.00 × 5.20', { class: 'mu halo', 'font-size': 9 });
+    text(10.1, 3.2, 'open to the roof, 3.40 to 5.85', { class: 'mu halo', 'font-size': 8 });
 
     /* ── dimensions ── */
     dimX(-0.35, 2, 2.3, '', 0); dimX(-0.35, 2.3, 3.3, '1.00', -8); dimX(-0.35, 3.3, UFOOT, '1.10', -8); dimX(-0.35, UFOOT, LIV, '1.30', -8); dimX(-0.35, LIV, 10.7, '5.00', -8); dimX(-0.35, 10.7, 11, '', 0);
-    dimX(-0.7, 2.3, 3.3, 'winders', -8); dimX(-0.7, 3.3, UFOOT, '4 × 0.27', -8); dimX(-0.7, UFOOT, 5.7, 'landing', -8); dimX(-0.7, 5.7, 9.28, 'closed stair 3.58, the TV on it', -8); dimX(-0.7, 9.28, 10.7, 'fireplace 1.42', -8);
-    dimX(7.5, 2, 2.3, '', 0); dimX(7.5, 2.3, LIV - 0.1, 'bedroom 3.30', -10); dimX(7.5, LIV - 0.1, LIV, '', 0); dimX(7.5, LIV, 10.7, 'living room 5.00', -10); dimX(7.5, 10.7, 11, '', 0);
+    dimX(-0.7, 2.3, 3.3, 'winders', -8); dimX(-0.7, 3.3, UFOOT, '4 × 0.27', -8); dimX(-0.7, UFOOT, 5.7, 'landing', -8); dimX(-0.7, 5.7, 9.28, 'closed stair 3.58', -8);
+    dimX(7.5, 2, 2.3, '', 0); dimX(7.5, 2.3, 4.5, 'bathroom 2.20', -10); dimX(7.5, 4.5, 4.6, '', 0); dimX(7.5, 4.6, LIV - 0.1, 'utility', -10); dimX(7.5, LIV - 0.1, LIV, '', 0); dimX(7.5, LIV, 10.7, 'living room 5.00', -10); dimX(7.5, 10.7, 11, '', 0);
     dimX(7.85, 2, 11, 'house 9.00', -12);
-    dimZ(1.75, 0.3, WELLZ, 'corner 1.00', -6, 9); dimZ(1.75, WELLZ, UTOP, 'west leg 9 × 0.27', -6, 9); dimZ(1.75, 3.8, 6.7, 'bedroom 2.90', -6, 9);
+    dimZ(1.75, 0.3, WELLZ, 'corner 1.00', -6, 9); dimZ(1.75, WELLZ, UTOP, 'west leg 9 × 0.27', -6, 9); dimZ(1.75, 3.8, 6.7, 'bathroom 2.90', -6, 9);
     dimZ(13.3, 0, 0.3, '', 0); dimZ(13.3, 0.3, 1.5, '1.20', 12); dimZ(13.3, 1.5, 3.7, '2.20', 12); dimZ(13.3, 3.7, 3.8, '', 0); dimZ(13.3, 3.8, 6.7, '2.90', 12); dimZ(13.3, 6.7, 7, '', 0);
     dimZ(13.65, 0, 7, 'house 7.00', 12);
 
