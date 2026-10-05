@@ -1009,25 +1009,6 @@
    "y1": 1.25
   },
   {
-   "id": "gf-box-wall-landing",
-   "group": "house",
-   "color": "#c9ced6",
-   "opacity": 0.5,
-   "parent": [
-    { "id": "ground", "name": "Ground floor" },
-    { "id": "gf-stair-box", "name": "Stair box (the wedge)" }
-   ],
-   "short": "Box wall, landing",
-   "house": true,
-   "name": "Stair box wall at the landing, 2.12 high",
-   "x0": 5.4,
-   "x1": 5.7,
-   "z0": 1.4,
-   "z1": 1.5,
-   "y0": 0,
-   "y1": 2.12
-  },
-  {
    "id": "gf-furn-1",
    "group": "house",
    "color": "#b4b9bf",

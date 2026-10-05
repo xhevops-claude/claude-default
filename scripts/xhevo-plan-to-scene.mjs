@@ -141,14 +141,10 @@ for (const e of G) {
       for (const q of pieces) toRoof({ id: `wall-${k}${q.tag ? '-' + q.tag : ''}`, name: `${name}${q.y0 ? ', on the fill from ' + q.y0 : ''}`, group: ['walls', 'Walls'], px: q.x, py: q.y, w: q.w, h: q.h, color: WALL, opacity: 0.5, short: `Wall ${k}${q.tag ? ', ' + q.tag : ''}` }, q.y0);
     }
   } else if (t === 'part') {
-    /* The stair box's own walls are not floor to ceiling: its room-side wall follows the lid (built below, one step per
-       tread, from the wedge) and its end wall is where the lid meets the floor. Only the landing's stub, x 5.4 to 5.7,
-       stands at the lid's full 2.12. The triangle above the slope is the living room's. */
-    if (x === 5.5 && y === 9.18) continue;
-    if (x === 5.5 && y === 5.4) {
-      box({ id: 'box-wall-landing', name: 'Stair box wall at the landing, 2.12 high', group: ['stair-box', 'Stair box (the wedge)'], px: x, py: 5.4, w: 0.1, h: 0.3, y0: 0, y1: 2.12, color: PART, opacity: 0.5, short: 'Box wall, landing' });
-      continue;
-    }
+    /* The stair box's own walls are not floor to ceiling: its room-side wall follows the lid (built below, one wall
+       with its top on the slope, from the wedge) and its end wall is where the lid meets the floor. Nothing stands
+       past the hole's end: the landing is open to the living room. The triangle above the slope is the living room's. */
+    if (x === 5.5 && (y === 9.18 || y === 5.7)) continue;
     /* Every other ground-floor partition is at the hill end, holding the fill under the bedrooms: the living room's
        back wall and the walls round the stairwell and the landing. They stand to the top of the fill, 1.25; the
        bedrooms' slab and their own walls carry on above. */
