@@ -94,7 +94,15 @@ async function boot() {
      a `layer`, which is what the Faces / Floors / Dots toggles flip. */
   const GROUPS = PLAN.groups || {};
   const WHITE = new THREE.Color(0xffffff);
+  const BLACK = new THREE.Color(0x000000);
   const parts = new THREE.Group();
+  /* Light for the solid objects only — the glass volumes are unlit and
+     keep their flat tint: a soft sky from above, and a sun from the
+     south-east so a box's three visible faces come out three shades. */
+  parts.add(new THREE.HemisphereLight(0xe6edf5, 0x3a4048, 1.0));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 1.4);
+  sun.position.set(0.5, 1, 0.75);
+  parts.add(sun);
   const objects = [];
   /* the tapped object; declared here, ahead of the layers, because a
      saved layer set applied at boot can switch a group off and must be
@@ -108,25 +116,30 @@ async function boot() {
      path of them, top down — a wall under its floor's "Walls" under the
      floor. `hidden` is the object's own switch there, on top of its
      group's. */
-  function makeObject({ id, name, group, color = null, opacity = 0.05, parent = null, short = null }) {
+  /* `solid` is for a thing that is not a volume of the plan but an
+     object in it — a sofa, a fridge, a tread: an opaque, lit body in
+     its own colour, outlined in a darker shade, no dots at its
+     corners, so it reads as a piece of furniture and not as a lantern. */
+  function makeObject({ id, name, group, color = null, opacity = 0.05, parent = null, short = null, solid = false }) {
     const col = new THREE.Color(color || GROUPS[group]?.color || '#8fd8ff');
     const node = new THREE.Group();
     node.name = id;
     node.userData = { id, name, group };
+    const body = () => new THREE.MeshLambertMaterial({ color: col, side: THREE.DoubleSide });
     const o = {
-      id, name, group, node, col, dotPos: [], opacity, parent, short: short || name, hidden: false, props: [],
-      glass: new THREE.MeshBasicMaterial({
+      id, name, group, node, col, dotPos: [], opacity, parent, short: short || name, hidden: false, props: [], solid,
+      glass: solid ? body() : new THREE.MeshBasicMaterial({
         color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity,
         side: THREE.DoubleSide, depthWrite: false,
       }),
       /* An interior floor: the slab between two storeys, seen through
          the facade and the storeys above, so far fainter than a wall —
          two of them stacked still read lighter than the roof. */
-      glassIn: new THREE.MeshBasicMaterial({
+      glassIn: solid ? body() : new THREE.MeshBasicMaterial({
         color: col.clone().lerp(WHITE, 0.35), transparent: true, opacity: opacity * 0.4,
         side: THREE.DoubleSide, depthWrite: false,
       }),
-      line: (opacity) => new THREE.LineBasicMaterial({ color: col, transparent: true, opacity }),
+      line: (opacity) => new THREE.LineBasicMaterial({ color: solid ? col.clone().lerp(BLACK, 0.5) : col, transparent: true, opacity }),
     };
     objects.push(o);
     parts.add(node);
@@ -166,9 +179,13 @@ async function boot() {
     }
     const glass = (idx, inside) => {
       if (!idx.length) return;
-      const geo = new THREE.BufferGeometry();
+      let geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       geo.setIndex(idx);
+      /* A solid is lit, so it needs normals — one per face, not blended
+         across the shared corners, so each face of a box is its own flat
+         shade. */
+      if (o.solid) { geo = geo.toNonIndexed(); geo.computeVertexNormals(); }
       o.node.add(tagged(new THREE.Mesh(geo, inside ? o.glassIn : o.glass), inside ? 'interior' : 'faces'));
     };
     glass(sides, false);
@@ -286,6 +303,10 @@ async function boot() {
     }
     /* A work with its own `ring` is that footprint; a box otherwise. */
     let corners = v.ring ? v.ring.map((p) => p.slice()) : [[v.x0, v.z0], [v.x1, v.z0], [v.x1, v.z1], [v.x0, v.z1]];
+    /* Which corners are the volume's lower end (y0End / y1End): its z1
+       side, or its x1 side when it says `end: "x"` — a lid pitched along
+       the house. Read before the turn, in the frame the numbers are in. */
+    let ends = corners.map(([x, z]) => (v.end === 'x' ? x === v.x1 : z === v.z1));
     /* A part of the house is drawn in the house's frame, turned. */
     if (v.house) corners = corners.map(([x, z]) => H(x, z));
     if (onCut && !v.ring) {
@@ -311,10 +332,11 @@ async function boot() {
         }
       }
       corners = [[v.x0, v.z1], ...dip, [v.x1, v.z1], [v.x1, cutAt(v.x1)], ...bends, westX || [v.x0, cutAt(v.x0)]];
+      ends = corners.map(([, z]) => z === v.z1);
     }
-    const bottom = corners.map(([x, z]) => [x, z === v.z1 ? v.y0End ?? v.y0 : v.y0, z]);
-    const top = corners.map(([x, z]) => [x, z === v.z1 ? v.y1End ?? v.y1 : v.y1, z]);
-    addVolume(o, bottom, top);
+    const bottom = corners.map(([x, z], i) => [x, ends[i] ? v.y0End ?? v.y0 : v.y0, z]);
+    const top = corners.map(([x, z], i) => [x, ends[i] ? v.y1End ?? v.y1 : v.y1, z]);
+    addVolume(o, bottom, top, { dots: !v.solid });
     if (onCut || v.ring) {
       /* Every straight side of the footprint, and the height. */
       o.dims = [];
@@ -1591,6 +1613,9 @@ async function boot() {
       if (layer === 'edges' || layer === 'floors') {
         n.material.color.copy(on ? o.col.clone().lerp(WHITE, 0.6) : o.col);
         n.material.opacity = on ? 1 : (layer === 'edges' ? 0.95 : 0.6);
+      } else if (o.solid && (layer === 'faces' || layer === 'interior')) {
+        /* A solid lights up from within rather than going paler. */
+        n.material.emissive.copy(on ? o.col.clone().multiplyScalar(0.45) : BLACK);
       } else if (layer === 'faces' || layer === 'interior') {
         const base = layer === 'faces' ? o.opacity : o.opacity * 0.4;
         n.material.color.copy(o.col.clone().lerp(WHITE, on ? 0.2 : 0.35));

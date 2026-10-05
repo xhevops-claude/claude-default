@@ -24,14 +24,36 @@ const works = [];
 /* A box from a plan rectangle: x along from plan Y, z across from plan X. `level` is the
    prefix of the id and the top of the parent chain: `gf` the ground floor, `hl` the half level. */
 const LEVELS = { gf: { id: 'ground', name: 'Ground floor' }, hl: { id: 'half', name: 'Bedrooms, half level' } };
-function box({ level = 'gf', id, name, group, px, py, w, h, y0, y1, color, opacity = 0.35, short }) {
+function box({ level = 'gf', id, name, group, px, py, w, h, y0, y1, color, opacity = 0.35, short, solid = false }) {
   works.push({
-    id: `${level}-${id}`, group: 'house', color, opacity, parent: [LEVELS[level], { id: `${level}-${group[0]}`, name: group[1] }], short: short || name, house: true, name,
+    id: `${level}-${id}`, group: 'house', color, ...(solid ? { solid: true } : { opacity }), parent: [LEVELS[level], { id: `${level}-${group[0]}`, name: group[1] }], short: short || name, house: true, name,
     x0: r3(py), x1: r3(py + h), z0: r3(7 - px - w), z1: r3(7 - px), y0: r3(y0), y1: r3(y1),
   });
 }
 
-const WALL = '#d8dde3', PART = '#c9ced6', FURN = '#c9a86a', SOFT = '#9fb3c8', STAIR = '#6fc79c', WEDGE = '#e9d8a6', STONE = '#b3a899', GLASS = '#8fd8ff', SLAB = '#c9ced6';
+/* Like box(), but handed back pitched along the house (`end: 'x'`) for the caller to add y0End/y1End and push. */
+function pitched(spec) {
+  box(spec);
+  return { ...works.pop(), end: 'x' };
+}
+
+const WALL = '#d8dde3', PART = '#c9ced6', WEDGE = '#e9d8a6', GLASS = '#8fd8ff', SLAB = '#c9ced6';
+/* The objects are solid, in the colour of what they are made of — the walls, slabs and the lid stay the plan's glass. */
+const OAK = '#b98b5a', WALNUT = '#6e4b2e', CABINET = '#8a8f8c', STEEL = '#b4b9bf', BLACK = '#2b2d31', ANTHRACITE = '#3f4144', LINEN = '#e8e2d6', FABRIC = '#6b8597', CERAMIC = '#f1f1ee', STONE = '#9a9087';
+const paintOf = (label, t) => {
+  if (/^bed/.test(label)) return LINEN;
+  if (/wardrobe/.test(label)) return OAK;
+  if (/fridge/.test(label)) return STEEL;
+  if (/oven/.test(label)) return ANTHRACITE;
+  if (/hob|TV/.test(label)) return BLACK;
+  if (/worktop|island/.test(label)) return CABINET;
+  if (/shower|basin|^wc/.test(label)) return CERAMIC;
+  if (/coffee/.test(label)) return WALNUT;
+  if (/sofa/.test(label)) return FABRIC;
+  if (/fire/.test(label)) return ANTHRACITE;
+  if (/table|shelves/.test(label) || t === 'chair') return OAK;
+  return OAK;
+};
 /* One roof over the whole house, its ridge along it: 3.40 under it at the outer walls, 5.85 at the ridge
    (the plan's side view: 3.75 half a metre in from the north wall). The outer walls stand to the eaves. */
 const EAVES = 3.4, RIDGE = 5.85;
@@ -118,23 +140,22 @@ for (const e of G) {
     const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /TV|fire/.test(label) ? ['wall-tv', 'TV and fire'] : ['lounge', 'Lounge'];
     const k = t === 'chair' ? ++chairs : ++furn;
     const name = t === 'chair' ? `Chair ${k}` : label;
-    box({ id: `${t}-${k}`, name, group: room, px: x, py: y, w, h, y0, y1, color: t === 'furn' ? FURN : SOFT, short: name });
+    box({ id: `${t}-${k}`, name, group: room, px: x, py: y, w, h, y0, y1, color: paintOf(label, t), solid: true, short: name });
     /* A sofa's back: a strip along its back edge up to 0.85. */
     if (/sofa/.test(label)) {
       const main = h > w;   // the main sofa runs along the house, its back toward the yard
       const back = main ? { px: x, py: y, w: 0.25, h } : y < 9.8 ? { px: x, py: y, w, h: 0.25 } : { px: x, py: y + h - 0.25, w, h: 0.25 };
-      box({ id: `${t}-${k}-back`, name: `${label}, back`, group: room, ...back, y0: 0.45, y1: 0.85, color: SOFT, short: 'Back' });
+      box({ id: `${t}-${k}-back`, name: `${label}, back`, group: room, ...back, y0: 0.45, y1: 0.85, color: FABRIC, solid: true, short: 'Back' });
     }
   } else if (t === 'stone') {
-    box({ id: 'stone', name: 'Stone on the north wall, floor to roof', group: ['wall-tv', 'TV and fire'], px: x, py: y, w, h, y0: 0, y1: EAVES, color: STONE, opacity: 0.4, short: 'Stone' });
+    box({ id: 'stone', name: 'Stone on the north wall, floor to roof', group: ['wall-tv', 'TV and fire'], px: x, py: y, w, h, y0: 0, y1: EAVES, color: STONE, solid: true, short: 'Stone' });
   } else if (t === 'wedge') {
-    /* The lid over the garage flight: one box per tread, its top on the slope. The box's
-       room-side wall and end wall follow it. */
-    for (let i = 0; i < 12; i++) {
-      const x0 = y + (i * h) / 12, x1 = y + ((i + 1) * h) / 12, top = lid((x0 + x1) / 2);
-      box({ id: `lid-${i + 1}`, name: `Stair lid, step ${i + 1}, top ${r3(top)}`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: x0, w, h: x1 - x0, y0: Math.max(0, top - 0.1), y1: Math.max(0.02, top), color: WEDGE, opacity: 0.45, short: `Lid ${i + 1}` });
-      box({ id: `box-wall-${i + 1}`, name: `Stair box wall, step ${i + 1}`, group: ['stair-box', 'Stair box (the wedge)'], px: x - 0.1, py: x0, w: 0.1, h: x1 - x0, y0: 0, y1: Math.max(0.02, top), color: PART, opacity: 0.5, short: `Box wall ${i + 1}` });
-    }
+    /* The lid over the garage flight: one flat plane on the flight's pitch, 0.10 thick, 2.12 over the landing and
+       down to the floor at the hole's end (`end: 'x'` pitches a box along the house). The box's room-side wall is one
+       wall whose top is that same line. */
+    const top0 = lid(y), top1 = lid(y + h);
+    works.push({ ...pitched({ id: 'lid', name: `Stair lid, one plane on the flight's pitch, ${r3(top0)} at the landing to ${r3(top1)} at the end`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: y, w, h, y0: top0 - 0.1, y1: top0, color: WEDGE, opacity: 0.45, short: 'Lid' }), y0End: r3(top1 - 0.1), y1End: r3(top1) });
+    works.push({ ...pitched({ id: 'box-wall', name: 'Stair box wall, room side, its top on the lid', group: ['stair-box', 'Stair box (the wedge)'], px: x - 0.1, py: y, w: 0.1, h, y0: 0, y1: top0, color: PART, opacity: 0.5, short: 'Box wall' }), y1End: r3(top1) });
   } else if (t === 'stair') {
     const [, , , , , axis, count] = e;
     if (y > 5) continue;   // the garage flight is the garage's: already in the scene
@@ -144,19 +165,18 @@ for (const e of G) {
     const tread = w / count;
     for (let i = 1; i <= count; i++) {
       const top = i * RISER;
-      box({ id: `up-${i}`, name: `Flight to the bedrooms, tread ${i} of ${count}, top at ${r3(top)}`, group: ['stair-up', 'Stair to the bedrooms'], px: x + w - i * tread, py: y, w: tread, h, y0: Math.max(0, top - 0.2), y1: top, color: STAIR, opacity: 0.3, short: `Tread ${i}` });
+      box({ id: `up-${i}`, name: `Flight to the bedrooms, tread ${i} of ${count}, top at ${r3(top)}`, group: ['stair-up', 'Stair to the bedrooms'], px: x + w - i * tread, py: y, w: tread, h, y0: Math.max(0, top - 0.2), y1: top, color: OAK, solid: true, short: `Tread ${i}` });
     }
   }
   /* 'door', 'win', 'roof', 'dashrect' and the labels draw nothing: doors cut the walls above, the roof is not modelled. */
 }
-/* The shelves on the stair box's face, stepped under the lid. */
+/* The shelves on the stair box's face: one unit whose top runs 0.10 under the lid, from the landing end to where
+   the lid comes down to 0.40 — beyond that there is no height left for a shelf. */
 const shelf = G.find((e) => e[0] === 'furn' && e[1] === 5.25 && e[2] === 5.9);
 if (shelf) {
-  const [, x, y, w, h] = shelf;
-  for (let i = 0; i < 8; i++) {
-    const y0 = y + (i * h) / 8, y1 = y + ((i + 1) * h) / 8, top = Math.max(0.3, lid((y0 + y1) / 2) - 0.1);
-    box({ id: `shelves-${i + 1}`, name: `Shelves on the stair wall, bay ${i + 1}, to ${r3(top)}`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: y0, w, h: y1 - y0, y0: 0, y1: top, color: FURN, opacity: 0.3, short: `Shelves ${i + 1}` });
-  }
+  const [, x, y, w] = shelf;
+  const xEnd = r3(5.7 + (2.12 - 0.4) / (0.171 / 0.29));   // lid(xEnd) = 0.40
+  works.push({ ...pitched({ id: 'shelves', name: `Shelves on the stair wall, top under the lid, ${r3(lid(y) - 0.1)} to 0.30 at x ${xEnd}`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: y, w, h: xEnd - y, y0: 0, y1: lid(y) - 0.1, color: OAK, solid: true, short: 'Shelves' }), y1End: 0.3 });
 }
 /* The shelves came in as a plain furn box above; drop that one in favour of the bays. */
 const plain = works.findIndex((w) => w.x0 === 5.9 && w.z1 === r3(7 - 5.25) && !/bay/.test(w.name));
@@ -185,7 +205,7 @@ for (const e of G2) {
     /* Nothing stands through the roof: a tall piece against a side wall is cut at the roof's underside there. */
     const under = Math.min(roofAt(7 - x), roofAt(7 - x - w));
     const top = Math.min(HALF + y1, under);
-    box({ level: 'hl', id: `${t}-${k}`, name: top < HALF + y1 ? `${label}, to the roof at ${r3(top)}` : label, group: room, px: x, py: y, w, h, y0: HALF + y0, y1: top, color: t === 'furn' ? FURN : SOFT, short: label });
+    box({ level: 'hl', id: `${t}-${k}`, name: top < HALF + y1 ? `${label}, to the roof at ${r3(top)}` : label, group: room, px: x, py: y, w, h, y0: HALF + y0, y1: top, color: paintOf(label, t), solid: true, short: label });
   }
   /* The outer walls are the ground floor's, to the eaves; the stairwell is the flight built above; the rest is labels. */
 }
