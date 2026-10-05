@@ -85,8 +85,8 @@ td.open { color: var(--warn); font-weight: 700; }
   </section>
 
   <section>
-    <h2><b>North wall, elevation</b> · seen from the sofa: hall on the left, glass on the right · the stair with its shelves, then the stone wall with the TV and the fire</h2>
-    <svg id="breast" class="sec" aria-label="Elevation of the north wall with the stair shelves, the TV and the corner fire"></svg>
+    <h2><b>North wall, elevation</b> · seen from the sofa: hall on the left, glass on the right · the stair with its shelves, then the stone wall with the fire · the TV is on a wheeled stand, not on a wall</h2>
+    <svg id="breast" class="sec" aria-label="Elevation of the north wall with the stair shelves and the fire"></svg>
   </section>
 
 </div>
@@ -104,7 +104,7 @@ const G = [
   ['part', 3.9, 3.7, 2.8, 0.1],            // under the north bedroom's wall: closes the 1.25 void toward the landing
   ['part', 3.8, 3.7, 0.1, 1.1],            // the stair's top end, closing the void
   ['part', 5.5, 5.4, 0.1, 3.88],           // stair box, room side
-  ['part', 5.5, 9.18, 1.02, 0.1],          // stair box, end, up to the TV's line on the north wall; the TV hangs above it, the lid is at the floor here
+  ['part', 5.5, 9.18, 1.02, 0.1],          // stair box, end, to the north wall at x 9.18, where the lid is at the floor
   // openings: doors are a gap plus a leaf swung from a hinge; windows sit in the wall
   ['door', 0, 7.5, 0.3, 0.9, 0.15, 7.5, 0.9, 180, 90],      // yard door, swinging out
   ['win', 0, 5.5, 0.3, 0.7], ['win', 0, 8.9, 0.3, 1.4],
@@ -118,13 +118,12 @@ const G = [
   ['soft', 3.15, 8.0, 1.6, 0.9, 'sofa 160×90'], ['soft', 3.15, 10.7, 1.8, 0.9, 'sofa 180×90'],   // butted against the main sofa's ends: 160 on the stair side, 180 on the glass side, 0.10 off the glass
   ['furn', 3.5, 9.4, 0.8, 0.8, 'coffee'],
   ['furn', 5.25, 5.9, 0.25, 3.2, ''],                                    // shelves on the stair box's face
-  ['stone', 6.6, 8.0, 0.1, 3.7, ''],                                     // the stone on the north wall from x 8 to the glass, floor to roof, behind the TV and the fire
+  ['stone', 6.6, 8.0, 0.1, 3.7, ''],                                     // the stone on the north wall from x 8 to the glass, floor to roof, behind the fire
   ['furn', 6.3, 9.8, 0.3, 1.7, 'fire 170'],                              // the fire, 1.70 wide, on the north wall at the glass end of the pair
   // stairs: x, y, w, h, treads along 'x' or 'y', count, arrow toward the top end
   ['wedge', 5.6, 5.7, 1.1, 3.48],
   ['stair', 5.6, 5.7, 1.1, 3.48, 'y', 12, 'up'],     // garage flight, in the hole; it rises toward the hall
   ['stair', 3.9, 3.8, 1.7, 1.0, 'x', 7, 'left'],     // up to the bedrooms: from the landing, west, 8 risers of 0.181, 7 treads of 0.243, to +1.45
-  ['furn', 6.52, 8.1, 0.08, 1.7, 'TV 170'],          // the TV, 1.70 wide, on the north wall above the wedge's tail; TV + fire = 3.40, centred on the sofa at x 9.8; drawn after the wedge so it shows
   ['dashrect', 0.3, 0.3, 3.5, 4.5], ['dashrect', 3.9, 0.3, 2.8, 3.4],   // the bedrooms' half level above, +1.45; 1.25 clear under it
   // labels: room name, area, and small notes
   ['room', 3.5, 2.0, 'UNDER THE BEDROOMS', ''], ['note', 3.5, 2.3, 'half level +1.45 above · 1.25 clear here · storage, from the landing'],
@@ -132,7 +131,7 @@ const G = [
   ['note', 6.45, 6.3, 'lid 2.1'], ['note', 6.45, 7.3, '1.2'], ['note', 6.45, 8.0, '0.8'], ['note', 6.0, 8.75, '0.3'], ['note', 6.0, 9.1, '0'],
   ['note', 5.37, 7.5, 'shelves'], ['note', 4.9, 5.1, 'opening 1.20'],
   ['note', 4.75, 4.15, 'UP +1.45'], ['note', 5.85, 8.9, 'DOWN'],
-  ['note', 3.5, 12.25, 'TV 170 + fire 170 = 3.40 on the north wall, centred on the sofa at x 9.8'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
+  ['note', 3.5, 12.25, 'fire 170 on the north wall, x 9.8 to 11.5 · the TV is on a wheeled stand, anywhere'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
   // dimensions, wall to wall: ['dim', x1, y1, x2, y2]
   ['dim', 5.6, 5.55, 6.7, 5.55], ['dim', 6.6, 3.8, 6.6, 5.7],            // landing 1.10 × 1.90, from the void's wall to the hole
   ['dim', 3.9, 4.75, 5.6, 4.75],                                          // the flight to the bedrooms, 1.70
@@ -140,8 +139,8 @@ const G = [
   ['dim', 0.3, 5.95, 5.5, 5.95], ['dim', 0.45, 4.9, 0.45, 11.7],         // living 5.20 wide, 6.80 from the kitchen wall to the glass
   ['dim', 1.7, 5.5, 1.7, 6.3], ['dim', 2.55, 7.4, 2.55, 8.9], ['dim', 4.75, 8.2, 5.25, 8.2],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.50, sofa to shelves 0.50
   ['dim', 0.3, 7.0, 0.9, 7.0],                                            // table to the yard wall 0.60
-  ['dim', 3.15, 9.3, 6.52, 9.3], ['dim', 4.75, 8.3, 6.52, 8.3], ['dim', 4.95, 10.8, 6.3, 10.8],   // main sofa's front to the TV 3.37; stair-side sofa's end to the TV 1.77; glass-side sofa's end to the fire 1.35
-  ['dim', 6.52, 8.1, 6.52, 9.8], ['dim', 6.3, 9.8, 6.3, 11.5],           // TV 1.70, fire 1.70, on their own room faces
+  ['dim', 3.15, 9.3, 6.6, 9.3], ['dim', 4.75, 8.3, 6.6, 8.3], ['dim', 4.95, 10.8, 6.3, 10.8],     // main sofa's front to the stone 3.45; stair-side sofa's end to the stone 1.85; glass-side sofa's end to the fire 1.35
+  ['dim', 6.3, 9.8, 6.3, 11.5],                                           // fire 1.70, on its room face
   ['dim', 5.5, 9.28, 5.5, 11.7], ['dim', 4.0, 11.6, 4.0, 11.7],          // past the stair's end, 2.42; sofa to glass 0.10
   ['dim', 7.15, 0.3, 7.15, 11.7], ['dim', 0.3, 13.4, 6.7, 13.4],         // overall clear 11.40 × 6.40
   ['edge', 'yard (S)', 'left'], ['edge', 'north', 'right'], ['edge', 'hill', 'top'], ['edge', 'glass', 'bottom'],
@@ -301,10 +300,9 @@ function drawElevation() {
   s += `<path class="soft" d="M${X(5.9)},${Z(0)} L${X(5.9)},${Z(lid(5.9))} L${X(9.1)},${Z(lid(9.1))} L${X(9.1)},${Z(0)} Z"/>`;
   for (const z of [0.4, 0.8, 1.2, 1.6]) s += `<line class="tread" x1="${X(5.9)}" y1="${Z(z)}" x2="${X(Math.min(9.1, 5.7 + (2.12 - z) / 0.59))}" y2="${Z(z)}"/>`;
   for (const [x, z, w, h, cls, label] of E) s += box(x, z, w, h, cls) + (label ? `<text class="sm" x="${X(x + w / 2)}" y="${Z(z + h / 2) + 3}" style="fill:var(--sheet)">${label}</text>` : '');
-  s += box(8.1, 0.8, 1.7, 0.96, 'wall') + `<text class="sm" x="${X(8.95)}" y="${Z(1.28) + 3}" style="fill:var(--sheet)">TV 170 · 0.80 to 1.76</text>`;   // drawn after the shelves so it sits in front of the wedge's tail
-  // the north wall behind, with the TV on it
+  // the north wall behind
   s += `<line class="tread" x1="${X(5.5)}" y1="${Z(0)}" x2="${X(11.7)}" y2="${Z(0)}"/>`;
-  s += `<text class="dim" x="${X(9.6)}" y="${Z(2.75)}">TV 170 + fire 170, centred on the sofa</text>` +
+  s += `<text class="dim" x="${X(9.6)}" y="${Z(2.75)}">fire 170 on the stone · the TV is on wheels, not on the wall</text>` +
     `<text class="dim" x="${X(7.4)}" y="${Z(1.45)}">lid 1.24 at x 7.2</text>` +
     `<text class="dim" x="${X(9.25)}" y="${Z(-0.12)}" style="text-anchor:start">lid 0 at x 9.18</text>` +
     `<text class="dim" x="${X(7.5)}" y="${Z(2.3)}">shelves along the stair, under its lid</text>` +
@@ -345,13 +343,13 @@ function drawSide() {
   for (let n = 1; n <= 17; n++) { const [x, z] = nose(n); d += ` L${X(x + 0.29)},${Z(z)} L${X(x)},${Z(z)}`; }
   s += `<path class="ground" d="${d} L${X(5.7)},${Z(-2.9)} Z" style="fill:var(--soft)"/>` + `<path class="tread" d="${d}"/>`;
   s += `<rect class="hatch" x="${X(5.7)}" y="${Z(-0.55)}" width="${(2.25 * S).toFixed(1)}" height="${(2.35 * S).toFixed(1)}"/>` + txt('dim', 6.8, -2.0, 'storage under');
-  // the wedge lid over the hole, 0.10 thick, on the flight's pitch; the TV on the stone above its tail
-  s += `<line class="lid" x1="${X(top)}" y1="${Z(lid(top) + 0.05)}" x2="${X(deckEnd + 0.1)}" y2="${Z(lid(deckEnd + 0.1) + 0.05)}"/>` + box('wall', 8.1, 0.8, 9.8, 1.76);
+  // the wedge lid over the hole, 0.10 thick, on the flight's pitch
+  s += `<line class="lid" x1="${X(top)}" y1="${Z(lid(top) + 0.05)}" x2="${X(deckEnd + 0.1)}" y2="${Z(lid(deckEnd + 0.1) + 0.05)}"/>`;
   // the flight to the bedrooms: from the landing at x 5.6 west to 3.9, 8 risers of 0.181, beyond the cut (dashed)
   let u = `M${X(5.6)},${Z(0)}`;
   for (let n = 1; n <= 8; n++) { const x = 5.6 - n * 0.243, z = n * 0.181; u += ` L${X(x + 0.243)},${Z(z)} L${X(Math.max(3.9, x))},${Z(z)}`; }
   s += `<path class="old" d="${u}"/>`;
-  // the stone wall with the TV and the fire, beyond the cut on the north wall
+  // the stone wall with the fire, beyond the cut on the north wall
   s += box('furn', 9.8, 0, 11.5, 1.2) + box('wall', 10.0, 0.3, 11.3, 0.9);
   // floor lines where there is a floor
   s += `<line class="tread" x1="${X(3.8)}" y1="${Z(0)}" x2="${X(5.7)}" y2="${Z(0)}"/>` + `<line class="tread" x1="${X(deckEnd)}" y1="${Z(0)}" x2="${X(11.7)}" y2="${Z(0)}"/>`;
@@ -361,7 +359,7 @@ function drawSide() {
     txt('lbl', 2.0, 2.9, 'BEDROOM') + txt('dim', 2.1, 2.6, '+1.45 · 1.95 at the wall · 4.40 at the ridge') + txt('dim', 2.0, 0.6, 'void under the bedrooms, 1.25 · storage') +
     txt('lbl', 7.6, 2.9, 'LIVING, open to the roof') + txt('dim', 7.6, 2.6, 'roof here 3.75, ridge 5.85') +
     txt('dim', 4.7, 0.25, 'landing') + txt('dim', 4.75, 2.05, 'up to the bedrooms, 8 risers, beyond the cut') + txt('dim', 7.4, 0.45, 'wedge lid, 2.02 over the flight') +
-    txt('dim', 8.95, 1.95, 'TV 170') + txt('dim', 10.65, 1.4, 'fire 170') + txt('dim', 11.85, 2.2, 'glass', 'start') + txt('dim', 12.5, 4.03, 'roof to x 13') +
+    txt('dim', 10.65, 1.4, 'fire 170') + txt('dim', 11.85, 2.2, 'glass', 'start') + txt('dim', 12.5, 4.03, 'roof to x 13') +
     txt('dim', -0.9, 4.03, 'roof from x −0.4', 'start') + txt('dim', 0.4, -0.6, 'back wall at x 0, in the hill', 'start');
   // dimension lines: house 12.00 outside, garage 6.00 clear, hole 3.48
   const dim = (x0, x1, z, label) => `<line class="dline" x1="${X(x0)}" y1="${Z(z)}" x2="${X(x1)}" y2="${Z(z)}"/><line class="dline" x1="${X(x0)}" y1="${Z(z - 0.08)}" x2="${X(x0)}" y2="${Z(z + 0.08)}"/><line class="dline" x1="${X(x1)}" y1="${Z(z - 0.08)}" x2="${X(x1)}" y2="${Z(z + 0.08)}"/>` + txt('dtext', (x0 + x1) / 2, z + 0.08, label);

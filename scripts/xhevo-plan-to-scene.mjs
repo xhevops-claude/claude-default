@@ -137,7 +137,7 @@ for (const e of G) {
   } else if (t === 'furn' || t === 'soft' || t === 'chair') {
     const label = e[5] || (t === 'chair' ? 'chair' : t);
     const [y0, y1] = heightOf(label, t);
-    const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /TV|fire/.test(label) ? ['wall-tv', 'TV and fire'] : ['lounge', 'Lounge'];
+    const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /fire/.test(label) ? ['fire', 'Fire'] : ['lounge', 'Lounge'];
     const k = t === 'chair' ? ++chairs : ++furn;
     const name = t === 'chair' ? `Chair ${k}` : label;
     box({ id: `${t}-${k}`, name, group: room, px: x, py: y, w, h, y0, y1, color: paintOf(label, t), solid: true, short: name });
@@ -148,7 +148,7 @@ for (const e of G) {
       box({ id: `${t}-${k}-back`, name: `${label}, back`, group: room, ...back, y0: 0.45, y1: 0.85, color: FABRIC, solid: true, short: 'Back' });
     }
   } else if (t === 'stone') {
-    box({ id: 'stone', name: 'Stone on the north wall, floor to roof', group: ['wall-tv', 'TV and fire'], px: x, py: y, w, h, y0: 0, y1: EAVES, color: STONE, solid: true, short: 'Stone' });
+    box({ id: 'stone', name: 'Stone on the north wall, floor to roof', group: ['fire', 'Fire'], px: x, py: y, w, h, y0: 0, y1: EAVES, color: STONE, solid: true, short: 'Stone' });
   } else if (t === 'wedge') {
     /* The lid over the garage flight: one flat plane on the flight's pitch, 0.10 thick, 2.12 over the landing and
        down to the floor at the hole's end (`end: 'x'` pitches a box along the house). The box's room-side wall is one
