@@ -950,36 +950,23 @@
    "y1": 2.7
   },
   {
-   "id": "gf-part-6",
+   "id": "gf-box-wall-landing",
    "group": "house",
    "color": "#c9ced6",
    "opacity": 0.5,
-   "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-walls", "name": "Walls" } ],
-   "short": "Partition 6",
+   "parent": [
+    { "id": "ground", "name": "Ground floor" },
+    { "id": "gf-stair-box", "name": "Stair box (the wedge)" }
+   ],
+   "short": "Box wall, landing",
    "house": true,
-   "name": "Partition 6",
+   "name": "Stair box wall at the landing, 2.12 high",
    "x0": 5.4,
-   "x1": 9.28,
+   "x1": 5.7,
    "z0": 1.4,
    "z1": 1.5,
    "y0": 0,
-   "y1": 2.7
-  },
-  {
-   "id": "gf-part-7",
-   "group": "house",
-   "color": "#c9ced6",
-   "opacity": 0.5,
-   "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-walls", "name": "Walls" } ],
-   "short": "Partition 7",
-   "house": true,
-   "name": "Partition 7",
-   "x0": 9.18,
-   "x1": 9.28,
-   "z0": 0.48,
-   "z1": 1.5,
-   "y0": 0,
-   "y1": 2.7
+   "y1": 2.12
   },
   {
    "id": "gf-soft-1",

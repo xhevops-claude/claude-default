@@ -80,6 +80,14 @@ let walls = 0, parts = 0, furn = 0, chairs = 0;
 for (const e of G) {
   const [t, x, y, w, h] = e;
   if (t === 'wall' || t === 'part') {
+    /* The stair box's own walls are not floor to ceiling: its room-side wall follows the lid (built below, one step per
+       tread, from the wedge) and its end wall is where the lid meets the floor. Only the landing's stub, x 5.4 to 5.7,
+       stands at the lid's full 2.12. The triangle above the slope is the living room's. */
+    if (t === 'part' && x === 5.5 && y === 9.18) continue;
+    if (t === 'part' && x === 5.5 && y === 5.4) {
+      box({ id: 'box-wall-landing', name: 'Stair box wall at the landing, 2.12 high', group: ['stair-box', 'Stair box (the wedge)'], px: x, py: 5.4, w: 0.1, h: 0.3, y0: 0, y1: 2.12, color: PART, opacity: 0.5, short: 'Box wall, landing' });
+      continue;
+    }
     const isOuter = t === 'wall';
     for (const p of wallBoxes(x, y, w, h)) {
       const k = isOuter ? ++walls : ++parts;
