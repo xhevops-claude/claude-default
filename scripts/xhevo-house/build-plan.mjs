@@ -1,0 +1,117 @@
+/* Builds the artifact page from ascii-out.txt and the tables below. Edit the numbers here, run, republish. */
+import fs from 'node:fs';
+const S = new URL('.', import.meta.url).pathname;
+const out = fs.readFileSync(`${S}/ascii-out.txt`, 'utf8').split('\n');
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const ground = out.slice(0, 21).join('\n'), first = out.slice(22, 32).join('\n');
+const zone = fs.readFileSync(`${S}/ascii3-out.txt`, 'utf8').split('\n').slice(0, 26).join('\n');
+const row = (a, b, c, cls = '') => `      <tr><td${cls}>${a}</td><td class="n">${b}</td><td${cls}>${c}</td></tr>`;
+const G = [
+  ['Hall', '5.6', 'the landing 1.30 × 1.10 where the garage flight arrives, the room south of it 1.40 × 2.20, a bay by the store hatch; it opens to the living room through 1.20 beside the closed stair'],
+  ['Toilet', '3.2', '1.50 × 2.10 under the stair\'s west leg and 0.40 beyond it; ceiling 1.61 at its north wall rising to 2.68, then 2.70; door 0.80 from the hall'],
+  ['Store', '0.5', '1.00 × 0.50 under the winders, up to 1.5 high; a 0.50 hatch from the hall\'s bay'],
+  ['Bedroom', '7.5', '<b>3.00 × 2.50 net</b>, decided. Door 0.90 from the hall, window 1.40 to the yard. The 2.00 × 1.80 bed with its head on the back wall leaves 0.70 free on the yard side and 1.00 at the foot; a wardrobe only if 0.40 deep'],
+  ['Kitchen', '', 'the bedroom wall runs on to 1.20 short of the closed stair, so the counter is 4.00 along it, plus a 1.40 return on the south wall'],
+  ['Living', '27.2', '5.00 × 5.20 plus the kitchen strip along its west wall; open to the roof, 3.40 at the walls, 5.85 under the ridge; sofa 2.7 m from the breast; the table under the south window'],
+  ['Garage stair', '4.3', 'closed in: the 3.48 × 1.10 hole with 0.10 walls, lid at 2.90; it arrives in the hall at x 5.7 facing the hill'],
+  ['Breast', '', '2.20 × 0.50 in front of the closed stair, stone on a frame, up to the roof. Fire 1.00 × 0.50 with its opening 0.20 to 0.70. Mantel at 0.85, 0.35 deep. TV 75″ at 1.15 to 2.10 on a pull-down mount, 0.70 to 1.65 in summer. Chimney 0.80 × 0.50 through the north slope to 6.65, 0.80 over the ridge'],
+  ['Glass gable', '', '6.40 wide, 3.61 at the walls, 5.85 at the apex, about 30 m²; balcony door 1.00 × 2.30 at its south end'],
+  ['Yard side', '', 'yard door 0.90 beside the kitchen; south window 1.40'],
+  ['Open', '', 'the bathroom: there is no shower in the house yet', ' class="open"'],
+];
+const F = [
+  ['North bedroom', '7.3', '2.20 × 3.30; the bed under the north slope; window 1.60 onto the tall room; nothing to the neighbour\'s side, that wall is 1 m off the boundary'],
+  ['South bedroom', '6.9', '3.30 × 2.10; the bed under the south slope; window 1.20 onto the tall room; roof window 1.40 × 0.80 to the yard'],
+  ['Landing', '', '0.77 deep at the stair\'s top, the two doors facing each other across it; a 1.00 × 0.80 cupboard at its end'],
+  ['Stairwell', '3.4', '1.00 × 3.43 along the back wall'],
+];
+const L = [
+  ['Kitchen run', '4.00', 'along the wall from the 1.20 opening to the yard wall, 0.60 deep: fridge 0.60 beside the opening, an oven column 0.60, worktop 1.20, the hob 0.60 with its extractor, worktop 1.00 to the corner, the dishwasher under it'],
+  ['Kitchen return', '1.40', 'along the yard wall up to the yard door: the corner 0.60, the sink 0.80 under a new 0.70 window; about 2.8 m of worktop in all'],
+  ['Yard door', '0.90', 'at x 7.5 to 8.4, swinging out so the dining side stays clear; from it you walk in through the 0.80 between the return and the table'],
+  ['Dining', '1.40 × 0.80', 'under the south window: a bench on the wall, two chairs on the room side, four seats, six with the table pulled toward the door. The chairs back onto the sofa with 0.15 between, so you take them from the ends'],
+  ['Sofa', '1.80 × 0.90', 'facing the breast, 2.7 m from the fire and the TV; coffee table 0.90 × 0.50 in front'],
+  ['Breast', '2.20 × 0.50', 'the fire 1.00 wide at the floor, the TV above the mantel, a 0.60 log niche in its east end'],
+  ['Shelves', '1.30 × 0.25', 'on the closed stair\'s face west of the breast, 1.5 m high under the lid'],
+  ['Reading chair', '0.70 × 0.70', 'in the free corner at the glass, beside the fire, a lamp with it'],
+  ['Balcony door', '1.00', 'in the glass at its south end, swinging in; the way to it runs along the glass past the table\'s end, 1.10 wide'],
+  ['Paths', '', 'hall to living room through the 1.20 opening beside the closed stair, the fridge on your right as you come in; yard door to the room past the kitchen return; sofa to the reading corner past the breast\'s end'],
+];
+const X = [
+  ['Roof', '35°', 'gable along the house, off the first floor with a 0.50 knee wall: eaves 3.40, ridge 5.85 over the middle, overhang 0.40'],
+  ['Levels', '', 'garage −2.90, ground floor 0.00, its ceiling 2.70, first floor 2.90'],
+  ['Stair up', '17 × 0.171', '0.27 treads: 4 west along the north wall from x 4.4, 3 winders in the corner, 9 south along the back wall to the top riser at z 3.73'],
+  ['Garage flight', '17 × 0.171', '0.29 treads from the garage floor up to x 5.7; headroom 2.02 under the deck over the 4th tread'],
+];
+const table = (rows, h = ['Room', 'm²', 'Size and what it holds']) => `    <table>\n      <tr><th>${h[0]}</th><th>${h[1]}</th><th>${h[2]}</th></tr>\n${rows.map((r) => row(...r)).join('\n')}\n    </table>`;
+const html = `<title>Xhevo house plan</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Archivo:wght@500;700&display=swap">
+<style>
+/* layout: one column of drafting sheets, each a drawing with its numbers under it; the drawings are monospace, the numbers are tables */
+:root {
+  --bg: #eceeea; --sheet: #f8f8f4; --fg: #1c2126; --muted: #5b6670; --line: #c9d0cc; --accent: #2f6b8f; --warn: #a2552b;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12171b; --sheet: #1a2026; --fg: #e8e6df; --muted: #9aa5ad; --line: #2c373f; --accent: #86b5e8; --warn: #e2946a; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #12171b; --sheet: #1a2026; --fg: #e8e6df; --muted: #9aa5ad; --line: #2c373f; --accent: #86b5e8; --warn: #e2946a; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--display); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 20px 48px; padding-inline: 16px; display: grid; gap: 18px; }
+h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; font-size: 14px; }
+section { background: var(--sheet); border: 1px solid var(--line); padding: 14px; min-width: 0; }
+h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 8px; color: var(--muted); }
+h2 b { color: var(--fg); }
+pre { margin: 0 0 12px; font: 12.5px/1.3 var(--mono); white-space: pre; overflow-x: auto; -webkit-text-size-adjust: none; text-size-adjust: none; color: var(--fg); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 5px 8px 5px 0; border-top: 1px solid var(--line); }
+th { font-family: var(--mono); font-weight: 500; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-top: none; }
+td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.open { color: var(--warn); font-weight: 700; }
+.sub code, .legend code { font-family: var(--mono); color: var(--fg); }
+@media (min-width: 700px) { pre { font-size: 14px; } }
+</style>
+<div class="wrap">
+  <h1>Xhevo house, working plan</h1>
+  <p class="sub">Metres. Hill at the top, glass at the bottom, yard on the left, north on the right. In the drawings one character is 0.25 m across and one row 0.5 m down; <code>=</code> is glass or a window, a gap in a wall is a door. Nothing here is committed yet.</p>
+
+  <section>
+    <h2><b>Ground floor</b> · 0.30 outer walls, 0.10 partitions · 8.40 × 6.40 clear, 53.8 m²</h2>
+<pre>${esc(ground)}</pre>
+${table(G)}
+  </section>
+
+  <section>
+    <h2><b>First floor</b> · under the roof: 0.50 at the north and south walls, 2.95 under the ridge · 2.00 high over the middle 2.7 m, 1.50 over 4.1 m</h2>
+<pre>${esc(first)}</pre>
+${table(F)}
+  </section>
+
+  <section>
+    <h2><b>Living room and kitchen</b> · 5.00 × 5.20 and the kitchen strip · one character 0.125 m across, one row 0.25 m down</h2>
+<pre>${esc(zone)}</pre>
+${table(L, ['Item', 'Size', 'Where and how'])}
+  </section>
+
+  <section>
+    <h2><b>Handover</b> · where things stand, for the next session</h2>
+    <table>
+      <tr><th>What</th><th></th><th>State</th></tr>
+      <tr><td>Decided</td><td class="n"></td><td>everything on this page: the ground floor as drawn (bedroom 3.00 × 2.50 net, the kitchen wall run on to a 1.20 opening, the 4.00 counter, the closed garage stair with the breast, fire and TV in front of it), the roof off the first floor at 35° with a 0.50 knee wall, two bedrooms upstairs with windows onto the tall room</td></tr>
+      <tr><td class="open">Open</td><td class="n"></td><td class="open">the shower: no bathroom in the house yet · upstairs is tight (6.9 and 7.3 m²) · the dining chairs back onto the sofa · a sink window 0.70 is new in the south wall</td></tr>
+      <tr><td>Dead ideas</td><td class="n"></td><td>a 45° corner hearth plugging the glass; the garage stair open to the living room with a rail; the TV on the stair box's wall; a bathroom in place of the ground-floor bedroom; a roof on top of two full storeys (eaves 5.60, ridge 9.10)</td></tr>
+      <tr><td>Pushed</td><td class="n"></td><td>branch <code>claude/house-ground-floor</code> up to 75d70b3: the toilet under the stair, the closed stair, the corner hearth and TV wall (both since dropped), the viewer fix so the Facade layer no longer washes out</td></tr>
+      <tr><td>Not pushed</td><td class="n"></td><td>two local commits (the roof off the first floor, the breast, the bedrooms upstairs; the ground-floor bedroom restored) and the untracked drafts PLAN.txt and plan.html. They live only in the old session's container: if it is gone, rebuild from this page. The 3D scene there still has the bedroom at 3.30 × 2.90 and the 2.50 kitchen, not the numbers above</td></tr>
+      <tr><td>To rebuild</td><td class="n"></td><td>the scene is generated by a script from these numbers (one box per wall, tread and fitting, in the house frame; levels get holes for the stairwells); the study page needs its section and elevation redrawn to the 35° roof and the PDF regenerated; German names for the new objects go in the planner's i18n list</td></tr>
+      <tr><td>Rules</td><td class="n"></td><td>no commits or pushes until a thing is decided; a push publishes a preview; plans in text on this page, not pictures; drawings are pipes and dashes</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2><b>Section</b> · what fixes the heights</h2>
+${table(X, ['Part', '', 'Numbers'])}
+  </section>
+</div>
+`;
+fs.writeFileSync(`${S}/xhevo-plan.html`, html);
+console.log('page built', html.length);
