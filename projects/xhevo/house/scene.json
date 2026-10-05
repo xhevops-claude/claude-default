@@ -131,7 +131,7 @@
    "extendFront": 1.7
   },
   { "id": "ground", "name": "Ground floor", "elevation": 0, "height": 2.7, "x0": 2, "extendFront": 2 },
-  { "id": "first", "name": "First floor", "elevation": 2.9, "height": 2.7, "x0": 2, "x1": 5.4 }
+  { "id": "first", "name": "First floor", "elevation": 2.9, "height": 2.7, "x0": 2, "x1": 4.9 }
  ],
  "terrain": {
   "front": "+X",
