@@ -21,3 +21,6 @@ apps/expenses/data/*.json
 apps/expenses/data/expenses/
 apps/expenses/files/*
 !apps/expenses/files/*.enc
+
+# the artifact page is a fragment without a doctype; it is published from the Artifact tool, not served
+scripts/xhevo-house/xhevo-plan.html
