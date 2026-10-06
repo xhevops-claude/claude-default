@@ -49,7 +49,7 @@ const paintOf = (label, t) => {
   if (/worktop|island/.test(label)) return CABINET;
   if (/shower|basin|^wc/.test(label)) return CERAMIC;
   if (/coffee/.test(label)) return WALNUT;
-  if (/sofa/.test(label)) return FABRIC;
+  if (/sofa|armchair/.test(label)) return FABRIC;
   if (/fire/.test(label)) return ANTHRACITE;
   if (/table|shelves/.test(label) || t === 'chair') return OAK;
   return OAK;
@@ -95,7 +95,7 @@ const heightOf = (label, t) => {
   if (/worktop|hob|oven|sink|island/.test(label)) return [0, 0.9];
   if (/table/.test(label)) return [0, 0.75];
   if (/coffee/.test(label)) return [0, 0.45];
-  if (/sofa/.test(label)) return [0, 0.45];
+  if (/sofa|armchair/.test(label)) return [0, 0.45];
   if (/TV/.test(label)) return [0.8, 1.76];
   if (/fire/.test(label)) return [0, 1.2];
   if (t === 'chair') return [0, 0.45];
@@ -171,7 +171,7 @@ for (const e of G) {
     const name = t === 'chair' ? `Chair ${k}` : label;
     box({ id: `${t}-${k}`, name, group: room, px: x, py: y, w, h, y0, y1, color: paintOf(label, t), solid: true, short: name });
     /* A sofa's back: a strip along its back edge up to 0.85. */
-    if (/sofa/.test(label)) {
+    if (/sofa|armchair/.test(label)) {
       const main = h > w;   // the main sofa runs along the house, its back toward the yard
       const back = main ? { px: x, py: y, w: 0.25, h } : y < 9.8 ? { px: x, py: y, w, h: 0.25 } : { px: x, py: y + h - 0.25, w, h: 0.25 };
       box({ id: `${t}-${k}-back`, name: `${label}, back`, group: room, ...back, y0: 0.45, y1: 0.85, color: FABRIC, solid: true, short: 'Back' });
