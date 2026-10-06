@@ -1014,34 +1014,18 @@
    "color": "#b4b9bf",
    "solid": true,
    "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-kitchen", "name": "Kitchen" } ],
-   "short": "fridge",
+   "short": "sink",
    "house": true,
-   "name": "fridge",
-   "x0": 4.9,
-   "x1": 5.5,
-   "z0": 2.7,
-   "z1": 3.3,
-   "y0": 0,
-   "y1": 1.9
-  },
-  {
-   "id": "gf-furn-2",
-   "group": "house",
-   "color": "#3f4144",
-   "solid": true,
-   "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-kitchen", "name": "Kitchen" } ],
-   "short": "oven",
-   "house": true,
-   "name": "oven",
-   "x0": 4.9,
-   "x1": 5.5,
-   "z0": 3.3,
-   "z1": 3.9,
+   "name": "sink",
+   "x0": 5.5,
+   "x1": 6.3,
+   "z0": 6.1,
+   "z1": 6.7,
    "y0": 0,
    "y1": 0.9
   },
   {
-   "id": "gf-furn-3",
+   "id": "gf-furn-2",
    "group": "house",
    "color": "#8a8f8c",
    "solid": true,
@@ -1051,13 +1035,13 @@
    "name": "worktop",
    "x0": 4.9,
    "x1": 5.5,
-   "z0": 3.9,
-   "z1": 5.1,
+   "z0": 6.1,
+   "z1": 6.7,
    "y0": 0,
    "y1": 0.9
   },
   {
-   "id": "gf-furn-4",
+   "id": "gf-furn-3",
    "group": "house",
    "color": "#2b2d31",
    "solid": true,
@@ -1067,13 +1051,13 @@
    "name": "hob",
    "x0": 4.9,
    "x1": 5.5,
-   "z0": 5.1,
-   "z1": 5.7,
+   "z0": 5.5,
+   "z1": 6.1,
    "y0": 0,
    "y1": 0.9
   },
   {
-   "id": "gf-furn-5",
+   "id": "gf-furn-4",
    "group": "house",
    "color": "#8a8f8c",
    "solid": true,
@@ -1083,13 +1067,45 @@
    "name": "worktop",
    "x0": 4.9,
    "x1": 5.5,
-   "z0": 5.7,
-   "z1": 6.7,
+   "z0": 4.9,
+   "z1": 5.5,
+   "y0": 0,
+   "y1": 0.9
+  },
+  {
+   "id": "gf-furn-5",
+   "group": "house",
+   "color": "#3f4144",
+   "solid": true,
+   "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-kitchen", "name": "Kitchen" } ],
+   "short": "oven",
+   "house": true,
+   "name": "oven",
+   "x0": 4.9,
+   "x1": 5.5,
+   "z0": 4.3,
+   "z1": 4.9,
    "y0": 0,
    "y1": 0.9
   },
   {
    "id": "gf-furn-6",
+   "group": "house",
+   "color": "#b4b9bf",
+   "solid": true,
+   "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-kitchen", "name": "Kitchen" } ],
+   "short": "fridge",
+   "house": true,
+   "name": "fridge",
+   "x0": 4.9,
+   "x1": 5.5,
+   "z0": 3.7,
+   "z1": 4.3,
+   "y0": 0,
+   "y1": 1.9
+  },
+  {
+   "id": "gf-furn-7",
    "group": "house",
    "color": "#b98b5a",
    "solid": true,
@@ -1099,8 +1115,8 @@
    "name": "table 220×80 · 8",
    "x0": 6.6,
    "x1": 7.4,
-   "z0": 3.9,
-   "z1": 6.1,
+   "z0": 3.8,
+   "z1": 6,
    "y0": 0,
    "y1": 0.75
   },
@@ -1115,8 +1131,8 @@
    "name": "Chair 1",
    "x0": 6.3,
    "x1": 6.75,
-   "z0": 5.6,
-   "z1": 6.05,
+   "z0": 5.5,
+   "z1": 5.95,
    "y0": 0,
    "y1": 0.45
   },
@@ -1131,8 +1147,8 @@
    "name": "Chair 2",
    "x0": 6.3,
    "x1": 6.75,
-   "z0": 5.05,
-   "z1": 5.5,
+   "z0": 4.95,
+   "z1": 5.4,
    "y0": 0,
    "y1": 0.45
   },
@@ -1147,8 +1163,8 @@
    "name": "Chair 3",
    "x0": 6.3,
    "x1": 6.75,
-   "z0": 4.5,
-   "z1": 4.95,
+   "z0": 4.4,
+   "z1": 4.85,
    "y0": 0,
    "y1": 0.45
   },
@@ -1163,8 +1179,8 @@
    "name": "Chair 4",
    "x0": 6.3,
    "x1": 6.75,
-   "z0": 3.95,
-   "z1": 4.4,
+   "z0": 3.85,
+   "z1": 4.3,
    "y0": 0,
    "y1": 0.45
   },
@@ -1179,8 +1195,8 @@
    "name": "Chair 5",
    "x0": 7.25,
    "x1": 7.7,
-   "z0": 3.95,
-   "z1": 4.4,
+   "z0": 3.85,
+   "z1": 4.3,
    "y0": 0,
    "y1": 0.45
   },
@@ -1195,8 +1211,8 @@
    "name": "Chair 6",
    "x0": 7.25,
    "x1": 7.7,
-   "z0": 4.5,
-   "z1": 4.95,
+   "z0": 4.4,
+   "z1": 4.85,
    "y0": 0,
    "y1": 0.45
   },
@@ -1211,8 +1227,8 @@
    "name": "Chair 7",
    "x0": 7.25,
    "x1": 7.7,
-   "z0": 5.05,
-   "z1": 5.5,
+   "z0": 4.95,
+   "z1": 5.4,
    "y0": 0,
    "y1": 0.45
   },
@@ -1227,13 +1243,13 @@
    "name": "Chair 8",
    "x0": 7.25,
    "x1": 7.7,
-   "z0": 5.6,
-   "z1": 6.05,
+   "z0": 5.5,
+   "z1": 5.95,
    "y0": 0,
    "y1": 0.45
   },
   {
-   "id": "gf-soft-7",
+   "id": "gf-soft-8",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1249,7 +1265,7 @@
    "y1": 0.45
   },
   {
-   "id": "gf-soft-7-back",
+   "id": "gf-soft-8-back",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1265,7 +1281,7 @@
    "y1": 0.85
   },
   {
-   "id": "gf-soft-8",
+   "id": "gf-soft-9",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1281,7 +1297,7 @@
    "y1": 0.45
   },
   {
-   "id": "gf-soft-8-back",
+   "id": "gf-soft-9-back",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1297,7 +1313,7 @@
    "y1": 0.85
   },
   {
-   "id": "gf-soft-9",
+   "id": "gf-soft-10",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1313,7 +1329,7 @@
    "y1": 0.45
   },
   {
-   "id": "gf-soft-9-back",
+   "id": "gf-soft-10-back",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1329,7 +1345,7 @@
    "y1": 0.85
   },
   {
-   "id": "gf-furn-10",
+   "id": "gf-furn-11",
    "group": "house",
    "color": "#6e4b2e",
    "solid": true,
@@ -1361,7 +1377,7 @@
    "y1": 2.745
   },
   {
-   "id": "gf-furn-12",
+   "id": "gf-furn-13",
    "group": "house",
    "color": "#3f4144",
    "solid": true,

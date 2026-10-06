@@ -65,7 +65,7 @@ td.open { color: var(--warn); font-weight: 700; }
   <h1>Xhevo house, working plan</h1>
 
   <section>
-    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the hill end under the bedrooms is not dug: fill to +1.25, their slab on it · the roof from 2.50 at the walls, 1.00 past the glass, no balcony</h2>
+    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the kitchen an L in the yard corner, the sink under the yard window, so the landing at the foot of the bedrooms' flight opens 3.40 wide · the hill end under the bedrooms is not dug: fill to +1.25, their slab on it · the roof from 2.50 at the walls, 1.00 past the glass, no balcony</h2>
     <svg id="plan" class="plan" aria-label="Ground floor plan"></svg>
   </section>
 
@@ -109,11 +109,13 @@ const G = [
   ['door', 0, 7.5, 0.3, 0.9, 0.15, 7.5, 0.9, 180, 90],      // yard door, swinging out
   ['win', 0, 5.5, 0.3, 0.7], ['win', 0, 8.9, 0.3, 1.4],
   // furniture
-  ['furn', 3.7, 4.9, 0.6, 0.6, 'fridge'], ['furn', 3.1, 4.9, 0.6, 0.6, 'oven'], ['furn', 1.9, 4.9, 1.2, 0.6, 'worktop'],
-  ['furn', 1.3, 4.9, 0.6, 0.6, 'hob'], ['furn', 0.3, 4.9, 1.0, 0.6, 'worktop'],
-  ['furn', 0.9, 6.6, 2.2, 0.8, 'table 220×80 · 8'],                    // dining in the kitchen, across the room, where the island was; the 180 with its 0.40 extension on
-  ['chair', 0.95, 6.3, 0.45, 0.45, ''], ['chair', 1.5, 6.3, 0.45, 0.45, ''], ['chair', 2.05, 6.3, 0.45, 0.45, ''], ['chair', 2.6, 6.3, 0.45, 0.45, ''],      // counter side, tucked 0.15 under
-  ['chair', 2.6, 7.25, 0.45, 0.45, ''], ['chair', 2.05, 7.25, 0.45, 0.45, ''], ['chair', 1.5, 7.25, 0.45, 0.45, ''], ['chair', 0.95, 7.25, 0.45, 0.45, ''],   // room side, tucked 0.15 under
+  // the kitchen packed into the yard corner, an L: the sink on the yard wall under the window, looking out; the run on the back wall stops at x 3.3, a metre short of where it was, so the landing at the foot of the bedrooms' flight is a metre wider
+  ['furn', 0.3, 5.5, 0.6, 0.8, 'sink'],
+  ['furn', 0.3, 4.9, 0.6, 0.6, 'worktop'], ['furn', 0.9, 4.9, 0.6, 0.6, 'hob'], ['furn', 1.5, 4.9, 0.6, 0.6, 'worktop'],
+  ['furn', 2.1, 4.9, 0.6, 0.6, 'oven'], ['furn', 2.7, 4.9, 0.6, 0.6, 'fridge'],
+  ['furn', 1.0, 6.6, 2.2, 0.8, 'table 220×80 · 8'],                    // dining in the kitchen, across the room; 0.10 further north to clear the sink; the 180 with its 0.40 extension on
+  ['chair', 1.05, 6.3, 0.45, 0.45, ''], ['chair', 1.6, 6.3, 0.45, 0.45, ''], ['chair', 2.15, 6.3, 0.45, 0.45, ''], ['chair', 2.7, 6.3, 0.45, 0.45, ''],      // counter side, tucked 0.15 under
+  ['chair', 2.7, 7.25, 0.45, 0.45, ''], ['chair', 2.15, 7.25, 0.45, 0.45, ''], ['chair', 1.6, 7.25, 0.45, 0.45, ''], ['chair', 1.05, 7.25, 0.45, 0.45, ''],   // room side, tucked 0.15 under
   ['soft', 2.25, 8.9, 0.9, 1.8, 'sofa 180×90'],                            // the main sofa, facing the north wall; no fixed armrests
   ['soft', 3.15, 8.0, 1.6, 0.9, 'sofa 160×90'], ['soft', 3.15, 10.7, 1.8, 0.9, 'sofa 180×90'],   // butted against the main sofa's ends: 160 on the stair side, 180 on the glass side, 0.10 off the glass
   ['furn', 3.5, 9.4, 0.8, 0.8, 'coffee'],
@@ -128,18 +130,18 @@ const G = [
   // labels: room name, area, and small notes
   ['fill', 0.3, 0.3, 6.4, 3.4], ['fill', 0.3, 3.7, 4.23, 1.1],           // not dug: fill from the ground to +1.25, the bedrooms' slab on it
   ['room', 3.5, 2.3, 'FILL, NOT DUG', ''], ['note', 3.5, 2.6, 'soil to +1.25 · the bedrooms\' slab sits on it · no room under them'],
-  ['room', 5.95, 5.45, 'landing', ''], ['room', 4.85, 6.4, 'LIVING', '35.4'], ['room', 2.5, 11.5, 'open to the roof', ''],
+  ['room', 5.0, 5.55, 'landing', ''], ['room', 4.85, 6.4, 'LIVING', '35.4'], ['room', 2.5, 11.5, 'open to the roof', ''],
   ['note', 6.45, 6.3, 'lid 2.1'], ['note', 6.45, 7.3, '1.2'], ['note', 6.45, 8.0, '0.8'], ['note', 6.0, 8.75, '0.3'], ['note', 6.0, 9.1, '0'],
   ['note', 5.37, 7.5, 'shelves'], ['note', 4.9, 5.0, 'opening 1.20'],
   ['note', 5.3, 4.1, 'UP +1.45'], ['note', 5.85, 8.9, 'DOWN'],
   ['note', 3.5, 12.25, 'fire 170 on the north wall, x 9.8 to 11.5 · the TV is on a wheeled stand, anywhere'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
   // dimensions, wall to wall: ['dim', x1, y1, x2, y2]
-  ['dim', 4.3, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the landing: 0.90 from the first winder to the hole, open 2.40 wide from the fridge to the north wall
+  ['dim', 3.3, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the landing: 0.90 from the first winder to the hole, open 3.40 wide from the fridge to the north wall
   ['dim', 4.98, 4.75, 5.6, 4.75],                                         // the straight part of the flight, 0.62
   ['dim', 5.9, 5.7, 5.9, 9.18],                                           // stair hole 3.48 long (its 1.10 is the landing's)
-  ['dim', 0.3, 5.95, 5.5, 5.95], ['dim', 0.45, 4.9, 0.45, 11.7],         // living 5.20 wide, 6.80 from the kitchen wall to the glass
-  ['dim', 1.7, 5.5, 1.7, 6.3], ['dim', 2.55, 7.4, 2.55, 8.9], ['dim', 4.75, 8.2, 5.25, 8.2],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.50, sofa to shelves 0.50
-  ['dim', 0.3, 7.0, 0.9, 7.0],                                            // table to the yard wall 0.60
+  ['dim', 0.3, 7.95, 5.5, 7.95], ['dim', 0.45, 4.9, 0.45, 11.7],         // living 5.20 wide, 6.80 from the kitchen wall to the glass
+  ['dim', 1.95, 5.5, 1.95, 6.3], ['dim', 2.55, 7.4, 2.55, 8.9], ['dim', 4.75, 8.2, 5.25, 8.2],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.50, sofa to shelves 0.50
+  ['dim', 0.3, 7.0, 1.0, 7.0],                                            // table to the yard wall 0.70
   ['dim', 3.15, 9.3, 6.6, 9.3], ['dim', 4.75, 8.3, 6.6, 8.3], ['dim', 4.95, 10.8, 6.3, 10.8],     // main sofa's front to the stone 3.45; stair-side sofa's end to the stone 1.85; glass-side sofa's end to the fire 1.35
   ['dim', 6.3, 9.8, 6.3, 11.5],                                           // fire 1.70, on its room face
   ['dim', 5.5, 9.28, 5.5, 11.7], ['dim', 4.0, 11.6, 4.0, 11.7],          // past the stair's end, 2.42; sofa to glass 0.10

@@ -43,7 +43,7 @@ const OAK = '#b98b5a', WALNUT = '#6e4b2e', CABINET = '#8a8f8c', STEEL = '#b4b9bf
 const paintOf = (label, t) => {
   if (/^bed/.test(label)) return LINEN;
   if (/wardrobe/.test(label)) return OAK;
-  if (/fridge/.test(label)) return STEEL;
+  if (/fridge|sink/.test(label)) return STEEL;
   if (/oven/.test(label)) return ANTHRACITE;
   if (/hob|TV/.test(label)) return BLACK;
   if (/worktop|island/.test(label)) return CABINET;
@@ -91,7 +91,7 @@ const heightOf = (label, t) => {
   if (/shower/.test(label)) return [0, 0.1];
   if (/basin/.test(label)) return [0, 0.85];
   if (/^wc/.test(label)) return [0, 0.42];
-  if (/worktop|hob|oven|island/.test(label)) return [0, 0.9];
+  if (/worktop|hob|oven|sink|island/.test(label)) return [0, 0.9];
   if (/table/.test(label)) return [0, 0.75];
   if (/coffee/.test(label)) return [0, 0.45];
   if (/sofa/.test(label)) return [0, 0.45];
