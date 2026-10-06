@@ -334,8 +334,12 @@ async function boot() {
       corners = [[v.x0, v.z1], ...dip, [v.x1, v.z1], [v.x1, cutAt(v.x1)], ...bends, westX || [v.x0, cutAt(v.x0)]];
       ends = corners.map(([, z]) => z === v.z1);
     }
+    /* A `ringTop` (same corner count as `ring`) gives the top its own
+       footprint, so the sides slope straight from one to the other — a
+       chimney narrowing as it rises, not a stack of steps. */
+    const topCorners = v.ring && v.ringTop ? v.ringTop.map((p) => (v.house ? H(p[0], p[1]) : p.slice())) : corners;
     const bottom = corners.map(([x, z], i) => [x, ends[i] ? v.y0End ?? v.y0 : v.y0, z]);
-    const top = corners.map(([x, z], i) => [x, ends[i] ? v.y1End ?? v.y1 : v.y1, z]);
+    const top = topCorners.map(([x, z], i) => [x, ends[i] ? v.y1End ?? v.y1 : v.y1, z]);
     addVolume(o, bottom, top, { dots: !v.solid });
     if (onCut || v.ring) {
       /* Every straight side of the footprint, and the height. */

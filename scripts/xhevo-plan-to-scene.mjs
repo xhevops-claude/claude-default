@@ -49,16 +49,17 @@ const paintOf = (label, t) => {
   if (/worktop|island/.test(label)) return CABINET;
   if (/shower|basin|^wc/.test(label)) return CERAMIC;
   if (/coffee/.test(label)) return WALNUT;
-  if (/sofa/.test(label)) return FABRIC;
-  if (/fire/.test(label)) return ANTHRACITE;
+  if (/sofa|armchair/.test(label)) return FABRIC;
+  if (/^base|crown|flue|fire/.test(label)) return STONE;   // the fire and its chimney are one material
+  if (/^log/.test(label)) return WALNUT;
   if (/table|shelves/.test(label) || t === 'chair') return OAK;
   return OAK;
 };
-/* One roof over the whole house, its ridge along the middle: it starts 2.50 over the ground floor at the outer
-   walls and rises at 0.7 per metre (35°) to 4.95 at the ridge; it runs 0.40 past the side and back walls and 1.00
+/* One roof over the whole house, its ridge along the middle: it starts 3.00 over the ground floor at the outer
+   walls and rises at 0.7 per metre (35°) to 5.45 at the ridge; it runs 0.40 past the side and back walls and 1.00
    past the glass. The outer walls stand to the eaves; what runs across the house (the back wall, the glass, the
    bedrooms' cross walls) has its top on the roof's underside. */
-const EAVES = 2.5, PITCH = 0.7, RIDGE = EAVES + PITCH * 3.5;
+const EAVES = 3.0, PITCH = 0.7, RIDGE = EAVES + PITCH * 3.5;
 const roofAt = (z) => EAVES + PITCH * Math.min(z, 7 - z);
 const X_BACK = Math.min(...G.filter((e) => e[0] === 'wall').map((e) => e[2]));   // the back wall's outer face, from the plan
 const X_LIVING = G.find((e) => e[0] === 'part' && e[1] === 0.3 && e[2] === 4.8)[2];   // 4.8, the living room's back wall: the house is dug out only in front of it
@@ -95,9 +96,14 @@ const heightOf = (label, t) => {
   if (/worktop|hob|oven|sink|island/.test(label)) return [0, 0.9];
   if (/table/.test(label)) return [0, 0.75];
   if (/coffee/.test(label)) return [0, 0.45];
-  if (/sofa/.test(label)) return [0, 0.45];
+  if (/sofa|armchair/.test(label)) return [0, 0.45];
   if (/TV/.test(label)) return [0.8, 1.76];
-  if (/fire/.test(label)) return [0, 1.2];
+  if (/^base body/.test(label)) return [0, 0.3];
+  if (/^base/.test(label)) return [0.3, 0.35];   // the base's top, over its narrower body
+  if (/fire/.test(label)) return [0.35, 1.35];
+  if (/crown/.test(label)) return [1.3, 1.6];
+  if (/^log/.test(label)) return [1.15, 1.35];   // 0.80 to 1.00 over the base
+  if (/flue/.test(label)) return [1.5, 1.5];   // to the roof, set where it is built
   if (t === 'chair') return [0, 0.45];
   return [0, 0.45];
 };
@@ -133,7 +139,7 @@ let walls = 0, parts = 0, furn = 0, chairs = 0, fills = 0;
 for (const e of G) {
   const [t, x, y, w, h] = e;
   if (t === 'wall') {
-    /* The outer walls run the whole house and stand to the roof: the side walls to the eaves at 2.50, the back wall
+    /* The outer walls run the whole house and stand to the roof: the side walls to the eaves at 3.00, the back wall
        a gable under the slope. There is no storey above, only the roof. Behind the living room's back wall (x 4.8)
        there is no house below the bedrooms, only soil: the walls there start on the fill at 1.25, so a side wall
        is cut at x 4.8 into a piece on the fill and a piece from the ground. */
@@ -166,16 +172,36 @@ for (const e of G) {
   } else if (t === 'furn' || t === 'soft' || t === 'chair') {
     const label = e[5] || (t === 'chair' ? 'chair' : t);
     const [y0, y1] = heightOf(label, t);
-    const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /fire/.test(label) ? ['fire', 'Fire'] : ['lounge', 'Lounge'];
+    const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /fire|^base|crown|flue|^log/.test(label) ? ['fire', 'Fire'] : ['lounge', 'Lounge'];
     const k = t === 'chair' ? ++chairs : ++furn;
     const name = t === 'chair' ? `Chair ${k}` : label;
-    box({ id: `${t}-${k}`, name, group: room, px: x, py: y, w, h, y0, y1, color: paintOf(label, t), solid: true, short: name });
+    /* The furnace with its firebox: a hollow open to the room leaves two jambs either side of it, the furnace's back
+       behind it and the furnace bridging over it. */
+    const hollow = /^fire$/.test(label) && G.find((h) => h[0] === 'hollow');
+    if (hollow) {
+      const [, hx, hy, hd, hw, hz0, hz1] = hollow;
+      const part = (id, nm, py, ph, a, b) => box({ id: `${t}-${k}-${id}`, name: `furnace, ${nm}`, group: room, px: x, py, w, h: ph, y0: a, y1: b, color: paintOf(label, t), solid: true, short: nm });
+      part('left', 'jamb', y, hy - y, y0, hz1);
+      part('right', 'jamb', hy + hw, y + h - hy - hw, y0, hz1);
+      part('top', `over the firebox, ${r3(hw)} × ${r3(hz1 - hz0)} × ${r3(hd)} deep`, y, h, hz1, y1);
+      if (hx + hd < x + w - 1e-6) box({ id: `${t}-${k}-back`, name: 'furnace, behind the firebox', group: room, px: hx + hd, py: hy, w: x + w - hx - hd, h: hw, y0, y1: hz1, color: paintOf(label, t), solid: true, short: 'back' });
+    } else if (/flue/.test(label)) toRoof({ id: `${t}-${k}`, name: 'flue, from the fire to the roof', group: room, px: x, py: y, w, h, color: paintOf(label, t), solid: true, short: name }, y0);
+    else box({ id: `${t}-${k}`, name, group: room, px: x, py: y, w, h, y0, y1, color: paintOf(label, t), solid: true, short: name });
     /* A sofa's back: a strip along its back edge up to 0.85. */
-    if (/sofa/.test(label)) {
+    if (/sofa|armchair/.test(label)) {
       const main = h > w;   // the main sofa runs along the house, its back toward the yard
       const back = main ? { px: x, py: y, w: 0.25, h } : y < 9.8 ? { px: x, py: y, w, h: 0.25 } : { px: x, py: y + h - 0.25, w, h: 0.25 };
       box({ id: `${t}-${k}-back`, name: `${label}, back`, group: room, ...back, y0: 0.45, y1: 0.85, color: FABRIC, solid: true, short: 'Back' });
     }
+  } else if (t === 'chimney') {
+    /* The chimney over the crown: one volume whose sides run straight from the crown's footprint at z0 to the
+       second footprint where the roof starts at the eaves (`ringTop`), then on at that size through the roof. */
+    const [, , , , , x1, y1, w1, h1, z0] = e;
+    const ringOf = (px, py, pw, ph) => [[py, 7 - px - pw], [py + ph, 7 - px - pw], [py + ph, 7 - px], [py, 7 - px]].map(([a, b]) => [r3(a), r3(b)]);
+    works.push({ id: 'gf-chimney', group: 'house', color: STONE, solid: true, parent: [LEVELS.gf, { id: 'gf-fire', name: 'Fire' }], short: 'Chimney', house: true, name: w1 === w && h1 === h ? `Chimney, ${r3(w)} × ${r3(h)}, straight up from ${z0} to the eaves` : `Chimney, narrowing straight from ${r3(w)} × ${r3(h)} at ${z0} to ${r3(w1)} × ${r3(h1)} at the eaves`, ring: ringOf(x, y, w, h), ringTop: ringOf(x1, y1, w1, h1), y0: z0, y1: EAVES });
+    /* Through the roof and on, flat-topped 1.00 over the roof's top surface at the chimney's highest side. */
+    const above = r3(roofAt(Math.min(3.5, 7 - x1)) + 0.2 + 1.0);
+    box({ id: 'chimney-top', name: `Chimney, ${r3(w1)} × ${r3(h1)}, from the eaves through the roof to ${above}, 1.00 over it`, group: ['fire', 'Fire'], px: x1, py: y1, w: w1, h: h1, y0: EAVES, y1: above, color: STONE, solid: true, short: 'Chimney top' });
   } else if (t === 'stone') {
     toRoof({ id: 'stone', name: 'Stone on the north wall, floor to roof', group: ['fire', 'Fire'], px: x, py: y, w, h, color: STONE, solid: true, short: 'Stone' });
   } else if (t === 'wedge') {
@@ -216,16 +242,15 @@ for (const e of G) {
   }
   /* 'door', 'win', 'roof', 'dashrect' and the labels draw nothing: doors cut the walls above, the roof is not modelled. */
 }
-/* The shelves on the stair box's face: one unit whose top runs 0.10 under the lid, from the landing end to where
-   the lid comes down to 0.40 — beyond that there is no height left for a shelf. */
-const shelf = G.find((e) => e[0] === 'furn' && e[1] === 5.25 && e[2] === 5.9);
+/* The shelves on the stair box's face: one triangle matching the wall behind them, the whole length of the hole,
+   their top on the lid line from 2.12 at the landing down to the floor at the hole's end. */
+const shelf = G.find((e) => e[0] === 'furn' && e[1] === 5.25 && !e[5]);
 if (shelf) {
-  const [, x, y, w] = shelf;
-  const xEnd = r3(5.7 + (2.12 - 0.4) / (0.171 / 0.29));   // lid(xEnd) = 0.40
-  works.push({ ...pitched({ id: 'shelves', name: `Shelves on the stair wall, top under the lid, ${r3(lid(y) - 0.1)} to 0.30 at x ${xEnd}`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: y, w, h: xEnd - y, y0: 0, y1: lid(y) - 0.1, color: OAK, solid: true, short: 'Shelves' }), y1End: 0.3 });
+  const [, x, y, w, h] = shelf;
+  works.push({ ...pitched({ id: 'shelves', name: `Shelves on the stair wall, matching it: top on the lid, ${r3(lid(y))} to ${r3(lid(y + h))} at x ${r3(y + h)}`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: y, w, h, y0: 0, y1: lid(y), color: OAK, solid: true, short: 'Shelves' }), y1End: r3(lid(y + h)) });
 }
-/* The shelves came in as a plain furn box above; drop that one in favour of the bays. */
-const plain = works.findIndex((w) => w.x0 === 5.9 && w.z1 === r3(7 - 5.25) && !/bay/.test(w.name));
+/* The shelves came in as a plain furn box above; drop that one in favour of the triangle. */
+const plain = shelf ? works.findIndex((w) => w.x0 === r3(shelf[2]) && w.z1 === r3(7 - 5.25) && w.id !== 'gf-shelves') : -1;
 if (plain >= 0) works.splice(plain, 1);
 
 /* ── the bedrooms, half a level up ────────────────────────────────────── */
@@ -279,12 +304,12 @@ for (const [side, px] of [['north', 3.5], ['yard', -0.4]]) {
    its own slab stopping at the landing's edge (the strips in front are works, the stairwell between them open), its storey to the eaves.
    There is no first floor: the living room is open to the roof. */
 scene.levels = [
-  ...scene.levels.filter((l) => l.id !== 'first' && l.id !== 'half').map((l) => l.id === 'ground' ? { ...l, x0: X_LIVING, extendFront: 2 } : l),
+  ...scene.levels.filter((l) => l.id !== 'first' && l.id !== 'half').map((l) => l.id === 'ground' ? { ...l, x0: X_LIVING, extendFront: 2, height: EAVES } : l),
   { id: 'half', name: 'Bedrooms, half level', elevation: HALF, height: r3(EAVES - HALF), x0: X_BACK, x1: HALF_X1 },
 ];
 scene.works = [...scene.works.filter((w) => w.id !== 'balcony' && !/^(gf|hl|rf)-/.test(w.id)), ...works];
 scene.notes = scene.notes.filter((t) => !/^(Ground floor|The house) from the plan page/.test(t));
-scene.notes.push(`The house from the plan page (projects/xhevo/house/plan.html, generated by scripts/xhevo-plan-to-scene.mjs): ${12 - X_BACK} × 7 outside, x ${X_BACK} to 12, with the glass gable at the front over the garage and no balcony, under one roof (ids rf-*) that starts 2.50 over the ground floor at the side walls and rises at 0.7 per metre to ${r3(RIDGE)} at the ridge, 0.40 past the sides and the back, 1.00 past the glass; the side walls stand to the eaves, the back wall and the glass are gables under it; behind the living room's back wall the outer walls start on the fill at ${VOID}, since there is no house under the bedrooms. Walls 0.30, partitions 0.10. The kitchen is an L in the yard corner, its back wall only as long as the kitchen. The garage flight's hole x 5.7 to 9.18 is closed by a lid on the flight's pitch (2.12 at the landing, down to the floor at x 9.18), one plane. The two bedrooms are half a level up at +${HALF} over the hill end, x ${X_BACK} to 4.9, on fill (ids gf-fill-*): the hill end is not dug, the soil is made up to ${VOID} and their slab sits on it (ids hl-* for the bedrooms). ${RISERS} risers of ${RISER} climb from the living room against its back wall in the middle of the house, ${UP[6]} treads of ${r3(UP[4] / UP[6])}, ${r3(UP[4])} long, the last riser being the landing's floor in the wall line; the landing faces two doors side by side, and through each the bedroom is straight ahead and its bath to the side, in the front corner on the outer wall; the wall between the bedrooms is on the centre line. The slab of the ground level still runs unbroken under the stair hole: levels have no holes.`);
+scene.notes.push(`The house from the plan page (projects/xhevo/house/plan.html, generated by scripts/xhevo-plan-to-scene.mjs): ${12 - X_BACK} × 7 outside, x ${X_BACK} to 12, with the glass gable at the front over the garage and no balcony, under one roof (ids rf-*) that starts ${EAVES.toFixed(2)} over the ground floor at the side walls and rises at 0.7 per metre to ${r3(RIDGE)} at the ridge, 0.40 past the sides and the back, 1.00 past the glass; the side walls stand to the eaves, the back wall and the glass are gables under it; behind the living room's back wall the outer walls start on the fill at ${VOID}, since there is no house under the bedrooms. Walls 0.30, partitions 0.10. The kitchen is an L in the yard corner, its back wall only as long as the kitchen. The garage flight's hole x 5.7 to 9.18 is closed by a lid on the flight's pitch (2.12 at the landing, down to the floor at x 9.18), one plane. The two bedrooms are half a level up at +${HALF} over the hill end, x ${X_BACK} to 4.9, on fill (ids gf-fill-*): the hill end is not dug, the soil is made up to ${VOID} and their slab sits on it (ids hl-* for the bedrooms). ${RISERS} risers of ${RISER} climb from the living room against its back wall in the middle of the house, ${UP[6]} treads of ${r3(UP[4] / UP[6])}, ${r3(UP[4])} long, the last riser being the landing's floor in the wall line; the landing faces two doors side by side, and through each the bedroom is straight ahead and its bath to the side, in the front corner on the outer wall; the wall between the bedrooms is on the centre line. The slab of the ground level still runs unbroken under the stair hole: levels have no holes.`);
 /* The file's own layout: one-space indent, short arrays and the objects inside arrays on one line. */
 function fmt(v, depth, inArray) {
   const pad = ' '.repeat(depth), inner = ' '.repeat(depth + 1);
