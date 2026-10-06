@@ -70,7 +70,7 @@ td.open { color: var(--warn); font-weight: 700; }
   </section>
 
   <section>
-    <h2><b>Bedrooms, half level +1.45</b> · in the hill behind the living room, x 0 to 4.9, 6.40 × 4.50 clear · 7 risers of 0.207 at 45° from the garage landing, 3 winders turning in the corner then 3 treads west · a 1.35 × 1.00 landing at the top of the flight with a door straight into each bedroom · each bedroom has its own bath, the two back to back in the middle where the roof is highest · beds along the side walls, where lying is all the roof allows · a wardrobe nook at the hill wall in each, wardrobes later · under the same roof: 1.05 at the side walls, 3.50 under the ridge · three sides in the hill</h2>
+    <h2><b>Bedrooms, half level +1.45</b> · in the hill behind the living room, x 0 to 4.9, 6.40 × 4.50 clear · 7 risers of 0.207 at 45° from the garage landing, 3 winders turning in the corner then 3 treads west · a 1.35 × 1.00 landing at the top of the flight with a door straight into each bedroom · each bedroom has its own bath: the yard bedroom's 2.00 × 1.50 at its front end, the north bedroom's in the middle at the hill wall · beds along the side walls, where lying is all the roof allows · wardrobes later · under the same roof: 1.05 at the side walls, 3.50 under the ridge · three sides in the hill</h2>
     <svg id="beds" class="plan" aria-label="Bedrooms plan, half level"></svg>
   </section>
 
@@ -154,25 +154,24 @@ const G2 = [
   ['part', 3.53, 3.8, 0.1, 1.0],           // the landing's west wall, the yard bedroom's door in it
   ['part', 3.53, 3.7, 3.17, 0.1],          // the north bedroom's south wall, over the landing and the stairwell, its door in it
   ['part', 3.53, 0.3, 0.1, 3.4],           // between the two bedrooms, hill wall to the landing; the two baths back to back on it
-  ['part', 1.9, 0.3, 0.1, 1.6],            // the yard bath's west wall, the wardrobe nook beyond it
-  ['part', 1.9, 1.8, 1.63, 0.1],           // the yard bath's south wall, its door in it
+  ['part', 0.3, 3.2, 2.1, 0.1],            // the yard bath's north wall, at the room's front end
+  ['part', 2.3, 3.2, 0.1, 1.6],            // the yard bath's east wall, its door in it
   ['part', 4.9, 0.3, 0.1, 1.6],            // the north bath's east wall, the wardrobe nook beyond it
   ['part', 3.63, 1.8, 1.37, 0.1],          // the north bath's south wall, its door in it
   ['door', 3.53, 3.9, 0.1, 0.8, 3.58, 3.9, 0.8, 180, 90],   // yard bedroom, straight off the landing
   ['door', 3.73, 3.7, 0.8, 0.1, 3.73, 3.75, 0.8, -90, 0],   // north bedroom, straight off the landing
-  ['door', 2.5, 1.8, 0.6, 0.1, 3.1, 1.85, 0.6, -90, -180],  // yard bath, from its bedroom, swinging in
+  ['door', 2.3, 3.4, 0.1, 0.6, 2.35, 3.4, 0.6, 180, 90],    // yard bath, from its bedroom, swinging in
   ['door', 3.7, 1.8, 0.6, 0.1, 3.7, 1.85, 0.6, -90, 0],     // north bath, from its bedroom, swinging in
-  ['furn', 0.3, 2.0, 2.0, 1.6, 'bed 160×200'],                                                    // yard bedroom: along the yard wall, head at the wall, 1.20 in front of it to the front wall
-  ['soft', 2.0, 0.3, 0.8, 0.8, 'shower'], ['furn', 3.1, 0.3, 0.4, 0.65, 'wc'], ['furn', 2.0, 1.3, 0.45, 0.45, 'basin'],      // yard bath, 1.53 × 1.50, 2.45 to 3.50 under the roof
+  ['furn', 0.3, 0.3, 2.0, 1.6, 'bed 160×200'],                                                    // yard bedroom: in the hill corner along the yard wall, head at the wall, 1.30 in front of it to the bath
+  ['soft', 0.3, 3.3, 0.8, 1.5, 'shower'], ['furn', 1.3, 4.35, 0.5, 0.45, 'basin'], ['furn', 1.35, 3.3, 0.4, 0.65, 'wc'],     // yard bath, 2.00 × 1.50: walk-in shower across the yard end, basin on the front wall, wc opposite it
   ['furn', 5.1, 1.7, 1.6, 2.0, 'bed 160×200'],                                                    // north bedroom: along the north wall, head at the stairwell wall
   ['furn', 4.1, 0.3, 0.8, 0.8, 'shower'], ['furn', 3.63, 0.3, 0.4, 0.65, 'wc'], ['furn', 4.45, 1.3, 0.45, 0.45, 'basin'],   // north bath, 1.27 × 1.50, 3.41 to 2.52 under the roof
   ['winders', 5.6, 3.8, 1.1, 1.0], ['stair', 4.98, 3.8, 0.62, 1.0, 'x', 3, 'left'],   // the stairwell: winders in the corner, then 3 treads west at 45°; the flight arrives on the landing
-  ['room', 1.4, 4.15, 'BEDROOM', '11.9'], ['room', 2.95, 1.45, 'BATH', '2.3'], ['room', 4.3, 1.45, 'BATH', '1.9'], ['room', 4.35, 2.15, 'BEDROOM', '8.2'], ['room', 4.3, 4.1, 'LANDING', '1.4'],
-  ['note', 1.0, 1.1, 'wardrobe nook'], ['note', 1.0, 1.35, 'roof 1.26 to 2.38'], ['note', 5.85, 1.0, 'wardrobe nook'], ['note', 5.85, 1.25, 'roof 2.45 to 1.26'],
+  ['room', 1.4, 2.55, 'BEDROOM', '11.2'], ['room', 2.05, 4.45, 'BATH', '3.0'], ['room', 4.3, 1.45, 'BATH', '1.9'], ['room', 4.35, 2.15, 'BEDROOM', '8.2'], ['room', 4.3, 4.1, 'LANDING', '1.4'],
+  ['note', 2.95, 1.1, 'wardrobe later'], ['note', 5.85, 1.0, 'wardrobe nook'], ['note', 5.85, 1.25, 'roof 2.45 to 1.26'],
   ['note', 5.65, 5.08, 'up from below'],
-  ['dim', 0.3, 3.75, 3.53, 3.75], ['dim', 3.4, 1.9, 3.4, 4.8],             // yard bedroom 3.23 wide, 2.90 from the bath to the front wall
-  ['dim', 0.3, 0.5, 1.9, 0.5], ['dim', 1.7, 0.3, 1.7, 2.0],                // its wardrobe nook 1.60 wide, 1.70 to the bed
-  ['dim', 2.0, 1.2, 3.53, 1.2],                                           // yard bath 1.53 wide, 1.50 deep
+  ['dim', 0.3, 2.4, 3.53, 2.4], ['dim', 2.2, 0.3, 2.2, 3.2],               // yard bedroom 3.23 wide, 2.90 from the hill wall to the bath
+  ['dim', 0.3, 4.15, 2.3, 4.15], ['dim', 2.0, 3.3, 2.0, 4.8],             // yard bath 2.00 × 1.50
   ['dim', 3.63, 1.2, 4.9, 1.2],                                           // north bath 1.27 wide, 1.50 deep
   ['dim', 3.63, 2.7, 5.1, 2.7], ['dim', 4.4, 1.9, 4.4, 3.7],               // north bedroom: 1.47 beside the bed, 1.80 from the bath to the stairwell wall
   ['dim', 5.0, 0.5, 6.7, 0.5], ['dim', 6.5, 0.3, 6.5, 1.7],                // its wardrobe nook 1.70 × 1.40
