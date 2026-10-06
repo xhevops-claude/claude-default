@@ -1346,13 +1346,13 @@
    "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-fire", "name": "Fire" } ],
    "short": "Chimney top",
    "house": true,
-   "name": "Chimney, 0.8 × 1.2, from the eaves through the roof",
+   "name": "Chimney, 0.8 × 1.2, from the eaves through the roof to 4.97, 1.00 over it",
    "x0": 9.2,
    "x1": 10.4,
    "z0": 0.3,
    "z1": 1.1,
    "y0": 3,
-   "y1": 3.49
+   "y1": 4.97
   },
   {
    "id": "gf-lid",

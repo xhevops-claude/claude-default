@@ -124,7 +124,7 @@ const G = [
   ['soft', 2.8, 10.7, 1.8, 0.9, 'sofa 180×90'],                             // the 180 on the glass side, 0.10 off the glass, its end 0.30 clear of the main sofa's corner
   ['furn', 3.15, 9.4, 0.8, 0.8, 'coffee'],                                  // the coffee table in the middle of the four
   ['furn', 5.25, 5.7, 0.25, 3.48, ''],                                   // shelves on the stair box's face, a triangle matching it: the whole 3.48, top on the lid
-  // the fire on the north wall, centred on the coffee table at x 9.8: the base 1.60 × 1.20 to 0.30, the furnace 1.20 × 0.80 on it to 1.30, and the chimney carrying straight on at the furnace's size through the roof
+  // the fire on the north wall, centred on the coffee table at x 9.8: the base 1.60 × 1.20 to 0.30, the furnace 1.20 × 0.80 on it to 1.30, and the chimney carrying straight on at the furnace's size through the roof, 1.00 above it
   ['furn', 5.5, 9.0, 1.2, 1.6, 'base 160×120', 'nl'], ['note', 6.1, 10.54, 'base', 'f'], ['furn', 5.9, 9.2, 0.8, 1.2, 'fire'],
   ['chimney', 5.9, 9.2, 0.8, 1.2, 5.9, 9.2, 0.8, 1.2, 1.3],   // from the furnace's top at 1.30 straight up to the roof, its size all the way
   // stairs: x, y, w, h, treads along 'x' or 'y', count, arrow toward the top end
@@ -139,7 +139,7 @@ const G = [
   ['note', 6.45, 6.3, 'lid 2.1'], ['note', 6.45, 7.3, '1.2'], ['note', 6.45, 8.0, '0.8'], ['note', 6.0, 8.75, '0.3'], ['note', 6.0, 9.1, '0'],
   ['note', 5.37, 7.5, 'shelves', 'f'],
   ['note', 5.85, 8.9, 'DOWN'],
-  ['note', 3.5, 12.25, 'base to 0.30 · furnace to 1.30 · chimney straight on to the roof · TV on wheels', 'f'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
+  ['note', 3.5, 12.25, 'base to 0.30 · furnace to 1.30 · chimney through the roof, 1.00 above it · TV on wheels', 'f'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
   // dimensions, wall to wall: ['dim', x1, y1, x2, y2]
   ['dim', 4.0, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the top of the garage flight: 0.90 deep, open 2.70 from the bedrooms' flight to the north wall
   ['dim', 4.15, 4.8, 4.15, 5.8],                                          // the flight to the bedrooms 1.00 long
@@ -337,7 +337,7 @@ function drawElevation() {
 
 /* The side view: the house cut lengthwise 0.5 m in from the north wall, seen from the yard. Horizontal is the house's x, vertical is height. */
 function drawSide() {
-  const S = 50, XA = -1.0, XB = 15.6, ZT = 4.3, ZB = -3.5;
+  const S = 50, XA = -1.0, XB = 15.6, ZT = 5.3, ZB = -3.5;
   const X = x => +((x - XA) * S).toFixed(1), Z = z => +((ZT - z) * S).toFixed(1);
   const box = (cls, x0, z0, x1, z1, extra = '') => `<rect class="${cls}" x="${X(x0)}" y="${Z(z1)}" width="${((x1 - x0) * S).toFixed(1)}" height="${((z1 - z0) * S).toFixed(1)}"${extra}/>`;
   const txt = (cls, x, z, t, anchor) => `<text class="${cls}" x="${X(x)}" y="${Z(z)}"${anchor ? ` style="text-anchor:${anchor}"` : ''}>${t}</text>`;
@@ -367,7 +367,7 @@ function drawSide() {
   // the wedge lid over the hole, 0.10 thick, on the flight's pitch
   s += `<line class="lid" x1="${X(top)}" y1="${Z(lid(top) + 0.05)}" x2="${X(deckEnd + 0.1)}" y2="${Z(lid(deckEnd + 0.1) + 0.05)}"/>`;
   // the fire, beyond the cut on the north wall
-  s += box('furn', 9.0, 0, 10.6, 0.3) + box('furn', 9.2, 0.3, 10.4, 1.3) + box('wall', 9.35, 0.45, 10.25, 1.1) + `<path class="furn" d="M${X(9.2)},${Z(1.3)} L${X(10.4)},${Z(1.3)} L${X(10.4)},${Z(3.0)} L${X(9.2)},${Z(3.0)} Z"/>` + box('furn', 9.2, 3.0, 10.4, 3.35);
+  s += box('furn', 9.0, 0, 10.6, 0.3) + box('furn', 9.2, 0.3, 10.4, 1.3) + box('wall', 9.35, 0.45, 10.25, 1.1) + `<path class="furn" d="M${X(9.2)},${Z(1.3)} L${X(10.4)},${Z(1.3)} L${X(10.4)},${Z(3.0)} L${X(9.2)},${Z(3.0)} Z"/>` + box('furn', 9.2, 3.0, 10.4, 4.97);
   // floor lines where there is a floor
   s += `<line class="tread" x1="${X(4.9)}" y1="${Z(0)}" x2="${X(5.7)}" y2="${Z(0)}"/>` + `<line class="tread" x1="${X(deckEnd)}" y1="${Z(0)}" x2="${X(11.7)}" y2="${Z(0)}"/>`;
   // words
@@ -376,7 +376,7 @@ function drawSide() {
     txt('lbl', 1.65, 2.85, 'BEDROOM +1.00') + txt('dim', 1.75, 2.55, '2.00 at the wall · 4.45 ridge') + txt('lbl', 3.95, 2.85, 'BATH') + txt('dim', 2.5, 0.2, 'fill, not dug, to +0.80') +
     txt('lbl', 7.3, 2.95, 'LIVING, open to the roof') + txt('dim', 7.3, 2.7, 'roof 3.00 at the wall, here 3.35, ridge 5.45') +
     txt('dim', 5.3, 0.25, 'landing') + txt('dim', 7.4, 0.45, 'wedge lid, 2.02 over the flight') +
-    txt('dim', 10.7, 0.08, 'base', 'start') + txt('dim', 10.5, 0.75, 'furnace', 'start') + txt('dim', 10.5, 2.2, 'chimney', 'start') + txt('dim', 11.85, 2.2, 'glass', 'start') + txt('dim', 12.5, 3.63, 'roof to x 13') +
+    txt('dim', 10.7, 0.08, 'base', 'start') + txt('dim', 10.5, 0.75, 'furnace', 'start') + txt('dim', 10.5, 2.2, 'chimney', 'start') + txt('dim', 10.5, 4.5, '1.00 over the roof', 'start') + txt('dim', 11.85, 2.2, 'glass', 'start') + txt('dim', 12.5, 3.63, 'roof to x 13') +
     txt('dim', -0.9, 3.63, 'roof from x −0.4', 'start') + txt('dim', 0.4, 0.6, 'back wall at x 0, on the fill', 'start');
   // dimension lines: house 12.00 outside, garage 6.00 clear, hole 3.48
   const dim = (x0, x1, z, label) => `<line class="dline" x1="${X(x0)}" y1="${Z(z)}" x2="${X(x1)}" y2="${Z(z)}"/><line class="dline" x1="${X(x0)}" y1="${Z(z - 0.08)}" x2="${X(x0)}" y2="${Z(z + 0.08)}"/><line class="dline" x1="${X(x1)}" y1="${Z(z - 0.08)}" x2="${X(x1)}" y2="${Z(z + 0.08)}"/>` + txt('dtext', (x0 + x1) / 2, z + 0.08, label);
