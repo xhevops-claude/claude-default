@@ -50,7 +50,7 @@ const paintOf = (label, t) => {
   if (/shower|basin|^wc/.test(label)) return CERAMIC;
   if (/coffee/.test(label)) return WALNUT;
   if (/sofa|armchair/.test(label)) return FABRIC;
-  if (/hearth|flue/.test(label)) return STONE;
+  if (/^base|crown|flue/.test(label)) return STONE;
   if (/fire/.test(label)) return ANTHRACITE;
   if (/table|shelves/.test(label) || t === 'chair') return OAK;
   return OAK;
@@ -98,8 +98,9 @@ const heightOf = (label, t) => {
   if (/coffee/.test(label)) return [0, 0.45];
   if (/sofa|armchair/.test(label)) return [0, 0.45];
   if (/TV/.test(label)) return [0.8, 1.76];
-  if (/hearth/.test(label)) return [0, 0.3];
+  if (/^base/.test(label)) return [0, 0.3];
   if (/fire/.test(label)) return [0.3, 1.3];
+  if (/crown/.test(label)) return [1.3, 1.6];
   if (/flue/.test(label)) return [1.5, 1.5];   // to the roof, set where it is built
   if (t === 'chair') return [0, 0.45];
   return [0, 0.45];
@@ -169,7 +170,7 @@ for (const e of G) {
   } else if (t === 'furn' || t === 'soft' || t === 'chair') {
     const label = e[5] || (t === 'chair' ? 'chair' : t);
     const [y0, y1] = heightOf(label, t);
-    const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /fire|hearth|flue/.test(label) ? ['fire', 'Fire'] : ['lounge', 'Lounge'];
+    const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /fire|^base|crown|flue/.test(label) ? ['fire', 'Fire'] : ['lounge', 'Lounge'];
     const k = t === 'chair' ? ++chairs : ++furn;
     const name = t === 'chair' ? `Chair ${k}` : label;
     if (/flue/.test(label)) toRoof({ id: `${t}-${k}`, name: 'flue, from the fire to the roof', group: room, px: x, py: y, w, h, color: paintOf(label, t), solid: true, short: name }, y0);
@@ -181,14 +182,11 @@ for (const e of G) {
       box({ id: `${t}-${k}-back`, name: `${label}, back`, group: room, ...back, y0: 0.45, y1: 0.85, color: FABRIC, solid: true, short: 'Back' });
     }
   } else if (t === 'chimney') {
-    /* The chimney over the fire: from the fire's footprint at its top (z0) it narrows evenly to the second footprint
-       where the roof starts at the eaves, built as a stack of slices, and carries on at that size to the roof. */
-    const [, , , , , x1, y1, w1, h1, z0] = e, N = 6;
-    const lerp = (a, b, f) => a + (b - a) * f;
-    for (let i = 0; i < N; i++) {
-      const f = (i + 0.5) / N, za = z0 + (EAVES - z0) * i / N, zb = z0 + (EAVES - z0) * (i + 1) / N;
-      box({ id: `chimney-${i + 1}`, name: `Chimney, slice ${i + 1} of ${N}, narrowing, ${r3(za)} to ${r3(zb)}`, group: ['fire', 'Fire'], px: lerp(x, x1, f), py: lerp(y, y1, f), w: lerp(w, w1, f), h: lerp(h, h1, f), y0: za, y1: zb, color: STONE, solid: true, short: `Chimney ${i + 1}` });
-    }
+    /* The chimney over the crown: one volume whose sides run straight from the crown's footprint at z0 to the
+       second footprint where the roof starts at the eaves (`ringTop`), then on at that size through the roof. */
+    const [, , , , , x1, y1, w1, h1, z0] = e;
+    const ringOf = (px, py, pw, ph) => [[py, 7 - px - pw], [py + ph, 7 - px - pw], [py + ph, 7 - px], [py, 7 - px]].map(([a, b]) => [r3(a), r3(b)]);
+    works.push({ id: 'gf-chimney', group: 'house', color: STONE, solid: true, parent: [LEVELS.gf, { id: 'gf-fire', name: 'Fire' }], short: 'Chimney', house: true, name: `Chimney, narrowing straight from ${r3(w)} × ${r3(h)} at ${z0} to ${r3(w1)} × ${r3(h1)} at the eaves`, ring: ringOf(x, y, w, h), ringTop: ringOf(x1, y1, w1, h1), y0: z0, y1: EAVES });
     toRoof({ id: 'chimney-top', name: `Chimney, ${r3(w1)} × ${r3(h1)}, from the eaves through the roof`, group: ['fire', 'Fire'], px: x1, py: y1, w: w1, h: h1, color: STONE, solid: true, short: 'Chimney top' }, EAVES);
   } else if (t === 'stone') {
     toRoof({ id: 'stone', name: 'Stone on the north wall, floor to roof', group: ['fire', 'Fire'], px: x, py: y, w, h, color: STONE, solid: true, short: 'Stone' });
