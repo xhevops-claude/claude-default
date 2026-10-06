@@ -98,8 +98,8 @@ const heightOf = (label, t) => {
   if (/coffee/.test(label)) return [0, 0.45];
   if (/sofa|armchair/.test(label)) return [0, 0.45];
   if (/TV/.test(label)) return [0.8, 1.76];
-  if (/hearth/.test(label)) return [0, 0.5];
-  if (/fire/.test(label)) return [0.5, 1.5];
+  if (/hearth/.test(label)) return [0, 0.3];
+  if (/fire/.test(label)) return [0.3, 1.3];
   if (/flue/.test(label)) return [1.5, 1.5];   // to the roof, set where it is built
   if (t === 'chair') return [0, 0.45];
   return [0, 0.45];
@@ -180,6 +180,16 @@ for (const e of G) {
       const back = main ? { px: x, py: y, w: 0.25, h } : y < 9.8 ? { px: x, py: y, w, h: 0.25 } : { px: x, py: y + h - 0.25, w, h: 0.25 };
       box({ id: `${t}-${k}-back`, name: `${label}, back`, group: room, ...back, y0: 0.45, y1: 0.85, color: FABRIC, solid: true, short: 'Back' });
     }
+  } else if (t === 'chimney') {
+    /* The chimney over the fire: from the fire's footprint at its top (z0) it narrows evenly to the second footprint
+       where the roof starts at the eaves, built as a stack of slices, and carries on at that size to the roof. */
+    const [, , , , , x1, y1, w1, h1, z0] = e, N = 6;
+    const lerp = (a, b, f) => a + (b - a) * f;
+    for (let i = 0; i < N; i++) {
+      const f = (i + 0.5) / N, za = z0 + (EAVES - z0) * i / N, zb = z0 + (EAVES - z0) * (i + 1) / N;
+      box({ id: `chimney-${i + 1}`, name: `Chimney, slice ${i + 1} of ${N}, narrowing, ${r3(za)} to ${r3(zb)}`, group: ['fire', 'Fire'], px: lerp(x, x1, f), py: lerp(y, y1, f), w: lerp(w, w1, f), h: lerp(h, h1, f), y0: za, y1: zb, color: STONE, solid: true, short: `Chimney ${i + 1}` });
+    }
+    toRoof({ id: 'chimney-top', name: `Chimney, ${r3(w1)} × ${r3(h1)}, from the eaves through the roof`, group: ['fire', 'Fire'], px: x1, py: y1, w: w1, h: h1, color: STONE, solid: true, short: 'Chimney top' }, EAVES);
   } else if (t === 'stone') {
     toRoof({ id: 'stone', name: 'Stone on the north wall, floor to roof', group: ['fire', 'Fire'], px: x, py: y, w, h, color: STONE, solid: true, short: 'Stone' });
   } else if (t === 'wedge') {
