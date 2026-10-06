@@ -43,7 +43,7 @@ const OAK = '#b98b5a', WALNUT = '#6e4b2e', CABINET = '#8a8f8c', STEEL = '#b4b9bf
 const paintOf = (label, t) => {
   if (/^bed/.test(label)) return LINEN;
   if (/wardrobe/.test(label)) return OAK;
-  if (/fridge/.test(label)) return STEEL;
+  if (/fridge|sink/.test(label)) return STEEL;
   if (/oven/.test(label)) return ANTHRACITE;
   if (/hob|TV/.test(label)) return BLACK;
   if (/worktop|island/.test(label)) return CABINET;
@@ -75,12 +75,13 @@ function toRoof(spec, y0 = 0) {
     works.push({ ...piece, y1End: r3(roofAt(z1)) });
   });
 }
-const HALF = 1.45;                   // the bedrooms' floor
-const VOID = HALF - 0.2;             // the underside of their slab: 1.25 clear under them
-/* The flight to the bedrooms: 3 winders in the corner, the straight treads the plan counts, and the last riser is the
-   landing's floor; the riser height follows from that count, and a 45° flight has a going equal to it. */
+const HALF = 1.0;                    // the bedrooms' floor
+const VOID = HALF - 0.2;             // the underside of their slab: 0.80 clear under them
+/* The flight to the bedrooms: the treads the plan counts (after any winders), and the last riser is the landing's
+   floor; the riser height follows from that count. */
 const UP = G.find((e) => e[0] === 'stair' && e[2] < 5);
-const RISERS = 3 + UP[6] + 1, RISER = r3(HALF / RISERS);
+const WINDERS = G.some((e) => e[0] === 'winders') ? 3 : 0;
+const RISERS = WINDERS + UP[6] + 1, RISER = r3(HALF / RISERS);
 
 /* Heights of the furniture, by the label the plan gives it. */
 const heightOf = (label, t) => {
@@ -91,7 +92,7 @@ const heightOf = (label, t) => {
   if (/shower/.test(label)) return [0, 0.1];
   if (/basin/.test(label)) return [0, 0.85];
   if (/^wc/.test(label)) return [0, 0.42];
-  if (/worktop|hob|oven|island/.test(label)) return [0, 0.9];
+  if (/worktop|hob|oven|sink|island/.test(label)) return [0, 0.9];
   if (/table/.test(label)) return [0, 0.75];
   if (/coffee/.test(label)) return [0, 0.45];
   if (/sofa/.test(label)) return [0, 0.45];
@@ -187,15 +188,18 @@ for (const e of G) {
   } else if (t === 'stair') {
     const [, , , , , axis, count] = e;
     if (y > 5) continue;   // the garage flight is the garage's: already in the scene
-    /* The straight part of the flight to the bedrooms: across the house toward the yard (the plan's "left", down in
-       plan X), `count` treads of w/count, each a riser of 0.181 up, after the winders in the corner (3 risers, built
-       below); the last riser is the hall's floor at 1.45. */
-    if (axis !== 'x') throw new Error('the flight to the bedrooms runs across the house');
-    const tread = w / count, first = G.some((e) => e[0] === 'winders') ? 3 : 0;
+    /* The flight to the bedrooms, `count` treads after any winders: along the house into the hill (plan 'y', up toward
+       the back wall) or across it toward the yard (plan 'x'). Each tread is a riser up; the last riser is the
+       landing's floor at the half level. */
+    const along = axis === 'y', tread = (along ? h : w) / count;
     for (let i = 1; i <= count; i++) {
-      const riser = first + i, top = riser * RISER;
-      box({ id: `up-${riser}`, name: `Flight to the bedrooms, tread ${i} of ${count} after the winders, riser ${riser} of ${RISERS}, top at ${r3(top)}`, group: ['stair-up', 'Stair to the bedrooms'], px: x + w - i * tread, py: y, w: tread, h, y0: Math.max(0, top - 0.2), y1: top, color: OAK, solid: true, short: `Tread ${riser}` });
+      const riser = WINDERS + i, top = riser * RISER;
+      const at = along ? { px: x, py: y + h - i * tread, w, h: tread } : { px: x + w - i * tread, py: y, w: tread, h };
+      box({ id: `up-${riser}`, name: `Flight to the bedrooms, tread ${i} of ${count}, riser ${riser} of ${RISERS}, top at ${r3(top)}`, group: ['stair-up', 'Stair to the bedrooms'], ...at, y0: Math.max(0, top - 0.2), y1: top, color: OAK, solid: true, short: `Tread ${riser}` });
     }
+  } else if (t === 'podium') {
+    /* The bedrooms' landing: a raised step in the living room, solid from the floor to the half level. */
+    box({ id: 'landing', name: `${e[5]}, ${r3(w)} × ${r3(h)}, solid from the floor`, group: ['stair-up', 'Stair to the bedrooms'], px: x, py: y, w, h, y0: 0, y1: HALF, color: OAK, solid: true, short: 'Landing' });
   } else if (t === 'winders') {
     /* Three winders fanning round the corner's pivot at the square's south-west corner (plan x, y + h): in off the
        landing from the south, out to the west. Each is a `ring` footprint in the house frame, risers 1 to 3. */
@@ -225,11 +229,14 @@ const plain = works.findIndex((w) => w.x0 === 5.9 && w.z1 === r3(7 - 5.25) && !/
 if (plain >= 0) works.splice(plain, 1);
 
 /* ── the bedrooms, half a level up ────────────────────────────────────── */
-/* Their slab: the half level's own (x 0 to 3.8, the whole width) plus a strip in front of it over the hall's end and
-   the yard bedroom, x 3.8 to 4.9 from the flight's arrival to the yard wall — the stairwell, with its winders, beyond that
-   stay open. */
-const upX = G.find((e) => e[0] === 'stair' && e[2] < 5)[1];   // where the flight arrives: the slab runs from the yard wall to there
-box({ level: 'hl', id: 'slab-front', name: `Slab in front of the stairwell, 1.25 to 1.45, to x ${upX}`, group: ['slab-front', 'Slab, the strip in front'], px: 0, py: 3.8, w: upX, h: 1.1, y0: VOID, y1: HALF, color: SLAB, opacity: 0.3, short: 'Slab, front strip' });
+/* Their slab: the half level's own, the whole width from the back wall to the landing's edge where the flight arrives,
+   plus the front strip on either side of the stairwell (the yard bath and the north bath), to the living room's back
+   wall; the stairwell itself stays open. */
+const [, upPx, upPy, upW] = UP;
+const IN_FILL = upPy < X_LIVING;   // a flight cut into the fill leaves a well in the slab; one in the living room does not
+const HALF_X1 = IN_FILL ? upPy : r3(X_LIVING + 0.1);   // the level's own slab ends where the flight arrives, or at the front wall
+if (IN_FILL) for (const [side, px, w] of [['yard', 0, upPx], ['north', upPx + upW, 7 - upPx - upW]])
+  box({ level: 'hl', id: `slab-front-${side}`, name: `Slab beside the stairwell, ${side} side, ${VOID} to ${HALF}`, group: ['slab-front', 'Slab, the strips in front'], px, py: upPy, w, h: X_LIVING + 0.1 - upPy, y0: VOID, y1: HALF, color: SLAB, opacity: 0.3, short: `Slab, ${side} strip` });
 const doors2 = doorsOf(G2);
 let parts2 = 0, furn2 = 0;
 for (const e of G2) {
@@ -243,7 +250,7 @@ for (const e of G2) {
   } else if (t === 'furn' || t === 'soft') {
     const label = e[5] || t;
     const [y0, y1] = heightOf(label, t);
-    const room = x >= 3.4 ? (y >= 3.8 ? ['landing', 'Landing'] : x >= 4.5 && y >= 2.1 ? ['bath-north', 'Bathroom, north bedroom'] : ['bed-north', 'Bedroom, north side']) : x < 2.3 && y >= 3.3 ? ['bath-yard', 'Bathroom, yard bedroom'] : ['bed-yard', 'Bedroom, yard side'];
+    const room = y >= 3.0 && x < 2.55 ? ['bath-yard', 'Bathroom, yard bedroom'] : y >= 3.0 && x >= 4.45 ? ['bath-north', 'Bathroom, north bedroom'] : x >= 3.5 ? ['bed-north', 'Bedroom, north side'] : ['bed-yard', 'Bedroom, yard side'];
     const k = ++furn2;
     /* Nothing stands through the roof: a tall piece against a side wall is cut at the roof's underside there. */
     const under = Math.min(roofAt(7 - x), roofAt(7 - x - w));
@@ -253,10 +260,9 @@ for (const e of G2) {
   /* The outer walls are the ground floor's, to the eaves; the stairwell is the flight built above; the rest is labels. */
 }
 
-/* The ground floor is dug only from the living room's back wall forward (the garage is under it); behind that the
-   landing and the stairwell stand on a slab on the ground, and everything else is fill. */
-const stairEnd = G.find((e) => e[0] === 'part' && e[2] === 3.7 && e[4] === 1.1);         // the wall at the stair's top end
-box({ id: 'landing-slab', name: 'Slab on the ground under the stairwell and the landing, −0.20 to 0', group: ['landing', 'Landing and stairwell'], px: stairEnd[1], py: 3.7, w: 7 - 0.3 - stairEnd[1], h: X_LIVING - 3.7, y0: -0.2, y1: 0, color: SLAB, opacity: 0.3, short: 'Landing slab' });
+/* The ground floor is dug only from the living room's back wall forward (the garage is under it); behind that only the
+   slot the flight to the bedrooms climbs in stands on a slab on the ground, and everything else is fill. */
+if (IN_FILL) box({ id: 'landing-slab', name: 'Slab on the ground under the flight to the bedrooms, −0.20 to 0', group: ['landing', 'Stair slot'], px: upPx, py: upPy, w: upW, h: X_LIVING - upPy, y0: -0.2, y1: 0, color: SLAB, opacity: 0.3, short: 'Stair slot slab' });
 
 /* ── the roof ─────────────────────────────────────────────────────────── */
 /* Two planes, 0.20 thick, from 0.40 outside the side walls up to the ridge over the middle, running from 0.40
@@ -270,15 +276,15 @@ for (const [side, px] of [['north', 3.5], ['yard', -0.4]]) {
 }
 
 /* Levels: the ground floor from the back wall to x 12 (the envelope's 10 m pushed 2 forward); the bedrooms' half level over the hill end,
-   its own slab stopping at x 3.8 (the strip in front is a work, the stairwell beside it open), its storey to the eaves.
+   its own slab stopping at the landing's edge (the strips in front are works, the stairwell between them open), its storey to the eaves.
    There is no first floor: the living room is open to the roof. */
 scene.levels = [
   ...scene.levels.filter((l) => l.id !== 'first' && l.id !== 'half').map((l) => l.id === 'ground' ? { ...l, x0: X_LIVING, extendFront: 2 } : l),
-  { id: 'half', name: 'Bedrooms, half level', elevation: HALF, height: r3(EAVES - HALF), x0: X_BACK, x1: 3.8 },
+  { id: 'half', name: 'Bedrooms, half level', elevation: HALF, height: r3(EAVES - HALF), x0: X_BACK, x1: HALF_X1 },
 ];
 scene.works = [...scene.works.filter((w) => w.id !== 'balcony' && !/^(gf|hl|rf)-/.test(w.id)), ...works];
 scene.notes = scene.notes.filter((t) => !/^(Ground floor|The house) from the plan page/.test(t));
-scene.notes.push(`The house from the plan page (projects/xhevo/house/plan.html, generated by scripts/xhevo-plan-to-scene.mjs): ${12 - X_BACK} × 7 outside, x ${X_BACK} to 12, with the glass gable at the front over the garage and no balcony, under one roof (ids rf-*) that starts 2.50 over the ground floor at the side walls and rises at 0.7 per metre to ${r3(RIDGE)} at the ridge, 0.40 past the sides and the back, 1.00 past the glass; the side walls stand to the eaves, the back wall and the glass are gables under it; behind the living room's back wall the outer walls start on the fill at 1.25, since there is no house under the bedrooms. Walls 0.30, partitions 0.10. The garage flight's hole x 5.7 to 9.18 is closed by a lid on the flight's pitch (2.12 at the landing, down to the floor at x 9.18), one plane. The two bedrooms, each with its own bath (the yard bedroom's at its front end, the north bedroom's on the stair wall with a 1.00 passage past it) and the 1 m² landing with a door into each bedroom are half a level up at +1.45 over the hill end, x ${X_BACK} to 4.9, on fill (ids gf-fill-*): the hill end is not dug, the soil is made up to 1.25 and their slab sits on it; the ground level itself starts at the living room's back wall, the landing and the stairwell behind it on a slab on the ground (ids hl-* for the bedrooms): ${RISERS} risers of ${RISER} climb from the garage landing at 45°: straight into 3 winders fanning round the corner by the north wall (ids gf-up-1..3, ring footprints), then ${UP[6]} treads of ${r3(UP[3] / UP[6])} west, the last riser being the landing's floor; the stairwell is left open in the slab. The slab of the ground level still runs unbroken under the stair hole: levels have no holes.`);
+scene.notes.push(`The house from the plan page (projects/xhevo/house/plan.html, generated by scripts/xhevo-plan-to-scene.mjs): ${12 - X_BACK} × 7 outside, x ${X_BACK} to 12, with the glass gable at the front over the garage and no balcony, under one roof (ids rf-*) that starts 2.50 over the ground floor at the side walls and rises at 0.7 per metre to ${r3(RIDGE)} at the ridge, 0.40 past the sides and the back, 1.00 past the glass; the side walls stand to the eaves, the back wall and the glass are gables under it; behind the living room's back wall the outer walls start on the fill at ${VOID}, since there is no house under the bedrooms. Walls 0.30, partitions 0.10. The kitchen is an L in the yard corner, its back wall only as long as the kitchen. The garage flight's hole x 5.7 to 9.18 is closed by a lid on the flight's pitch (2.12 at the landing, down to the floor at x 9.18), one plane. The two bedrooms are half a level up at +${HALF} over the hill end, x ${X_BACK} to 4.9, on fill (ids gf-fill-*): the hill end is not dug, the soil is made up to ${VOID} and their slab sits on it (ids hl-* for the bedrooms). ${RISERS} risers of ${RISER} climb from the living room against its back wall in the middle of the house, ${UP[6]} treads of ${r3(UP[4] / UP[6])}, ${r3(UP[4])} long, the last riser being the landing's floor in the wall line; the landing faces two doors side by side, and through each the bedroom is straight ahead and its bath to the side, in the front corner on the outer wall; the wall between the bedrooms is on the centre line. The slab of the ground level still runs unbroken under the stair hole: levels have no holes.`);
 /* The file's own layout: one-space indent, short arrays and the objects inside arrays on one line. */
 function fmt(v, depth, inArray) {
   const pad = ' '.repeat(depth), inner = ' '.repeat(depth + 1);
