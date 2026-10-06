@@ -168,7 +168,7 @@ const G2 = [
   ['furn', 4.1, 0.3, 0.8, 0.8, 'shower'], ['furn', 3.45, 0.3, 0.4, 0.65, 'wc'], ['furn', 4.45, 1.3, 0.45, 0.45, 'basin'],   // north bath, 1.50 × 1.50, 3.43 to 2.52 under the roof
   ['winders', 5.6, 3.8, 1.1, 1.0], ['stair', 4.98, 3.8, 0.62, 1.0, 'x', 3, 'left'],   // the stairwell: winders in the corner, then 3 treads west at 45°; the flight arrives on the landing
   ['room', 1.8, 2.78, 'BEDROOM · 10.1 m²', ''], ['room', 2.05, 4.45, 'BATH', '3.0'], ['room', 4.3, 1.45, 'BATH', '2.3'], ['room', 4.35, 2.15, 'BEDROOM', '8.7'], ['room', 4.2, 4.1, 'LANDING', '1.6'],
-  ['note', 1.8, 2.47, 'drawers 40 · bed 160 · drawers 40 · wardrobe 60'], ['note', 0.5, 2.5, 'window'], ['note', 5.85, 1.0, 'wardrobe nook'], ['note', 5.85, 1.25, 'roof 2.45 to 1.26'],
+  ['note', 1.8, 2.47, 'drawers 40 · bed 160 · drawers 40 · wardrobe 60'], ['note', 0.55, 2.78, 'window'], ['note', 5.85, 1.0, 'wardrobe nook'], ['note', 5.85, 1.25, 'roof 2.45 to 1.26'],
   ['note', 5.65, 5.08, 'up from below'],
   ['dim', 0.3, 3.12, 3.3, 3.12], ['dim', 2.0, 0.3, 2.0, 3.2],              // yard bedroom 3.00 wide, 2.90 from the hill wall to the bath
   ['dim', 0.3, 4.15, 2.3, 4.15], ['dim', 2.0, 3.3, 2.0, 4.8],             // yard bath 2.00 × 1.50
@@ -220,7 +220,7 @@ function drawPlan({ id, G, X0, Y0, W, H, gy, edges }) {
     else if (t === 'win') s += R('win', x + 0.08, y, w - 0.16, h);
     else if (t === 'door') s += R('gap', x, y, w, h) + door(e[5], e[6], e[7], e[8], e[9]);
     else if (t === 'hatch') s += `<line class="hatch" x1="${px(x)}" y1="${px(y)}" x2="${px(x + w)}" y2="${px(y)}"/>`;
-    else if (t === 'furn' || t === 'soft' || t === 'chair') s += R(t === 'chair' ? 'soft' : t, x, y, w, h) + (e[5] ? (h > w * 1.5 ? T('sm', x + w / 2 + 0.05, y + h / 2, e[5], -90) : T('sm', x + w / 2, y + h / 2 + 0.05, e[5])) : '');
+    else if (t === 'furn' || t === 'soft' || t === 'chair') s += R(t === 'chair' ? 'soft' : t, x, y, w, h) + (e[5] && Math.min(w, h) >= 0.45 ? (h > w * 1.5 ? T('sm', x + w / 2 + 0.05, y + h / 2, e[5], -90) : T('sm', x + w / 2, y + h / 2 + 0.05, e[5])) : '');
     else if (t === 'wedge') s += R('wedge', x, y, w, h);
     else if (t === 'roof') s += `<path class="hatch" d="M${px(x)},${px(y)} L${px(x)},${px(h)} L${px(w)},${px(h)} L${px(w)},${px(y)}"/>`;
     else if (t === 'fill') s += R('ground', x, y, w, h);
