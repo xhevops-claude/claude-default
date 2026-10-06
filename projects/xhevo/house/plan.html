@@ -124,8 +124,8 @@ const G = [
   ['soft', 2.8, 10.7, 1.8, 0.9, 'sofa 180×90'],                             // the 180 on the glass side, 0.10 off the glass, its end 0.30 clear of the main sofa's corner
   ['furn', 3.15, 9.4, 0.8, 0.8, 'coffee'],                                  // the coffee table in the middle of the four
   ['furn', 5.25, 5.7, 0.25, 3.48, ''],                                   // shelves on the stair box's face, a triangle matching it: the whole 3.48, top on the lid
-  // the fire on the north wall, centred on the coffee table at x 9.8: the base 1.60 × 1.20 to 0.30, the furnace 1.20 × 0.80 on it to 1.30, and the chimney carrying straight on at the furnace's size through the roof, 1.00 above it
-  ['furn', 5.5, 9.0, 1.2, 1.6, 'base 160×120', 'nl'], ['note', 6.1, 10.54, 'base', 'f'], ['furn', 5.9, 9.2, 0.8, 1.2, 'fire'],
+  // the fire on the north wall, centred on the coffee table at x 9.8: the base 1.60 × 1.20 to 0.30, the furnace 1.20 × 0.80 on it to 1.30 with its firebox 0.70 wide, 0.60 high and 0.80 deep from the base, and the chimney carrying straight on at the furnace's size through the roof, 1.00 above it
+  ['furn', 5.5, 9.0, 1.2, 1.6, 'base 160×120', 'nl'], ['note', 6.1, 10.54, 'base', 'f'], ['furn', 5.9, 9.2, 0.8, 1.2, 'fire'], ['hollow', 5.9, 9.45, 0.8, 0.7, 0.3, 0.9],   // the firebox: 0.70 wide, 0.60 high from the base, the furnace's whole 0.80 deep
   ['chimney', 5.9, 9.2, 0.8, 1.2, 5.9, 9.2, 0.8, 1.2, 1.3],   // from the furnace's top at 1.30 straight up to the roof, its size all the way
   // stairs: x, y, w, h, treads along 'x' or 'y', count, arrow toward the top end
   ['wedge', 5.6, 5.7, 1.1, 3.48],
@@ -228,6 +228,7 @@ function drawPlan({ id, G, X0, Y0, W, H, gy, edges }) {
     else if (t === 'furn' || t === 'soft' || t === 'chair') s += R(t === 'chair' ? 'soft' : t, x, y, w, h) + (e[5] && e[6] !== 'nl' && Math.min(w, h) >= 0.45 ? (h > w * 1.5 ? T('sm', x + w / 2 + 0.05, y + h / 2, e[5], -90) : T('sm', x + w / 2, y + h / 2 + 0.05, e[5])) : '');
     else if (t === 'wedge') s += R('wedge', x, y, w, h);
     else if (t === 'chimney') s += R('furn', e[5], e[6], e[7], e[8]);
+    else if (t === 'hollow') s += `<rect class="hatch" x="${px(x)}" y="${px(y)}" width="${px(w)}" height="${px(h)}"/>`;
     else if (t === 'podium') s += R('wedge', x, y, w, h) + T('sm', x + w / 2, y + h / 2 + 0.05, e[5]);
     else if (t === 'roof') s += `<path class="hatch" d="M${px(x)},${px(y)} L${px(x)},${px(h)} L${px(w)},${px(h)} L${px(w)},${px(y)}"/>`;
     else if (t === 'fill') s += R('ground', x, y, w, h);
@@ -305,7 +306,7 @@ function drawElevation() {
   const E = [
     [9.0, 0, 1.6, 0.3, 'furn', ''],            // the base, 1.60 wide, 0.30 high, centred on the coffee table
     [9.2, 0.3, 1.2, 1.0, 'furn', ''],          // the furnace, 1.20 wide, to 1.30
-    [9.35, 0.45, 0.9, 0.65, 'wall', 'fire'],   // its opening
+    [9.45, 0.3, 0.7, 0.6, 'wall', 'fire'],     // its firebox, 0.70 × 0.60 from the base, 0.80 deep
     [4.8, 0, 0.1, 3.0, 'wall', ''],            // the living room's back wall, the bedrooms' front wall above it; the 1.20 opening to the landing is beyond the cut
     [9.18, 0, 0.1, 0.1, 'part', ''],           // the box's end
     [11.7, 0, 0.1, 3.0, 'glass', ''],          // the glass, to where the roof starts at the wall
@@ -367,7 +368,7 @@ function drawSide() {
   // the wedge lid over the hole, 0.10 thick, on the flight's pitch
   s += `<line class="lid" x1="${X(top)}" y1="${Z(lid(top) + 0.05)}" x2="${X(deckEnd + 0.1)}" y2="${Z(lid(deckEnd + 0.1) + 0.05)}"/>`;
   // the fire, beyond the cut on the north wall
-  s += box('furn', 9.0, 0, 10.6, 0.3) + box('furn', 9.2, 0.3, 10.4, 1.3) + box('wall', 9.35, 0.45, 10.25, 1.1) + `<path class="furn" d="M${X(9.2)},${Z(1.3)} L${X(10.4)},${Z(1.3)} L${X(10.4)},${Z(3.0)} L${X(9.2)},${Z(3.0)} Z"/>` + box('furn', 9.2, 3.0, 10.4, 4.97);
+  s += box('furn', 9.0, 0, 10.6, 0.3) + box('furn', 9.2, 0.3, 10.4, 1.3) + box('wall', 9.45, 0.3, 10.15, 0.9) + `<path class="furn" d="M${X(9.2)},${Z(1.3)} L${X(10.4)},${Z(1.3)} L${X(10.4)},${Z(3.0)} L${X(9.2)},${Z(3.0)} Z"/>` + box('furn', 9.2, 3.0, 10.4, 4.97);
   // floor lines where there is a floor
   s += `<line class="tread" x1="${X(4.9)}" y1="${Z(0)}" x2="${X(5.7)}" y2="${Z(0)}"/>` + `<line class="tread" x1="${X(deckEnd)}" y1="${Z(0)}" x2="${X(11.7)}" y2="${Z(0)}"/>`;
   // words

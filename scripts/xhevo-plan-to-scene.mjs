@@ -173,7 +173,16 @@ for (const e of G) {
     const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /fire|^base|crown|flue/.test(label) ? ['fire', 'Fire'] : ['lounge', 'Lounge'];
     const k = t === 'chair' ? ++chairs : ++furn;
     const name = t === 'chair' ? `Chair ${k}` : label;
-    if (/flue/.test(label)) toRoof({ id: `${t}-${k}`, name: 'flue, from the fire to the roof', group: room, px: x, py: y, w, h, color: paintOf(label, t), solid: true, short: name }, y0);
+    /* The furnace with its firebox: a hollow (along the wall, from y0 to y1) leaves two jambs either side of it and
+       the furnace bridging over it. */
+    const hollow = /^fire$/.test(label) && G.find((h) => h[0] === 'hollow');
+    if (hollow) {
+      const [, , hy, , hw, hz0, hz1] = hollow;
+      const part = (id, nm, py, ph, a, b) => box({ id: `${t}-${k}-${id}`, name: `furnace, ${nm}`, group: room, px: x, py, w, h: ph, y0: a, y1: b, color: paintOf(label, t), solid: true, short: nm });
+      part('left', 'jamb', y, hy - y, y0, hz1);
+      part('right', 'jamb', hy + hw, y + h - hy - hw, y0, hz1);
+      part('top', `over the firebox, ${r3(hw)} × ${r3(hz1 - hz0)} × ${r3(w)} deep`, y, h, hz1, y1);
+    } else if (/flue/.test(label)) toRoof({ id: `${t}-${k}`, name: 'flue, from the fire to the roof', group: room, px: x, py: y, w, h, color: paintOf(label, t), solid: true, short: name }, y0);
     else box({ id: `${t}-${k}`, name, group: room, px: x, py: y, w, h, y0, y1, color: paintOf(label, t), solid: true, short: name });
     /* A sofa's back: a strip along its back edge up to 0.85. */
     if (/sofa|armchair/.test(label)) {
