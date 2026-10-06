@@ -1043,12 +1043,12 @@
   {
    "id": "gf-furn-3",
    "group": "house",
-   "color": "#2b2d31",
+   "color": "#3f4144",
    "solid": true,
    "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-kitchen", "name": "Kitchen" } ],
-   "short": "hob",
+   "short": "hob/oven",
    "house": true,
-   "name": "hob",
+   "name": "hob/oven",
    "x0": 4.9,
    "x1": 5.5,
    "z0": 5.5,
@@ -1075,22 +1075,6 @@
   {
    "id": "gf-furn-5",
    "group": "house",
-   "color": "#3f4144",
-   "solid": true,
-   "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-kitchen", "name": "Kitchen" } ],
-   "short": "oven",
-   "house": true,
-   "name": "oven",
-   "x0": 4.9,
-   "x1": 5.5,
-   "z0": 4.3,
-   "z1": 4.9,
-   "y0": 0,
-   "y1": 0.9
-  },
-  {
-   "id": "gf-furn-6",
-   "group": "house",
    "color": "#b4b9bf",
    "solid": true,
    "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-kitchen", "name": "Kitchen" } ],
@@ -1099,13 +1083,13 @@
    "name": "fridge",
    "x0": 4.9,
    "x1": 5.5,
-   "z0": 3.7,
-   "z1": 4.3,
+   "z0": 4.3,
+   "z1": 4.9,
    "y0": 0,
    "y1": 1.9
   },
   {
-   "id": "gf-furn-7",
+   "id": "gf-furn-6",
    "group": "house",
    "color": "#b98b5a",
    "solid": true,
@@ -1249,7 +1233,7 @@
    "y1": 0.45
   },
   {
-   "id": "gf-soft-8",
+   "id": "gf-soft-7",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1265,7 +1249,7 @@
    "y1": 0.45
   },
   {
-   "id": "gf-soft-8-back",
+   "id": "gf-soft-7-back",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1281,7 +1265,7 @@
    "y1": 0.85
   },
   {
-   "id": "gf-soft-9",
+   "id": "gf-soft-8",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1297,7 +1281,7 @@
    "y1": 0.45
   },
   {
-   "id": "gf-soft-9-back",
+   "id": "gf-soft-8-back",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1313,7 +1297,7 @@
    "y1": 0.85
   },
   {
-   "id": "gf-soft-10",
+   "id": "gf-soft-9",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1329,7 +1313,7 @@
    "y1": 0.45
   },
   {
-   "id": "gf-soft-10-back",
+   "id": "gf-soft-9-back",
    "group": "house",
    "color": "#6b8597",
    "solid": true,
@@ -1345,7 +1329,7 @@
    "y1": 0.85
   },
   {
-   "id": "gf-furn-11",
+   "id": "gf-furn-10",
    "group": "house",
    "color": "#6e4b2e",
    "solid": true,
@@ -1377,7 +1361,7 @@
    "y1": 2.745
   },
   {
-   "id": "gf-furn-13",
+   "id": "gf-furn-12",
    "group": "house",
    "color": "#3f4144",
    "solid": true,

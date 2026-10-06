@@ -65,7 +65,7 @@ td.open { color: var(--warn); font-weight: 700; }
   <h1>Xhevo house, working plan</h1>
 
   <section>
-    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the kitchen an L in the yard corner, the sink under the yard window, so the landing at the foot of the bedrooms' flight opens 3.40 wide · the hill end under the bedrooms is not dug: fill to +1.25, their slab on it · the roof from 2.50 at the walls, 1.00 past the glass, no balcony</h2>
+    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the kitchen an L in the yard corner, the sink under the yard window, the hob over the oven, so the landing at the foot of the bedrooms' flight opens 4.00 wide · the hill end under the bedrooms is not dug: fill to +1.25, their slab on it · the roof from 2.50 at the walls, 1.00 past the glass, no balcony</h2>
     <svg id="plan" class="plan" aria-label="Ground floor plan"></svg>
   </section>
 
@@ -109,10 +109,9 @@ const G = [
   ['door', 0, 7.5, 0.3, 0.9, 0.15, 7.5, 0.9, 180, 90],      // yard door, swinging out
   ['win', 0, 5.5, 0.3, 0.7], ['win', 0, 8.9, 0.3, 1.4],
   // furniture
-  // the kitchen packed into the yard corner, an L: the sink on the yard wall under the window, looking out; the run on the back wall stops at x 3.3, a metre short of where it was, so the landing at the foot of the bedrooms' flight is a metre wider
+  // the kitchen packed into the yard corner, an L: the sink on the yard wall under the window, looking out; the run on the back wall stops at x 2.7, 1.60 short of where it was, so the landing at the foot of the bedrooms' flight is 1.60 wider
   ['furn', 0.3, 5.5, 0.6, 0.8, 'sink'],
-  ['furn', 0.3, 4.9, 0.6, 0.6, 'worktop'], ['furn', 0.9, 4.9, 0.6, 0.6, 'hob'], ['furn', 1.5, 4.9, 0.6, 0.6, 'worktop'],
-  ['furn', 2.1, 4.9, 0.6, 0.6, 'oven'], ['furn', 2.7, 4.9, 0.6, 0.6, 'fridge'],
+  ['furn', 0.3, 4.9, 0.6, 0.6, 'worktop'], ['furn', 0.9, 4.9, 0.6, 0.6, 'hob/oven'], ['furn', 1.5, 4.9, 0.6, 0.6, 'worktop'], ['furn', 2.1, 4.9, 0.6, 0.6, 'fridge'],   // the hob over the oven, one unit
   ['furn', 1.0, 6.6, 2.2, 0.8, 'table 220×80 · 8'],                    // dining in the kitchen, across the room; 0.10 further north to clear the sink; the 180 with its 0.40 extension on
   ['chair', 1.05, 6.3, 0.45, 0.45, ''], ['chair', 1.6, 6.3, 0.45, 0.45, ''], ['chair', 2.15, 6.3, 0.45, 0.45, ''], ['chair', 2.7, 6.3, 0.45, 0.45, ''],      // counter side, tucked 0.15 under
   ['chair', 2.7, 7.25, 0.45, 0.45, ''], ['chair', 2.15, 7.25, 0.45, 0.45, ''], ['chair', 1.6, 7.25, 0.45, 0.45, ''], ['chair', 1.05, 7.25, 0.45, 0.45, ''],   // room side, tucked 0.15 under
@@ -136,7 +135,7 @@ const G = [
   ['note', 5.3, 4.1, 'UP +1.45'], ['note', 5.85, 8.9, 'DOWN'],
   ['note', 3.5, 12.25, 'fire 170 on the north wall, x 9.8 to 11.5 · the TV is on a wheeled stand, anywhere'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
   // dimensions, wall to wall: ['dim', x1, y1, x2, y2]
-  ['dim', 3.3, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the landing: 0.90 from the first winder to the hole, open 3.40 wide from the fridge to the north wall
+  ['dim', 2.7, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the landing: 0.90 from the first winder to the hole, open 4.00 wide from the fridge to the north wall
   ['dim', 4.98, 4.75, 5.6, 4.75],                                         // the straight part of the flight, 0.62
   ['dim', 5.9, 5.7, 5.9, 9.18],                                           // stair hole 3.48 long (its 1.10 is the landing's)
   ['dim', 0.3, 7.95, 5.5, 7.95], ['dim', 0.45, 4.9, 0.45, 11.7],         // living 5.20 wide, 6.80 from the kitchen wall to the glass
