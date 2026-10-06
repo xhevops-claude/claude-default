@@ -1637,12 +1637,12 @@
    "short": "Partition 2",
    "house": true,
    "name": "Partition 2, 1.45 to the roof",
-   "x0": 3.8,
+   "x0": 0.3,
    "x1": 3.9,
-   "z0": 3.37,
-   "z1": 3.47,
+   "z0": 3.6,
+   "z1": 3.7,
    "y0": 1.45,
-   "y1": 4.894
+   "y1": 4.845
   },
   {
    "id": "hl-part-3",
@@ -1655,14 +1655,31 @@
    "name": "Partition 3, 1.45 to the roof",
    "x0": 4.7,
    "x1": 4.8,
-   "z0": 3.37,
-   "z1": 3.47,
+   "z0": 3.6,
+   "z1": 3.7,
    "y0": 1.45,
-   "y1": 4.859,
-   "y1End": 4.929
+   "y1": 4.88,
+   "y1End": 4.81
   },
   {
-   "id": "hl-part-4",
+   "id": "hl-part-4-north",
+   "group": "house",
+   "color": "#c9ced6",
+   "opacity": 0.5,
+   "parent": [ { "id": "half", "name": "Bedrooms, half level" }, { "id": "hl-walls", "name": "Walls" } ],
+   "short": "Partition 4",
+   "house": true,
+   "name": "Partition 4, 1.45 to the roof",
+   "x0": 3.7,
+   "x1": 3.8,
+   "z0": 3.5,
+   "z1": 3.6,
+   "y0": 1.45,
+   "y1": 4.95,
+   "y1End": 4.88
+  },
+  {
+   "id": "hl-part-4-yard",
    "group": "house",
    "color": "#c9ced6",
    "opacity": 0.5,
@@ -1673,10 +1690,10 @@
    "x0": 3.7,
    "x1": 3.8,
    "z0": 3.27,
-   "z1": 3.47,
+   "z1": 3.5,
    "y0": 1.45,
    "y1": 4.789,
-   "y1End": 4.929
+   "y1End": 4.95
   },
   {
    "id": "hl-part-5",
@@ -1704,12 +1721,13 @@
    "short": "Partition 6",
    "house": true,
    "name": "Partition 6, 1.45 to the roof",
-   "x0": 0.3,
-   "x1": 3.7,
-   "z0": 3.37,
-   "z1": 3.47,
+   "x0": 3.2,
+   "x1": 3.3,
+   "z0": 4.6,
+   "z1": 6.7,
    "y0": 1.45,
-   "y1": 4.894
+   "y1": 4.18,
+   "y1End": 2.71
   },
   {
    "id": "hl-part-7",
@@ -1721,12 +1739,11 @@
    "house": true,
    "name": "Partition 7, 1.45 to the roof",
    "x0": 3.2,
-   "x1": 3.3,
+   "x1": 3.4,
    "z0": 4.6,
-   "z1": 6.7,
+   "z1": 4.7,
    "y0": 1.45,
-   "y1": 4.18,
-   "y1End": 2.71
+   "y1": 4.145
   },
   {
    "id": "hl-part-8",
@@ -1737,8 +1754,8 @@
    "short": "Partition 8",
    "house": true,
    "name": "Partition 8, 1.45 to the roof",
-   "x0": 3.2,
-   "x1": 3.4,
+   "x0": 4,
+   "x1": 4.8,
    "z0": 4.6,
    "z1": 4.7,
    "y0": 1.45,
@@ -1753,15 +1770,15 @@
    "short": "Partition 9",
    "house": true,
    "name": "Partition 9, 1.45 to the roof",
-   "x0": 4,
-   "x1": 4.8,
-   "z0": 4.6,
-   "z1": 4.7,
+   "x0": 0.3,
+   "x1": 1.9,
+   "z0": 2,
+   "z1": 2.1,
    "y0": 1.45,
-   "y1": 4.145
+   "y1": 3.935
   },
   {
-   "id": "hl-part-10",
+   "id": "hl-part-10-north",
    "group": "house",
    "color": "#c9ced6",
    "opacity": 0.5,
@@ -1769,12 +1786,30 @@
    "short": "Partition 10",
    "house": true,
    "name": "Partition 10, 1.45 to the roof",
-   "x0": 0.3,
+   "x0": 1.8,
    "x1": 1.9,
-   "z0": 2,
-   "z1": 2.1,
+   "z0": 3.5,
+   "z1": 3.6,
    "y0": 1.45,
-   "y1": 3.935
+   "y1": 4.95,
+   "y1End": 4.88
+  },
+  {
+   "id": "hl-part-10-yard",
+   "group": "house",
+   "color": "#c9ced6",
+   "opacity": 0.5,
+   "parent": [ { "id": "half", "name": "Bedrooms, half level" }, { "id": "hl-walls", "name": "Walls" } ],
+   "short": "Partition 10",
+   "house": true,
+   "name": "Partition 10, 1.45 to the roof",
+   "x0": 1.8,
+   "x1": 1.9,
+   "z0": 3.3,
+   "z1": 3.5,
+   "y0": 1.45,
+   "y1": 4.81,
+   "y1End": 4.95
   },
   {
    "id": "hl-part-11",
@@ -1787,22 +1822,6 @@
    "name": "Partition 11, 1.45 to the roof",
    "x0": 1.8,
    "x1": 1.9,
-   "z0": 3.3,
-   "z1": 3.37,
-   "y0": 1.45,
-   "y1": 4.835
-  },
-  {
-   "id": "hl-part-12",
-   "group": "house",
-   "color": "#c9ced6",
-   "opacity": 0.5,
-   "parent": [ { "id": "half", "name": "Bedrooms, half level" }, { "id": "hl-walls", "name": "Walls" } ],
-   "short": "Partition 12",
-   "house": true,
-   "name": "Partition 12, 1.45 to the roof",
-   "x0": 1.8,
-   "x1": 1.9,
    "z0": 2,
    "z1": 2.7,
    "y0": 1.45,
@@ -1811,6 +1830,25 @@
   },
   {
    "id": "hl-furn-1",
+   "group": "house",
+   "color": "#b98b5a",
+   "solid": true,
+   "parent": [
+    { "id": "half", "name": "Bedrooms, half level" },
+    { "id": "hl-bed-yard", "name": "Bedroom, yard side" }
+   ],
+   "short": "drawers",
+   "house": true,
+   "name": "drawers",
+   "x0": 0.3,
+   "x1": 0.8,
+   "z0": 6.3,
+   "z1": 6.7,
+   "y0": 1.45,
+   "y1": 2
+  },
+  {
+   "id": "hl-furn-2",
    "group": "house",
    "color": "#e8e2d6",
    "solid": true,
@@ -1822,14 +1860,52 @@
    "house": true,
    "name": "bed 160×200",
    "x0": 0.3,
-   "x1": 1.9,
+   "x1": 2.3,
    "z0": 4.7,
-   "z1": 6.7,
+   "z1": 6.3,
    "y0": 1.45,
    "y1": 2
   },
   {
-   "id": "hl-soft-2",
+   "id": "hl-furn-3",
+   "group": "house",
+   "color": "#b98b5a",
+   "solid": true,
+   "parent": [
+    { "id": "half", "name": "Bedrooms, half level" },
+    { "id": "hl-bed-yard", "name": "Bedroom, yard side" }
+   ],
+   "short": "drawers",
+   "house": true,
+   "name": "drawers",
+   "x0": 0.3,
+   "x1": 0.8,
+   "z0": 4.3,
+   "z1": 4.7,
+   "y0": 1.45,
+   "y1": 2
+  },
+  {
+   "id": "hl-furn-4",
+   "group": "house",
+   "color": "#b98b5a",
+   "solid": true,
+   "parent": [
+    { "id": "half", "name": "Bedrooms, half level" },
+    { "id": "hl-bed-yard", "name": "Bedroom, yard side" }
+   ],
+   "short": "wardrobe",
+   "house": true,
+   "name": "wardrobe",
+   "x0": 0.3,
+   "x1": 0.9,
+   "z0": 3.7,
+   "z1": 4.3,
+   "y0": 1.45,
+   "y1": 3.65
+  },
+  {
+   "id": "hl-soft-5",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -1848,7 +1924,7 @@
    "y1": 1.55
   },
   {
-   "id": "hl-furn-3",
+   "id": "hl-furn-6",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -1867,7 +1943,7 @@
    "y1": 2.3
   },
   {
-   "id": "hl-furn-4",
+   "id": "hl-furn-7",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -1886,7 +1962,7 @@
    "y1": 1.87
   },
   {
-   "id": "hl-furn-5",
+   "id": "hl-furn-8",
    "group": "house",
    "color": "#e8e2d6",
    "solid": true,
@@ -1905,7 +1981,7 @@
    "y1": 2
   },
   {
-   "id": "hl-furn-6",
+   "id": "hl-furn-9",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -1924,7 +2000,7 @@
    "y1": 1.55
   },
   {
-   "id": "hl-furn-7",
+   "id": "hl-furn-10",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -1937,13 +2013,13 @@
    "name": "wc",
    "x0": 0.3,
    "x1": 0.95,
-   "z0": 2.97,
-   "z1": 3.37,
+   "z0": 3.15,
+   "z1": 3.55,
    "y0": 1.45,
    "y1": 1.87
   },
   {
-   "id": "hl-furn-8",
+   "id": "hl-furn-11",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,

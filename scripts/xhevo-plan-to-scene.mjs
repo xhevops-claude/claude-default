@@ -85,6 +85,7 @@ const RISERS = 3 + UP[6] + 1, RISER = r3(HALF / RISERS);
 /* Heights of the furniture, by the label the plan gives it. */
 const heightOf = (label, t) => {
   if (/^bed/.test(label)) return [0, 0.55];
+  if (/drawers/.test(label)) return [0, 0.55];
   if (/wardrobe/.test(label)) return [0, 2.2];
   if (/fridge/.test(label)) return [0, 1.9];
   if (/shower/.test(label)) return [0, 0.1];
@@ -242,7 +243,7 @@ for (const e of G2) {
   } else if (t === 'furn' || t === 'soft') {
     const label = e[5] || t;
     const [y0, y1] = heightOf(label, t);
-    const room = x >= 3.63 ? (y >= 3.8 ? ['landing', 'Landing'] : y < 1.8 && x < 4.9 ? ['bath-north', 'Bathroom, north bedroom'] : ['bed-north', 'Bedroom, north side']) : x < 2.3 && y >= 3.3 ? ['bath-yard', 'Bathroom, yard bedroom'] : ['bed-yard', 'Bedroom, yard side'];
+    const room = x >= 3.4 ? (y >= 3.8 ? ['landing', 'Landing'] : y < 1.8 && x < 4.9 ? ['bath-north', 'Bathroom, north bedroom'] : ['bed-north', 'Bedroom, north side']) : x < 2.3 && y >= 3.3 ? ['bath-yard', 'Bathroom, yard bedroom'] : ['bed-yard', 'Bedroom, yard side'];
     const k = ++furn2;
     /* Nothing stands through the roof: a tall piece against a side wall is cut at the roof's underside there. */
     const under = Math.min(roofAt(7 - x), roofAt(7 - x - w));
