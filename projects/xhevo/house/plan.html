@@ -65,12 +65,12 @@ td.open { color: var(--warn); font-weight: 700; }
   <h1>Xhevo house, working plan</h1>
 
   <section>
-    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the kitchen an L in the yard corner, the sink under the yard window, the hob over the oven, its back wall only as long as the kitchen · the stair to the bedrooms straight up into the hill beside the fridge, 1.00 wide, 6 risers of 0.167 on 0.28 goings · the hill end under the bedrooms is not dug: fill to +0.80, their slab on it · the roof from 2.50 at the walls, 1.00 past the glass, no balcony</h2>
+    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the kitchen an L in the yard corner, the sink under the yard window, the hob over the oven, its back wall only as long as the kitchen · the stair to the bedrooms straight up into the hill, centred on the house under the ridge, 1.00 wide, 6 risers of 0.167 on 0.28 goings · the hill end under the bedrooms is not dug: fill to +0.80, their slab on it · the roof from 2.50 at the walls, 1.00 past the glass, no balcony</h2>
     <svg id="plan" class="plan" aria-label="Ground floor plan"></svg>
   </section>
 
   <section>
-    <h2><b>Bedrooms, half level +1.00</b> · in the hill behind the living room, x 0 to 4.9, 6.40 × 4.50 clear · one wall across at x 3.0: the two bedrooms behind it, 3.00 and 3.30 wide by 2.70 · in front of it the yard bath, the landing and the north bath · the flight comes straight up from the living room beside the kitchen onto a 1.90 × 1.00 landing, a door into each bedroom off it · each bath opens from its own bedroom · under the same roof: 1.50 at the side walls, 3.95 under the ridge · three sides in the hill</h2>
+    <h2><b>Bedrooms, half level +1.00</b> · in the hill behind the living room, x 0 to 4.9, 6.40 × 4.50 clear · one wall across at x 3.0: the two bedrooms behind it, 3.15 × 2.70 each · in front of it the yard bath, the landing and the north bath · the flight comes straight up the middle from the living room onto a 2.00 × 1.00 landing, a door into each bedroom off it · each bath opens from its own bedroom · under the same roof: 1.50 at the side walls, 3.95 under the ridge · three sides in the hill</h2>
     <svg id="beds" class="plan" aria-label="Bedrooms plan, half level"></svg>
   </section>
 
@@ -100,9 +100,9 @@ const G = [
   ['glass', 0.3, 11.7, 6.4, 0.3, 'glass gable 6.40'],
   ['roof', -0.4, 12.0, 7.4, 13.0],                                     // the roof's edge: 1.00 past the glass at the front, 0.40 at the sides
   // partitions, 0.10
-  ['part', 0.3, 4.8, 2.4, 0.1],            // the kitchen's back wall, only as far as the kitchen runs: to the fridge's end at x 2.7; the yard bath above it
-  ['part', 2.6, 4.1, 0.1, 0.7], ['part', 3.7, 4.1, 0.1, 0.7],   // the sides of the flight to the bedrooms where it cuts into the fill
-  ['part', 3.7, 4.8, 3.0, 0.1],            // the living room's back wall past the flight, to the north wall: the north bath above it
+  ['part', 0.3, 4.8, 2.7, 0.1],            // the kitchen's back wall: the kitchen to the fridge's end at x 2.7, then 0.30 more to the flight's side, holding the fill; the yard bath above it
+  ['part', 2.9, 4.1, 0.1, 0.7], ['part', 4.0, 4.1, 0.1, 0.7],   // the sides of the flight to the bedrooms where it cuts into the fill
+  ['part', 4.0, 4.8, 2.7, 0.1],            // the living room's back wall past the flight, to the north wall: the north bath above it
   ['part', 5.5, 5.7, 0.1, 3.58],           // stair box, room side, from the hole's end: nothing stands between the landing and the living room
   ['part', 5.5, 9.18, 1.02, 0.1],          // stair box, end, to the north wall at x 9.18, where the lid is at the floor
   // openings: doors are a gap plus a leaf swung from a hinge; windows sit in the wall
@@ -124,19 +124,19 @@ const G = [
   // stairs: x, y, w, h, treads along 'x' or 'y', count, arrow toward the top end
   ['wedge', 5.6, 5.7, 1.1, 3.48],
   ['stair', 5.6, 5.7, 1.1, 3.48, 'y', 12, 'up'],     // garage flight, in the hole; it rises toward the hall
-  ['stair', 2.7, 4.1, 1.0, 1.4, 'y', 5, 'up'],     // up to the bedrooms, straight into the hill beside the fridge: 6 risers of 0.167 on 0.28 goings, the first at the counter's front (y 5.5), the last the landing's floor at +1.00
+  ['stair', 3.0, 4.1, 1.0, 1.4, 'y', 5, 'up'],     // up to the bedrooms, straight into the hill, centred on the house under the ridge: 6 risers of 0.167 on 0.28 goings, the first at the counter's front (y 5.5), the last the landing's floor at +1.00
   ['dashrect', 0.3, 0.3, 6.4, 4.5],               // the bedrooms' half level above, +1.00; 0.80 clear under it
   // labels: room name, area, and small notes
-  ['fill', 0.3, 0.3, 6.4, 3.8], ['fill', 0.3, 4.1, 2.3, 0.7], ['fill', 3.8, 4.1, 2.9, 0.7],   // not dug: fill from the ground to +0.80, the bedrooms' slab on it; the flight cut into it
+  ['fill', 0.3, 0.3, 6.4, 3.8], ['fill', 0.3, 4.1, 2.6, 0.7], ['fill', 4.1, 4.1, 2.6, 0.7],   // not dug: fill from the ground to +0.80, the bedrooms' slab on it; the flight cut into it
   ['room', 3.5, 2.3, 'FILL, NOT DUG', ''], ['note', 3.5, 2.6, 'soil to +0.80 · the bedrooms\' slab sits on it · no room under them'],
   ['room', 5.0, 5.55, 'landing', ''], ['room', 4.85, 6.4, 'LIVING', '35.4'], ['room', 2.5, 11.5, 'open to the roof', ''],
   ['note', 6.45, 6.3, 'lid 2.1'], ['note', 6.45, 7.3, '1.2'], ['note', 6.45, 8.0, '0.8'], ['note', 6.0, 8.75, '0.3'], ['note', 6.0, 9.1, '0'],
   ['note', 5.37, 7.5, 'shelves'],
-  ['note', 3.2, 5.7, 'UP +1.00'], ['note', 5.85, 8.9, 'DOWN'],
+  ['note', 3.5, 5.7, 'UP +1.00'], ['note', 5.85, 8.9, 'DOWN'],
   ['note', 3.5, 12.25, 'fire 170 on the north wall, x 9.8 to 11.5 · the TV is on a wheeled stand, anywhere'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
   // dimensions, wall to wall: ['dim', x1, y1, x2, y2]
-  ['dim', 3.7, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the landing at the top of the garage flight: 0.90 deep, open 3.00 from the bedrooms' flight to the north wall
-  ['dim', 3.55, 4.1, 3.55, 5.5],                                          // the flight to the bedrooms: 1.40 long, 1.00 wide
+  ['dim', 4.0, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the landing at the top of the garage flight: 0.90 deep, open 2.70 from the bedrooms' flight to the north wall
+  ['dim', 3.85, 4.1, 3.85, 5.5],                                          // the flight to the bedrooms: 1.40 long, 1.00 wide
   ['dim', 5.9, 5.7, 5.9, 9.18],                                           // stair hole 3.48 long (its 1.10 is the landing's)
   ['dim', 0.3, 7.95, 5.5, 7.95], ['dim', 0.45, 4.9, 0.45, 11.7],         // living 5.20 wide, 6.80 from the kitchen wall to the glass
   ['dim', 1.95, 5.5, 1.95, 6.3], ['dim', 2.55, 7.4, 2.55, 8.9], ['dim', 4.75, 8.2, 5.25, 8.2],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.50, sofa to shelves 0.50
@@ -151,28 +151,28 @@ const G = [
 /* The bedrooms, half a level up at +1.00, in the hill end: x 0 to 4.8, same axes as the ground floor. */
 const G2 = [
   ['wall', 0, 0, 7, 0.3], ['wall', 0, 0, 0.3, 4.9], ['wall', 6.7, 0, 0.3, 4.9],   // three sides in the hill, retaining; the back wall at x 0
-  ['part', 0.3, 4.8, 2.4, 0.1], ['part', 3.7, 4.8, 3.0, 0.1],   // the front walls over the living room's back wall; between them the flight comes up, open to the roof
+  ['part', 0.3, 4.8, 2.7, 0.1], ['part', 4.0, 4.8, 2.7, 0.1],   // the front walls over the living room's back wall; between them the flight comes up, open to the roof
   ['part', 0.3, 3.0, 6.4, 0.1],            // one wall across the house: the two bedrooms behind it, the yard bath, the landing and the north bath in front
-  ['part', 3.3, 0.3, 0.1, 2.7],            // between the two bedrooms
+  ['part', 3.45, 0.3, 0.1, 2.7],           // between the two bedrooms, on the centre line
   ['part', 2.4, 3.1, 0.1, 1.7],            // the yard bath's landing-side wall
-  ['part', 4.4, 3.1, 0.1, 1.7],            // the north bath's landing-side wall
-  ['door', 2.55, 3.0, 0.75, 0.1, 2.55, 3.05, 0.75, -90, 0],   // yard bedroom, off the landing
-  ['door', 3.5, 3.0, 0.8, 0.1, 4.3, 3.05, 0.8, -90, -180],    // north bedroom, off the landing
+  ['part', 4.5, 3.1, 0.1, 1.7],            // the north bath's landing-side wall
+  ['door', 2.6, 3.0, 0.75, 0.1, 2.6, 3.05, 0.75, -90, 0],   // yard bedroom, off the landing
+  ['door', 3.65, 3.0, 0.75, 0.1, 4.4, 3.05, 0.75, -90, -180],   // north bedroom, off the landing
   ['door', 1.75, 3.0, 0.6, 0.1, 2.35, 3.05, 0.6, 90, 180],    // yard bath, from its bedroom, swinging in
-  ['door', 4.55, 3.0, 0.7, 0.1, 4.55, 3.05, 0.7, 90, 0],      // north bath, from its bedroom, swinging in
+  ['door', 4.65, 3.0, 0.7, 0.1, 4.65, 3.05, 0.7, 90, 0],      // north bath, from its bedroom, swinging in
   ['win', 0, 1.3, 0.3, 1.0],                                // the yard bedroom's window, low: the wall is 1.50 over the floor there
-  ['furn', 0.3, 0.3, 0.4, 0.5, 'drawers'], ['furn', 0.7, 0.3, 1.6, 2.0, 'bed 160×200'], ['furn', 2.3, 0.3, 0.4, 0.5, 'drawers'], ['furn', 2.7, 0.3, 0.6, 1.8, 'wardrobe'],   // yard bedroom: one row on the hill wall, 0.40 + 1.60 + 0.40 + 0.60 = 3.00, the bed's head to the wall; the wardrobe 1.80 down the bedroom wall, clear of the door
+  ['furn', 0.3, 0.3, 0.4, 0.5, 'drawers'], ['furn', 0.7, 0.3, 1.6, 2.0, 'bed 160×200'], ['furn', 2.3, 0.3, 0.4, 0.5, 'drawers'], ['furn', 2.85, 0.3, 0.6, 1.8, 'wardrobe'],   // yard bedroom: one row on the hill wall, drawers 0.40, bed 1.60, drawers 0.40, then the wardrobe 1.80 down the bedroom wall, clear of the door
   ['soft', 0.3, 3.1, 0.8, 1.7, 'shower'], ['furn', 1.2, 4.35, 0.5, 0.45, 'basin'], ['furn', 1.25, 3.1, 0.4, 0.65, 'wc'],     // yard bath, 2.10 × 1.70: walk-in shower across the yard end, basin on the front wall, wc against the bedroom wall
   ['furn', 4.7, 0.3, 2.0, 1.6, 'bed 160×200'],                                                    // north bedroom: along the hill wall, head at the north wall
-  ['soft', 4.5, 4.0, 0.8, 0.8, 'shower'], ['furn', 5.5, 4.35, 0.45, 0.45, 'basin'], ['furn', 6.05, 3.1, 0.65, 0.4, 'wc'],      // north bath, 2.20 × 1.70: the shower on the landing side where the roof is high, the wc at the north wall
-  ['stair', 2.7, 4.1, 1.0, 1.4, 'y', 5, 'up'],     // the flight from the living room, arriving on the landing
-  ['room', 1.2, 2.62, 'BEDROOM', '8.1'], ['room', 2.0, 4.2, 'BATH', '3.6'], ['room', 6.3, 4.15, 'BATH', '3.7'], ['room', 5.7, 2.45, 'BEDROOM', '8.9'], ['room', 3.45, 3.5, 'LANDING', '1.9'],
-  ['note', 4.05, 1.0, 'wardrobe later'], ['note', 3.2, 5.7, 'up from the living room'],
-  ['dim', 2.0, 0.3, 2.0, 3.0], ['dim', 0.3, 2.45, 3.3, 2.45],              // yard bedroom 3.00 × 2.70
+  ['soft', 4.6, 4.0, 0.8, 0.8, 'shower'], ['furn', 5.5, 4.35, 0.45, 0.45, 'basin'], ['furn', 6.05, 3.1, 0.65, 0.4, 'wc'],      // north bath, 2.10 × 1.70: the shower on the landing side where the roof is high, the wc at the north wall
+  ['stair', 3.0, 4.1, 1.0, 1.4, 'y', 5, 'up'],     // the flight from the living room, arriving on the landing
+  ['room', 1.2, 2.62, 'BEDROOM', '8.5'], ['room', 2.0, 4.2, 'BATH', '3.6'], ['room', 6.3, 4.15, 'BATH', '3.6'], ['room', 5.7, 2.45, 'BEDROOM', '8.5'], ['room', 3.5, 3.5, 'LANDING', '2.0'],
+  ['note', 4.15, 1.0, 'wardrobe later'], ['note', 3.5, 5.7, 'up from the living room'],
+  ['dim', 2.0, 0.3, 2.0, 3.0], ['dim', 0.3, 2.45, 3.45, 2.45],             // yard bedroom 3.15 × 2.70
   ['dim', 0.3, 4.65, 1.2, 4.65], ['dim', 1.0, 3.1, 1.0, 4.8],             // yard bath, shower 0.90 to the basin; 1.70 deep
-  ['dim', 4.5, 3.85, 6.7, 3.85], ['dim', 5.4, 3.1, 5.4, 4.8],             // north bath 2.20 × 1.70
-  ['dim', 3.4, 0.6, 4.7, 0.6], ['dim', 6.5, 0.3, 6.5, 3.0],                // 1.30 beside the bed for a wardrobe; north bedroom 2.70 deep
-  ['dim', 2.5, 3.95, 4.4, 3.95],                                          // the landing 1.90 × 1.00
+  ['dim', 4.6, 3.85, 6.7, 3.85], ['dim', 5.45, 3.1, 5.45, 4.8],           // north bath 2.10 × 1.70
+  ['dim', 3.55, 0.6, 4.7, 0.6], ['dim', 6.5, 0.3, 6.5, 3.0],               // 1.15 beside the bed for a wardrobe; north bedroom 2.70 deep
+  ['dim', 2.5, 3.95, 4.5, 3.95],                                          // the landing 2.00 × 1.00, centred
   ['dim', 7.15, 0.3, 7.15, 4.8], ['dim', 0.3, 6.0, 6.7, 6.0],            // overall clear 4.50 × 6.40
   ['edge', 'yard (S)', 'left'], ['edge', 'north', 'right'], ['edge', 'hill', 'top'], ['edge', 'living room below, open to the roof', 'bottom'],
 ];
