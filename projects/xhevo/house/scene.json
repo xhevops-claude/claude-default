@@ -1293,22 +1293,6 @@
    "y1": 0.45
   },
   {
-   "id": "gf-stone",
-   "group": "house",
-   "color": "#9a9087",
-   "solid": true,
-   "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-fire", "name": "Fire" } ],
-   "short": "Stone",
-   "house": true,
-   "name": "Stone on the north wall, floor to roof",
-   "x0": 8,
-   "x1": 11.7,
-   "z0": 0.3,
-   "z1": 0.4,
-   "y0": 0,
-   "y1": 3.245
-  },
-  {
    "id": "gf-furn-13",
    "group": "house",
    "color": "#9a9087",
