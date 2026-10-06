@@ -65,8 +65,13 @@ td.open { color: var(--warn); font-weight: 700; }
   <h1>Xhevo house, working plan</h1>
 
   <section>
-    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the kitchen an L in the yard corner, the sink under the yard window, the hob over the oven, its back wall only as long as the kitchen · the stair to the bedrooms 1.00 long, against the back wall in the middle, 6 risers of 0.167 on 0.20 goings · the hill end under the bedrooms is not dug: fill to +0.80, their slab on it · the walls 3.00 high, the roof from there, 1.00 past the glass, no balcony</h2>
+    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the kitchen an L in the yard corner, the sink under the yard window, the hob over the oven, a table for six · the stair to the bedrooms 1.00 long, against the back wall in the middle, 6 risers of 0.167 on 0.20 goings · the hill end under the bedrooms is not dug: fill to +0.80, their slab on it · the walls 3.00 high, the roof from there, 1.00 past the glass, no balcony</h2>
     <svg id="plan" class="plan" aria-label="Ground floor plan"></svg>
+  </section>
+
+  <section>
+    <h2><b>Ground floor, empty</b> · the same floor with the kitchen and the living room cleared: walls, openings, the stairs and the stone wall only, to plan the room from scratch · 5.20 × 6.80 from the kitchen wall to the glass</h2>
+    <svg id="bare" class="plan" aria-label="Ground floor plan without furniture"></svg>
   </section>
 
   <section>
@@ -110,9 +115,10 @@ const G = [
   // the kitchen packed into the yard corner, an L: the sink on the yard wall under the window, looking out; the run on the back wall stops at x 2.7, 1.60 short of where it was, so the landing at the foot of the bedrooms' flight is 1.60 wider
   ['furn', 0.3, 5.5, 0.6, 0.8, 'sink'],
   ['furn', 0.3, 4.9, 0.6, 0.6, 'worktop'], ['furn', 0.9, 4.9, 0.6, 0.6, 'hob/oven'], ['furn', 1.5, 4.9, 0.6, 0.6, 'worktop'], ['furn', 2.1, 4.9, 0.6, 0.6, 'fridge'],   // the hob over the oven, one unit
-  ['furn', 1.0, 6.6, 2.2, 0.8, 'table 220×80 · 8'],                    // dining in the kitchen, across the room; 0.10 further north to clear the sink; the 180 with its 0.40 extension on
-  ['chair', 1.05, 6.3, 0.45, 0.45, ''], ['chair', 1.6, 6.3, 0.45, 0.45, ''], ['chair', 2.15, 6.3, 0.45, 0.45, ''], ['chair', 2.7, 6.3, 0.45, 0.45, ''],      // counter side, tucked 0.15 under
-  ['chair', 2.7, 7.25, 0.45, 0.45, ''], ['chair', 2.15, 7.25, 0.45, 0.45, ''], ['chair', 1.6, 7.25, 0.45, 0.45, ''], ['chair', 1.05, 7.25, 0.45, 0.45, ''],   // room side, tucked 0.15 under
+  ['furn', 1.2, 6.6, 1.4, 0.8, 'table 140×80 · 6'],                    // dining in the kitchen, across the room, for six: two a side, one at each end
+  ['chair', 1.325, 6.3, 0.45, 0.45, ''], ['chair', 2.025, 6.3, 0.45, 0.45, ''],       // counter side, tucked 0.15 under
+  ['chair', 2.025, 7.25, 0.45, 0.45, ''], ['chair', 1.325, 7.25, 0.45, 0.45, ''],     // room side, tucked 0.15 under
+  ['chair', 0.9, 6.775, 0.45, 0.45, ''], ['chair', 2.45, 6.775, 0.45, 0.45, ''],      // one at each end, tucked 0.15 under
   ['soft', 2.25, 8.9, 0.9, 1.8, 'sofa 180×90'],                            // the main sofa, facing the north wall; no fixed armrests
   ['soft', 3.15, 8.0, 1.6, 0.9, 'sofa 160×90'], ['soft', 3.15, 10.7, 1.8, 0.9, 'sofa 180×90'],   // butted against the main sofa's ends: 160 on the stair side, 180 on the glass side, 0.10 off the glass
   ['furn', 3.5, 9.4, 0.8, 0.8, 'coffee'],
@@ -129,19 +135,20 @@ const G = [
   ['room', 3.5, 2.3, 'FILL, NOT DUG', ''], ['note', 3.5, 2.6, 'soil to +0.80 · the bedrooms\' slab sits on it · no room under them'],
   ['room', 4.85, 6.4, 'LIVING', '35.4'], ['room', 2.5, 11.5, 'open to the roof', ''],
   ['note', 6.45, 6.3, 'lid 2.1'], ['note', 6.45, 7.3, '1.2'], ['note', 6.45, 8.0, '0.8'], ['note', 6.0, 8.75, '0.3'], ['note', 6.0, 9.1, '0'],
-  ['note', 5.37, 7.5, 'shelves'],
+  ['note', 5.37, 7.5, 'shelves', 'f'],
   ['note', 5.85, 8.9, 'DOWN'],
-  ['note', 3.5, 12.25, 'fire 170 on the north wall, x 9.8 to 11.5 · the TV is on a wheeled stand, anywhere'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
+  ['note', 3.5, 12.25, 'fire 170 on the north wall, x 9.8 to 11.5 · the TV is on a wheeled stand, anywhere', 'f'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
   // dimensions, wall to wall: ['dim', x1, y1, x2, y2]
   ['dim', 4.0, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the top of the garage flight: 0.90 deep, open 2.70 from the bedrooms' flight to the north wall
-  ['dim', 4.15, 4.8, 4.15, 5.8], ['dim', 3.1, 5.8, 3.1, 6.3],             // the flight to the bedrooms 1.00 long; 0.50 from its foot to the corner of the last tucked chair
+  ['dim', 4.15, 4.8, 4.15, 5.8],                                          // the flight to the bedrooms 1.00 long
   ['dim', 5.9, 5.7, 5.9, 9.18],                                           // stair hole 3.48 long (its 1.10 is the landing's)
   ['dim', 0.3, 7.95, 5.5, 7.95], ['dim', 0.45, 4.9, 0.45, 11.7],         // living 5.20 wide, 6.80 from the kitchen wall to the glass
-  ['dim', 1.95, 5.5, 1.95, 6.3], ['dim', 2.55, 7.4, 2.55, 8.9], ['dim', 4.75, 8.2, 5.25, 8.2],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.50, sofa to shelves 0.50
-  ['dim', 0.3, 7.0, 1.0, 7.0],                                            // table to the yard wall 0.70
-  ['dim', 3.15, 9.3, 6.6, 9.3], ['dim', 4.75, 8.3, 6.6, 8.3], ['dim', 4.95, 10.8, 6.3, 10.8],     // main sofa's front to the stone 3.45; stair-side sofa's end to the stone 1.85; glass-side sofa's end to the fire 1.35
-  ['dim', 6.3, 9.8, 6.3, 11.5],                                           // fire 1.70, on its room face
-  ['dim', 5.5, 9.28, 5.5, 11.7], ['dim', 4.0, 11.6, 4.0, 11.7],          // past the stair's end, 2.42; sofa to glass 0.10
+  // the ones marked 'f' measure to furniture and stay off the empty sheet
+  ['dim', 1.55, 5.5, 1.55, 6.3, 'f'], ['dim', 2.55, 7.4, 2.55, 8.9, 'f'], ['dim', 4.75, 8.2, 5.25, 8.2, 'f'],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.50, sofa to shelves 0.50
+  ['dim', 0.3, 6.62, 1.2, 6.62, 'f'],                                     // table to the yard wall 0.90
+  ['dim', 3.15, 9.3, 6.6, 9.3, 'f'], ['dim', 4.75, 8.3, 6.6, 8.3, 'f'], ['dim', 4.95, 10.8, 6.3, 10.8, 'f'],     // main sofa's front to the stone 3.45; stair-side sofa's end to the stone 1.85; glass-side sofa's end to the fire 1.35
+  ['dim', 6.3, 9.8, 6.3, 11.5, 'f'],                                      // fire 1.70, on its room face
+  ['dim', 5.5, 9.28, 5.5, 11.7], ['dim', 4.0, 11.6, 4.0, 11.7, 'f'],     // past the stair's end, 2.42; sofa to glass 0.10
   ['dim', 7.15, 0.3, 7.15, 11.7], ['dim', 0.3, 13.4, 6.7, 13.4],         // overall clear 11.40 × 6.40
   ['edge', 'yard (S)', 'left'], ['edge', 'north', 'right'], ['edge', 'hill', 'top'], ['edge', 'glass', 'bottom'],
 ];
@@ -373,7 +380,10 @@ function drawSide() {
   svg.setAttribute('viewBox', `0 0 ${X(XB)} ${Z(ZB) + 2}`);
   svg.innerHTML = s;
 }
+/* The empty sheet: the ground floor without its furniture, the notes and dims that measure to it, or the fire. */
+const BARE = G.filter((e) => !['furn', 'soft', 'chair'].includes(e[0]) && !(e[0] === 'dim' && e[5] === 'f') && !(e[0] === 'note' && e[4] === 'f'));
 drawPlan({ id: 'plan', G, X0: -0.85, Y0: -0.55, W: 8.75, H: 14.5, gy: [0, 12], edges: { left: [-0.42, 6.5, -90], right: [7.72, 6.5, 90], top: [3.5, -0.25, 0], bottom: [3.5, 13.75, 0] } });
+drawPlan({ id: 'bare', G: BARE, X0: -0.85, Y0: -0.55, W: 8.75, H: 14.5, gy: [0, 12], edges: { left: [-0.42, 6.5, -90], right: [7.72, 6.5, 90], top: [3.5, -0.25, 0], bottom: [3.5, 13.75, 0] } });
 drawPlan({ id: 'beds', G: G2, X0: -0.85, Y0: -0.55, W: 8.75, H: 7.25, gy: [0, 4.9], edges: { left: [-0.42, 2.5, -90], right: [7.72, 2.5, 90], top: [3.5, -0.25, 0], bottom: [3.5, 6.55, 0] } });
 drawSide();
 drawSection();
