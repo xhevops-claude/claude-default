@@ -186,7 +186,7 @@ for (const e of G) {
        second footprint where the roof starts at the eaves (`ringTop`), then on at that size through the roof. */
     const [, , , , , x1, y1, w1, h1, z0] = e;
     const ringOf = (px, py, pw, ph) => [[py, 7 - px - pw], [py + ph, 7 - px - pw], [py + ph, 7 - px], [py, 7 - px]].map(([a, b]) => [r3(a), r3(b)]);
-    works.push({ id: 'gf-chimney', group: 'house', color: STONE, solid: true, parent: [LEVELS.gf, { id: 'gf-fire', name: 'Fire' }], short: 'Chimney', house: true, name: `Chimney, narrowing straight from ${r3(w)} × ${r3(h)} at ${z0} to ${r3(w1)} × ${r3(h1)} at the eaves`, ring: ringOf(x, y, w, h), ringTop: ringOf(x1, y1, w1, h1), y0: z0, y1: EAVES });
+    works.push({ id: 'gf-chimney', group: 'house', color: STONE, solid: true, parent: [LEVELS.gf, { id: 'gf-fire', name: 'Fire' }], short: 'Chimney', house: true, name: w1 === w && h1 === h ? `Chimney, ${r3(w)} × ${r3(h)}, straight up from ${z0} to the eaves` : `Chimney, narrowing straight from ${r3(w)} × ${r3(h)} at ${z0} to ${r3(w1)} × ${r3(h1)} at the eaves`, ring: ringOf(x, y, w, h), ringTop: ringOf(x1, y1, w1, h1), y0: z0, y1: EAVES });
     toRoof({ id: 'chimney-top', name: `Chimney, ${r3(w1)} × ${r3(h1)}, from the eaves through the roof`, group: ['fire', 'Fire'], px: x1, py: y1, w: w1, h: h1, color: STONE, solid: true, short: 'Chimney top' }, EAVES);
   } else if (t === 'stone') {
     toRoof({ id: 'stone', name: 'Stone on the north wall, floor to roof', group: ['fire', 'Fire'], px: x, py: y, w, h, color: STONE, solid: true, short: 'Stone' });
