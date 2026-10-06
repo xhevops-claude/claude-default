@@ -50,8 +50,8 @@ const paintOf = (label, t) => {
   if (/shower|basin|^wc/.test(label)) return CERAMIC;
   if (/coffee/.test(label)) return WALNUT;
   if (/sofa|armchair/.test(label)) return FABRIC;
-  if (/^base|crown|flue/.test(label)) return STONE;
-  if (/fire/.test(label)) return ANTHRACITE;
+  if (/^base|crown|flue|fire/.test(label)) return STONE;   // the fire and its chimney are one material
+  if (/^log/.test(label)) return WALNUT;
   if (/table|shelves/.test(label) || t === 'chair') return OAK;
   return OAK;
 };
@@ -101,6 +101,7 @@ const heightOf = (label, t) => {
   if (/^base/.test(label)) return [0, 0.3];
   if (/fire/.test(label)) return [0.3, 1.3];
   if (/crown/.test(label)) return [1.3, 1.6];
+  if (/^log/.test(label)) return [1.1, 1.3];   // 0.80 to 1.00 over the base
   if (/flue/.test(label)) return [1.5, 1.5];   // to the roof, set where it is built
   if (t === 'chair') return [0, 0.45];
   return [0, 0.45];
@@ -170,7 +171,7 @@ for (const e of G) {
   } else if (t === 'furn' || t === 'soft' || t === 'chair') {
     const label = e[5] || (t === 'chair' ? 'chair' : t);
     const [y0, y1] = heightOf(label, t);
-    const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /fire|^base|crown|flue/.test(label) ? ['fire', 'Fire'] : ['lounge', 'Lounge'];
+    const room = /worktop|hob|oven|fridge|sink/.test(label) ? ['kitchen', 'Kitchen'] : /table/.test(label) || t === 'chair' ? ['dining', 'Dining'] : /fire|^base|crown|flue|^log/.test(label) ? ['fire', 'Fire'] : ['lounge', 'Lounge'];
     const k = t === 'chair' ? ++chairs : ++furn;
     const name = t === 'chair' ? `Chair ${k}` : label;
     /* The furnace with its firebox: a hollow open to the room leaves two jambs either side of it, the furnace's back
