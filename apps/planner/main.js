@@ -1,9 +1,9 @@
 /* Entry: with a project in the address, load the viewer; without one,
    the launcher — organizations, and their projects. */
 
-import { route, registry } from './load.js?v=e5cee96';
-import { $, hideLoader } from './util.js?v=e5cee96';
-import { t } from './i18n.js?v=e5cee96';
+import { route, registry } from './load.js?v=26e6574';
+import { $, hideLoader } from './util.js?v=26e6574';
+import { t } from './i18n.js?v=26e6574';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -43,7 +43,7 @@ const r = route();
 if (r) {
   try { recentPush(`${r.org}/${r.slug}`); } catch (err) { /* private mode */ }
   if (typeof window.plannerStage === 'function') window.plannerStage('loading the viewer');
-  import('./viewer.js?v=e5cee96').catch((err) => {
+  import('./viewer.js?v=26e6574').catch((err) => {
     console.error(err);
     $('fail').textContent = `${t('This project could not be loaded.')} ${err.message}`;
     $('fail').hidden = false;
