@@ -230,16 +230,15 @@ for (const e of G) {
   }
   /* 'door', 'win', 'roof', 'dashrect' and the labels draw nothing: doors cut the walls above, the roof is not modelled. */
 }
-/* The shelves on the stair box's face: one unit whose top runs 0.10 under the lid, from the landing end to where
-   the lid comes down to 0.40 — beyond that there is no height left for a shelf. */
-const shelf = G.find((e) => e[0] === 'furn' && e[1] === 5.25 && e[2] === 5.9);
+/* The shelves on the stair box's face: one triangle matching the wall behind them, the whole length of the hole,
+   their top on the lid line from 2.12 at the landing down to the floor at the hole's end. */
+const shelf = G.find((e) => e[0] === 'furn' && e[1] === 5.25 && !e[5]);
 if (shelf) {
-  const [, x, y, w] = shelf;
-  const xEnd = r3(5.7 + (2.12 - 0.4) / (0.171 / 0.29));   // lid(xEnd) = 0.40
-  works.push({ ...pitched({ id: 'shelves', name: `Shelves on the stair wall, top under the lid, ${r3(lid(y) - 0.1)} to 0.30 at x ${xEnd}`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: y, w, h: xEnd - y, y0: 0, y1: lid(y) - 0.1, color: OAK, solid: true, short: 'Shelves' }), y1End: 0.3 });
+  const [, x, y, w, h] = shelf;
+  works.push({ ...pitched({ id: 'shelves', name: `Shelves on the stair wall, matching it: top on the lid, ${r3(lid(y))} to ${r3(lid(y + h))} at x ${r3(y + h)}`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: y, w, h, y0: 0, y1: lid(y), color: OAK, solid: true, short: 'Shelves' }), y1End: r3(lid(y + h)) });
 }
-/* The shelves came in as a plain furn box above; drop that one in favour of the bays. */
-const plain = works.findIndex((w) => w.x0 === 5.9 && w.z1 === r3(7 - 5.25) && !/bay/.test(w.name));
+/* The shelves came in as a plain furn box above; drop that one in favour of the triangle. */
+const plain = shelf ? works.findIndex((w) => w.x0 === r3(shelf[2]) && w.z1 === r3(7 - 5.25) && w.id !== 'gf-shelves') : -1;
 if (plain >= 0) works.splice(plain, 1);
 
 /* ── the bedrooms, half a level up ────────────────────────────────────── */
