@@ -119,9 +119,10 @@ const G = [
   ['chair', 1.325, 6.3, 0.45, 0.45, ''], ['chair', 2.025, 6.3, 0.45, 0.45, ''],       // counter side, tucked 0.15 under
   ['chair', 2.025, 7.25, 0.45, 0.45, ''], ['chair', 1.325, 7.25, 0.45, 0.45, ''],     // room side, tucked 0.15 under
   ['chair', 0.9, 6.775, 0.45, 0.45, ''], ['chair', 2.45, 6.775, 0.45, 0.45, ''],      // one at each end, tucked 0.15 under
-  ['soft', 2.25, 8.9, 0.9, 1.8, 'sofa 180×90'],                            // the main sofa, facing the north wall; no fixed armrests
-  ['soft', 3.15, 8.05, 0.75, 0.8, 'armchair'], ['soft', 4.0, 8.05, 0.75, 0.8, 'armchair'], ['soft', 3.15, 10.7, 1.8, 0.9, 'sofa 180×90'],   // at the main sofa's ends: two armchairs side by side on the stair side, the 180 on the glass side, 0.10 off the glass
-  ['furn', 3.5, 9.4, 0.8, 0.8, 'coffee'],
+  ['soft', 1.6, 8.6, 0.9, 1.8, 'sofa 180×90'],                             // the main sofa, facing the north wall, 1.30 off the yard wall: a way past behind it from the yard door to the glass
+  ['soft', 2.85, 8.05, 0.75, 0.8, 'armchair'], ['soft', 3.8, 8.05, 0.75, 0.8, 'armchair'],   // two armchairs on the stair side, 0.20 apart, facing the glass
+  ['soft', 2.8, 10.7, 1.8, 0.9, 'sofa 180×90'],                             // the 180 on the glass side, 0.10 off the glass, its end 0.30 clear of the main sofa's corner
+  ['furn', 3.15, 9.4, 0.8, 0.8, 'coffee'],                                  // the coffee table in the middle of the four
   ['furn', 5.25, 5.9, 0.25, 3.2, ''],                                    // shelves on the stair box's face
   ['stone', 6.6, 8.0, 0.1, 3.7, ''],                                     // the stone on the north wall from x 8 to the glass, floor to roof, behind the fire
   ['furn', 6.3, 9.8, 0.3, 1.7, 'fire 170'],                              // the fire, 1.70 wide, on the north wall at the glass end of the pair
@@ -133,7 +134,7 @@ const G = [
   // labels: room name, area, and small notes
   ['fill', 0.3, 0.3, 6.4, 4.5],           // not dug: fill from the ground to +0.80, the bedrooms' slab on it
   ['room', 3.5, 2.3, 'FILL, NOT DUG', ''], ['note', 3.5, 2.6, 'soil to +0.80 · the bedrooms\' slab sits on it · no room under them'],
-  ['room', 4.85, 6.4, 'LIVING', '35.4'], ['room', 2.5, 11.5, 'open to the roof', ''],
+  ['room', 4.85, 6.4, 'LIVING', '35.4'], ['room', 1.45, 11.45, 'open to the roof', ''],
   ['note', 6.45, 6.3, 'lid 2.1'], ['note', 6.45, 7.3, '1.2'], ['note', 6.45, 8.0, '0.8'], ['note', 6.0, 8.75, '0.3'], ['note', 6.0, 9.1, '0'],
   ['note', 5.37, 7.5, 'shelves', 'f'],
   ['note', 5.85, 8.9, 'DOWN'],
@@ -144,9 +145,10 @@ const G = [
   ['dim', 5.9, 5.7, 5.9, 9.18],                                           // stair hole 3.48 long (its 1.10 is the landing's)
   ['dim', 0.3, 7.95, 5.5, 7.95], ['dim', 0.45, 4.9, 0.45, 11.7],         // living 5.20 wide, 6.80 from the kitchen wall to the glass
   // the ones marked 'f' measure to furniture and stay off the empty sheet
-  ['dim', 1.55, 5.5, 1.55, 6.3, 'f'], ['dim', 2.55, 7.4, 2.55, 8.9, 'f'], ['dim', 4.75, 8.2, 5.25, 8.2, 'f'],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.50, sofa to shelves 0.50
+  ['dim', 1.55, 5.5, 1.55, 6.3, 'f'], ['dim', 1.9, 7.4, 1.9, 8.6, 'f'], ['dim', 4.55, 8.2, 5.25, 8.2, 'f'],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.20, armchair to shelves 0.70
   ['dim', 0.3, 6.62, 1.2, 6.62, 'f'],                                     // table to the yard wall 0.90
-  ['dim', 3.15, 9.3, 6.6, 9.3, 'f'], ['dim', 4.75, 8.3, 6.6, 8.3, 'f'], ['dim', 4.95, 10.8, 6.3, 10.8, 'f'],     // main sofa's front to the stone 3.45; stair-side sofa's end to the stone 1.85; glass-side sofa's end to the fire 1.35
+  ['dim', 2.5, 9.3, 6.6, 9.3, 'f'], ['dim', 4.6, 11.3, 6.3, 11.3, 'f'],     // main sofa's front to the stone 4.10; glass-side sofa's end to the fire 1.70
+  ['dim', 2.5, 9.8, 3.15, 9.8, 'f'], ['dim', 3.55, 8.85, 3.55, 9.4, 'f'], ['dim', 3.55, 10.2, 3.55, 10.7, 'f'],   // round the coffee table: 0.65 to the main sofa, 0.55 to the armchairs, 0.50 to the glass-side sofa
   ['dim', 6.3, 9.8, 6.3, 11.5, 'f'],                                      // fire 1.70, on its room face
   ['dim', 5.5, 9.28, 5.5, 11.7], ['dim', 4.0, 11.6, 4.0, 11.7, 'f'],     // past the stair's end, 2.42; sofa to glass 0.10
   ['dim', 7.15, 0.3, 7.15, 11.7], ['dim', 0.3, 13.4, 6.7, 13.4],         // overall clear 11.40 × 6.40
