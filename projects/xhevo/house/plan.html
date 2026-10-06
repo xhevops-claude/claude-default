@@ -65,12 +65,12 @@ td.open { color: var(--warn); font-weight: 700; }
   <h1>Xhevo house, working plan</h1>
 
   <section>
-    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the kitchen an L in the yard corner, the sink under the yard window, the hob over the oven, its back wall only as long as the kitchen · the stair to the bedrooms straight up into the hill beside the fridge, 1.00 wide, 7 risers of 0.207 · the hill end under the bedrooms is not dug: fill to +1.25, their slab on it · the roof from 2.50 at the walls, 1.00 past the glass, no balcony</h2>
+    <h2><b>Ground floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls · the living room 5.20 × 6.80 from the kitchen wall to the glass, open to the roof · the kitchen an L in the yard corner, the sink under the yard window, the hob over the oven, its back wall only as long as the kitchen · the stair to the bedrooms straight up into the hill beside the fridge, 1.00 wide, 6 risers of 0.167 on 0.28 goings · the hill end under the bedrooms is not dug: fill to +0.80, their slab on it · the roof from 2.50 at the walls, 1.00 past the glass, no balcony</h2>
     <svg id="plan" class="plan" aria-label="Ground floor plan"></svg>
   </section>
 
   <section>
-    <h2><b>Bedrooms, half level +1.45</b> · in the hill behind the living room, x 0 to 4.9, 6.40 × 4.50 clear · one wall across at x 3.0: the two bedrooms behind it, 3.00 and 3.30 wide by 2.70 · in front of it the yard bath, the landing and the north bath · the flight comes straight up from the living room beside the kitchen onto a 1.90 × 1.00 landing, a door into each bedroom off it · each bath opens from its own bedroom · under the same roof: 1.05 at the side walls, 3.50 under the ridge · three sides in the hill</h2>
+    <h2><b>Bedrooms, half level +1.00</b> · in the hill behind the living room, x 0 to 4.9, 6.40 × 4.50 clear · one wall across at x 3.0: the two bedrooms behind it, 3.00 and 3.30 wide by 2.70 · in front of it the yard bath, the landing and the north bath · the flight comes straight up from the living room beside the kitchen onto a 1.90 × 1.00 landing, a door into each bedroom off it · each bath opens from its own bedroom · under the same roof: 1.50 at the side walls, 3.95 under the ridge · three sides in the hill</h2>
     <svg id="beds" class="plan" aria-label="Bedrooms plan, half level"></svg>
   </section>
 
@@ -124,15 +124,15 @@ const G = [
   // stairs: x, y, w, h, treads along 'x' or 'y', count, arrow toward the top end
   ['wedge', 5.6, 5.7, 1.1, 3.48],
   ['stair', 5.6, 5.7, 1.1, 3.48, 'y', 12, 'up'],     // garage flight, in the hole; it rises toward the hall
-  ['stair', 2.7, 4.1, 1.0, 1.4, 'y', 6, 'up'],     // up to the bedrooms, straight into the hill beside the fridge: 7 risers of 0.207 on 0.233 goings, the first at the counter's front (y 5.5), the last the landing's floor at +1.45
-  ['dashrect', 0.3, 0.3, 6.4, 4.5],               // the bedrooms' half level above, +1.45; 1.25 clear under it
+  ['stair', 2.7, 4.1, 1.0, 1.4, 'y', 5, 'up'],     // up to the bedrooms, straight into the hill beside the fridge: 6 risers of 0.167 on 0.28 goings, the first at the counter's front (y 5.5), the last the landing's floor at +1.00
+  ['dashrect', 0.3, 0.3, 6.4, 4.5],               // the bedrooms' half level above, +1.00; 0.80 clear under it
   // labels: room name, area, and small notes
-  ['fill', 0.3, 0.3, 6.4, 3.8], ['fill', 0.3, 4.1, 2.3, 0.7], ['fill', 3.8, 4.1, 2.9, 0.7],   // not dug: fill from the ground to +1.25, the bedrooms' slab on it; the flight cut into it
-  ['room', 3.5, 2.3, 'FILL, NOT DUG', ''], ['note', 3.5, 2.6, 'soil to +1.25 · the bedrooms\' slab sits on it · no room under them'],
+  ['fill', 0.3, 0.3, 6.4, 3.8], ['fill', 0.3, 4.1, 2.3, 0.7], ['fill', 3.8, 4.1, 2.9, 0.7],   // not dug: fill from the ground to +0.80, the bedrooms' slab on it; the flight cut into it
+  ['room', 3.5, 2.3, 'FILL, NOT DUG', ''], ['note', 3.5, 2.6, 'soil to +0.80 · the bedrooms\' slab sits on it · no room under them'],
   ['room', 5.0, 5.55, 'landing', ''], ['room', 4.85, 6.4, 'LIVING', '35.4'], ['room', 2.5, 11.5, 'open to the roof', ''],
   ['note', 6.45, 6.3, 'lid 2.1'], ['note', 6.45, 7.3, '1.2'], ['note', 6.45, 8.0, '0.8'], ['note', 6.0, 8.75, '0.3'], ['note', 6.0, 9.1, '0'],
   ['note', 5.37, 7.5, 'shelves'],
-  ['note', 3.2, 5.7, 'UP +1.45'], ['note', 5.85, 8.9, 'DOWN'],
+  ['note', 3.2, 5.7, 'UP +1.00'], ['note', 5.85, 8.9, 'DOWN'],
   ['note', 3.5, 12.25, 'fire 170 on the north wall, x 9.8 to 11.5 · the TV is on a wheeled stand, anywhere'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
   // dimensions, wall to wall: ['dim', x1, y1, x2, y2]
   ['dim', 3.7, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the landing at the top of the garage flight: 0.90 deep, open 3.00 from the bedrooms' flight to the north wall
@@ -148,7 +148,7 @@ const G = [
   ['edge', 'yard (S)', 'left'], ['edge', 'north', 'right'], ['edge', 'hill', 'top'], ['edge', 'glass', 'bottom'],
 ];
 
-/* The bedrooms, half a level up at +1.45, in the hill end: x 0 to 4.8, same axes as the ground floor. */
+/* The bedrooms, half a level up at +1.00, in the hill end: x 0 to 4.8, same axes as the ground floor. */
 const G2 = [
   ['wall', 0, 0, 7, 0.3], ['wall', 0, 0, 0.3, 4.9], ['wall', 6.7, 0, 0.3, 4.9],   // three sides in the hill, retaining; the back wall at x 0
   ['part', 0.3, 4.8, 2.4, 0.1], ['part', 3.7, 4.8, 3.0, 0.1],   // the front walls over the living room's back wall; between them the flight comes up, open to the roof
@@ -160,12 +160,12 @@ const G2 = [
   ['door', 3.5, 3.0, 0.8, 0.1, 4.3, 3.05, 0.8, -90, -180],    // north bedroom, off the landing
   ['door', 1.75, 3.0, 0.6, 0.1, 2.35, 3.05, 0.6, 90, 180],    // yard bath, from its bedroom, swinging in
   ['door', 4.55, 3.0, 0.7, 0.1, 4.55, 3.05, 0.7, 90, 0],      // north bath, from its bedroom, swinging in
-  ['win', 0, 1.3, 0.3, 1.0],                                // the yard bedroom's window, low: the wall is 1.05 over the floor there
+  ['win', 0, 1.3, 0.3, 1.0],                                // the yard bedroom's window, low: the wall is 1.50 over the floor there
   ['furn', 0.3, 0.3, 0.4, 0.5, 'drawers'], ['furn', 0.7, 0.3, 1.6, 2.0, 'bed 160×200'], ['furn', 2.3, 0.3, 0.4, 0.5, 'drawers'], ['furn', 2.7, 0.3, 0.6, 1.8, 'wardrobe'],   // yard bedroom: one row on the hill wall, 0.40 + 1.60 + 0.40 + 0.60 = 3.00, the bed's head to the wall; the wardrobe 1.80 down the bedroom wall, clear of the door
   ['soft', 0.3, 3.1, 0.8, 1.7, 'shower'], ['furn', 1.2, 4.35, 0.5, 0.45, 'basin'], ['furn', 1.25, 3.1, 0.4, 0.65, 'wc'],     // yard bath, 2.10 × 1.70: walk-in shower across the yard end, basin on the front wall, wc against the bedroom wall
   ['furn', 4.7, 0.3, 2.0, 1.6, 'bed 160×200'],                                                    // north bedroom: along the hill wall, head at the north wall
   ['soft', 4.5, 4.0, 0.8, 0.8, 'shower'], ['furn', 5.5, 4.35, 0.45, 0.45, 'basin'], ['furn', 6.05, 3.1, 0.65, 0.4, 'wc'],      // north bath, 2.20 × 1.70: the shower on the landing side where the roof is high, the wc at the north wall
-  ['stair', 2.7, 4.1, 1.0, 1.4, 'y', 6, 'up'],     // the flight from the living room, arriving on the landing
+  ['stair', 2.7, 4.1, 1.0, 1.4, 'y', 5, 'up'],     // the flight from the living room, arriving on the landing
   ['room', 1.2, 2.62, 'BEDROOM', '8.1'], ['room', 2.0, 4.2, 'BATH', '3.6'], ['room', 6.3, 4.15, 'BATH', '3.7'], ['room', 5.7, 2.45, 'BEDROOM', '8.9'], ['room', 3.45, 3.5, 'LANDING', '1.9'],
   ['note', 4.05, 1.0, 'wardrobe later'], ['note', 3.2, 5.7, 'up from the living room'],
   ['dim', 2.0, 0.3, 2.0, 3.0], ['dim', 0.3, 2.45, 3.3, 2.45],              // yard bedroom 3.00 × 2.70
@@ -334,7 +334,7 @@ function drawSide() {
   const lid = x => 2.12 - (x - top) * pitch;
   let s = '';
   // the ground: the hill behind and under the hill end, the pit the garage sits in, the apron in front
-  s += `<path class="ground" d="M${X(XA)},${Z(1.25)} L${X(4.8)},${Z(1.25)} L${X(4.8)},${Z(-0.2)} L${X(5.4)},${Z(-0.2)} L${X(5.4)},${Z(-2.9)} L${X(12)},${Z(-2.9)} L${X(XB)},${Z(-2.9)} L${X(XB)},${Z(ZB)} L${X(XA)},${Z(ZB)} Z"/>`;
+  s += `<path class="ground" d="M${X(XA)},${Z(0.8)} L${X(4.8)},${Z(0.8)} L${X(4.8)},${Z(-0.2)} L${X(5.4)},${Z(-0.2)} L${X(5.4)},${Z(-2.9)} L${X(12)},${Z(-2.9)} L${X(XB)},${Z(-2.9)} L${X(XB)},${Z(ZB)} L${X(XA)},${Z(ZB)} Z"/>`;
   for (let z = -3; z <= 3; z++) s += `<line class="grid" x1="${X(XA)}" y1="${Z(z)}" x2="${X(XB)}" y2="${Z(z)}"/>` + txt('tick', XA + 0.05, z - 0.08, (z > 0 ? '+' : '') + z.toFixed(1), 'start');
   for (let x = 0; x <= 15; x++) s += `<line class="grid" x1="${X(x)}" y1="${Z(ZT)}" x2="${X(x)}" y2="${Z(ZB)}"/>` + txt('tick', x, ZB + 0.12, 'x ' + x);
   // garage: back wall holding the hill, floor, front wall with the door opening and lintel
@@ -342,9 +342,9 @@ function drawSide() {
   // the ground floor slab: under the landing on the hill, then over the garage from the hole's end to the front
   s += box('wall', 4.9, -0.2, 5.7, 0) + box('wall', deckEnd, -0.2, 12.0, 0);
   // the half level: its slab from the back wall to the living room's back wall, on the fill
-  s += box('wall', 0.3, 1.25, 4.8, 1.45);
+  s += box('wall', 0.3, 0.8, 4.8, 1.0);
   // the house walls: back wall up to the roof, the cross wall between the bedroom and its bath, the living room's back wall with the bath's front wall on it, glass gable at the front, the stone — the roof is 2.50 at the wall, 2.85 here, 0.5 in
-  s += box('wall', 0, 1.25, 0.3, 2.85) + box('wall', 3.0, 1.45, 3.1, 2.85) + box('wall', 4.8, -0.2, 4.9, 2.85) + box('glass', 11.7, 0, 12.0, 2.85) + box('stone', 8.0, 0, 11.7, 2.85);
+  s += box('wall', 0, 0.8, 0.3, 2.85) + box('wall', 3.0, 1.0, 3.1, 2.85) + box('wall', 4.8, -0.2, 4.9, 2.85) + box('glass', 11.7, 0, 12.0, 2.85) + box('stone', 8.0, 0, 11.7, 2.85);
   // one roof band at this cut, from 0.40 behind the back wall to 1.00 past the glass
   s += box('wall', -0.4, 2.85, 13.0, 3.05);
   // garage flight: landing inside the door, then the steps up to the hall
@@ -361,7 +361,7 @@ function drawSide() {
   // words
   s += txt('lbl', 8.7, -1.3, 'GARAGE') + txt('dim', 8.7, -1.65, '6.00 × 2.70 · x 5.7 to 11.7') + txt('dim', 13.5, -2.6, 'apron −2.90') + txt('dim', 11.3, -1.5, 'door 2.25', 'end') +
     txt('dim', 2.0, -1.6, 'hill, left in place') + txt('dim', 13.8, 0.6, 'yard side is in front of you') +
-    txt('lbl', 1.65, 2.45, 'BEDROOM +1.45') + txt('dim', 1.65, 2.15, '1.05 at the wall · 3.50 ridge') + txt('lbl', 3.95, 2.45, 'BATH') + txt('dim', 2.5, 0.2, 'fill, not dug, to +1.25') +
+    txt('lbl', 1.65, 2.45, 'BEDROOM +1.00') + txt('dim', 1.75, 2.15, '1.50 at the wall · 3.95 ridge') + txt('lbl', 3.95, 2.45, 'BATH') + txt('dim', 2.5, 0.2, 'fill, not dug, to +0.80') +
     txt('lbl', 8.6, 2.3, 'LIVING, open to the roof') + txt('dim', 8.6, 2.0, 'roof 2.50 at the wall, here 2.85, ridge 4.95') +
     txt('dim', 5.3, 0.25, 'landing') + txt('dim', 7.4, 0.45, 'wedge lid, 2.02 over the flight') +
     txt('dim', 10.65, 1.4, 'fire 170') + txt('dim', 11.85, 2.2, 'glass', 'start') + txt('dim', 12.5, 3.13, 'roof to x 13') +
