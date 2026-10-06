@@ -125,7 +125,8 @@ const G = [
   ['furn', 3.15, 9.4, 0.8, 0.8, 'coffee'],                                  // the coffee table in the middle of the four
   ['furn', 5.25, 5.9, 0.25, 3.2, ''],                                    // shelves on the stair box's face
   ['stone', 6.6, 8.0, 0.1, 3.7, ''],                                     // the stone on the north wall from x 8 to the glass, floor to roof, behind the fire
-  ['furn', 6.3, 9.8, 0.3, 1.7, 'fire 170'],                              // the fire, 1.70 wide, on the north wall at the glass end of the pair
+  // the fire on the north wall, centred on the coffee table at x 9.8, in three steps: the hearth 2.00 × 1.00 to 0.50, the fire 1.00 × 0.50 on it to 1.50, the flue 0.60 × 0.30 from there to the roof; the hearth's back end sits over the low end of the stair lid
+  ['furn', 5.7, 8.8, 1.0, 2.0, 'hearth 200×100', 'nl'], ['note', 5.95, 10.65, 'hearth', 'f'], ['furn', 6.2, 9.3, 0.5, 1.0, 'fire'], ['furn', 6.4, 9.5, 0.3, 0.6, 'flue'],
   // stairs: x, y, w, h, treads along 'x' or 'y', count, arrow toward the top end
   ['wedge', 5.6, 5.7, 1.1, 3.48],
   ['stair', 5.6, 5.7, 1.1, 3.48, 'y', 12, 'up'],     // garage flight, in the hole; it rises toward the hall
@@ -138,7 +139,7 @@ const G = [
   ['note', 6.45, 6.3, 'lid 2.1'], ['note', 6.45, 7.3, '1.2'], ['note', 6.45, 8.0, '0.8'], ['note', 6.0, 8.75, '0.3'], ['note', 6.0, 9.1, '0'],
   ['note', 5.37, 7.5, 'shelves', 'f'],
   ['note', 5.85, 8.9, 'DOWN'],
-  ['note', 3.5, 12.25, 'fire 170 on the north wall, x 9.8 to 11.5 · the TV is on a wheeled stand, anywhere', 'f'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
+  ['note', 3.5, 12.25, 'fire centred on the coffee table: hearth to 0.50, fire to 1.50, flue to the roof · TV on wheels', 'f'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
   // dimensions, wall to wall: ['dim', x1, y1, x2, y2]
   ['dim', 4.0, 5.3, 6.7, 5.3], ['dim', 6.6, 4.8, 6.6, 5.7],              // the top of the garage flight: 0.90 deep, open 2.70 from the bedrooms' flight to the north wall
   ['dim', 4.15, 4.8, 4.15, 5.8],                                          // the flight to the bedrooms 1.00 long
@@ -147,9 +148,9 @@ const G = [
   // the ones marked 'f' measure to furniture and stay off the empty sheet
   ['dim', 1.55, 5.5, 1.55, 6.3, 'f'], ['dim', 1.9, 7.4, 1.9, 8.9, 'f'], ['dim', 4.55, 8.2, 5.25, 8.2, 'f'],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.50, armchair to shelves 0.70
   ['dim', 0.3, 6.62, 1.2, 6.62, 'f'],                                     // table to the yard wall 0.90
-  ['dim', 2.5, 9.3, 6.6, 9.3, 'f'], ['dim', 4.6, 11.3, 6.3, 11.3, 'f'],     // main sofa's front to the stone 4.10; glass-side sofa's end to the fire 1.70
+  ['dim', 2.5, 9.3, 5.7, 9.3, 'f'], ['dim', 4.6, 10.75, 5.7, 10.75, 'f'],   // main sofa's front to the hearth 3.20; glass-side sofa's end to the hearth 1.10
   ['dim', 2.5, 9.8, 3.15, 9.8, 'f'], ['dim', 3.55, 8.85, 3.55, 9.4, 'f'], ['dim', 3.55, 10.2, 3.55, 10.7, 'f'],   // round the coffee table: 0.65 to the main sofa, 0.55 to the armchairs, 0.50 to the glass-side sofa
-  ['dim', 6.3, 9.8, 6.3, 11.5, 'f'],                                      // fire 1.70, on its room face
+  ['dim', 5.85, 8.8, 5.85, 10.8, 'f'],                                    // the hearth 2.00 along the wall
   ['dim', 5.5, 9.28, 5.5, 11.7], ['dim', 4.0, 11.6, 4.0, 11.7, 'f'],     // past the stair's end, 2.42; sofa to glass 0.10
   ['dim', 7.15, 0.3, 7.15, 11.7], ['dim', 0.3, 13.4, 6.7, 13.4],         // overall clear 11.40 × 6.40
   ['edge', 'yard (S)', 'left'], ['edge', 'north', 'right'], ['edge', 'hill', 'top'], ['edge', 'glass', 'bottom'],
@@ -224,7 +225,7 @@ function drawPlan({ id, G, X0, Y0, W, H, gy, edges }) {
     else if (t === 'win') s += R('win', x + 0.08, y, w - 0.16, h);
     else if (t === 'door') s += R('gap', x, y, w, h) + door(e[5], e[6], e[7], e[8], e[9]);
     else if (t === 'hatch') s += `<line class="hatch" x1="${px(x)}" y1="${px(y)}" x2="${px(x + w)}" y2="${px(y)}"/>`;
-    else if (t === 'furn' || t === 'soft' || t === 'chair') s += R(t === 'chair' ? 'soft' : t, x, y, w, h) + (e[5] && Math.min(w, h) >= 0.45 ? (h > w * 1.5 ? T('sm', x + w / 2 + 0.05, y + h / 2, e[5], -90) : T('sm', x + w / 2, y + h / 2 + 0.05, e[5])) : '');
+    else if (t === 'furn' || t === 'soft' || t === 'chair') s += R(t === 'chair' ? 'soft' : t, x, y, w, h) + (e[5] && e[6] !== 'nl' && Math.min(w, h) >= 0.45 ? (h > w * 1.5 ? T('sm', x + w / 2 + 0.05, y + h / 2, e[5], -90) : T('sm', x + w / 2, y + h / 2 + 0.05, e[5])) : '');
     else if (t === 'wedge') s += R('wedge', x, y, w, h);
     else if (t === 'podium') s += R('wedge', x, y, w, h) + T('sm', x + w / 2, y + h / 2 + 0.05, e[5]);
     else if (t === 'roof') s += `<path class="hatch" d="M${px(x)},${px(y)} L${px(x)},${px(h)} L${px(w)},${px(h)} L${px(w)},${px(y)}"/>`;
@@ -301,8 +302,10 @@ function drawElevation() {
   const lid = x => 2.12 - (x - 5.7) * 0.171 / 0.29;
   const box = (x, z, w, h, cls) => R2(cls, X(x), Z(z + h), w * S, h * S);
   const E = [
-    [9.8, 0, 1.7, 1.2, 'furn', ''],            // the fire, 1.70 wide, 1.20 high
-    [10.0, 0.3, 1.3, 0.6, 'wall', 'fire 170'], // its opening
+    [8.8, 0, 2.0, 0.5, 'furn', ''],            // the hearth, 2.00 wide, 0.50 high, centred on the coffee table
+    [9.3, 0.5, 1.0, 1.0, 'furn', ''],          // the fire, 1.00 wide, to 1.50
+    [9.45, 0.65, 0.7, 0.55, 'wall', 'fire'],   // its opening
+    [9.5, 1.5, 0.6, 1.5, 'furn', ''],          // the flue, 0.60, to the roof at 3.00
     [4.8, 0, 0.1, 3.0, 'wall', ''],            // the living room's back wall, the bedrooms' front wall above it; the 1.20 opening to the landing is beyond the cut
     [9.18, 0, 0.1, 0.1, 'part', ''],           // the box's end
     [11.7, 0, 0.1, 3.0, 'glass', ''],          // the glass, to where the roof starts at the wall
@@ -320,7 +323,7 @@ function drawElevation() {
   // the north wall behind
   s += `<line class="tread" x1="${X(5.5)}" y1="${Z(0)}" x2="${X(11.7)}" y2="${Z(0)}"/>`;
   s += `<line class="tread" x1="${X(4.8)}" y1="${Z(3.0)}" x2="${X(11.8)}" y2="${Z(3.0)}"/>` + `<text class="dim" x="${X(5.6)}" y="${Z(3.06)}" style="text-anchor:start">roof starts here, 3.00 at the wall</text>`;
-  s += `<text class="dim" x="${X(9.6)}" y="${Z(2.6)}">fire 170 on the stone · the TV is on wheels, not on the wall</text>` +
+  s += `<text class="dim" x="${X(9.6)}" y="${Z(2.6)}" style="text-anchor:end" dx="130">the TV is on wheels</text>` +
     `<text class="dim" x="${X(7.4)}" y="${Z(1.45)}">lid 1.24 at x 7.2</text>` +
     `<text class="dim" x="${X(9.25)}" y="${Z(-0.12)}" style="text-anchor:start">lid 0 at x 9.18</text>` +
     `<text class="dim" x="${X(7.5)}" y="${Z(2.3)}">shelves along the stair, under its lid</text>` +
@@ -364,7 +367,7 @@ function drawSide() {
   // the wedge lid over the hole, 0.10 thick, on the flight's pitch
   s += `<line class="lid" x1="${X(top)}" y1="${Z(lid(top) + 0.05)}" x2="${X(deckEnd + 0.1)}" y2="${Z(lid(deckEnd + 0.1) + 0.05)}"/>`;
   // the stone wall with the fire, beyond the cut on the north wall
-  s += box('furn', 9.8, 0, 11.5, 1.2) + box('wall', 10.0, 0.3, 11.3, 0.9);
+  s += box('furn', 8.8, 0, 10.8, 0.5) + box('furn', 9.3, 0.5, 10.3, 1.5) + box('wall', 9.45, 0.65, 10.15, 1.2) + box('furn', 9.5, 1.5, 10.1, 3.35);
   // floor lines where there is a floor
   s += `<line class="tread" x1="${X(4.9)}" y1="${Z(0)}" x2="${X(5.7)}" y2="${Z(0)}"/>` + `<line class="tread" x1="${X(deckEnd)}" y1="${Z(0)}" x2="${X(11.7)}" y2="${Z(0)}"/>`;
   // words
@@ -373,7 +376,7 @@ function drawSide() {
     txt('lbl', 1.65, 2.85, 'BEDROOM +1.00') + txt('dim', 1.75, 2.55, '2.00 at the wall · 4.45 ridge') + txt('lbl', 3.95, 2.85, 'BATH') + txt('dim', 2.5, 0.2, 'fill, not dug, to +0.80') +
     txt('lbl', 9.3, 2.95, 'LIVING, open to the roof') + txt('dim', 9.3, 2.7, 'roof 3.00 at the wall, here 3.35, ridge 5.45') +
     txt('dim', 5.3, 0.25, 'landing') + txt('dim', 7.4, 0.45, 'wedge lid, 2.02 over the flight') +
-    txt('dim', 10.65, 1.4, 'fire 170') + txt('dim', 11.85, 2.2, 'glass', 'start') + txt('dim', 12.5, 3.63, 'roof to x 13') +
+    txt('dim', 11.2, 0.15, 'hearth', 'start') + txt('dim', 10.4, 1.0, 'fire', 'start') + txt('dim', 10.2, 2.0, 'flue', 'start') + txt('dim', 11.85, 2.2, 'glass', 'start') + txt('dim', 12.5, 3.63, 'roof to x 13') +
     txt('dim', -0.9, 3.63, 'roof from x −0.4', 'start') + txt('dim', 0.4, 0.6, 'back wall at x 0, on the fill', 'start');
   // dimension lines: house 12.00 outside, garage 6.00 clear, hole 3.48
   const dim = (x0, x1, z, label) => `<line class="dline" x1="${X(x0)}" y1="${Z(z)}" x2="${X(x1)}" y2="${Z(z)}"/><line class="dline" x1="${X(x0)}" y1="${Z(z - 0.08)}" x2="${X(x0)}" y2="${Z(z + 0.08)}"/><line class="dline" x1="${X(x1)}" y1="${Z(z - 0.08)}" x2="${X(x1)}" y2="${Z(z + 0.08)}"/>` + txt('dtext', (x0 + x1) / 2, z + 0.08, label);
