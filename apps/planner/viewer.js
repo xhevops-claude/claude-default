@@ -2,11 +2,11 @@
    interface — layers, settings, tap-to-measure, navigation. One project
    at a time, named by the address; main.js decides whether to load it. */
 
-import { loadCurrent, stage } from './load.js?v=26e6574';
-import { $, fmt, hideLoader } from './util.js?v=26e6574';
-import { LANG, t, tDim, setLang } from './i18n.js?v=26e6574';
-import { deriveModel } from './model.js?v=26e6574';
-import { dotTexture, labelTexture, tipTexture } from './textures.js?v=26e6574';
+import { loadCurrent, stage } from './load.js?v=366c129';
+import { $, fmt, hideLoader } from './util.js?v=366c129';
+import { LANG, t, tDim, setLang } from './i18n.js?v=366c129';
+import { deriveModel } from './model.js?v=366c129';
+import { dotTexture, labelTexture, tipTexture } from './textures.js?v=366c129';
 
 const { PLAN, RELIEF, PROJECT } = await loadCurrent();
 const M = deriveModel(PLAN);
@@ -334,8 +334,12 @@ async function boot() {
       corners = [[v.x0, v.z1], ...dip, [v.x1, v.z1], [v.x1, cutAt(v.x1)], ...bends, westX || [v.x0, cutAt(v.x0)]];
       ends = corners.map(([, z]) => z === v.z1);
     }
+    /* A `ringTop` (same corner count as `ring`) gives the top its own
+       footprint, so the sides slope straight from one to the other — a
+       chimney narrowing as it rises, not a stack of steps. */
+    const topCorners = v.ring && v.ringTop ? v.ringTop.map((p) => (v.house ? H(p[0], p[1]) : p.slice())) : corners;
     const bottom = corners.map(([x, z], i) => [x, ends[i] ? v.y0End ?? v.y0 : v.y0, z]);
-    const top = corners.map(([x, z], i) => [x, ends[i] ? v.y1End ?? v.y1 : v.y1, z]);
+    const top = topCorners.map(([x, z], i) => [x, ends[i] ? v.y1End ?? v.y1 : v.y1, z]);
     addVolume(o, bottom, top, { dots: !v.solid });
     if (onCut || v.ring) {
       /* Every straight side of the footprint, and the height. */
