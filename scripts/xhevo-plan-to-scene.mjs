@@ -98,10 +98,11 @@ const heightOf = (label, t) => {
   if (/coffee/.test(label)) return [0, 0.45];
   if (/sofa|armchair/.test(label)) return [0, 0.45];
   if (/TV/.test(label)) return [0.8, 1.76];
-  if (/^base/.test(label)) return [0, 0.3];
-  if (/fire/.test(label)) return [0.3, 1.3];
+  if (/^base body/.test(label)) return [0, 0.3];
+  if (/^base/.test(label)) return [0.3, 0.35];   // the base's top, over its narrower body
+  if (/fire/.test(label)) return [0.35, 1.35];
   if (/crown/.test(label)) return [1.3, 1.6];
-  if (/^log/.test(label)) return [1.1, 1.3];   // 0.80 to 1.00 over the base
+  if (/^log/.test(label)) return [1.15, 1.35];   // 0.80 to 1.00 over the base
   if (/flue/.test(label)) return [1.5, 1.5];   // to the roof, set where it is built
   if (t === 'chair') return [0, 0.45];
   return [0, 0.45];

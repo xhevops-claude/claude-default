@@ -1298,6 +1298,22 @@
    "color": "#9a9087",
    "solid": true,
    "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-fire", "name": "Fire" } ],
+   "short": "base body",
+   "house": true,
+   "name": "base body",
+   "x0": 9.1,
+   "x1": 10.5,
+   "z0": 0.3,
+   "z1": 1.4,
+   "y0": 0,
+   "y1": 0.3
+  },
+  {
+   "id": "gf-furn-14",
+   "group": "house",
+   "color": "#9a9087",
+   "solid": true,
+   "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-fire", "name": "Fire" } ],
    "short": "base 160×120",
    "house": true,
    "name": "base 160×120",
@@ -1305,11 +1321,11 @@
    "x1": 10.6,
    "z0": 0.3,
    "z1": 1.5,
-   "y0": 0,
-   "y1": 0.3
+   "y0": 0.3,
+   "y1": 0.35
   },
   {
-   "id": "gf-furn-14-left",
+   "id": "gf-furn-15-left",
    "group": "house",
    "color": "#9a9087",
    "solid": true,
@@ -1321,11 +1337,11 @@
    "x1": 9.4,
    "z0": 0.3,
    "z1": 1.1,
-   "y0": 0.3,
-   "y1": 0.9
+   "y0": 0.35,
+   "y1": 0.95
   },
   {
-   "id": "gf-furn-14-right",
+   "id": "gf-furn-15-right",
    "group": "house",
    "color": "#9a9087",
    "solid": true,
@@ -1337,11 +1353,11 @@
    "x1": 10.4,
    "z0": 0.3,
    "z1": 1.1,
-   "y0": 0.3,
-   "y1": 0.9
+   "y0": 0.35,
+   "y1": 0.95
   },
   {
-   "id": "gf-furn-14-top",
+   "id": "gf-furn-15-top",
    "group": "house",
    "color": "#9a9087",
    "solid": true,
@@ -1353,11 +1369,11 @@
    "x1": 10.4,
    "z0": 0.3,
    "z1": 1.1,
-   "y0": 0.9,
-   "y1": 1.3
+   "y0": 0.95,
+   "y1": 1.35
   },
   {
-   "id": "gf-furn-14-back",
+   "id": "gf-furn-15-back",
    "group": "house",
    "color": "#9a9087",
    "solid": true,
@@ -1369,11 +1385,11 @@
    "x1": 10.2,
    "z0": 0.3,
    "z1": 0.5,
-   "y0": 0.3,
-   "y1": 0.9
+   "y0": 0.35,
+   "y1": 0.95
   },
   {
-   "id": "gf-furn-15",
+   "id": "gf-furn-16",
    "group": "house",
    "color": "#6e4b2e",
    "solid": true,
@@ -1385,8 +1401,8 @@
    "x1": 10.4,
    "z0": 1.1,
    "z1": 1.3,
-   "y0": 1.1,
-   "y1": 1.3
+   "y0": 1.15,
+   "y1": 1.35
   },
   {
    "id": "gf-chimney",
@@ -1396,10 +1412,10 @@
    "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-fire", "name": "Fire" } ],
    "short": "Chimney",
    "house": true,
-   "name": "Chimney, 0.8 × 1.2, straight up from 1.3 to the eaves",
+   "name": "Chimney, 0.8 × 1.2, straight up from 1.35 to the eaves",
    "ring": [ [ 9.2, 0.3 ], [ 10.4, 0.3 ], [ 10.4, 1.1 ], [ 9.2, 1.1 ] ],
    "ringTop": [ [ 9.2, 0.3 ], [ 10.4, 0.3 ], [ 10.4, 1.1 ], [ 9.2, 1.1 ] ],
-   "y0": 1.3,
+   "y0": 1.35,
    "y1": 3
   },
   {
