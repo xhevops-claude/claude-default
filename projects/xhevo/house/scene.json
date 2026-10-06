@@ -1855,6 +1855,44 @@
   {
    "id": "hl-furn-8",
    "group": "house",
+   "color": "#b98b5a",
+   "solid": true,
+   "parent": [
+    { "id": "half", "name": "Bedrooms, half level" },
+    { "id": "hl-bed-north", "name": "Bedroom, north side" }
+   ],
+   "short": "wardrobe",
+   "house": true,
+   "name": "wardrobe",
+   "x0": 0.3,
+   "x1": 2.1,
+   "z0": 2.85,
+   "z1": 3.45,
+   "y0": 1,
+   "y1": 3.2
+  },
+  {
+   "id": "hl-furn-9",
+   "group": "house",
+   "color": "#b98b5a",
+   "solid": true,
+   "parent": [
+    { "id": "half", "name": "Bedrooms, half level" },
+    { "id": "hl-bed-north", "name": "Bedroom, north side" }
+   ],
+   "short": "drawers",
+   "house": true,
+   "name": "drawers",
+   "x0": 0.3,
+   "x1": 0.8,
+   "z0": 2.3,
+   "z1": 2.7,
+   "y0": 1,
+   "y1": 1.55
+  },
+  {
+   "id": "hl-furn-10",
+   "group": "house",
    "color": "#e8e2d6",
    "solid": true,
    "parent": [
@@ -1865,14 +1903,33 @@
    "house": true,
    "name": "bed 160×200",
    "x0": 0.3,
-   "x1": 1.9,
-   "z0": 0.3,
+   "x1": 2.3,
+   "z0": 0.7,
    "z1": 2.3,
    "y0": 1,
    "y1": 1.55
   },
   {
-   "id": "hl-soft-9",
+   "id": "hl-furn-11",
+   "group": "house",
+   "color": "#b98b5a",
+   "solid": true,
+   "parent": [
+    { "id": "half", "name": "Bedrooms, half level" },
+    { "id": "hl-bed-north", "name": "Bedroom, north side" }
+   ],
+   "short": "drawers",
+   "house": true,
+   "name": "drawers",
+   "x0": 0.3,
+   "x1": 0.8,
+   "z0": 0.3,
+   "z1": 0.7,
+   "y0": 1,
+   "y1": 1.55
+  },
+  {
+   "id": "hl-soft-12",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -1891,7 +1948,7 @@
    "y1": 1.1
   },
   {
-   "id": "hl-furn-10",
+   "id": "hl-furn-13",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -1910,7 +1967,7 @@
    "y1": 1.85
   },
   {
-   "id": "hl-furn-11",
+   "id": "hl-furn-14",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
