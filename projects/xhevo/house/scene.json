@@ -131,7 +131,7 @@
    "extendFront": 1.7
   },
   { "id": "ground", "name": "Ground floor", "elevation": 0, "height": 3, "x0": 4.8, "extendFront": 2 },
-  { "id": "half", "name": "Bedrooms, half level", "elevation": 1, "height": 2, "x0": 0, "x1": 4.9 }
+  { "id": "half", "name": "Bedrooms, half level", "elevation": 1, "height": 2, "x0": 0, "x1": 4.3 }
  ],
  "terrain": {
   "front": "+X",
@@ -951,8 +951,65 @@
    "name": "Wall 1 holding the fill under the bedrooms, to 0.8",
    "x0": 4.8,
    "x1": 4.9,
-   "z0": 0.3,
+   "z0": 4,
    "z1": 6.7,
+   "y0": 0,
+   "y1": 0.8
+  },
+  {
+   "id": "gf-part-2",
+   "group": "house",
+   "color": "#c9ced6",
+   "opacity": 0.5,
+   "parent": [
+    { "id": "ground", "name": "Ground floor" },
+    { "id": "gf-fill-walls", "name": "Walls holding the fill" }
+   ],
+   "short": "Fill wall 2",
+   "house": true,
+   "name": "Wall 2 holding the fill under the bedrooms, to 0.8",
+   "x0": 4.8,
+   "x1": 4.9,
+   "z0": 0.3,
+   "z1": 3,
+   "y0": 0,
+   "y1": 0.8
+  },
+  {
+   "id": "gf-part-3",
+   "group": "house",
+   "color": "#c9ced6",
+   "opacity": 0.5,
+   "parent": [
+    { "id": "ground", "name": "Ground floor" },
+    { "id": "gf-fill-walls", "name": "Walls holding the fill" }
+   ],
+   "short": "Fill wall 3",
+   "house": true,
+   "name": "Wall 3 holding the fill under the bedrooms, to 0.8",
+   "x0": 4.3,
+   "x1": 4.8,
+   "z0": 4,
+   "z1": 4.1,
+   "y0": 0,
+   "y1": 0.8
+  },
+  {
+   "id": "gf-part-4",
+   "group": "house",
+   "color": "#c9ced6",
+   "opacity": 0.5,
+   "parent": [
+    { "id": "ground", "name": "Ground floor" },
+    { "id": "gf-fill-walls", "name": "Walls holding the fill" }
+   ],
+   "short": "Fill wall 4",
+   "house": true,
+   "name": "Wall 4 holding the fill under the bedrooms, to 0.8",
+   "x0": 4.3,
+   "x1": 4.8,
+   "z0": 2.9,
+   "z1": 3,
    "y0": 0,
    "y1": 0.8
   },
@@ -1489,8 +1546,8 @@
    "short": "Tread 1",
    "house": true,
    "name": "Flight to the bedrooms, tread 1 of 5, riser 1 of 6, top at 0.167",
-   "x0": 5.6,
-   "x1": 5.8,
+   "x0": 5.1,
+   "x1": 5.3,
    "z0": 3,
    "z1": 4,
    "y0": 0,
@@ -1508,8 +1565,8 @@
    "short": "Tread 2",
    "house": true,
    "name": "Flight to the bedrooms, tread 2 of 5, riser 2 of 6, top at 0.334",
-   "x0": 5.4,
-   "x1": 5.6,
+   "x0": 4.9,
+   "x1": 5.1,
    "z0": 3,
    "z1": 4,
    "y0": 0.134,
@@ -1527,8 +1584,8 @@
    "short": "Tread 3",
    "house": true,
    "name": "Flight to the bedrooms, tread 3 of 5, riser 3 of 6, top at 0.501",
-   "x0": 5.2,
-   "x1": 5.4,
+   "x0": 4.7,
+   "x1": 4.9,
    "z0": 3,
    "z1": 4,
    "y0": 0.301,
@@ -1546,8 +1603,8 @@
    "short": "Tread 4",
    "house": true,
    "name": "Flight to the bedrooms, tread 4 of 5, riser 4 of 6, top at 0.668",
-   "x0": 5,
-   "x1": 5.2,
+   "x0": 4.5,
+   "x1": 4.7,
    "z0": 3,
    "z1": 4,
    "y0": 0.468,
@@ -1565,8 +1622,8 @@
    "short": "Tread 5",
    "house": true,
    "name": "Flight to the bedrooms, tread 5 of 5, riser 5 of 6, top at 0.835",
-   "x0": 4.8,
-   "x1": 5,
+   "x0": 4.3,
+   "x1": 4.5,
    "z0": 3,
    "z1": 4,
    "y0": 0.635,
@@ -1581,9 +1638,39 @@
    "house": true,
    "name": "Fill under the bedrooms, part 1, ground to 0.8",
    "x0": 0.3,
-   "x1": 4.8,
+   "x1": 4.3,
    "z0": 0.3,
    "z1": 6.7,
+   "y0": 0,
+   "y1": 0.8
+  },
+  {
+   "id": "gf-fill-2",
+   "group": "fill",
+   "opacity": 0.35,
+   "parent": [ { "id": "fill-bedrooms", "name": "Fill under the bedrooms" } ],
+   "short": "Fill 2",
+   "house": true,
+   "name": "Fill under the bedrooms, part 2, ground to 0.8",
+   "x0": 4.3,
+   "x1": 4.8,
+   "z0": 4.1,
+   "z1": 6.7,
+   "y0": 0,
+   "y1": 0.8
+  },
+  {
+   "id": "gf-fill-3",
+   "group": "fill",
+   "opacity": 0.35,
+   "parent": [ { "id": "fill-bedrooms", "name": "Fill under the bedrooms" } ],
+   "short": "Fill 3",
+   "house": true,
+   "name": "Fill under the bedrooms, part 3, ground to 0.8",
+   "x0": 4.3,
+   "x1": 4.8,
+   "z0": 0.3,
+   "z1": 2.9,
    "y0": 0,
    "y1": 0.8
   },
@@ -1607,6 +1694,44 @@
    "y1": 2.12,
    "end": "x",
    "y1End": 0.068
+  },
+  {
+   "id": "hl-slab-front-yard",
+   "group": "house",
+   "color": "#c9ced6",
+   "opacity": 0.3,
+   "parent": [
+    { "id": "half", "name": "Bedrooms, half level" },
+    { "id": "hl-slab-front", "name": "Slab, the strips in front" }
+   ],
+   "short": "Slab, yard strip",
+   "house": true,
+   "name": "Slab beside the stairwell, yard side, 0.8 to 1",
+   "x0": 4.3,
+   "x1": 4.9,
+   "z0": 4,
+   "z1": 7,
+   "y0": 0.8,
+   "y1": 1
+  },
+  {
+   "id": "hl-slab-front-north",
+   "group": "house",
+   "color": "#c9ced6",
+   "opacity": 0.3,
+   "parent": [
+    { "id": "half", "name": "Bedrooms, half level" },
+    { "id": "hl-slab-front", "name": "Slab, the strips in front" }
+   ],
+   "short": "Slab, north strip",
+   "house": true,
+   "name": "Slab beside the stairwell, north side, 0.8 to 1",
+   "x0": 4.3,
+   "x1": 4.9,
+   "z0": 0,
+   "z1": 3,
+   "y0": 0.8,
+   "y1": 1
   },
   {
    "id": "hl-part-1",
@@ -1651,8 +1776,8 @@
    "short": "Partition 3",
    "house": true,
    "name": "Partition 3, 1 to the roof",
-   "x0": 3.9,
-   "x1": 4,
+   "x0": 3.4,
+   "x1": 3.5,
    "z0": 4.3,
    "z1": 4.35,
    "y0": 1,
@@ -1667,8 +1792,8 @@
    "short": "Partition 4",
    "house": true,
    "name": "Partition 4, 1 to the roof",
-   "x0": 3.9,
-   "x1": 4,
+   "x0": 3.4,
+   "x1": 3.5,
    "z0": 3.5,
    "z1": 3.6,
    "y0": 1,
@@ -1684,8 +1809,8 @@
    "short": "Partition 4",
    "house": true,
    "name": "Partition 4, 1 to the roof",
-   "x0": 3.9,
-   "x1": 4,
+   "x0": 3.4,
+   "x1": 3.5,
    "z0": 3.4,
    "z1": 3.5,
    "y0": 1,
@@ -1701,8 +1826,8 @@
    "short": "Partition 5",
    "house": true,
    "name": "Partition 5, 1 to the roof",
-   "x0": 3.9,
-   "x1": 4,
+   "x0": 3.4,
+   "x1": 3.5,
    "z0": 2.65,
    "z1": 2.7,
    "y0": 1,
@@ -1717,12 +1842,12 @@
    "short": "Partition 6",
    "house": true,
    "name": "Partition 6, 1 to the roof",
-   "x0": 0.3,
-   "x1": 4,
-   "z0": 3.45,
-   "z1": 3.55,
+   "x0": 3.4,
+   "x1": 4.8,
+   "z0": 4.35,
+   "z1": 4.45,
    "y0": 1,
-   "y1": 5.45
+   "y1": 4.82
   },
   {
    "id": "hl-part-7",
@@ -1733,13 +1858,12 @@
    "short": "Partition 7",
    "house": true,
    "name": "Partition 7, 1 to the roof",
-   "x0": 2.9,
-   "x1": 3,
-   "z0": 4.35,
-   "z1": 6.7,
+   "x0": 0.3,
+   "x1": 3.5,
+   "z0": 3.45,
+   "z1": 3.55,
    "y0": 1,
-   "y1": 4.855,
-   "y1End": 3.21
+   "y1": 5.45
   },
   {
    "id": "hl-part-8",
@@ -1750,12 +1874,13 @@
    "short": "Partition 8",
    "house": true,
    "name": "Partition 8, 1 to the roof",
-   "x0": 3,
-   "x1": 3.15,
-   "z0": 4.35,
-   "z1": 4.45,
+   "x0": 2.9,
+   "x1": 3,
+   "z0": 2.4,
+   "z1": 2.65,
    "y0": 1,
-   "y1": 4.82
+   "y1": 4.68,
+   "y1End": 4.855
   },
   {
    "id": "hl-part-9",
@@ -1766,12 +1891,13 @@
    "short": "Partition 9",
    "house": true,
    "name": "Partition 9, 1 to the roof",
-   "x0": 3.75,
-   "x1": 4.8,
-   "z0": 4.35,
-   "z1": 4.45,
+   "x0": 2.9,
+   "x1": 3,
+   "z0": 0.3,
+   "z1": 1.8,
    "y0": 1,
-   "y1": 4.82
+   "y1": 3.21,
+   "y1End": 4.26
   },
   {
    "id": "hl-part-10",
@@ -1782,40 +1908,7 @@
    "short": "Partition 10",
    "house": true,
    "name": "Partition 10, 1 to the roof",
-   "x0": 2.9,
-   "x1": 3,
-   "z0": 0.3,
-   "z1": 2.65,
-   "y0": 1,
-   "y1": 3.21,
-   "y1End": 4.855
-  },
-  {
-   "id": "hl-part-11",
-   "group": "house",
-   "color": "#c9ced6",
-   "opacity": 0.5,
-   "parent": [ { "id": "half", "name": "Bedrooms, half level" }, { "id": "hl-walls", "name": "Walls" } ],
-   "short": "Partition 11",
-   "house": true,
-   "name": "Partition 11, 1 to the roof",
    "x0": 3,
-   "x1": 3.15,
-   "z0": 2.55,
-   "z1": 2.65,
-   "y0": 1,
-   "y1": 4.82
-  },
-  {
-   "id": "hl-part-12",
-   "group": "house",
-   "color": "#c9ced6",
-   "opacity": 0.5,
-   "parent": [ { "id": "half", "name": "Bedrooms, half level" }, { "id": "hl-walls", "name": "Walls" } ],
-   "short": "Partition 12",
-   "house": true,
-   "name": "Partition 12, 1 to the roof",
-   "x0": 3.75,
    "x1": 4.8,
    "z0": 2.55,
    "z1": 2.65,
@@ -1899,45 +1992,7 @@
    "y1": 3.2
   },
   {
-   "id": "hl-soft-5",
-   "group": "house",
-   "color": "#f1f1ee",
-   "solid": true,
-   "parent": [
-    { "id": "half", "name": "Bedrooms, half level" },
-    { "id": "hl-bath-yard", "name": "Bathroom, yard bedroom" }
-   ],
-   "short": "shower",
-   "house": true,
-   "name": "shower",
-   "x0": 3,
-   "x1": 4.8,
-   "z0": 5.9,
-   "z1": 6.7,
-   "y0": 1,
-   "y1": 1.1
-  },
-  {
-   "id": "hl-furn-6",
-   "group": "house",
-   "color": "#f1f1ee",
-   "solid": true,
-   "parent": [
-    { "id": "half", "name": "Bedrooms, half level" },
-    { "id": "hl-bath-yard", "name": "Bathroom, yard bedroom" }
-   ],
-   "short": "basin",
-   "house": true,
-   "name": "basin",
-   "x0": 4.35,
-   "x1": 4.8,
-   "z0": 5.3,
-   "z1": 5.8,
-   "y0": 1,
-   "y1": 1.85
-  },
-  {
-   "id": "hl-furn-7",
+   "id": "hl-furn-5",
    "group": "house",
    "color": "#b98b5a",
    "solid": true,
@@ -1956,7 +2011,7 @@
    "y1": 3.2
   },
   {
-   "id": "hl-furn-8",
+   "id": "hl-furn-6",
    "group": "house",
    "color": "#b98b5a",
    "solid": true,
@@ -1975,7 +2030,7 @@
    "y1": 1.55
   },
   {
-   "id": "hl-furn-9",
+   "id": "hl-furn-7",
    "group": "house",
    "color": "#e8e2d6",
    "solid": true,
@@ -1994,7 +2049,7 @@
    "y1": 1.55
   },
   {
-   "id": "hl-furn-10",
+   "id": "hl-furn-8",
    "group": "house",
    "color": "#b98b5a",
    "solid": true,
@@ -2013,7 +2068,7 @@
    "y1": 1.55
   },
   {
-   "id": "hl-soft-11",
+   "id": "hl-soft-9",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -2032,7 +2087,7 @@
    "y1": 1.1
   },
   {
-   "id": "hl-furn-12",
+   "id": "hl-furn-10",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -2051,7 +2106,7 @@
    "y1": 1.85
   },
   {
-   "id": "hl-furn-13",
+   "id": "hl-furn-11",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -2068,6 +2123,22 @@
    "z1": 1.65,
    "y0": 1,
    "y1": 1.42
+  },
+  {
+   "id": "gf-landing-slab",
+   "group": "house",
+   "color": "#c9ced6",
+   "opacity": 0.3,
+   "parent": [ { "id": "ground", "name": "Ground floor" }, { "id": "gf-landing", "name": "Stair slot" } ],
+   "short": "Stair slot slab",
+   "house": true,
+   "name": "Slab on the ground under the flight to the bedrooms, −0.20 to 0",
+   "x0": 4.3,
+   "x1": 4.8,
+   "z0": 3,
+   "z1": 4,
+   "y0": -0.2,
+   "y1": 0
   },
   {
    "id": "rf-north",
