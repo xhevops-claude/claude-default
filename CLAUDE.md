@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Talk to the user like a person, not a report. Keep replies short and conversational — a couple of sentences, not multi-paragraph write-ups. Lead with the answer or what changed; skip exhaustive bullet lists, feature recaps, and restating things they already know. Add detail only when asked.
 
+## Plan first, then build
+
+For any change to the site or a project's data, say what you intend to do before doing it: which files change, what the result will look like, anything you had to decide (e.g. which bedroom "left" means), and stop there. Only edit, commit and push once the user says go. Pure questions and read-only investigation need no plan. The user set this on 2026-10-09 for this repository, so it applies to every session here.
+
 ## Commands
 
 ```sh
@@ -89,9 +93,9 @@ So before posting a preview/production link: poll the `pages-build-deployment` w
 
 After such a hang, the next publish can fail fast (under a minute) with `Deployment request failed ... due to in progress deployment. Please cancel <sha> first` — GitHub still holds the hung deployment as active and rejects every new one until it is cancelled or expires. Nothing from this session can clear it: the Pages deployments API is blocked by the proxy and Actions re-runs are 403, and the user works from the sandbox too (no `gh`). It does expire on its own (seen: stuck at 11:15, still blocking at 11:43, publishing again by 14:38), so don't burn pushes on it: tell the user, then retry with a real commit after a decent wait (an hour or more). If the user does have `gh` somewhere, the fast path is `gh api -X POST repos/xhevops-claude/claude-default/pages/deployments/<stuck-sha>/cancel` with the gh-pages SHA from the error, then a new push.
 
-### Always end with a clickable preview link
+### Preview links on demand
 
-After pushing changes, the final line of every reply must be a clickable Markdown link to the deployed preview, in the form `[Preview](https://xhevops-claude.github.io/claude-default/preview/<slug>/<short-sha>/...)`, where `<short-sha>` is the 7-char SHA of the commit you just pushed (`git rev-parse --short=7 HEAD`). No bold, no surrounding `**`, no extra prose on that line — just the link. If the change targets a specific sub-experience, deep-link directly into it (e.g. `.../preview/<slug>/<short-sha>/apps/locator/`). If pushed to `main`, link to the corresponding production path under `https://xhevops-claude.github.io/claude-default/`.
+Do not wait for the deploy or post a preview link after a push unless the user asks for one ("preview", "link", "show me"). After pushing, just say what landed and the short SHA. When a preview is asked for, verify it is served first (the section above) and then make the final line of the reply a clickable Markdown link, in the form `[Preview](https://xhevops-claude.github.io/claude-default/preview/<slug>/<short-sha>/...)`, where `<short-sha>` is the 7-char SHA of the commit you pushed (`git rev-parse --short=7 HEAD`). No bold, no surrounding `**`, no extra prose on that line — just the link. If the change targets a specific sub-experience, deep-link directly into it (e.g. `.../preview/<slug>/<short-sha>/apps/locator/`). If it is on `main`, link to the corresponding production path under `https://xhevops-claude.github.io/claude-default/`. (Before 2026-10-09 every reply ended with the link; the user switched it to on-demand.)
 
 ### Branch names — match the work
 
