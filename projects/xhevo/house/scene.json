@@ -1939,25 +1939,6 @@
   {
    "id": "hl-furn-7",
    "group": "house",
-   "color": "#f1f1ee",
-   "solid": true,
-   "parent": [
-    { "id": "half", "name": "Bedrooms, half level" },
-    { "id": "hl-bath-yard", "name": "Bathroom, yard bedroom" }
-   ],
-   "short": "wc",
-   "house": true,
-   "name": "wc",
-   "x0": 3,
-   "x1": 3.65,
-   "z0": 5.35,
-   "z1": 5.75,
-   "y0": 1,
-   "y1": 1.42
-  },
-  {
-   "id": "hl-furn-8",
-   "group": "house",
    "color": "#b98b5a",
    "solid": true,
    "parent": [
@@ -1975,7 +1956,7 @@
    "y1": 3.2
   },
   {
-   "id": "hl-furn-9",
+   "id": "hl-furn-8",
    "group": "house",
    "color": "#b98b5a",
    "solid": true,
@@ -1994,7 +1975,7 @@
    "y1": 1.55
   },
   {
-   "id": "hl-furn-10",
+   "id": "hl-furn-9",
    "group": "house",
    "color": "#e8e2d6",
    "solid": true,
@@ -2013,7 +1994,7 @@
    "y1": 1.55
   },
   {
-   "id": "hl-furn-11",
+   "id": "hl-furn-10",
    "group": "house",
    "color": "#b98b5a",
    "solid": true,
@@ -2032,7 +2013,7 @@
    "y1": 1.55
   },
   {
-   "id": "hl-soft-12",
+   "id": "hl-soft-11",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -2051,7 +2032,7 @@
    "y1": 1.1
   },
   {
-   "id": "hl-furn-13",
+   "id": "hl-furn-12",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
@@ -2070,7 +2051,7 @@
    "y1": 1.85
   },
   {
-   "id": "hl-furn-14",
+   "id": "hl-furn-13",
    "group": "house",
    "color": "#f1f1ee",
    "solid": true,
