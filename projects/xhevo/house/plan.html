@@ -65,12 +65,12 @@ td.open { color: var(--warn); font-weight: 700; }
   <h1>Xhevo house, working plan</h1>
 
   <section>
-    <h2><b>Main floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls, partitions 0.10 · the living room 6.40 × 6.80 from the back wall to the glass, open to the roof, 5.20 beside the garage stair's box · the kitchen an L in the yard corner, the sink under the yard window, the hob over the oven, a table for six · the bedrooms half a level up at +1.00 over the hill end, x 0 to 4.9, on fill to +0.80, not dug: the yard bedroom 3.15 × 3.90 with no bath, the north bedroom 3.15 × 2.60 with its bath 2.25 × 1.80 off a 0.80 × 1.20 hall, so the toilet is reached without crossing a bedroom · their flight 1.65 wide, 1.00 long, 6 risers of 0.167 on 0.20 goings, half of it cut into the hill, the two doors in the wall at its top step, a 0.50 ledge beside it at +1.00 open to the living room · the garage stair an L: 11 treads up the north wall, a rest in the corner against the living room's back wall, 4 treads along that wall and out at the foot of the bedrooms' flight, 17 risers under a lid · the walls 3.00 high, the roof from there, 2.00 over the bedrooms at the side walls and 4.45 under the ridge, 1.00 past the glass, no balcony</h2>
+    <h2><b>Main floor</b> · 12 × 7 outside, x 0 to 12, 0.30 walls, partitions 0.10 · the living room 6.40 × 6.80 from the back wall to the glass, open to the roof, 5.20 beside the garage stair's box · the kitchen an L in the yard corner, the sink under the yard window, the hob over the oven, a table for six · the bedrooms half a level up at +1.00 over the hill end, x 0 to 4.9, on fill to +0.80, not dug: the yard bedroom 3.15 × 3.90 with no bath, the north bedroom 3.15 × 2.60 with its bath 2.25 × 1.80 off a 0.80 × 1.20 hall, so the toilet is reached without crossing a bedroom · their flight 1.65 wide, 1.00 long in the living room against its back wall, 6 risers of 0.167 on 0.20 goings, the last the bedrooms' floor in the wall line, the two doors in that wall at its top step · the garage stair an L: 11 treads up the north wall, a 2.00 rest with a nook in the corner against the living room's back wall, 4 treads along that wall and out on the floor just below the foot of the bedrooms' flight, 17 risers under a lid · the walls 3.00 high, the roof from there, 2.00 over the bedrooms at the side walls and 4.45 under the ridge, 1.00 past the glass, no balcony</h2>
     <svg id="plan" class="plan" aria-label="Main floor plan"></svg>
   </section>
 
   <section>
-    <h2><b>Garage</b> · −2.90, 6.00 × 6.40 clear, x 5.7 to 11.7, under the living room · the door 5.00 × 2.25 in the front wall · a car slot 2.60 wide and a second 2.75 for the quad · the stair up along the north wall, 11 treads to the rest cut into the hill behind the west wall (that wall cut down to −1.05 there, the living room's back wall carried down to it), then 4 across and out on the main floor at the foot of the bedrooms' flight · a cupboard under the run</h2>
+    <h2><b>Garage</b> · −2.90, 6.00 × 6.40 clear, x 5.7 to 11.7, under the living room · the door 5.00 × 2.25 in the front wall · a car slot 2.60 wide and a second 2.75 for the quad · the stair up along the north wall, 11 treads to a 2.00 rest with a nook, cut into the hill behind the west wall (that wall cut down to −1.05 there, the living room's back wall carried down to it), then 4 across and out on the main floor below the foot of the bedrooms' flight · cupboards under the run and the run across</h2>
     <svg id="garage" class="plan" aria-label="Garage plan"></svg>
   </section>
 
@@ -80,7 +80,7 @@ td.open { color: var(--warn); font-weight: 700; }
   </section>
 
   <section>
-    <h2><b>Garage stair, section</b> · along the run up the north wall, the rest at −0.85 on the left against the living room's back wall (the run across leaves it toward you), living room over it · the lid 2.20 over every nosing</h2>
+    <h2><b>Garage stair, section</b> · along the run up the north wall, the 2.00 rest at −0.85 on the left against the living room's back wall (the run across leaves its far end toward you), living room over it · the lid 2.20 over every nosing</h2>
     <svg id="section" class="sec" aria-label="Section through the garage stair"></svg>
   </section>
 
@@ -100,17 +100,17 @@ const G = [
   ['glass', 0.3, 11.7, 6.4, 0.3, 'glass gable 6.40'],
   ['roof', -0.4, 12.0, 7.4, 13.0],                                     // the roof's edge: 1.00 past the glass at the front, 0.40 at the sides
   // partitions, 0.10
-  ['part', 0.3, 4.8, 2.3, 0.1], ['part', 4.45, 4.8, 2.25, 0.1],   // the living room's back wall, holding the fill: the kitchen along it; between the two the flight to the bedrooms cuts into the hill end; the bedrooms' front walls above; from x 4.44 to the north wall it is carried down to −1.05 behind the garage stair's rest and run across
-  ['part', 2.6, 4.3, 0.1, 0.5], ['part', 4.35, 4.3, 0.1, 0.5],   // the flight's side walls in the hill end, holding the fill beside the cut
-  ['part', 5.5, 5.9, 0.1, 2.29, 'box'],    // stair box, room side of the run, from the rest to where the lid meets the floor at x 8.19
-  ['part', 4.44, 5.9, 1.16, 0.1, 'box'],   // stair box, room side of the run across, from the floor to the lid; the other side is the living room's back wall; the end at x 4.44 is the way out
+  ['part', 0.3, 4.8, 6.4, 0.1],            // the living room's back wall, holding the fill: the kitchen along it, the flight to the bedrooms arriving at it, the bedrooms' front wall above it; from x 4.44 to the north wall it is carried down to −1.05 behind the garage stair's rest
+  ['part', 5.5, 6.9, 0.1, 2.29, 'box'],    // stair box, room side of the run, from the rest to where the lid meets the floor at x 9.19
+  ['part', 4.44, 6.9, 1.16, 0.1, 'box'],   // stair box, room side of the run across, from the floor to the lid; the end at x 4.44 is the way out
+  ['part', 4.34, 4.9, 0.1, 1.0, 'box'],    // stair box, the nook's end beside the bedrooms' flight, from the floor to the lid
   // openings: doors are a gap plus a leaf swung from a hinge; windows sit in the wall
   ['door', 0, 7.5, 0.3, 0.9, 0.15, 7.5, 0.9, 180, 90],      // yard door, swinging out
   ['win', 0, 5.5, 0.3, 0.7], ['win', 0, 8.9, 0.3, 1.4],
   // furniture
   // the kitchen packed into the yard corner, an L: the sink on the yard wall under the window, looking out; the run on the back wall stops at x 2.7, 1.60 short of where it was, so the landing at the foot of the bedrooms' flight is 1.60 wider
   ['furn', 0.3, 5.5, 0.6, 0.8, 'sink'],
-  ['furn', 0.3, 4.9, 0.6, 0.6, 'worktop'], ['furn', 0.9, 4.9, 0.6, 0.6, 'hob/oven'], ['furn', 1.5, 4.9, 0.6, 0.6, 'worktop'], ['furn', 2.1, 4.9, 0.6, 0.6, 'fridge'],   // the hob over the oven, one unit
+  ['furn', 0.3, 4.9, 0.6, 0.6, 'worktop'], ['furn', 0.9, 4.9, 0.6, 0.6, 'hob/oven'], ['furn', 1.5, 4.9, 0.6, 0.6, 'worktop'], ['furn', 2.09, 4.9, 0.6, 0.6, 'fridge'],   // the hob over the oven, one unit
   ['furn', 1.2, 6.6, 1.4, 0.8, 'table 140×80 · 6'],                    // dining in the kitchen, across the room, for six: two a side, one at each end
   ['chair', 1.325, 6.3, 0.45, 0.45, ''], ['chair', 2.025, 6.3, 0.45, 0.45, ''],       // counter side, tucked 0.15 under
   ['chair', 2.025, 7.25, 0.45, 0.45, ''], ['chair', 1.325, 7.25, 0.45, 0.45, ''],     // room side, tucked 0.15 under
@@ -119,30 +119,30 @@ const G = [
   ['soft', 2.85, 8.05, 0.75, 0.8, 'armchair'], ['soft', 3.8, 8.05, 0.75, 0.8, 'armchair'],   // two armchairs on the stair side, 0.20 apart, facing the glass
   ['soft', 2.8, 10.7, 1.8, 0.9, 'sofa 180×90'],                             // the 180 on the glass side, 0.10 off the glass, its end 0.30 clear of the main sofa's corner
   ['furn', 3.15, 9.4, 0.8, 0.8, 'coffee'],                                  // the coffee table in the middle of the four
-  ['furn', 5.25, 5.9, 0.25, 2.29, ''],                                   // shelves on the stair box's face, a triangle matching it: the run's 2.29, top on the lid
+  ['furn', 5.25, 6.9, 0.25, 2.29, ''],                                   // shelves on the stair box's face, a triangle matching it: the run's 2.29, top on the lid
   // the fire on the north wall, centred on the coffee table at x 9.8: the base 0.35 high, a 0.30 body set 0.10 in under a 0.05 top 1.60 × 1.20, the furnace 1.20 × 0.80 on it to 1.35 with its firebox 0.80 wide, 0.60 high and 0.60 deep from the base and a 0.20 log across its face from 0.80 to 1.00 over the base, and the chimney carrying straight on at the furnace's size through the roof, 1.00 above it
   ['furn', 5.6, 9.1, 1.1, 1.4, 'base body', 'nl'], ['furn', 5.5, 9.0, 1.2, 1.6, 'base 160×120', 'nl'], ['note', 6.1, 10.54, 'base', 'f'], ['furn', 5.9, 9.2, 0.8, 1.2, 'fire'], ['furn', 5.7, 9.2, 0.2, 1.2, 'log', 'nl'],   // the log across the furnace's face, 0.20 × 0.20, its 1.20, from 0.80 to 1.00 over the base
   ['hollow', 5.9, 9.4, 0.6, 0.8, 0.35, 0.95],    // the firebox: 0.80 wide, 0.60 high from the base, 0.60 deep, the furnace's back 0.20 behind it
   ['chimney', 5.9, 9.2, 0.8, 1.2, 5.9, 9.2, 0.8, 1.2, 1.35],   // from the furnace's top at 1.35 straight up to the roof, its size all the way
   // stairs: x, y, w, h, treads along 'x' or 'y', count, arrow toward the top end
-  // the garage flight, an L: 17 risers of 2.90/17 on 0.29 goings — 11 treads up along the north wall from the foot at x 9.09, the rest (riser 12, a quarter landing) in the corner against the living room's back wall, 4 treads along that wall, the floor at plan x 4.44 at the foot of the bedrooms' flight; the rest and the run across are cut into the hill behind the garage's west wall
-  ['wedge', 5.6, 4.9, 1.1, 3.29], ['wedge', 4.44, 4.9, 1.16, 1.0],   // the lid over the hole: 2.20 over every nosing, 1.35 over the rest, 2.03 at the way out, the floor at x 8.19
-  ['stair', 5.6, 5.9, 1.1, 3.19, 'y', 11, 'up'],    // the run up, in the hole from x 8.19
-  ['quarter', 5.6, 4.9, 1.1, 1.0, 'rest'],          // the rest, at −0.85
-  ['stair', 4.44, 4.9, 1.16, 1.0, 'x', 4, 'left'],  // the run across, out on the floor at x 4.44, against the bedrooms' flight
-  ['stair', 2.7, 4.3, 1.65, 1.0, 'y', 5, 'up'],    // up to the bedrooms, straight toward the hill, 1.65 wide so both doors above sit on its top step, 1.00 long, half in the living room and half cut into the hill end: 6 risers of 0.167 on 0.20 goings, the last the bedrooms' floor at +1.00
+  // the garage flight, an L: 17 risers of 2.90/17 on 0.29 goings — 11 treads up along the north wall from the foot at x 10.09, the rest (riser 12) a 2.00 landing in the corner against the living room's back wall with a nook beside the run across, then 4 treads along that wall from the rest's far end, the floor at plan x 4.44 just below the foot of the bedrooms' flight; the rest is cut into the hill behind the garage's west wall
+  ['wedge', 5.6, 4.9, 1.1, 4.29], ['wedge', 4.44, 4.9, 1.16, 2.0],   // the lid over the hole: 2.20 over every nosing, 1.35 flat over the rest and its nook, 2.03 at the way out, the floor at x 9.19
+  ['stair', 5.6, 6.9, 1.1, 3.19, 'y', 11, 'up'],    // the run up, in the hole from x 9.19
+  ['quarter', 5.6, 4.9, 1.1, 2.0, 'rest'], ['quarter', 4.44, 4.9, 1.16, 1.0, 'nook'],   // the rest at −0.85, 1.10 × 2.00, and its nook beside the run across
+  ['stair', 4.44, 5.9, 1.16, 1.0, 'x', 4, 'left'],  // the run across, out on the floor at x 4.44, below the foot of the bedrooms' flight
+  ['stair', 2.69, 4.8, 1.65, 1.0, 'y', 5, 'up'],   // up to the bedrooms, straight toward the hill against the back wall, 1.65 wide so both doors above sit on its top step, 1.00 long: 6 risers of 0.167 on 0.20 goings, the last the bedrooms' floor at +1.00 in the wall line
   ['dashrect', 0.3, 0.3, 6.4, 4.5],               // the bedrooms' half level above, +1.00; 0.80 clear under it
   // labels: room name, area, and small notes
-  ['fill', 0.3, 0.3, 6.4, 4.0], ['fill', 0.3, 4.3, 2.3, 0.5], ['fill', 4.45, 4.3, 2.25, 0.5],   // not dug: fill from the ground to +0.80, the bedrooms' slab on it; the flight's upper half cut into it
+  ['fill', 0.3, 0.3, 6.4, 4.5],           // not dug: fill from the ground to +0.80, the bedrooms' slab on it
   ['room', 3.9, 7.0, 'LIVING', '41.5'], ['room', 1.45, 11.45, 'open to the roof', ''],
-  ['note', 6.15, 5.7, 'lid 1.35'], ['note', 6.15, 6.3, 'garage stair, up'], ['note', 6.45, 6.75, '0.9'], ['note', 6.45, 7.5, '0.4'], ['note', 6.15, 8.4, '0 at 8.19'], ['note', 4.9, 6.4, 'out at 0 · lid 2.03'],
-  ['note', 5.37, 7.5, 'shelves', 'f'],
-  ['note', 6.15, 8.8, 'DOWN'],
+  ['note', 6.15, 6.3, 'lid 1.35'], ['note', 6.15, 7.6, 'garage stair, up'], ['note', 6.45, 8.05, '0.8'], ['note', 6.45, 8.6, '0.4'], ['note', 6.15, 9.4, '0 at 9.19'], ['note', 5.0, 7.42, 'out at 0 · lid 2.03'],
+  ['note', 5.37, 8.0, 'shelves', 'f'],
+  ['note', 6.15, 9.8, 'DOWN'],
   ['note', 3.5, 12.25, 'base to 0.35 · furnace to 1.35 · chimney through the roof, 1.00 above it · TV on wheels', 'f'], ['note', 3.5, 12.55, 'roof over · 1.00 past the glass · no balcony'],
   // dimensions, wall to wall: ['dim', x1, y1, x2, y2]
-  ['dim', 2.5, 4.3, 2.5, 5.3], ['dim', 2.7, 5.55, 4.35, 5.55],            // the flight to the bedrooms 1.00 long, 0.50 of it in the hill end; 1.65 wide
-  ['dim', 5.9, 4.9, 5.9, 8.19], ['dim', 4.44, 6.15, 5.6, 6.15],           // the hole 3.29 long (its 1.00 is the rest's), the run across 1.16
-  ['dim', 0.3, 7.6, 5.5, 7.6], ['dim', 0.3, 8.6, 6.7, 8.6], ['dim', 0.45, 4.9, 0.45, 11.7],   // living 5.20 beside the stair box, 6.40 past it, 6.80 from the back wall to the glass
+  ['dim', 2.5, 4.8, 2.5, 5.8], ['dim', 2.69, 6.05, 4.34, 6.05],           // the flight to the bedrooms 1.00 long, 1.65 wide
+  ['dim', 5.9, 4.9, 5.9, 9.19], ['dim', 4.44, 7.1, 5.6, 7.1], ['dim', 5.5, 4.9, 5.5, 6.9],   // the hole 4.29 long (its 2.00 is the rest's), the run across 1.16, the rest 2.00
+  ['dim', 0.3, 7.6, 5.5, 7.6], ['dim', 0.3, 9.5, 6.7, 9.5], ['dim', 0.45, 4.9, 0.45, 11.7],   // living 5.20 beside the stair box, 6.40 past it, 6.80 from the back wall to the glass
   // the ones marked 'f' measure to furniture and stay off the empty sheet
   ['dim', 1.55, 5.5, 1.55, 6.3, 'f'], ['dim', 1.9, 7.4, 1.9, 8.9, 'f'], ['dim', 4.55, 8.2, 5.25, 8.2, 'f'],   // walkways: counter to the tucked chairs 0.80, table to the main sofa 1.50, armchair to shelves 0.70
   ['dim', 0.3, 6.62, 1.2, 6.62, 'f'],                                     // table to the yard wall 0.90
@@ -162,42 +162,42 @@ const G3 = [
   ['wall', 0, 11.7, 0.4, 0.3], ['wall', 5.4, 11.7, 1.6, 0.3], ['win', 0.4, 11.7, 5.0, 0.3],   // the front wall with the door, 5.00 wide
   ['part', 4.44, 4.8, 2.26, 0.1],           // the living room's back wall, carried down to −1.05 behind the rest and the run across
   ['dashrect', 0.3, 5.7, 2.6, 6.0], ['dashrect', 2.9, 5.7, 2.75, 6.0],   // the car slot and the quad's
-  ['stair', 5.6, 5.9, 1.1, 3.19, 'y', 11, 'up'],    // the run up along the north wall, 11 treads from the foot at x 9.09
-  ['quarter', 5.6, 4.9, 1.1, 1.0, 'rest'],          // the rest at −0.85, behind the west wall
-  ['stair', 4.44, 4.9, 1.16, 1.0, 'x', 4, 'left'],  // the run across, out on the main floor at x 4.44
-  ['quarter', 5.6, 9.09, 1.1, 2.61, 'landing'],      // the landing inside the door, at the garage floor
-  ['dashrect', 5.6, 5.9, 1.1, 0.87],                // the cupboard under the run, 1.20 high
+  ['stair', 5.6, 6.9, 1.1, 3.19, 'y', 11, 'up'],    // the run up along the north wall, 11 treads from the foot at x 10.09
+  ['quarter', 5.6, 4.9, 1.1, 2.0, 'rest'], ['quarter', 4.44, 4.9, 1.16, 1.0, 'nook'],   // the rest at −0.85, 1.10 × 2.00, its nook, behind the west wall
+  ['part', 4.34, 4.9, 0.1, 1.0],                    // the nook's end wall, beside the bedrooms' flight above
+  ['stair', 4.44, 5.9, 1.16, 1.0, 'x', 4, 'left'],  // the run across, out on the main floor at x 4.44
+  ['quarter', 5.6, 10.09, 1.1, 1.61, 'landing'],     // the landing inside the door, at the garage floor
+  ['dashrect', 5.6, 6.9, 1.1, 0.87], ['dashrect', 4.44, 5.9, 1.16, 1.0],   // the cupboards under the run and under the run across, 1.20 high
   ['room', 3.5, 6.5, 'GARAGE −2.90', '38.4'], ['room', 1.6, 8.6, 'CAR', ''], ['note', 1.6, 8.85, '2.60 × 6.00'], ['room', 4.3, 8.6, 'QUAD', ''], ['note', 4.3, 8.85, 'or a second car · 2.75 × 6.00'],
-  ['note', 6.15, 5.65, '−0.85'], ['note', 4.9, 6.35, 'cupboard under'], ['note', 6.15, 9.4, '−2.90'], ['note', 2.9, 12.15, 'door 5.00 × 2.25'], ['note', 3.3, 5.2, 'out at 0, on the main floor'],
+  ['note', 6.15, 6.15, '−0.85'], ['note', 4.9, 7.35, 'cupboards under'], ['note', 6.15, 10.4, '−2.90'], ['note', 2.9, 12.15, 'door 5.00 × 2.25'], ['note', 3.3, 6.2, 'out at 0, on the main floor'],
   ['dim', 7.15, 5.7, 7.15, 11.7], ['dim', 0.3, 12.5, 6.7, 12.5],     // 6.00 clear, 6.40 wide
   ['dim', 0.4, 11.45, 5.4, 11.45],                                  // the door 5.00
-  ['dim', 5.45, 5.9, 5.45, 9.09], ['dim', 4.44, 6.15, 5.6, 6.15], ['dim', 5.6, 4.65, 6.7, 4.65],   // the run 3.19, the run across 1.16, the rest 1.10
+  ['dim', 5.45, 6.9, 5.45, 10.09], ['dim', 4.44, 7.15, 5.6, 7.15], ['dim', 5.6, 4.65, 6.7, 4.65], ['dim', 5.5, 4.9, 5.5, 6.9],   // the run 3.19, the run across 1.16, the rest 1.10 × 2.00
   ['edge', 'yard (S)', 'left'], ['edge', 'north', 'right'], ['edge', 'hill · the living room\'s back wall above', 'top'], ['edge', 'drive', 'bottom'],
 ];
 
 /* The bedrooms, half a level up at +1.00, in the hill end: x 0 to 4.8, same axes as the ground floor. */
 const G2 = [
   ['wall', 0, 0, 7, 0.3], ['wall', 0, 0, 0.3, 4.9], ['wall', 6.7, 0, 0.3, 4.9],   // three sides in the hill, retaining; the back wall at x 0
-  ['part', 0.3, 4.2, 3.25, 0.1],           // the yard bedroom's front wall, at the flight's top step, its door in it; a 0.50 ledge in front, open to the living room
-  ['part', 4.35, 4.8, 2.35, 0.1],          // the north bath's front wall, over the living room's back wall
-  ['part', 3.45, 0.3, 0.1, 4.0],           // between the two bedrooms, on the centre line, hill wall to the front wall; the hall's yard side
+  ['part', 0.3, 4.8, 3.25, 0.1], ['part', 4.35, 4.8, 2.35, 0.1],   // the front wall, over the living room's back wall: the yard bedroom's door in it at the flight's top step, the hall's mouth open between the two pieces, then the bath's front
+  ['open', 3.55, 4.8, 0.8, 0.1],           // the hall's mouth, open to the flight's top step
+  ['part', 3.45, 0.3, 0.1, 4.6],           // between the two bedrooms, on the centre line, hill wall to the front wall; the hall's yard side
   ['part', 3.55, 2.9, 0.8, 0.1],           // the hall's end wall, the north bedroom's door in it
   ['part', 4.35, 2.9, 2.35, 0.1], ['part', 4.35, 3.0, 0.1, 1.8],  // the north bath, in the front corner on the north wall, beside the hall
-  ['door', 2.7, 4.2, 0.7, 0.1, 3.4, 4.25, 0.7, -90, -180],     // yard bedroom, at the top step, the room straight ahead
+  ['door', 2.7, 4.8, 0.7, 0.1, 3.4, 4.85, 0.7, -90, -180],     // yard bedroom, at the top step, the room straight ahead
   ['door', 3.6, 2.9, 0.7, 0.1, 3.6, 2.95, 0.7, -90, 0],        // north bedroom, at the end of the hall
-  ['door', 4.35, 3.5, 0.1, 0.6, 4.4, 3.5, 0.6, 0, 90],         // north bath, from the hall at its mouth, first thing off the stair, swinging in
+  ['door', 4.35, 4.1, 0.1, 0.6, 4.4, 4.1, 0.6, 0, 90],         // north bath, from the hall at its mouth, first thing off the stair, swinging in
   ['win', 0, 1.3, 0.3, 1.0],                                // the yard bedroom's window, low: the wall is 2.00 over the floor there
   ['furn', 0.3, 0.3, 0.4, 0.5, 'drawers'], ['furn', 0.7, 0.3, 1.6, 2.0, 'bed 160×200'], ['furn', 2.3, 0.3, 0.4, 0.5, 'drawers'], ['furn', 2.85, 0.3, 0.6, 1.8, 'wardrobe'],   // yard bedroom: one row on the hill wall, drawers 0.40, bed 1.60, drawers 0.40, then the wardrobe 1.80 down the bedroom wall
   ['furn', 3.55, 0.3, 0.6, 1.8, 'wardrobe'], ['furn', 4.3, 0.3, 0.4, 0.5, 'drawers'], ['furn', 4.7, 0.3, 1.6, 2.0, 'bed 160×200'], ['furn', 6.3, 0.3, 0.4, 0.5, 'drawers'],   // north bedroom, the yard one mirrored: the bed's head to the hill wall between two drawers, the wardrobe 1.80 down the bedroom wall
   ['soft', 5.9, 3.0, 0.8, 1.8, 'shower'], ['furn', 5.3, 4.35, 0.5, 0.45, 'basin'], ['furn', 5.35, 3.0, 0.4, 0.65, 'wc'],     // north bath, 2.25 × 1.80: walk-in shower along the north wall, basin on the front wall, wc against the bedroom wall
-  ['stair', 2.7, 4.3, 1.65, 1.0, 'y', 5, 'up'],    // the flight from the living room, 1.65 wide under both doors, its upper half past the ledge
-  ['room', 1.2, 3.3, 'BEDROOM', '12.3'], ['room', 5.05, 4.1, 'BATH', '4.0'], ['room', 5.8, 2.55, 'BEDROOM', '8.2'], ['note', 3.95, 3.72, 'hall'], ['note', 1.65, 4.6, 'ledge +1.00 · open to the living room'],
+  ['stair', 2.69, 4.8, 1.65, 1.0, 'y', 5, 'up'],   // the flight from the living room, 1.65 wide under both doors, arriving in the wall line
+  ['room', 1.2, 3.3, 'BEDROOM', '14.2'], ['room', 5.05, 3.9, 'BATH', '4.0'], ['room', 5.8, 2.55, 'BEDROOM', '8.2'], ['note', 3.95, 3.6, 'hall'],
   ['note', 3.5, 5.48, 'up from the living room, 1.00'],
-  ['dim', 2.6, 0.3, 2.6, 4.2], ['dim', 0.3, 2.4, 3.45, 2.4],              // yard bedroom 3.15 × 3.90
+  ['dim', 2.6, 0.3, 2.6, 4.8], ['dim', 0.3, 2.4, 3.45, 2.4],              // yard bedroom 3.15 × 4.50
   ['dim', 5.8, 4.65, 6.7, 4.65], ['dim', 6.0, 3.0, 6.0, 4.8],             // north bath, basin 0.90 from the north wall; 1.80 deep
   ['dim', 5.0, 0.3, 5.0, 2.9], ['dim', 3.55, 2.4, 6.7, 2.4],              // north bedroom 3.15 × 2.60, then its entry
-  ['dim', 3.55, 4.05, 4.35, 4.05], ['dim', 3.7, 3.0, 3.7, 4.2],            // the hall 0.80 × 1.20, open to the stair at its mouth
-  ['dim', 0.45, 4.3, 0.45, 4.8],                                           // the ledge 0.50
+  ['dim', 3.55, 3.3, 4.35, 3.3], ['dim', 3.7, 3.0, 3.7, 4.8],              // the hall 0.80 × 1.80, open to the stair at its mouth
   ['dim', 7.15, 0.3, 7.15, 4.8], ['dim', 0.3, 6.25, 6.7, 6.25],          // overall clear 4.50 × 6.40
   ['edge', 'yard (S)', 'left'], ['edge', 'north', 'right'], ['edge', 'hill', 'top'], ['edge', 'living room below, open to the roof', 'bottom'],
 ];
@@ -240,6 +240,7 @@ function drawPlan({ id, G, X0, Y0, W, H, gy, edges }) {
     else if (t === 'glass') s += R('glass', x, y, w, h);
     else if (t === 'win') s += R('win', x + 0.08, y, w - 0.16, h);
     else if (t === 'door') s += R('gap', x, y, w, h) + door(e[5], e[6], e[7], e[8], e[9]);
+    else if (t === 'open') s += R('gap', x, y, w, h);
     else if (t === 'hatch') s += `<line class="hatch" x1="${px(x)}" y1="${px(y)}" x2="${px(x + w)}" y2="${px(y)}"/>`;
     else if (t === 'furn' || t === 'soft' || t === 'chair') s += R(t === 'chair' ? 'soft' : t, x, y, w, h) + (e[5] && e[6] !== 'nl' && Math.min(w, h) >= 0.45 ? (h > w * 1.5 ? T('sm', x + w / 2 + 0.05, y + h / 2, e[5], -90) : T('sm', x + w / 2, y + h / 2 + 0.05, e[5])) : '');
     else if (t === 'wedge') s += R('wedge', x, y, w, h);
@@ -275,11 +276,11 @@ function drawPlan({ id, G, X0, Y0, W, H, gy, edges }) {
 function drawSection() {
   const S = 60, XA = 4.8, XB = 12.2, ZT = 3.4, ZB = -3.3;   // px per metre and the window
   const X = x => +((x - XA) * S).toFixed(1), Z = z => +((ZT - z) * S).toFixed(1);
-  /* The L flight: 17 risers of 2.90/17 on 0.29 goings — 11 treads up along the north wall from the foot at x 9.09, the rest
-     (riser 12) at x 4.9 to 5.9 against the living room's back wall, then 4 treads along that wall (beyond this cut, toward the
-     viewer) and the floor. The lid keeps 2.20 over every nosing: on the pitch over the run, flat over the rest; it meets the
-     floor at x 8.19. The back wall is carried down behind the rest to −1.05. */
-  const RG = 2.9 / 17, GO = 0.29, foot = 9.09, rest = 4.9, restEnd = 5.9, holeAt = 8.19, restTop = -2.9 + 12 * RG, pitch = RG / GO;
+  /* The L flight: 17 risers of 2.90/17 on 0.29 goings — 11 treads up along the north wall from the foot at x 10.09, the rest
+     (riser 12) a 2.00 landing at x 4.9 to 6.9 against the living room's back wall, then 4 treads along that wall from its far
+     end (beyond this cut, toward the viewer) and the floor. The lid keeps 2.20 over every nosing: on the pitch over the run,
+     flat over the rest; it meets the floor at x 9.19. The back wall is carried down behind the rest to −1.05. */
+  const RG = 2.9 / 17, GO = 0.29, foot = 10.09, rest = 4.9, restEnd = 6.9, holeAt = 9.19, restTop = -2.9 + 12 * RG, pitch = RG / GO;
   const lidZ = x => x >= restEnd ? Math.max(0, (holeAt - x) * pitch) : restTop + 2.2;
   let s = '';
   for (let z = -3; z <= 3; z++) s += `<line class="grid" x1="${X(XA)}" y1="${Z(z)}" x2="${X(XB)}" y2="${Z(z)}"/>` + `<text class="tick" x="${X(XA) + 10}" y="${Z(z) - 2}">${z > 0 ? '+' : ''}${z.toFixed(1)}</text>`;
@@ -300,10 +301,10 @@ function drawSection() {
   s += dim(foot - GO * 3 - 0.1, -2.9 + 4 * RG, -0.2, '2.02') + dim(rest + 0.5, restTop, lidZ(rest), '2.20');
   // words
   s += `<text class="lbl" x="${X(8.2)}" y="${Z(2.2)}">living room</text>` +
-    `<text class="dim" x="${X(5.4)}" y="${Z(-1.4)}">rest −0.85</text>` +
-    `<text class="dim" x="${X(6.7)}" y="${Z(-1.9)}">the run across leaves it toward you</text>` +
+    `<text class="dim" x="${X(5.9)}" y="${Z(-1.4)}">rest −0.85, 2.00 long</text>` +
+    `<text class="dim" x="${X(7.6)}" y="${Z(-1.9)}">the run across leaves it toward you</text>` +
     `<text class="dim" x="${X(4.95)}" y="${Z(1.5)}" style="text-anchor:start">lid 1.35</text>` +
-    `<text class="dim" x="${X(8.3)}" y="${Z(0.3)}" style="text-anchor:start">0 at x 8.19</text>` +
+    `<text class="dim" x="${X(9.3)}" y="${Z(0.3)}" style="text-anchor:start">0 at x 9.19</text>` +
     `<text class="dim" x="${X(8.5)}" y="${Z(-0.6)}">17 × 0.171 / 0.29: 11 up, the rest, 4 across, the floor</text>` +
     `<text class="dim" x="${X(7.0)}" y="${Z(-2.6)}">garage −2.90</text>` +
     `<text class="dim" x="${X(4.95)}" y="${Z(2.4)}" style="text-anchor:start">back wall of the living room, down to −1.05 behind the rest</text>` +
@@ -318,7 +319,7 @@ function R2(cls, x, y, w, h) { return `<rect class="${cls}" x="${x}" y="${y}" wi
 function drawElevation() {
   const S = 60, XA = 4.5, XB = 12.3, ZT = 3.75, ZB = -0.3;
   const X = x => +((x - XA) * S).toFixed(1), Z = z => +((ZT - z) * S).toFixed(1);
-  const lid = x => Math.max(0, 1.35 - (x - 5.9) * 0.171 / 0.29);   // over the run, from 1.35 at the rest down to the floor at x 8.19
+  const lid = x => Math.max(0, 1.35 - (x - 6.9) * 0.171 / 0.29);   // over the run, from 1.35 at the rest down to the floor at x 9.19
   const box = (x, z, w, h, cls) => R2(cls, X(x), Z(z + h), w * S, h * S);
   const E = [
     [9.1, 0, 1.4, 0.3, 'furn', ''],            // the base's body, 1.40 wide, 0.30 high, centred on the coffee table
@@ -327,17 +328,17 @@ function drawElevation() {
     [9.4, 0.35, 0.8, 0.6, 'wall', 'fire'],      // its firebox, 0.80 × 0.60 from the base, 0.60 deep
     [9.2, 1.15, 1.2, 0.2, 'wedge', ''],         // the log across it, 0.80 to 1.00 over the base
     [4.8, 0, 0.1, 3.0, 'wall', ''],            // the living room's back wall, the bedrooms' front wall above it; the 1.20 opening to the landing is beyond the cut
-    [8.19, 0, 0.1, 0.1, 'part', ''],           // the box's end, where the lid meets the floor
+    [9.19, 0, 0.1, 0.1, 'part', ''],           // the box's end, where the lid meets the floor
     [11.7, 0, 0.1, 3.0, 'glass', ''],          // the glass, to where the roof starts at the wall
   ];
   let s = '';
   for (let z = 0; z <= 3.5; z += 0.5) s += `<line class="grid" x1="${X(XA)}" y1="${Z(z)}" x2="${X(XB)}" y2="${Z(z)}"/>` + `<text class="tick" x="${X(XA) + 10}" y="${Z(z) - 2}">${z.toFixed(1)}</text>`;
   for (let x = 5; x <= 11; x++) s += `<line class="grid" x1="${X(x)}" y1="${Z(ZT)}" x2="${X(x)}" y2="${Z(0)}"/>` + `<text class="tick" x="${X(x)}" y="${Z(ZB) - 3}">x ${x}</text>`;
   // the stair box under its lid: the bay of the run across, seen end-on with the way out's lintel at 2.03, then the wedge over the run with the shelves on its face
-  s += R2('wedge', X(4.9), Z(2.03), 1.1 * S, 2.03 * S);
-  s += `<path class="wedge" d="M${X(5.9)},${Z(0)} L${X(5.9)},${Z(lid(5.9))} L${X(8.29)},${Z(0)} Z"/>`;
-  s += `<path class="soft" d="M${X(5.9)},${Z(0)} L${X(5.9)},${Z(lid(5.9))} L${X(8.19)},${Z(lid(8.19))} L${X(8.19)},${Z(0)} Z"/>`;
-  for (const z of [0.4, 0.8, 1.2]) s += `<line class="tread" x1="${X(5.9)}" y1="${Z(z)}" x2="${X(5.9 + (1.35 - z) / 0.59)}" y2="${Z(z)}"/>`;
+  s += R2('wedge', X(4.9), Z(1.35), 1.0 * S, 1.35 * S) + R2('wedge', X(5.9), Z(2.03), 1.1 * S, 2.03 * S);
+  s += `<path class="wedge" d="M${X(6.9)},${Z(0)} L${X(6.9)},${Z(lid(6.9))} L${X(9.29)},${Z(0)} Z"/>`;
+  s += `<path class="soft" d="M${X(6.9)},${Z(0)} L${X(6.9)},${Z(lid(6.9))} L${X(9.19)},${Z(lid(9.19))} L${X(9.19)},${Z(0)} Z"/>`;
+  for (const z of [0.4, 0.8, 1.2]) s += `<line class="tread" x1="${X(6.9)}" y1="${Z(z)}" x2="${X(6.9 + (1.35 - z) / 0.59)}" y2="${Z(z)}"/>`;
   for (const [x, z, w, h, cls, label] of E) s += box(x, z, w, h, cls) + (label ? `<text class="sm" x="${X(x + w / 2)}" y="${Z(z + h / 2) + 3}" style="fill:var(--sheet)">${label}</text>` : '');
   // the chimney, straight on from the furnace at its 1.20 to where the roof starts at 3.00
   s += `<path class="furn" d="M${X(9.2)},${Z(1.35)} L${X(10.4)},${Z(1.35)} L${X(10.4)},${Z(3.0)} L${X(9.2)},${Z(3.0)} Z"/>`;
@@ -345,9 +346,9 @@ function drawElevation() {
   s += `<line class="tread" x1="${X(5.5)}" y1="${Z(0)}" x2="${X(11.7)}" y2="${Z(0)}"/>`;
   s += `<line class="tread" x1="${X(4.8)}" y1="${Z(3.0)}" x2="${X(11.8)}" y2="${Z(3.0)}"/>` + `<text class="dim" x="${X(5.6)}" y="${Z(3.06)}" style="text-anchor:start">roof starts here, 3.00 at the wall</text>`;
   s += `<text class="dim" x="${X(9.6)}" y="${Z(2.6)}" style="text-anchor:end" dx="130">the TV is on wheels</text>` +
-    `<text class="dim" x="${X(7.2)}" y="${Z(1.45)}">lid 1.35 at x 5.9, the rest</text>` +
-    `<text class="dim" x="${X(5.45)}" y="${Z(1.0)}">out, 2.03</text>` +
-    `<text class="dim" x="${X(8.25)}" y="${Z(-0.12)}" style="text-anchor:start">lid 0 at x 8.19</text>` +
+    `<text class="dim" x="${X(8.0)}" y="${Z(1.45)}">lid 1.35 at x 6.9, the rest</text>` +
+    `<text class="dim" x="${X(6.45)}" y="${Z(1.0)}">out, 2.03</text>` + `<text class="dim" x="${X(5.4)}" y="${Z(0.6)}">nook</text>` +
+    `<text class="dim" x="${X(9.25)}" y="${Z(-0.12)}" style="text-anchor:start">lid 0 at x 9.19</text>` +
     `<text class="dim" x="${X(7.5)}" y="${Z(2.3)}">shelves along the stair, under its lid</text>` +
     `<text class="dim" x="${X(6.3)}" y="${Z(3.35)}">room over the stair, up to the roof</text>` +
     `<text class="dim" x="${X(11.6)}" y="${Z(3.35)}" style="text-anchor:end">flue up the wall, through the roof</text>` +
@@ -363,7 +364,7 @@ function drawSide() {
   const X = x => +((x - XA) * S).toFixed(1), Z = z => +((ZT - z) * S).toFixed(1);
   const box = (cls, x0, z0, x1, z1, extra = '') => `<rect class="${cls}" x="${X(x0)}" y="${Z(z1)}" width="${((x1 - x0) * S).toFixed(1)}" height="${((z1 - z0) * S).toFixed(1)}"${extra}/>`;
   const txt = (cls, x, z, t, anchor) => `<text class="${cls}" x="${X(x)}" y="${Z(z)}"${anchor ? ` style="text-anchor:${anchor}"` : ''}>${t}</text>`;
-  const RG = 2.9 / 17, GO = 0.29, foot = 9.09, deckEnd = 8.19, restTop = -2.9 + 12 * RG;   // the garage flight: 11 treads up to the rest against the back wall, the run across is in front of this cut
+  const RG = 2.9 / 17, GO = 0.29, foot = 10.09, deckEnd = 9.19, restTop = -2.9 + 12 * RG;   // the garage flight: 11 treads up to the 2.00 rest against the back wall, the run across is in front of this cut
   let s = '';
   // the ground: the hill behind and under the hill end, the pit the garage sits in, the apron in front
   s += `<path class="ground" d="M${X(XA)},${Z(0.8)} L${X(4.8)},${Z(0.8)} L${X(4.8)},${Z(restTop - 0.2)} L${X(5.4)},${Z(restTop - 0.2)} L${X(5.4)},${Z(-2.9)} L${X(12)},${Z(-2.9)} L${X(XB)},${Z(-2.9)} L${X(XB)},${Z(ZB)} L${X(XA)},${Z(ZB)} Z"/>`;
@@ -382,11 +383,11 @@ function drawSide() {
   // garage flight: landing inside the door, then the steps up to the hall
   let d = `M${X(11.7)},${Z(-2.9)} L${X(foot)},${Z(-2.9)}`;
   for (let n = 1; n <= 11; n++) { const top = -2.9 + n * RG, x = foot - GO * (n - 1); d += ` L${X(x)},${Z(top)} L${X(x - GO)},${Z(top)}`; }
-  d += ` L${X(5.9)},${Z(restTop)} L${X(4.9)},${Z(restTop)}`;
+  d += ` L${X(6.9)},${Z(restTop)} L${X(4.9)},${Z(restTop)}`;
   s += `<path class="ground" d="${d} L${X(4.9)},${Z(-2.9)} Z" style="fill:var(--soft)"/>` + `<path class="tread" d="${d}"/>`;
-  s += `<rect class="hatch" x="${X(5.9)}" y="${Z(-1.7)}" width="${(0.87 * S).toFixed(1)}" height="${(1.2 * S).toFixed(1)}"/>` + txt('dim', 6.6, -2.2, 'cupboard under') + txt('dim', 5.4, -0.65, 'rest');
+  s += `<rect class="hatch" x="${X(6.9)}" y="${Z(-1.7)}" width="${(0.87 * S).toFixed(1)}" height="${(1.2 * S).toFixed(1)}"/>` + txt('dim', 7.5, -2.2, 'cupboard under') + txt('dim', 5.9, -0.65, 'rest 2.00');
   // the wedge lid over the hole, 0.10 thick: flat over the rest, on the flight's pitch down to the floor at x 7.9
-  s += `<path class="lid" style="fill:none" d="M${X(4.9)},${Z(restTop + 2.25)} L${X(5.9)},${Z(restTop + 2.25)} L${X(deckEnd + 0.1)},${Z(0.05)}"/>`;
+  s += `<path class="lid" style="fill:none" d="M${X(4.9)},${Z(restTop + 2.25)} L${X(6.9)},${Z(restTop + 2.25)} L${X(deckEnd + 0.1)},${Z(0.05)}"/>`;
   // the fire, beyond the cut on the north wall
   s += box('furn', 9.1, 0, 10.5, 0.3) + box('furn', 9.0, 0.3, 10.6, 0.35) + box('furn', 9.2, 0.35, 10.4, 1.35) + box('wall', 9.4, 0.35, 10.2, 0.95) + box('wedge', 9.2, 1.15, 10.4, 1.35) + `<path class="furn" d="M${X(9.2)},${Z(1.35)} L${X(10.4)},${Z(1.35)} L${X(10.4)},${Z(3.0)} L${X(9.2)},${Z(3.0)} Z"/>` + box('furn', 9.2, 3.0, 10.4, 4.97);
   // floor lines where there is a floor
@@ -401,7 +402,7 @@ function drawSide() {
     txt('dim', -0.9, 3.63, 'roof from x −0.4', 'start') + txt('dim', 0.4, 0.6, 'back wall at x 0, on the fill', 'start');
   // dimension lines: house 12.00 outside, garage 6.00 clear, hole 3.48
   const dim = (x0, x1, z, label) => `<line class="dline" x1="${X(x0)}" y1="${Z(z)}" x2="${X(x1)}" y2="${Z(z)}"/><line class="dline" x1="${X(x0)}" y1="${Z(z - 0.08)}" x2="${X(x0)}" y2="${Z(z + 0.08)}"/><line class="dline" x1="${X(x1)}" y1="${Z(z - 0.08)}" x2="${X(x1)}" y2="${Z(z + 0.08)}"/>` + txt('dtext', (x0 + x1) / 2, z + 0.08, label);
-  s += dim(0, 12.0, 3.9, '12.00 outside, x 0 to 12') + dim(5.7, 11.7, -3.25, '6.00 clear') + dim(4.9, 8.19, 2.4, 'hole 3.29') + dim(12.0, 13.0, 3.9, '1.00') + dim(0.3, 2.9, 1.6, '2.60, the bedroom') + dim(3.0, 4.8, 1.6, '1.80');
+  s += dim(0, 12.0, 3.9, '12.00 outside, x 0 to 12') + dim(5.7, 11.7, -3.25, '6.00 clear') + dim(4.9, 9.19, 2.4, 'hole 4.29') + dim(12.0, 13.0, 3.9, '1.00') + dim(0.3, 2.9, 1.6, '2.60, the bedroom') + dim(3.0, 4.8, 1.6, '1.80');
   const svg = document.getElementById('side');
   svg.setAttribute('viewBox', `0 0 ${X(XB)} ${Z(ZB) + 2}`);
   svg.innerHTML = s;
