@@ -1305,13 +1305,27 @@ body.sheet-open { overflow: hidden; }
 
 /* A liability's figures — owed, then each instalment — stack in the edit
  * slot, each under a small label that also carries its own "was …". */
-.ledit-stack { flex-direction: column; align-items: flex-end; gap: 6px; }
-.lknob { display: inline-flex; align-items: center; gap: 5px; }
+.ledit-stack {
+  flex: 1 1 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-left: 0;
+}
+
+/* Each field is a full-width row: ↺ at the left edge, the label taking what
+ * is left and wrapping if it must, the stepper never squeezed or pushed
+ * past the card's edge. */
+.lknob { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; }
+.lknob .amt-revert { margin-right: 2px; }
+.lknob .amt { flex: none; }
 .lknob-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
   font-size: 11px;
+  line-height: 1.25;
   color: var(--ink-3);
-  white-space: nowrap;
-  margin-right: 2px;
 }
 .lknob.is-edited .lknob-label { color: var(--accent); }
 
@@ -1319,7 +1333,7 @@ body.sheet-open { overflow: hidden; }
 .debt-edit {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 6px;
   margin-top: 10px;
   padding-top: 10px;
