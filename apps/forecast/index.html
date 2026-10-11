@@ -48,7 +48,8 @@
     html { color-scheme: dark; }
     html, body { margin: 0; padding: 0; background: #0d0f16; color: #f1f3fa;
       font-family: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
-      touch-action: manipulation; }
+      touch-action: manipulation;
+      -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     #app-loading {
       position: fixed; inset: 0; z-index: 9999;
       background: #0d0f16; color: #f1f3fa;
@@ -243,7 +244,10 @@
           go on the cycle card on the Timeline instead. The
           amounts on the income, budget and unplanned rows can be typed over — after
           a pay, say — and so can what each debt owes today and its instalments,
-          here or on its card on the Debts view;
+          here or on its card on the Debts view, where a debt not yet being paid
+          can also be given the pay its first instalment comes off, and "max
+          payout" sends it whatever each pay has left after every instalment and
+          the budget, on top of its own instalment;
           ↺ puts the committed figure back. Utilities is the one
           figure with no committed row: type the monthly default here. The Timeline
           takes these defaults and lets you switch each off or type over it for the
