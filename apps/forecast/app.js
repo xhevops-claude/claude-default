@@ -77,6 +77,7 @@
     rollover: false,
     off: Object.create(null),
     amounts: Object.create(null),   // id → native amount typed over a ledger row
+    debtStart: Object.create(null), // debt id → 'yyyy-mm/period': the pay its instalments start from
     custom: [],                     // income and expenses added on the Ledger
   };
   var defaults = null;
@@ -238,6 +239,43 @@
         currency: cur, amount: x.amount });
     });
     return knobs;
+  }
+
+  /* The pay a debt's instalments start from — 'yyyy-mm/period' picked on its
+   * fields (scenario.debtStart), else the data's `firstPay: { month, period }`,
+   * else null for a debt already being paid. Resolved to the day that pay
+   * lands: nothing comes off a pay arriving before it, interest accrues as
+   * usual meanwhile. */
+  function firstPayOf(d) {
+    var key = scenario.debtStart[d.id] != null ? scenario.debtStart[d.id]
+      : (d.firstPay && d.firstPay.month ? d.firstPay.month + '/' + (d.firstPay.period || payCycle().periods[0].id) : null);
+    if (!key) return null;
+    var ym = key.slice(0, 7);
+    var pid = key.slice(8);
+    var pers = periodsOf(parseInt(ym.slice(0, 4), 10), parseInt(ym.slice(5, 7), 10) - 1);
+    for (var i = 0; i < pers.length; i++) {
+      if (pers[i].id === pid) return { key: key, arrival: pers[i].arrival, rangeLabel: pers[i].rangeLabel };
+    }
+    return null;
+  }
+
+  // Can this pay carry the debt's instalment?
+  function payOpen(t, arrival) {
+    return !t.firstPay || arrival.getTime() >= t.firstPay.arrival.getTime();
+  }
+
+  // The pays a debt could start from: this month's and the next 18 months'.
+  function startChoices() {
+    var y = parseInt(data.startYm.slice(0, 4), 10);
+    var m = parseInt(data.startYm.slice(5, 7), 10) - 1;
+    var out = [];
+    for (var i = 0; i < 18; i++) {
+      periodsOf(y, m + i).forEach(function (p) {
+        out.push({ key: p.ym + '/' + p.id,
+          label: p.rangeLabel + ' pay → ' + dateLabel(p.arrival, { full: true }).replace(/^\w+ /, '') });
+      });
+    }
+    return out;
   }
 
   function debtById(id) {
@@ -498,6 +536,7 @@
           installments: installments,
           monthlyEur: monthlyEur,
           startIdx: ymToIndex(d.startMonth || data.startYm),
+          firstPay: firstPayOf(d),
           priority: typeof d.priority === 'number' ? d.priority : 99,
           sample: !!d.sample,
         });
@@ -830,7 +869,7 @@
         // Instalments pinned to this one pay period. They go in before the
         // flexible ones so a flexible claim sees what is genuinely left.
         byPriority.forEach(function (t) {
-          if (t.paidOff || idx < t.startIdx) return;
+          if (t.paidOff || idx < t.startIdx || !payOpen(t, per.arrival)) return;
           t.installments.forEach(function (inst) {
             if (inst.periods.length !== 1 || inst.periods[0] !== per.id) return;
             events.push({
@@ -854,7 +893,7 @@
         t.installments.forEach(function (inst) {
           if (inst.periods.length < 2) return;
           var cands = arriving.filter(function (per) {
-            return inst.periods.indexOf(per.id) !== -1;
+            return inst.periods.indexOf(per.id) !== -1 && payOpen(t, per.arrival);
           });
           if (!cands.length) return;
           var claim = { settled: false };
@@ -1003,7 +1042,7 @@
             for (var q = 0; q < byPriority.length; q++) {
               var nx = byPriority[q];
               if (pool <= EPS) break;
-              if (nx.paidOff || nx.balance <= EPS || idx < nx.startIdx) continue;
+              if (nx.paidOff || nx.balance <= EPS || idx < nx.startIdx || !payOpen(nx, ev.date)) continue;
               var extra = Math.min(pool, nx.balance);
               nx.balance -= extra;
               if (ev.date.getTime() <= today.getTime()) nx.balanceToday = nx.balance;
@@ -1061,7 +1100,10 @@
       for (k = 0; k < debts.length; k++) {
         if (!debts[k].monthRow) continue;
         var row = debts[k].monthRow;
-        if (row.paid <= row.interest + EPS && row.closing >= row.opening - EPS) {
+        // A month before the first instalment's pay has landed is not stalling.
+        var fp = debts[k].firstPay;
+        var paying = !fp || mkDate(startY, startM + i + 1, 0).getTime() >= fp.arrival.getTime();
+        if (paying && row.paid <= row.interest + EPS && row.closing >= row.opening - EPS) {
           debts[k].stalled = true;
         }
         debts[k].months.push(row);
@@ -1771,7 +1813,8 @@
       var splits = d.installments.map(function (x) {
         return nativeMoney(x.native, d.currency) + ' from the ' +
           x.periods.map(periodLabel).join(' pay, else the ') + ' pay';
-      }).join(' · ');
+      }).join(' · ') + (d.firstPay ? ' · first from the ' + d.firstPay.rangeLabel + ' pay (' +
+        dateLabel(d.firstPay.arrival) + ')' : '');
       var src = debtById(d.id);   // the data row behind the live debt, for its fields
 
       var rowsHtml = d.months.map(function (s, i) {
@@ -2226,7 +2269,7 @@
   // The stacked fields of a debt — used by its Ledger row and its card on
   // the Debts view alike, with the same data-amount/data-revert hooks.
   function debtFields(item) {
-    return debtKnobs(item).map(function (k) {
+    return debtStartField(item) + debtKnobs(item).map(function (k) {
       var kEdited = scenario.amounts[k.id] != null;
       var name = item.label + ' ' + k.label.toLowerCase();
       // ↺ goes at the far end, before the label, so it is nowhere near −.
@@ -2242,6 +2285,35 @@
         }) +
         '</span>';
     }).join('');
+  }
+
+  /* The pay a debt's instalments start from, as a picker above its fields:
+   * "Already paying" (the default) or one of the coming pays. The committed
+   * choice, if the data has one, is marked and ↺ goes back to it. */
+  function debtStartField(item) {
+    var committed = item.firstPay && item.firstPay.month
+      ? item.firstPay.month + '/' + (item.firstPay.period || payCycle().periods[0].id) : '';
+    var chosen = scenario.debtStart[item.id] != null ? scenario.debtStart[item.id] : committed;
+    var edited = scenario.debtStart[item.id] != null;
+    var choices = startChoices();
+    if (chosen && !choices.some(function (c) { return c.key === chosen; })) {
+      var fp = firstPayOf(item);
+      choices.unshift({ key: chosen, label: fp ? fp.rangeLabel + ' pay → ' +
+        dateLabel(fp.arrival, { full: true }).replace(/^\w+ /, '') : chosen });
+    }
+    return '<span class="lknob lknob-start' + (edited ? ' is-edited' : '') + '">' +
+      '<button class="amt-revert" type="button" data-revert-start="' + esc(item.id) + '"' +
+        (edited ? '' : ' hidden') + ' aria-label="Back to the committed first pay">↺</button>' +
+      '<span class="lknob-label">First instalment</span>' +
+      '<select class="lpick" data-debt-start="' + esc(item.id) + '" aria-label="' +
+        esc(item.label) + ' first instalment">' +
+        '<option value=""' + (chosen === '' ? ' selected' : '') + '>Already paying</option>' +
+        choices.map(function (c) {
+          return '<option value="' + esc(c.key) + '"' + (c.key === chosen ? ' selected' : '') + '>' +
+            esc(c.label) + (c.key === committed ? ' · committed' : '') + '</option>';
+        }).join('') +
+      '</select>' +
+      '</span>';
   }
 
   // Utilities has no committed row yet: its default is typed on the Ledger
@@ -2418,6 +2490,7 @@
       rollover: same('rollover') ? null : scenario.rollover,
       off: Object.keys(scenario.off),
       amounts: scenario.amounts,
+      debtStart: scenario.debtStart,
       custom: scenario.custom,
     }));
   }
@@ -2498,6 +2571,12 @@
         if (a != null) scenario.amounts[id] = a;
       });
     }
+    if (saved.debtStart && typeof saved.debtStart === 'object') {
+      Object.keys(saved.debtStart).forEach(function (id) {
+        var s = saved.debtStart[id];
+        if (typeof s === 'string' && /^\d{4}-\d{2}\/[a-z-]+$/.test(s)) scenario.debtStart[id] = s;
+      });
+    }
     if (Array.isArray(saved.custom)) {
       var iso = /^\d{4}-\d{2}-\d{2}$/;
       saved.custom.forEach(function (c) {
@@ -2576,6 +2655,7 @@
       scenario.rollover !== defaults.rollover ||
       Object.keys(scenario.off).length > 0 ||
       Object.keys(scenario.amounts).length > 0 ||
+      Object.keys(scenario.debtStart).length > 0 ||
       scenario.custom.length > 0;
   }
 
@@ -2691,6 +2771,12 @@
         recompute();
         return;
       }
+      var revertStart = ev.target.closest('[data-revert-start]');
+      if (revertStart) {
+        delete scenario.debtStart[revertStart.dataset.revertStart];
+        recompute();
+        return;
+      }
       var step = ev.target.closest('[data-lstep]');
       if (!step) return;
       var inp = step.parentNode.querySelector('.amt-in');
@@ -2709,6 +2795,16 @@
       commitAmount(inp);
     });
     el.addEventListener('change', function (ev) {
+      var pick = ev.target.closest('[data-debt-start]');
+      if (pick) {
+        var d = debtById(pick.dataset.debtStart);
+        var committed = d && d.firstPay && d.firstPay.month
+          ? d.firstPay.month + '/' + (d.firstPay.period || payCycle().periods[0].id) : '';
+        if (pick.value === committed) delete scenario.debtStart[pick.dataset.debtStart];
+        else scenario.debtStart[pick.dataset.debtStart] = pick.value;
+        recompute();
+        return;
+      }
       if (!ev.target.closest('.amt-in')) return;
       recompute();
     });
@@ -2899,6 +2995,7 @@
       scenario.rollover = defaults.rollover;
       scenario.off = Object.create(null);
       scenario.amounts = Object.create(null);
+      scenario.debtStart = Object.create(null);
       scenario.custom = [];
       renderLedger();
       recompute();

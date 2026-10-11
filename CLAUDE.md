@@ -387,7 +387,12 @@ liabilities alike, on the Ledger row and on the card in the Debts view:
 sit in `scenario.amounts` like any other; the balance field is **owed today**,
 the card's figure, so `commitDebtToday()` stores the opening balance that
 walks to what was typed, and `knobShown()` turns the override back into the
-figure on screen), the Utilities default (the one figure with no committed row: `utilitiesItem()`, base
+figure on screen; a debt not yet being paid also gets **the pay its first
+instalment comes off** — `firstPay: { month, period }` in the data, or the
+picker above its fields, kept in `scenario.debtStart` as `'yyyy-mm/period'` —
+and `firstPayOf()` resolves that to the day the pay lands: no instalment,
+pinned, flexible or cascaded, comes off a pay landing before it, while
+interest accrues as usual), the Utilities default (the one figure with no committed row: `utilitiesItem()`, base
 `budget.json`'s `utilities` or 0, typed over on the Ledger through `scenario.amounts`,
 paid with the month's first pay), plus the extra income the user
 adds on the Ledger (the Ledger adds income only — extra expenses are the cycle
