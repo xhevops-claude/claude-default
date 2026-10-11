@@ -396,12 +396,13 @@ instalment comes off** — `firstPay: { month, period }` in the data, or the
 picker above its fields, kept in `scenario.debtStart` as `'yyyy-mm/period'` —
 and `firstPayOf()` resolves that to the day the pay lands: no instalment,
 pinned, flexible or cascaded, comes off a pay landing before it, while
-interest accrues as usual; and the **"pay with what each pay has left"
-switch** — `sweep: true` in the data, or the toggle on its fields, kept in
-`scenario.debtSweep` — drops the fixed instalments and hangs a `sweep` event
-off every pay instead, settled by `settleSweeps()` at the end of the pay's
-day after its instalments, budget share, utilities, the day's extras and
-anything released from hold, capped by what the pay had left and what the
+interest accrues as usual; and the **"max payout" switch** — `sweep: true`
+in the data, or the toggle on its fields, kept in `scenario.debtSweep` —
+which keeps the fixed instalments and *also* hangs a `sweep` event off every
+pay, settled by `settleSweeps()` at the end of the pay's day: the order on a
+pay day is every debt's instalments by priority, the budget share, utilities,
+the day's extras and anything released from hold, and only then the
+leftovers to the swept debt, capped by what the pay had left and what the
 account holds; a month it gets nothing is not "stalled"), the Utilities default (the one figure with no committed row: `utilitiesItem()`, base
 `budget.json`'s `utilities` or 0, typed over on the Ledger through `scenario.amounts`,
 paid with the month's first pay), plus the extra income the user

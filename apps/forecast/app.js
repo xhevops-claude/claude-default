@@ -515,9 +515,7 @@
         // `payPeriod` is one period id, or several in preference order — the
         // instalment then comes off the earliest arriving pay that can cover
         // it, and off the last one regardless if none can.
-        // A swept debt has no fixed instalments: it takes what each pay has left.
-        var installments = sweep ? []
-          : (d.installments && d.installments.length)
+        var installments = (d.installments && d.installments.length)
           ? d.installments.map(function (x, i) {
             var ids = x.payPeriod == null ? [firstPeriodId] : [].concat(x.payPeriod);
             return { periods: ids, native: instAmount(i), eur: toEur(instAmount(i), cur) };
@@ -884,14 +882,14 @@
         // flexible ones so a flexible claim sees what is genuinely left.
         byPriority.forEach(function (t) {
           if (t.paidOff || idx < t.startIdx || !payOpen(t, per.arrival)) return;
-          // A swept debt takes whatever this pay has left once everything
-          // else on the day is done (settled at the end of the day).
+          // A debt on "max payout" also takes whatever this pay has left once
+          // its instalments, the budget share and the day's extras are done
+          // (settled at the end of the day) — on top of its instalments.
           if (t.sweep) {
             events.push({
               date: per.arrival, kind: 'loan', debt: t, sweep: true, planned: 0,
               label: t.label, detail: 'what the ' + per.rangeLabel + ' pay has left', eur: 0,
             });
-            return;
           }
           t.installments.forEach(function (inst) {
             if (inst.periods.length !== 1 || inst.periods[0] !== per.id) return;
@@ -1882,11 +1880,11 @@
       var pct = d.principalEur > 0
         ? Math.max(0, Math.min(100, ((d.principalEur - left) / d.principalEur) * 100)) : 100;
 
-      var splits = (d.sweep ? 'whatever each pay has left, once everything else is paid'
-        : d.installments.map(function (x) {
-          return nativeMoney(x.native, d.currency) + ' from the ' +
-            x.periods.map(periodLabel).join(' pay, else the ') + ' pay';
-        }).join(' · ')) + (d.firstPay ? ' · first from the ' + d.firstPay.rangeLabel + ' pay (' +
+      var splits = d.installments.map(function (x) {
+        return nativeMoney(x.native, d.currency) + ' from the ' +
+          x.periods.map(periodLabel).join(' pay, else the ') + ' pay';
+      }).join(' · ') + (d.sweep ? ' · plus whatever each pay has left after the budget' : '') +
+        (d.firstPay ? ' · first from the ' + d.firstPay.rangeLabel + ' pay (' +
         dateLabel(d.firstPay.arrival) + ')' : '');
       var src = debtById(d.id);   // the data row behind the live debt, for its fields
 
@@ -1921,7 +1919,7 @@
           esc(money(left)) + ' left</span></div>' +
         '<div class="progress"><span style="width:' + pct.toFixed(1) + '%"></span></div>' +
         '<div class="debt-facts">' +
-          '<span><i>Per month</i>' + (d.sweep ? 'what is left' : esc(money(d.monthlyEur))) + '</span>' +
+          '<span><i>Per month</i>' + esc(money(d.monthlyEur)) + (d.sweep ? ' + leftovers' : '') + '</span>' +
           '<span><i>Interest</i>' + esc(money(d.totalInterest)) + '</span>' +
           '<span><i>Cleared</i>' + (d.payoffDate ? esc(dateLabel(d.payoffDate, { full: true })) : '—') + '</span>' +
           '<span><i>Months</i>' + (d.payoffDate ? d.months.length : '—') + '</span>' +
@@ -2342,10 +2340,7 @@
   // The stacked fields of a debt — used by its Ledger row and its card on
   // the Debts view alike, with the same data-amount/data-revert hooks.
   function debtFields(item) {
-    var sweep = sweepOf(item);
-    // Swept: the instalment fields are moot, only the balance stays.
-    var knobs = sweep ? debtKnobs(item).slice(0, 1) : debtKnobs(item);
-    return debtStartField(item) + debtSweepField(item, sweep) + knobs.map(function (k) {
+    return debtStartField(item) + debtSweepField(item, sweepOf(item)) + debtKnobs(item).map(function (k) {
       var kEdited = scenario.amounts[k.id] != null;
       var name = item.label + ' ' + k.label.toLowerCase();
       // ↺ goes at the far end, before the label, so it is nowhere near −.
@@ -2392,18 +2387,19 @@
       '</span>';
   }
 
-  /* The "max" option: a switch that pays the debt with whatever each pay
-   * has left once its instalments, the budget share, utilities and the day's
-   * extras are done. ↺ goes back to the data's own setting. */
+  /* The "max payout" switch: on top of its instalments, the debt also gets
+   * whatever each pay has left once every instalment, the budget share,
+   * utilities and the day's extras are done. ↺ goes back to the data's own
+   * setting. */
   function debtSweepField(item, on) {
     var edited = scenario.debtSweep[item.id] != null;
     return '<span class="lknob lknob-sweep' + (edited ? ' is-edited' : '') + '">' +
       '<button class="amt-revert" type="button" data-revert-sweep="' + esc(item.id) + '"' +
         (edited ? '' : ' hidden') + ' aria-label="Back to the committed setting">↺</button>' +
-      '<span class="lknob-label">Pay with what each pay has left</span>' +
+      '<span class="lknob-label">Max payout · leftovers go here too</span>' +
       '<label class="lswitch"><input type="checkbox" data-debt-sweep="' + esc(item.id) + '"' +
         (on ? ' checked' : '') + ' aria-label="' + esc(item.label) +
-        ': pay with what each pay has left"><span class="lswitch-knob"></span></label>' +
+        ': max payout, leftovers of each pay go to this debt too"><span class="lswitch-knob"></span></label>' +
       '</span>';
   }
 
