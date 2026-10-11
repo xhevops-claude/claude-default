@@ -297,10 +297,14 @@ its payoff dates land within a month of the bank's final rows (Apr 2051 and
 Jan 2052).
 
 **The budget follows the pays, not the calendar.** It is not charged on a fixed
-day: each pay hands over whatever it still holds once its own instalments are
-met, and what the first pay could not cover rolls to the next one. The last pay
-of the month clears the remainder whether it can afford it or not — the money
-still has to be spent. Amounts therefore settle during the walk, not when the
+day: the month's budget is split evenly between the pays landing that month,
+and each pay hands over its share once its own instalments are met — so each
+half of the month keeps its living money, and a swept debt (below) can never
+take it. What a pay cannot cover rolls to the next one, and the last pay of
+the month clears the remainder whether it can afford it or not — the money
+still has to be spent. (Before the sweep option existed the first pay took
+the whole budget if it could; with a sweep that left the second pay with
+nothing to live on.) Amounts therefore settle during the walk, not when the
 events are created. `chargeDay` is only the fallback for a month where no pay
 lands at all.
 
@@ -389,7 +393,19 @@ liabilities alike, on the Ledger row and on the card in the Debts view:
 sit in `scenario.amounts` like any other; the balance field is **owed today**,
 the card's figure, so `commitDebtToday()` stores the opening balance that
 walks to what was typed, and `knobShown()` turns the override back into the
-figure on screen), the Utilities default (the one figure with no committed row: `utilitiesItem()`, base
+figure on screen; a debt not yet being paid also gets **the pay its first
+instalment comes off** — `firstPay: { month, period }` in the data, or the
+picker above its fields, kept in `scenario.debtStart` as `'yyyy-mm/period'` —
+and `firstPayOf()` resolves that to the day the pay lands: no instalment,
+pinned, flexible or cascaded, comes off a pay landing before it, while
+interest accrues as usual; and the **"max payout" switch** — `sweep: true`
+in the data, or the toggle on its fields, kept in `scenario.debtSweep` —
+which keeps the fixed instalments and *also* hangs a `sweep` event off every
+pay, settled by `settleSweeps()` at the end of the pay's day: the order on a
+pay day is every debt's instalments by priority, the budget share, utilities,
+the day's extras and anything released from hold, and only then the
+leftovers to the swept debt, capped by what the pay had left and what the
+account holds; a month it gets nothing is not "stalled"), the Utilities default (the one figure with no committed row: `utilitiesItem()`, base
 `budget.json`'s `utilities` or 0, typed over on the Ledger through `scenario.amounts`,
 paid with the month's first pay), plus the extra income the user
 adds on the Ledger (the Ledger adds income only — extra expenses are the cycle
