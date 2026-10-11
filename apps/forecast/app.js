@@ -940,9 +940,10 @@
           payEvents.forEach(function (pe, pIdx) {
             events.push({
               date: pe.date, kind: 'budget', field: 'budget', budgetDraw: true,
+              payIdx: pIdx, payCount: payEvents.length,
               isLastPay: pIdx === payEvents.length - 1,
-              label: budgetLabel, detail: 'what the ' + pe.period.rangeLabel +
-                ' pay has left after loans',
+              label: budgetLabel, detail: (payEvents.length > 1 ? 'the ' + pe.period.rangeLabel +
+                ' pay’s share, after loans' : 'from the ' + pe.period.rangeLabel + ' pay, after loans'),
               eur: 0,
             });
           });
@@ -1051,9 +1052,14 @@
         if (ev.kind === 'income' && ev.period) payLeft = ev.eur;
 
         if (ev.kind === 'budget' && ev.budgetDraw) {
-          // The last pay of the month clears the rest whether it can afford it
+          // The month's budget is split evenly between its pays, so each pay
+          // keeps the living money for its half (a sweep cannot take it). A
+          // pay that cannot afford its share rolls the shortfall to the next;
+          // the last pay of the month clears the rest whether it can afford it
           // or not — the money still has to be spent.
-          var draw = ev.isLastPay ? budgetLeft : Math.min(budgetLeft, Math.max(0, payLeft));
+          var shareDue = ev.isLastPay ? budgetLeft : Math.max(0, Math.min(budgetLeft,
+            (budgetTotal * (ev.payIdx + 1) / ev.payCount) - (budgetTotal - budgetLeft)));
+          var draw = ev.isLastPay ? shareDue : Math.min(shareDue, Math.max(0, payLeft));
           if (draw <= EPS) continue;
           ev.eur = -draw;
           budgetLeft -= draw;

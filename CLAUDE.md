@@ -295,10 +295,14 @@ its payoff dates land within a month of the bank's final rows (Apr 2051 and
 Jan 2052).
 
 **The budget follows the pays, not the calendar.** It is not charged on a fixed
-day: each pay hands over whatever it still holds once its own instalments are
-met, and what the first pay could not cover rolls to the next one. The last pay
-of the month clears the remainder whether it can afford it or not — the money
-still has to be spent. Amounts therefore settle during the walk, not when the
+day: the month's budget is split evenly between the pays landing that month,
+and each pay hands over its share once its own instalments are met — so each
+half of the month keeps its living money, and a swept debt (below) can never
+take it. What a pay cannot cover rolls to the next one, and the last pay of
+the month clears the remainder whether it can afford it or not — the money
+still has to be spent. (Before the sweep option existed the first pay took
+the whole budget if it could; with a sweep that left the second pay with
+nothing to live on.) Amounts therefore settle during the walk, not when the
 events are created. `chargeDay` is only the fallback for a month where no pay
 lands at all.
 
