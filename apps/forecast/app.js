@@ -845,8 +845,10 @@
       arriving.forEach(function (per, payIdx) {
         events.push({
           date: per.arrival, kind: 'income', period: per,
-          label: 'Pay · ' + per.rangeLabel,
-          detail: per.days + ' days × ' + nativeMoney(per.perDay, data.income.workday.currency) +
+          // The pay day is the point; the work period it pays for is detail.
+          label: 'Pay',
+          detail: 'for ' + per.rangeLabel + ' · ' + per.days + ' days × ' +
+            nativeMoney(per.perDay, data.income.workday.currency) +
             ' · Toptal ' + dateLabel(per.toptal) + ' → Wise ' + dateLabel(per.arrival),
           eur: per.grossEur,
         });
