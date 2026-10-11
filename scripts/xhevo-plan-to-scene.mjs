@@ -80,7 +80,7 @@ const HALF = 1.0;                    // the bedrooms' floor
 const VOID = HALF - 0.2;             // the underside of their slab: 0.80 clear under them
 /* The flight to the bedrooms: the treads the plan counts (after any winders), and the last riser is the landing's
    floor; the riser height follows from that count. */
-const UP = G.find((e) => e[0] === 'stair' && e[2] < 5);
+const UP = G.find((e) => e[0] === 'stair' && e[1] < 4);   // the bedrooms' flight, in the middle of the house; the garage's is by the north wall
 const WINDERS = G.some((e) => e[0] === 'winders') ? 3 : 0;
 const RISERS = WINDERS + UP[6] + 1, RISER = r3(HALF / RISERS);
 
@@ -131,8 +131,6 @@ function wallBoxes(x, y, w, h, doors) {
   return parts;
 }
 
-const lid = (x) => 2.12 - (x - 5.7) * (0.171 / 0.29);   // top of the wedge lid over the garage flight, by the house's x
-
 /* ── the ground floor ─────────────────────────────────────────────────── */
 const doors = doorsOf(G);
 let walls = 0, parts = 0, furn = 0, chairs = 0, fills = 0;
@@ -152,10 +150,8 @@ for (const e of G) {
       for (const q of pieces) toRoof({ id: `wall-${k}${q.tag ? '-' + q.tag : ''}`, name: `${name}${q.y0 ? ', on the fill from ' + q.y0 : ''}`, group: ['walls', 'Walls'], px: q.x, py: q.y, w: q.w, h: q.h, color: WALL, opacity: 0.5, short: `Wall ${k}${q.tag ? ', ' + q.tag : ''}` }, q.y0);
     }
   } else if (t === 'part') {
-    /* The stair box's own walls are not floor to ceiling: its room-side wall follows the lid (built below, one wall
-       with its top on the slope, from the wedge) and its end wall is where the lid meets the floor. Nothing stands
-       past the hole's end: the landing is open to the living room. The triangle above the slope is the living room's. */
-    if (x === 5.5 && (y === 9.18 || y === 5.7)) continue;
+    /* The stair box's own walls ('box') are not floor to ceiling: they follow the lid, built with the garage flight below. */
+    if (e[5] === 'box') continue;
     /* Every other ground-floor partition is at the hill end, holding the fill under the bedrooms: the living room's
        back wall and the walls round the stairwell and the landing. They stand to the top of the fill, 1.25; the
        bedrooms' slab and their own walls carry on above. */
@@ -204,16 +200,9 @@ for (const e of G) {
     box({ id: 'chimney-top', name: `Chimney, ${r3(w1)} × ${r3(h1)}, from the eaves through the roof to ${above}, 1.00 over it`, group: ['fire', 'Fire'], px: x1, py: y1, w: w1, h: h1, y0: EAVES, y1: above, color: STONE, solid: true, short: 'Chimney top' });
   } else if (t === 'stone') {
     toRoof({ id: 'stone', name: 'Stone on the north wall, floor to roof', group: ['fire', 'Fire'], px: x, py: y, w, h, color: STONE, solid: true, short: 'Stone' });
-  } else if (t === 'wedge') {
-    /* The lid over the garage flight: one flat plane on the flight's pitch, 0.10 thick, 2.12 over the landing and
-       down to the floor at the hole's end (`end: 'x'` pitches a box along the house). The box's room-side wall is one
-       wall whose top is that same line. */
-    const top0 = lid(y), top1 = lid(y + h);
-    works.push({ ...pitched({ id: 'lid', name: `Stair lid, one plane on the flight's pitch, ${r3(top0)} at the landing to ${r3(top1)} at the end`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: y, w, h, y0: top0 - 0.1, y1: top0, color: WEDGE, opacity: 0.45, short: 'Lid' }), y0End: r3(top1 - 0.1), y1End: r3(top1) });
-    works.push({ ...pitched({ id: 'box-wall', name: 'Stair box wall, room side, its top on the lid', group: ['stair-box', 'Stair box (the wedge)'], px: x - 0.1, py: y, w: 0.1, h, y0: 0, y1: top0, color: PART, opacity: 0.5, short: 'Box wall' }), y1End: r3(top1) });
   } else if (t === 'stair') {
     const [, , , , , axis, count] = e;
-    if (y > 5) continue;   // the garage flight is the garage's: already in the scene
+    if (x > 4) continue;   // the garage flight, by the north wall, is built below
     /* The flight to the bedrooms, `count` treads after any winders: along the house into the hill (plan 'y', up toward
        the back wall) or across it toward the yard (plan 'x'). Each tread is a riser up; the last riser is the
        landing's floor at the half level. */
@@ -242,12 +231,65 @@ for (const e of G) {
   }
   /* 'door', 'win', 'roof', 'dashrect' and the labels draw nothing: doors cut the walls above, the roof is not modelled. */
 }
-/* The shelves on the stair box's face: one triangle matching the wall behind them, the whole length of the hole,
-   their top on the lid line from 2.12 at the landing down to the floor at the hole's end. */
+/* ── the garage flight, an L ──────────────────────────────────────────── */
+/* 17 risers of 2.90/17 on 0.29 goings: up along the north wall from the foot, the rest (riser 12, a quarter landing) in the
+   corner against the garage's west wall, then across the house and out on the floor beside the foot of the bedrooms' flight.
+   The treads, the rest, the railings on the open sides below the floor, the storage under and the landing inside the door
+   are written here (ids stair-*). Over the hole a lid keeps HEAD over every nosing: a plane on the pitch over the run, flat
+   over the rest, a plane across over the run out; the box walls (the plan's 'box' partitions) and the shelves take their
+   tops from it. */
+const RUN = G.find((e) => e[0] === 'stair' && e[1] > 4 && e[5] === 'y');
+const REST = G.find((e) => e[0] === 'quarter');
+const TURN = G.find((e) => e[0] === 'stair' && e[1] > 4 && e[5] === 'x');
+const GARAGE = -2.9, RG = 2.9 / 17, GO = 0.29, HEAD = 2.2, SLOPE = RG / GO;
+const [, rpx, rpy, rw, rh, , rN] = RUN, [, qpx, qpy, qw, qh] = REST, [, tpx, tpy, tw, th, , tN] = TURN;
+const foot = r3(rpy + rh), turnEnd = r3(tpx + tw);
+const topOf = (n) => r3(GARAGE + n * RG), restTop = topOf(rN + 1);
+const holeAt = r3(foot - GO * ((-HEAD - GARAGE) / RG - 1));   // the lid meets the floor at the nosing that is HEAD below it
+const lidRun = (py) => r3(Math.max(0, (holeAt - py) * SLOPE));
+const lidTurn = (px) => r3(restTop + HEAD + (turnEnd - px) * SLOPE);
+const lidAt = (px, py) => px < turnEnd - 1e-6 ? lidTurn(px) : py >= rpy - 1e-6 ? lidRun(py) : r3(restTop + HEAD);
+const GSTAIR = [{ id: 'garage', name: 'Garage' }, { id: 'stair', name: 'Stair to the hall' }];
+const TREADS = { id: 'treads', name: 'Treads' }, RAIL = { id: 'railing', name: 'Railing' }, STAIR_C = '#6fc79c', STORE_C = '#e2834f';
+const gpiece = (id, name, short, sub, color, opacity, px, py, w, h, y0, y1) => works.push({ id, group: 'house', color, opacity, parent: sub ? [...GSTAIR, sub] : GSTAIR, short, house: true, name, x0: r3(py), x1: r3(py + h), z0: r3(7 - px - w), z1: r3(7 - px), y0: r3(y0), y1: r3(y1) });
+for (let n = 1; n <= rN; n++) gpiece(`stair-${String(n).padStart(2, '0')}`, `Tread ${n} of ${rN + tN}, riser ${n}, up along the north wall, top at ${topOf(n)}`, `Tread ${n}`, TREADS, STAIR_C, 0.3, rpx, foot - GO * n, rw, GO, topOf(n) - 0.2, topOf(n));
+gpiece('stair-rest', `The rest, riser ${rN + 1}: a quarter landing ${qw} × ${qh} in the corner at ${restTop}, where the flight turns across the house`, 'Rest', TREADS, STAIR_C, 0.3, qpx, qpy, qw, qh, restTop - 0.2, restTop);
+for (let k = 1; k <= tN; k++) { const n = rN + 1 + k; gpiece(`stair-${n - 1}`, `Tread ${n - 1} of ${rN + tN}, riser ${n}, across the house, top at ${topOf(n)}`, `Tread ${n - 1}`, TREADS, STAIR_C, 0.3, turnEnd - GO * k, tpy, GO, th, topOf(n) - 0.2, topOf(n)); }
+let rails = 0;
+for (let a = 1; a <= rN; a += 4) { const b = Math.min(a + 3, rN); gpiece(`stair-railing-${++rails}`, `Railing along the run, treads ${a} to ${b}, 1.0 m above the top one`, `Railing ${rails}`, RAIL, STAIR_C, 0.3, rpx - 0.05, foot - GO * b, 0.05, GO * (b - a + 1), GARAGE, topOf(b) + 1); }
+gpiece(`stair-railing-${++rails}`, 'Railing along the run across, its open side to the garage, up to the floor where the box wall takes over', `Railing ${rails}`, RAIL, STAIR_C, 0.3, tpx, tpy + th, tw, 0.05, GARAGE, 0);
+const storeTop = GARAGE + 1.2;
+let clear = 1; while (topOf(clear) - 0.2 < storeTop) clear++;   // the first tread whose underside clears the storage
+const storeEnd = r3(foot - GO * (clear - 1));
+if (storeEnd > rpy + 0.3) gpiece('stair-storage', `Cupboard under the run, ${r3(storeEnd - rpy)} long, 1.20 high, open to the garage`, 'Cupboard under', null, STORE_C, 0.2, rpx, rpy, rw, storeEnd - rpy, GARAGE, storeTop);
+/* The rest and the run across are cut into the hill behind the garage's west wall: that wall is cut down to their underside
+   there, the living room's back wall is carried down to it to hold the hill, and a slab on the ground carries them. */
+const bedTop = r3(restTop - 0.2), turnW = r3(7 - tpx - (7 - qpx - qw));   // the width across of the rest and the run, from the north wall
+gpiece('stair-wall-west', `Garage wall, west, under the rest and the run across: cut down to ${bedTop}`, 'West, cut down', null, '#d28cff', 0.35, tpx, 5.4, turnW, 0.3, -3.1, bedTop);
+gpiece('stair-wall-back', `The living room's back wall carried down to ${bedTop} behind the rest and the run across, holding the hill`, 'Back wall, down', null, '#d28cff', 0.35, tpx, 4.8, turnW, 0.1, bedTop, 0);
+gpiece('stair-bed', `Slab on the ground under the rest and the run across, ${r3(bedTop - 0.2)} to ${bedTop}`, 'Slab under', null, SLAB, 0.3, tpx, 4.9, turnW, 0.8, bedTop - 0.2, bedTop);
+gpiece('stair-landing', `Landing inside the door, ${r3(11.7 - foot)} × ${rw}`, 'Landing', null, STAIR_C, 0.3, rpx, foot, rw, 11.7 - foot, GARAGE, GARAGE + 0.02);
+const BOXG = ['stair-box', 'Stair box (the wedge)'];
+works.push({ ...pitched({ id: 'lid-run', name: `Stair lid over the run, on the pitch, ${lidRun(rpy)} at the rest down to the floor at x ${holeAt}`, group: BOXG, px: rpx, py: rpy, w: rw, h: holeAt - rpy, y0: lidRun(rpy) - 0.1, y1: lidRun(rpy), color: WEDGE, opacity: 0.45, short: 'Lid, run' }), y0End: -0.1, y1End: 0 });
+box({ id: 'lid-rest', name: `Stair lid over the rest, flat at ${r3(restTop + HEAD)}`, group: BOXG, px: qpx, py: qpy, w: qw, h: qh, y0: restTop + HEAD - 0.1, y1: restTop + HEAD, color: WEDGE, opacity: 0.45, short: 'Lid, rest' });
+{
+  const piece = pitched({ id: 'lid-turn', name: `Stair lid over the run across, ${lidTurn(turnEnd)} at the rest to ${lidTurn(tpx)} at the way out`, group: BOXG, px: tpx, py: tpy, w: tw, h: th, y0: lidTurn(turnEnd) - 0.1, y1: lidTurn(turnEnd), color: WEDGE, opacity: 0.45, short: 'Lid, across' });
+  delete piece.end;   // the slope runs across the house
+  works.push({ ...piece, y0End: r3(lidTurn(tpx) - 0.1), y1End: lidTurn(tpx) });
+}
+let boxes = 0;
+for (const e of G) {
+  if (e[0] !== 'part' || e[5] !== 'box') continue;
+  const [, x, y, w, h] = e, k = ++boxes, along = h > w;
+  const piece = pitched({ id: `box-wall-${k}`, name: `Stair box wall ${k}, from the floor, its top on the lid`, group: BOXG, px: x, py: y, w, h, y0: 0, y1: lidAt(x + w, y), color: PART, opacity: 0.5, short: `Box wall ${k}` });
+  if (along) works.push({ ...piece, y1End: lidAt(x + w, y + h) });
+  else { delete piece.end; works.push({ ...piece, y1End: lidAt(x, y) }); }
+}
+/* The shelves on the stair box's face: one triangle matching the wall behind them, the run's length, their top on the lid. */
 const shelf = G.find((e) => e[0] === 'furn' && e[1] === 5.25 && !e[5]);
 if (shelf) {
   const [, x, y, w, h] = shelf;
-  works.push({ ...pitched({ id: 'shelves', name: `Shelves on the stair wall, matching it: top on the lid, ${r3(lid(y))} to ${r3(lid(y + h))} at x ${r3(y + h)}`, group: ['stair-box', 'Stair box (the wedge)'], px: x, py: y, w, h, y0: 0, y1: lid(y), color: OAK, solid: true, short: 'Shelves' }), y1End: r3(lid(y + h)) });
+  works.push({ ...pitched({ id: 'shelves', name: `Shelves on the stair wall, matching it: top on the lid, ${lidRun(y)} at x ${r3(y)} to ${lidRun(y + h)} at x ${r3(y + h)}`, group: BOXG, px: x, py: y, w, h, y0: 0, y1: lidRun(y), color: OAK, solid: true, short: 'Shelves' }), y1End: lidRun(y + h) });
 }
 /* The shelves came in as a plain furn box above; drop that one in favour of the triangle. */
 const plain = shelf ? works.findIndex((w) => w.x0 === r3(shelf[2]) && w.z1 === r3(7 - 5.25) && w.id !== 'gf-shelves') : -1;
@@ -307,9 +349,9 @@ scene.levels = [
   ...scene.levels.filter((l) => l.id !== 'first' && l.id !== 'half').map((l) => l.id === 'ground' ? { ...l, x0: X_LIVING, extendFront: 2, height: EAVES } : l),
   { id: 'half', name: 'Bedrooms, half level', elevation: HALF, height: r3(EAVES - HALF), x0: X_BACK, x1: HALF_X1 },
 ];
-scene.works = [...scene.works.filter((w) => w.id !== 'balcony' && !/^(gf|hl|rf)-/.test(w.id)), ...works];
+scene.works = [...scene.works.filter((w) => w.id !== 'balcony' && !/^(gf|hl|rf|stair)-/.test(w.id)), ...works];
 scene.notes = scene.notes.filter((t) => !/^(Ground floor|The house) from the plan page/.test(t));
-scene.notes.push(`The house from the plan page (projects/xhevo/house/plan.html, generated by scripts/xhevo-plan-to-scene.mjs): ${12 - X_BACK} × 7 outside, x ${X_BACK} to 12, with the glass gable at the front over the garage and no balcony, under one roof (ids rf-*) that starts ${EAVES.toFixed(2)} over the ground floor at the side walls and rises at 0.7 per metre to ${r3(RIDGE)} at the ridge, 0.40 past the sides and the back, 1.00 past the glass; the side walls stand to the eaves, the back wall and the glass are gables under it; behind the living room's back wall the outer walls start on the fill at ${VOID}, since there is no house under the bedrooms. Walls 0.30, partitions 0.10. The kitchen is an L in the yard corner, its back wall only as long as the kitchen. The garage flight's hole x 5.7 to 9.18 is closed by a lid on the flight's pitch (2.12 at the landing, down to the floor at x 9.18), one plane. The two bedrooms are half a level up at +${HALF} over the hill end, x ${X_BACK} to 4.9, on fill (ids gf-fill-*): the hill end is not dug, the soil is made up to ${VOID} and their slab sits on it (ids hl-* for the bedrooms). ${RISERS} risers of ${RISER} climb from the living room against its back wall in the middle of the house, ${UP[6]} treads of ${r3(UP[4] / UP[6])}, ${r3(UP[4])} long, the last riser being the landing's floor in the wall line; the landing faces two doors side by side, and through each the bedroom is straight ahead and its bath to the side, in the front corner on the outer wall; the wall between the bedrooms is on the centre line. The slab of the ground level still runs unbroken under the stair hole: levels have no holes.`);
+scene.notes.push(`The house from the plan page (projects/xhevo/house/plan.html, generated by scripts/xhevo-plan-to-scene.mjs): ${12 - X_BACK} × 7 outside, x ${X_BACK} to 12, with the glass gable at the front over the garage and no balcony, under one roof (ids rf-*) that starts ${EAVES.toFixed(2)} over the ground floor at the side walls and rises at 0.7 per metre to ${r3(RIDGE)} at the ridge, 0.40 past the sides and the back, 1.00 past the glass; the side walls stand to the eaves, the back wall and the glass are gables under it; behind the living room's back wall the outer walls start on the fill at ${VOID}, since there is no house under the bedrooms. Walls 0.30, partitions 0.10. The kitchen is an L in the yard corner, its back wall only as long as the kitchen. The garage flight is an L (ids stair-*): ${rN} treads up along the north wall from x ${foot}, the rest (a quarter landing) at ${restTop} in the corner at x ${qpy} to ${r3(qpy + qh)}, then ${tN} treads across the house and out on the floor at the foot of the bedrooms' flight, 17 risers of ${r3(RG)} on ${GO}; the rest and the run across sit against the living room's back wall, cut into the hill behind the garage's west wall (that wall cut down to ${r3(restTop - 0.2)} there, the back wall carried down to it); its hole from x ${holeAt} is under a lid ${HEAD} over every nosing, on the pitch over the run, flat at ${r3(restTop + HEAD)} over the rest, ${lidTurn(tpx)} at the way out. The two bedrooms are half a level up at +${HALF} over the hill end, x ${X_BACK} to 4.9, on fill (ids gf-fill-*): the hill end is not dug, the soil is made up to ${VOID} and their slab sits on it (ids hl-* for the bedrooms). ${RISERS} risers of ${RISER} climb from the living room against its back wall in the middle of the house, ${UP[6]} treads of ${r3(UP[4] / UP[6])}, ${r3(UP[4])} long, half of it cut into the fill past the living room's back wall, the last riser being the bedrooms' floor; at the top step the yard bedroom's door in its front wall, and beside it a small hall open to the stair, the north bath's door on its side and the north bedroom's at its end, so the toilet is reached without crossing a bedroom; the 0.50 in front of the yard bedroom's wall beside the flight's upper half is a ledge at +${HALF}, open to the living room; the yard bedroom is the whole yard half; the wall between the bedrooms is on the centre line. The slab of the ground level still runs unbroken under the stair hole: levels have no holes.`);
 /* The file's own layout: one-space indent, short arrays and the objects inside arrays on one line. */
 function fmt(v, depth, inArray) {
   const pad = ' '.repeat(depth), inner = ' '.repeat(depth + 1);
