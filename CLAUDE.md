@@ -93,6 +93,8 @@ After such a hang, the next publish can fail fast (under a minute) with `Deploym
 
 After pushing changes, the final line of every reply must be a clickable Markdown link to the deployed preview, in the form `[Preview](https://xhevops-claude.github.io/claude-default/preview/<slug>/<short-sha>/...)`, where `<short-sha>` is the 7-char SHA of the commit you just pushed (`git rev-parse --short=7 HEAD`). No bold, no surrounding `**`, no extra prose on that line — just the link. If the change targets a specific sub-experience, deep-link directly into it (e.g. `.../preview/<slug>/<short-sha>/apps/locator/`). If pushed to `main`, link to the corresponding production path under `https://xhevops-claude.github.io/claude-default/`.
 
+**Xhevo house (`projects/xhevo/house/`) is the exception: the plan comes first, the 3D viewer on demand.** The user set this on 2026-10-09. For a change to that project the link to post is the plan sheet, `.../preview/<slug>/<short-sha>/projects/xhevo/house/plan.html` (the scene is generated from it, so the sheet is the drawing to read), as `[Plan](…)` on the final line. Post the viewer link (`.../apps/planner/#/xhevo/house`) only when asked for a preview or the 3D; then put it on its own line after the plan's.
+
 ### Branch names — match the work
 
 Branch names should describe what's on the branch. Use the pattern `claude/<short-kebab-descriptor>` (lowercase, dashes, no random suffixes), e.g. `claude/terrain-app`, `claude/locator-cluster-fix`, `claude/cdn-pipeline-retry`. If the work pivots mid-branch (you started on X and ended up shipping Y), rename the branch before opening the PR so the name still tells the truth.
