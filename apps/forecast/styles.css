@@ -1302,6 +1302,17 @@ body.sheet-open { overflow: hidden; }
 }
 .lknob.is-edited .lknob-label { color: var(--accent); }
 
+/* The same fields on a debt card, under the instalment line. */
+.debt-edit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--surface-2);
+}
+
 .lremove {
   width: 26px;
   height: 26px;

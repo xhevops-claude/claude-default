@@ -381,7 +381,13 @@ off (`scenario.monthOff`, ym → ids: the chips at the top of each later month's
 container, for the budget, utilities and each addition), the what-if sliders, the ledger's
 excluded ids and the amounts typed over its additional-income, budget and
 unplanned-expense rows (`scenario.amounts`, id → native amount; the engine
-reads those rows through `amountOf()`), the Utilities default (the one figure with no committed row: `utilitiesItem()`, base
+reads those rows through `amountOf()`), every debt's figures (loans and
+liabilities alike, on the Ledger row and on the card in the Debts view:
+`debtKnobs()` makes virtual rows `<id>/principal` and `<id>/inst/<n>` that
+sit in `scenario.amounts` like any other; the balance field is **owed today**,
+the card's figure, so `commitDebtToday()` stores the opening balance that
+walks to what was typed, and `knobShown()` turns the override back into the
+figure on screen), the Utilities default (the one figure with no committed row: `utilitiesItem()`, base
 `budget.json`'s `utilities` or 0, typed over on the Ledger through `scenario.amounts`,
 paid with the month's first pay), plus the extra income the user
 adds on the Ledger (the Ledger adds income only — extra expenses are the cycle
@@ -469,6 +475,15 @@ their projects. Changing the hash reloads the page (one scene at a time).
   narrows further where it needs to — `touch-action: pan-y` on the shell's pager
   and on Forecast's chart, `none` on a game canvas — and that wins over the
   global rule for those elements.
+  **CSS alone was not enough**: iOS kept zooming on a double tap (inside the
+  shell's iframe in particular), so every page also carries the inline
+  `no-double-tap-zoom` script right after its viewport meta. It cancels the
+  `touchend` of the second of two quick taps (which is what stops the zoom on
+  iOS) and sends that tap's click by hand, so two quick taps on a stepper
+  still count twice; a moved finger, a pinch, a field, a canvas, SVG and
+  anything with `touch-action: none` are left alone. It is copied into every
+  `index.html` on purpose (pages share no code) — a new page gets the same
+  block, verbatim, from any existing one.
 - `escapeHTML` in `app.js` is used for any user-supplied or registry-supplied string interpolated into innerHTML. Anything that ends up in `cardHtml`/`cardInner` MUST go through it.
 - Prefer adding `comingSoon: true` (with no `url`) over removing entries — the shell renders these as locked tiles with a shake animation on tap.
 - Tile colors come from CSS variables `--tile-<slug>` defined in `themes.css` — these are constant across themes so each card keeps its identity. Add a `--tile-<newslug>` when adding a tile.
