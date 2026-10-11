@@ -271,18 +271,21 @@
     return !t.firstPay || arrival.getTime() >= t.firstPay.arrival.getTime();
   }
 
-  // The pays a debt could start from: this month's and the next 18 months'.
+  // The pays a debt could start from, in landing order: the next one to
+  // land (which may be last month's second half, under net-20) first, then
+  // the following 18 months' worth. Pays already landed are not offered.
   function startChoices() {
-    var y = parseInt(data.startYm.slice(0, 4), 10);
-    var m = parseInt(data.startYm.slice(5, 7), 10) - 1;
+    var y = today.getUTCFullYear();
+    var m = today.getUTCMonth();
     var out = [];
-    for (var i = 0; i < 18; i++) {
+    for (var i = -3; i < 18; i++) {
       periodsOf(y, m + i).forEach(function (p) {
-        out.push({ key: p.ym + '/' + p.id,
+        if (p.arrival.getTime() <= today.getTime()) return;
+        out.push({ key: p.ym + '/' + p.id, arrival: p.arrival,
           label: p.rangeLabel + ' pay → ' + dateLabel(p.arrival, { full: true }).replace(/^\w+ /, '') });
       });
     }
-    return out;
+    return out.sort(function (a, b) { return a.arrival - b.arrival; });
   }
 
   function debtById(id) {
