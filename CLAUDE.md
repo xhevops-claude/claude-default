@@ -484,6 +484,17 @@ their projects. Changing the hash reloads the page (one scene at a time).
   anything with `touch-action: none` are left alone. It is copied into every
   `index.html` on purpose (pages share no code) — a new page gets the same
   block, verbatim, from any existing one.
+- **Controls are not text.** With the zoom gone, a double tap or a long press
+  on a button selected its glyph and raised the copy callout instead. Every
+  stylesheet ends with a "Controls are not text" rule: `button, a, label,
+  summary, [role="button"]` get `user-select: none` (with the `-webkit-`
+  form) and `-webkit-touch-callout: none`; Forecast's version also covers
+  its rows, tabs, steppers and field labels. Inputs stay selectable. A tap
+  target that is not one of those elements needs adding to that rule.
+- **Keep ↺ away from −.** On a stepper, the revert button sits at the far
+  end of the control, not beside the − button, and is the same size as a
+  step button (`.amt-revert`, 30px with a 12px gap): a thumb aiming at −
+  reset the figure twice before this.
 - `escapeHTML` in `app.js` is used for any user-supplied or registry-supplied string interpolated into innerHTML. Anything that ends up in `cardHtml`/`cardInner` MUST go through it.
 - Prefer adding `comingSoon: true` (with no `url`) over removing entries — the shell renders these as locked tiles with a shake animation on tap.
 - Tile colors come from CSS variables `--tile-<slug>` defined in `themes.css` — these are constant across themes so each card keeps its identity. Add a `--tile-<newslug>` when adding a tile.

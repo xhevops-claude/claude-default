@@ -1704,7 +1704,9 @@
           esc(opts.label) + '">−</button>' +
         '<input class="amt-in" type="text" inputmode="decimal" autocomplete="off"' +
           ' enterkeyhint="done" ' + opts.attrs +
-          (opts.value != null ? ' value="' + esc(String(opts.value)) + '"' : '') + '>' +
+          // wide enough for the figure it opens with (a balance can run to 8 digits)
+          (opts.value != null ? ' value="' + esc(String(opts.value)) + '" style="width: max(72px, ' +
+            (String(opts.value).length + 1) + 'ch)"' : '') + '>' +
         '<span class="amt-cur">' + esc(opts.cur) + '</span>' +
         '<button class="amt-step" type="button" ' + opts.step + '="1" aria-label="Raise ' +
           esc(opts.label) + '">+</button>' +
@@ -2227,14 +2229,16 @@
     return debtKnobs(item).map(function (k) {
       var kEdited = scenario.amounts[k.id] != null;
       var name = item.label + ' ' + k.label.toLowerCase();
+      // ↺ goes at the far end, before the label, so it is nowhere near −.
       return '<span class="lknob' + (kEdited ? ' is-edited' : '') + '">' +
+        '<button class="amt-revert" type="button" data-revert="' + esc(k.id) + '"' +
+          (kEdited ? '' : ' hidden') + ' aria-label="Back to the committed amount">↺</button>' +
         '<span class="lknob-label">' + esc(k.label) +
           (kEdited ? ' · was ' + esc(nativeMoney(knobShown(k, true), k.currency)) : '') + '</span>' +
         amountField({
           label: name, cur: curSymbol(k.currency), step: 'data-lstep', value: knobShown(k),
           attrs: 'data-amount="' + esc(k.id) + '" aria-label="' + esc(name) +
             ' in ' + esc(k.currency) + '"',
-          revert: 'data-revert="' + esc(k.id) + '"' + (kEdited ? '' : ' hidden'),
         }) +
         '</span>';
     }).join('');
