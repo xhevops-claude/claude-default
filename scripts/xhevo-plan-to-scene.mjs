@@ -239,7 +239,7 @@ for (const e of G) {
    over the rest, a plane across over the run out; the box walls (the plan's 'box' partitions) and the shelves take their
    tops from it. */
 const RUN = G.find((e) => e[0] === 'stair' && e[1] > 4 && e[5] === 'y');
-const REST = G.find((e) => e[0] === 'quarter');
+const RESTS = G.filter((e) => e[0] === 'quarter'), REST = RESTS[0];   // the rest, then any nook beside the run across
 const TURN = G.find((e) => e[0] === 'stair' && e[1] > 4 && e[5] === 'x');
 const GARAGE = -2.9, RG = 2.9 / 17, GO = 0.29, HEAD = 2.2, SLOPE = RG / GO;
 const [, rpx, rpy, rw, rh, , rN] = RUN, [, qpx, qpy, qw, qh] = REST, [, tpx, tpy, tw, th, , tN] = TURN;
@@ -248,12 +248,12 @@ const topOf = (n) => r3(GARAGE + n * RG), restTop = topOf(rN + 1);
 const holeAt = r3(foot - GO * ((-HEAD - GARAGE) / RG - 1));   // the lid meets the floor at the nosing that is HEAD below it
 const lidRun = (py) => r3(Math.max(0, (holeAt - py) * SLOPE));
 const lidTurn = (px) => r3(restTop + HEAD + (turnEnd - px) * SLOPE);
-const lidAt = (px, py) => px < turnEnd - 1e-6 ? lidTurn(px) : py >= rpy - 1e-6 ? lidRun(py) : r3(restTop + HEAD);
+const lidAt = (px, py) => py >= rpy - 1e-6 ? lidRun(py) : py >= tpy - 1e-6 && px < turnEnd - 1e-6 ? lidTurn(px) : r3(restTop + HEAD);   // over the run, the run across, or the rest and its nook
 const GSTAIR = [{ id: 'garage', name: 'Garage' }, { id: 'stair', name: 'Stair to the hall' }];
 const TREADS = { id: 'treads', name: 'Treads' }, RAIL = { id: 'railing', name: 'Railing' }, STAIR_C = '#6fc79c', STORE_C = '#e2834f';
 const gpiece = (id, name, short, sub, color, opacity, px, py, w, h, y0, y1) => works.push({ id, group: 'house', color, opacity, parent: sub ? [...GSTAIR, sub] : GSTAIR, short, house: true, name, x0: r3(py), x1: r3(py + h), z0: r3(7 - px - w), z1: r3(7 - px), y0: r3(y0), y1: r3(y1) });
 for (let n = 1; n <= rN; n++) gpiece(`stair-${String(n).padStart(2, '0')}`, `Tread ${n} of ${rN + tN}, riser ${n}, up along the north wall, top at ${topOf(n)}`, `Tread ${n}`, TREADS, STAIR_C, 0.3, rpx, foot - GO * n, rw, GO, topOf(n) - 0.2, topOf(n));
-gpiece('stair-rest', `The rest, riser ${rN + 1}: a quarter landing ${qw} × ${qh} in the corner at ${restTop}, where the flight turns across the house`, 'Rest', TREADS, STAIR_C, 0.3, qpx, qpy, qw, qh, restTop - 0.2, restTop);
+RESTS.forEach(([, x, y, w, h, label], i) => gpiece(i ? `stair-rest-${i + 1}` : 'stair-rest', i ? `The rest's ${label}, ${w} × ${h} at ${restTop}, beside the run across` : `The rest, riser ${rN + 1}: a landing ${w} × ${h} in the corner at ${restTop}, where the flight turns across the house`, i ? 'Nook' : 'Rest', TREADS, STAIR_C, 0.3, x, y, w, h, restTop - 0.2, restTop));
 for (let k = 1; k <= tN; k++) { const n = rN + 1 + k; gpiece(`stair-${n - 1}`, `Tread ${n - 1} of ${rN + tN}, riser ${n}, across the house, top at ${topOf(n)}`, `Tread ${n - 1}`, TREADS, STAIR_C, 0.3, turnEnd - GO * k, tpy, GO, th, topOf(n) - 0.2, topOf(n)); }
 let rails = 0;
 for (let a = 1; a <= rN; a += 4) { const b = Math.min(a + 3, rN); gpiece(`stair-railing-${++rails}`, `Railing along the run, treads ${a} to ${b}, 1.0 m above the top one`, `Railing ${rails}`, RAIL, STAIR_C, 0.3, rpx - 0.05, foot - GO * b, 0.05, GO * (b - a + 1), GARAGE, topOf(b) + 1); }
@@ -262,6 +262,7 @@ const storeTop = GARAGE + 1.2;
 let clear = 1; while (topOf(clear) - 0.2 < storeTop) clear++;   // the first tread whose underside clears the storage
 const storeEnd = r3(foot - GO * (clear - 1));
 if (storeEnd > rpy + 0.3) gpiece('stair-storage', `Cupboard under the run, ${r3(storeEnd - rpy)} long, 1.20 high, open to the garage`, 'Cupboard under', null, STORE_C, 0.2, rpx, rpy, rw, storeEnd - rpy, GARAGE, storeTop);
+if (tpy > 5.7) gpiece('stair-storage-2', `Cupboard under the run across, ${tw} × ${th}, 1.20 high, open to the garage`, 'Cupboard under, 2', null, STORE_C, 0.2, tpx, tpy, tw, th, GARAGE, storeTop);
 /* The rest and the run across are cut into the hill behind the garage's west wall: that wall is cut down to their underside
    there, the living room's back wall is carried down to it to hold the hill, and a slab on the ground carries them. */
 const bedTop = r3(restTop - 0.2), turnW = r3(7 - tpx - (7 - qpx - qw));   // the width across of the rest and the run, from the north wall
@@ -271,7 +272,7 @@ gpiece('stair-bed', `Slab on the ground under the rest and the run across, ${r3(
 gpiece('stair-landing', `Landing inside the door, ${r3(11.7 - foot)} × ${rw}`, 'Landing', null, STAIR_C, 0.3, rpx, foot, rw, 11.7 - foot, GARAGE, GARAGE + 0.02);
 const BOXG = ['stair-box', 'Stair box (the wedge)'];
 works.push({ ...pitched({ id: 'lid-run', name: `Stair lid over the run, on the pitch, ${lidRun(rpy)} at the rest down to the floor at x ${holeAt}`, group: BOXG, px: rpx, py: rpy, w: rw, h: holeAt - rpy, y0: lidRun(rpy) - 0.1, y1: lidRun(rpy), color: WEDGE, opacity: 0.45, short: 'Lid, run' }), y0End: -0.1, y1End: 0 });
-box({ id: 'lid-rest', name: `Stair lid over the rest, flat at ${r3(restTop + HEAD)}`, group: BOXG, px: qpx, py: qpy, w: qw, h: qh, y0: restTop + HEAD - 0.1, y1: restTop + HEAD, color: WEDGE, opacity: 0.45, short: 'Lid, rest' });
+RESTS.forEach(([, x, y, w, h], i) => box({ id: i ? `lid-rest-${i + 1}` : 'lid-rest', name: `Stair lid over the ${i ? 'nook' : 'rest'}, flat at ${r3(restTop + HEAD)}`, group: BOXG, px: x, py: y, w, h, y0: restTop + HEAD - 0.1, y1: restTop + HEAD, color: WEDGE, opacity: 0.45, short: i ? 'Lid, nook' : 'Lid, rest' }));
 {
   const piece = pitched({ id: 'lid-turn', name: `Stair lid over the run across, ${lidTurn(turnEnd)} at the rest to ${lidTurn(tpx)} at the way out`, group: BOXG, px: tpx, py: tpy, w: tw, h: th, y0: lidTurn(turnEnd) - 0.1, y1: lidTurn(turnEnd), color: WEDGE, opacity: 0.45, short: 'Lid, across' });
   delete piece.end;   // the slope runs across the house
@@ -281,9 +282,10 @@ let boxes = 0;
 for (const e of G) {
   if (e[0] !== 'part' || e[5] !== 'box') continue;
   const [, x, y, w, h] = e, k = ++boxes, along = h > w;
-  const piece = pitched({ id: `box-wall-${k}`, name: `Stair box wall ${k}, from the floor, its top on the lid`, group: BOXG, px: x, py: y, w, h, y0: 0, y1: lidAt(x + w, y), color: PART, opacity: 0.5, short: `Box wall ${k}` });
+  const ey = along ? y : y - 1e-3;   // a wall across the house takes the lid of the zone it closes, just north of it
+  const piece = pitched({ id: `box-wall-${k}`, name: `Stair box wall ${k}, from the floor, its top on the lid`, group: BOXG, px: x, py: y, w, h, y0: 0, y1: lidAt(x + w, ey), color: PART, opacity: 0.5, short: `Box wall ${k}` });
   if (along) works.push({ ...piece, y1End: lidAt(x + w, y + h) });
-  else { delete piece.end; works.push({ ...piece, y1End: lidAt(x, y) }); }
+  else { delete piece.end; works.push({ ...piece, y1End: lidAt(x, ey) }); }
 }
 /* The shelves on the stair box's face: one triangle matching the wall behind them, the run's length, their top on the lid. */
 const shelf = G.find((e) => e[0] === 'furn' && e[1] === 5.25 && !e[5]);
@@ -351,7 +353,7 @@ scene.levels = [
 ];
 scene.works = [...scene.works.filter((w) => w.id !== 'balcony' && !/^(gf|hl|rf|stair)-/.test(w.id)), ...works];
 scene.notes = scene.notes.filter((t) => !/^(Ground floor|The house) from the plan page/.test(t));
-scene.notes.push(`The house from the plan page (projects/xhevo/house/plan.html, generated by scripts/xhevo-plan-to-scene.mjs): ${12 - X_BACK} × 7 outside, x ${X_BACK} to 12, with the glass gable at the front over the garage and no balcony, under one roof (ids rf-*) that starts ${EAVES.toFixed(2)} over the ground floor at the side walls and rises at 0.7 per metre to ${r3(RIDGE)} at the ridge, 0.40 past the sides and the back, 1.00 past the glass; the side walls stand to the eaves, the back wall and the glass are gables under it; behind the living room's back wall the outer walls start on the fill at ${VOID}, since there is no house under the bedrooms. Walls 0.30, partitions 0.10. The kitchen is an L in the yard corner, its back wall only as long as the kitchen. The garage flight is an L (ids stair-*): ${rN} treads up along the north wall from x ${foot}, the rest (a quarter landing) at ${restTop} in the corner at x ${qpy} to ${r3(qpy + qh)}, then ${tN} treads across the house and out on the floor at the foot of the bedrooms' flight, 17 risers of ${r3(RG)} on ${GO}; the rest and the run across sit against the living room's back wall, cut into the hill behind the garage's west wall (that wall cut down to ${r3(restTop - 0.2)} there, the back wall carried down to it); its hole from x ${holeAt} is under a lid ${HEAD} over every nosing, on the pitch over the run, flat at ${r3(restTop + HEAD)} over the rest, ${lidTurn(tpx)} at the way out. The two bedrooms are half a level up at +${HALF} over the hill end, x ${X_BACK} to 4.9, on fill (ids gf-fill-*): the hill end is not dug, the soil is made up to ${VOID} and their slab sits on it (ids hl-* for the bedrooms). ${RISERS} risers of ${RISER} climb from the living room against its back wall in the middle of the house, ${UP[6]} treads of ${r3(UP[4] / UP[6])}, ${r3(UP[4])} long, half of it cut into the fill past the living room's back wall, the last riser being the bedrooms' floor; at the top step the yard bedroom's door in its front wall, and beside it a small hall open to the stair, the north bath's door on its side and the north bedroom's at its end, so the toilet is reached without crossing a bedroom; the 0.50 in front of the yard bedroom's wall beside the flight's upper half is a ledge at +${HALF}, open to the living room; the yard bedroom is the whole yard half; the wall between the bedrooms is on the centre line. The slab of the ground level still runs unbroken under the stair hole: levels have no holes.`);
+scene.notes.push(`The house from the plan page (projects/xhevo/house/plan.html, generated by scripts/xhevo-plan-to-scene.mjs): ${12 - X_BACK} × 7 outside, x ${X_BACK} to 12, with the glass gable at the front over the garage and no balcony, under one roof (ids rf-*) that starts ${EAVES.toFixed(2)} over the ground floor at the side walls and rises at 0.7 per metre to ${r3(RIDGE)} at the ridge, 0.40 past the sides and the back, 1.00 past the glass; the side walls stand to the eaves, the back wall and the glass are gables under it; behind the living room's back wall the outer walls start on the fill at ${VOID}, since there is no house under the bedrooms. Walls 0.30, partitions 0.10. The kitchen is an L in the yard corner, its back wall only as long as the kitchen. The garage flight is an L (ids stair-*): ${rN} treads up along the north wall from x ${foot}, the rest, a ${qw} × ${qh} landing at ${restTop} in the corner at x ${qpy} to ${r3(qpy + qh)}, then ${tN} treads across the house along the living room's back wall and out on the floor beside the bedrooms' flight, 17 risers of ${r3(RG)} on ${GO}; the rest and the run across sit against the living room's back wall, cut into the hill behind the garage's west wall (that wall cut down to ${r3(restTop - 0.2)} there, the back wall carried down to it); its hole from x ${holeAt} is under a lid ${HEAD} over every nosing, on the pitch over the run, flat at ${r3(restTop + HEAD)} over the rest, ${lidTurn(tpx)} at the way out. The two bedrooms are half a level up at +${HALF} over the hill end, x ${X_BACK} to 4.9, on fill (ids gf-fill-*): the hill end is not dug, the soil is made up to ${VOID} and their slab sits on it (ids hl-* for the bedrooms). ${RISERS} risers of ${RISER} climb from the living room against its back wall in the middle of the house, ${UP[6]} treads of ${r3(UP[4] / UP[6])}, ${r3(UP[4])} long, half of it cut into the fill past the living room's back wall, the last riser being the bedrooms' floor; at the top step the yard bedroom's door in its front wall, and beside it a small hall open to the stair, the north bath's door on its side and the north bedroom's at its end, so the toilet is reached without crossing a bedroom; the 0.50 in front of the yard bedroom's wall beside the flight's upper half is a ledge at +${HALF}, open to the living room; the yard bedroom is the whole yard half; the wall between the bedrooms is on the centre line. The slab of the ground level still runs unbroken under the stair hole: levels have no holes.`);
 /* The file's own layout: one-space indent, short arrays and the objects inside arrays on one line. */
 function fmt(v, depth, inArray) {
   const pad = ' '.repeat(depth), inner = ' '.repeat(depth + 1);
