@@ -78,6 +78,7 @@
     off: Object.create(null),
     amounts: Object.create(null),   // id → native amount typed over a ledger row
     debtStart: Object.create(null), // debt id → 'yyyy-mm/period': the pay its instalments start from
+    debtSweep: Object.create(null), // debt id → true/false: paid with whatever each pay has left
     custom: [],                     // income and expenses added on the Ledger
   };
   var defaults = null;
@@ -257,6 +258,12 @@
       if (pers[i].id === pid) return { key: key, arrival: pers[i].arrival, rangeLabel: pers[i].rangeLabel };
     }
     return null;
+  }
+
+  // Is the debt paid with whatever each pay has left (the "max" option)?
+  // The toggle on its fields (scenario.debtSweep) wins over the data's `sweep`.
+  function sweepOf(d) {
+    return scenario.debtSweep[d.id] != null ? !!scenario.debtSweep[d.id] : !!d.sweep;
   }
 
   // Can this pay carry the debt's instalment?
@@ -501,10 +508,13 @@
         var knobs = debtKnobs(d);
         var principal = amountOf(knobs[0]);
         var instAmount = function (i) { return amountOf(knobs[i + 1]); };
+        var sweep = sweepOf(d);
         // `payPeriod` is one period id, or several in preference order — the
         // instalment then comes off the earliest arriving pay that can cover
         // it, and off the last one regardless if none can.
-        var installments = (d.installments && d.installments.length)
+        // A swept debt has no fixed instalments: it takes what each pay has left.
+        var installments = sweep ? []
+          : (d.installments && d.installments.length)
           ? d.installments.map(function (x, i) {
             var ids = x.payPeriod == null ? [firstPeriodId] : [].concat(x.payPeriod);
             return { periods: ids, native: instAmount(i), eur: toEur(instAmount(i), cur) };
@@ -537,6 +547,7 @@
           monthlyEur: monthlyEur,
           startIdx: ymToIndex(d.startMonth || data.startYm),
           firstPay: firstPayOf(d),
+          sweep: sweep,
           priority: typeof d.priority === 'number' ? d.priority : 99,
           sample: !!d.sample,
         });
@@ -870,6 +881,15 @@
         // flexible ones so a flexible claim sees what is genuinely left.
         byPriority.forEach(function (t) {
           if (t.paidOff || idx < t.startIdx || !payOpen(t, per.arrival)) return;
+          // A swept debt takes whatever this pay has left once everything
+          // else on the day is done (settled at the end of the day).
+          if (t.sweep) {
+            events.push({
+              date: per.arrival, kind: 'loan', debt: t, sweep: true, planned: 0,
+              label: t.label, detail: 'what the ' + per.rangeLabel + ' pay has left', eur: 0,
+            });
+            return;
+          }
           t.installments.forEach(function (inst) {
             if (inst.periods.length !== 1 || inst.periods[0] !== per.id) return;
             events.push({
@@ -946,7 +966,10 @@
 
       events.sort(function (a, b) {
         if (a.date.getTime() !== b.date.getTime()) return a.date - b.date;
-        return (KIND_ORDER[a.kind] || KIND_LAST) - (KIND_ORDER[b.kind] || KIND_LAST);
+        // A sweep takes what the pay has left, so it goes after everything.
+        var oa = a.sweep ? KIND_LAST : (KIND_ORDER[a.kind] || KIND_LAST - 1);
+        var ob = b.sweep ? KIND_LAST : (KIND_ORDER[b.kind] || KIND_LAST - 1);
+        return oa - ob;
       });
 
       // 3. Apply them in order, keeping a running account balance.
@@ -960,11 +983,45 @@
       // zero waits in `heldExpenses` and is released once a pay has arrived
       // and that day's instalments and budget are done with — pay first, then
       // the expense. It carries across months for as long as it has to.
+      var pendingSweeps = [];   // swept debts' claims on the pay being processed
+
+      /* A swept debt takes what the pay has left at the end of its day — after
+       * its instalments, the budget share, utilities, the day's extras and
+       * anything released from hold — and never more than the account holds. */
+      function settleSweeps(atDate) {
+        var list = pendingSweeps;
+        pendingSweeps = [];
+        list.forEach(function (ev) {
+          var t = ev.debt;
+          if (t.paidOff || t.balance <= EPS) return;
+          var avail = Math.max(0, payLeft);
+          if (atDate.getTime() >= floor.getTime()) avail = Math.min(avail, Math.max(0, cumulative));
+          var due = Math.min(avail, t.balance);
+          if (due <= EPS) return;
+          t.balance -= due;
+          if (atDate.getTime() <= today.getTime()) t.balanceToday = t.balance;
+          if (t.monthRow) {
+            t.monthRow.paid += due;
+            t.monthRow.closing = t.balance;
+            t.monthRow.payments.push({ date: atDate, eur: due });
+          }
+          if (t.balance <= EPS) { t.balance = 0; t.paidOff = true; t.payoffDate = atDate; }
+          payLeft -= due;
+          ev.eur = -due;
+          if (atDate.getTime() < floor.getTime()) return;
+          cumulative += ev.eur;
+          ev.balance = cumulative;
+          sums.loan += due;
+          applied.push(ev);
+        });
+      }
+
       function releaseHeld(atDate, force) {
         for (var q = 0; q < heldExpenses.length;) {
           var dv = heldExpenses[q];
           if (!force && cumulative + dv.eur < -EPS) { q++; continue; }
           heldExpenses.splice(q, 1);
+          payLeft += dv.eur;   // it came out of what the pay had left
           if (!dv.heldNote) {
             dv.detail = (dv.detail ? dv.detail + ' · ' : '') +
               'held from ' + dateLabel(dv.date) + ' until the money landed';
@@ -983,8 +1040,10 @@
         // go out now — after that day's instalments and budget, never before.
         if (k > 0 && events[k].date.getTime() > events[k - 1].date.getTime()) {
           releaseHeld(events[k - 1].date, false);
+          settleSweeps(events[k - 1].date);
         }
         var ev = events[k];
+        if (ev.sweep) { pendingSweeps.push(ev); continue; }   // settled at the end of the day
 
         if (ev.kind === 'income' && ev.period) payLeft = ev.eur;
 
@@ -1079,6 +1138,7 @@
           continue;
         }
 
+        if (ev.kind === 'extra') payLeft += ev.eur;   // spent from what the pay had left
         cumulative += ev.eur;
         ev.balance = cumulative;
         applied.push(ev);
@@ -1088,7 +1148,10 @@
         else sums.extra += -ev.eur;
       }
 
-      if (events.length) releaseHeld(events[events.length - 1].date, false);
+      if (events.length) {
+        releaseHeld(events[events.length - 1].date, false);
+        settleSweeps(events[events.length - 1].date);
+      }
 
       // Nothing waits for ever. At the end of the visible window anything
       // still held goes out anyway, so the balance shows the shortfall rather
@@ -1103,7 +1166,7 @@
         // A month before the first instalment's pay has landed is not stalling.
         var fp = debts[k].firstPay;
         var paying = !fp || mkDate(startY, startM + i + 1, 0).getTime() >= fp.arrival.getTime();
-        if (paying && row.paid <= row.interest + EPS && row.closing >= row.opening - EPS) {
+        if (paying && !debts[k].sweep && row.paid <= row.interest + EPS && row.closing >= row.opening - EPS) {
           debts[k].stalled = true;
         }
         debts[k].months.push(row);
@@ -1810,10 +1873,11 @@
       var pct = d.principalEur > 0
         ? Math.max(0, Math.min(100, ((d.principalEur - left) / d.principalEur) * 100)) : 100;
 
-      var splits = d.installments.map(function (x) {
-        return nativeMoney(x.native, d.currency) + ' from the ' +
-          x.periods.map(periodLabel).join(' pay, else the ') + ' pay';
-      }).join(' · ') + (d.firstPay ? ' · first from the ' + d.firstPay.rangeLabel + ' pay (' +
+      var splits = (d.sweep ? 'whatever each pay has left, once everything else is paid'
+        : d.installments.map(function (x) {
+          return nativeMoney(x.native, d.currency) + ' from the ' +
+            x.periods.map(periodLabel).join(' pay, else the ') + ' pay';
+        }).join(' · ')) + (d.firstPay ? ' · first from the ' + d.firstPay.rangeLabel + ' pay (' +
         dateLabel(d.firstPay.arrival) + ')' : '');
       var src = debtById(d.id);   // the data row behind the live debt, for its fields
 
@@ -1848,7 +1912,7 @@
           esc(money(left)) + ' left</span></div>' +
         '<div class="progress"><span style="width:' + pct.toFixed(1) + '%"></span></div>' +
         '<div class="debt-facts">' +
-          '<span><i>Per month</i>' + esc(money(d.monthlyEur)) + '</span>' +
+          '<span><i>Per month</i>' + (d.sweep ? 'what is left' : esc(money(d.monthlyEur))) + '</span>' +
           '<span><i>Interest</i>' + esc(money(d.totalInterest)) + '</span>' +
           '<span><i>Cleared</i>' + (d.payoffDate ? esc(dateLabel(d.payoffDate, { full: true })) : '—') + '</span>' +
           '<span><i>Months</i>' + (d.payoffDate ? d.months.length : '—') + '</span>' +
@@ -2269,7 +2333,10 @@
   // The stacked fields of a debt — used by its Ledger row and its card on
   // the Debts view alike, with the same data-amount/data-revert hooks.
   function debtFields(item) {
-    return debtStartField(item) + debtKnobs(item).map(function (k) {
+    var sweep = sweepOf(item);
+    // Swept: the instalment fields are moot, only the balance stays.
+    var knobs = sweep ? debtKnobs(item).slice(0, 1) : debtKnobs(item);
+    return debtStartField(item) + debtSweepField(item, sweep) + knobs.map(function (k) {
       var kEdited = scenario.amounts[k.id] != null;
       var name = item.label + ' ' + k.label.toLowerCase();
       // ↺ goes at the far end, before the label, so it is nowhere near −.
@@ -2313,6 +2380,21 @@
             esc(c.label) + (c.key === committed ? ' · committed' : '') + '</option>';
         }).join('') +
       '</select>' +
+      '</span>';
+  }
+
+  /* The "max" option: a switch that pays the debt with whatever each pay
+   * has left once its instalments, the budget share, utilities and the day's
+   * extras are done. ↺ goes back to the data's own setting. */
+  function debtSweepField(item, on) {
+    var edited = scenario.debtSweep[item.id] != null;
+    return '<span class="lknob lknob-sweep' + (edited ? ' is-edited' : '') + '">' +
+      '<button class="amt-revert" type="button" data-revert-sweep="' + esc(item.id) + '"' +
+        (edited ? '' : ' hidden') + ' aria-label="Back to the committed setting">↺</button>' +
+      '<span class="lknob-label">Pay with what each pay has left</span>' +
+      '<label class="lswitch"><input type="checkbox" data-debt-sweep="' + esc(item.id) + '"' +
+        (on ? ' checked' : '') + ' aria-label="' + esc(item.label) +
+        ': pay with what each pay has left"><span class="lswitch-knob"></span></label>' +
       '</span>';
   }
 
@@ -2491,6 +2573,7 @@
       off: Object.keys(scenario.off),
       amounts: scenario.amounts,
       debtStart: scenario.debtStart,
+      debtSweep: scenario.debtSweep,
       custom: scenario.custom,
     }));
   }
@@ -2569,6 +2652,11 @@
       Object.keys(saved.amounts).forEach(function (id) {
         var a = num(saved.amounts[id], 0, Infinity);
         if (a != null) scenario.amounts[id] = a;
+      });
+    }
+    if (saved.debtSweep && typeof saved.debtSweep === 'object') {
+      Object.keys(saved.debtSweep).forEach(function (id) {
+        if (typeof saved.debtSweep[id] === 'boolean') scenario.debtSweep[id] = saved.debtSweep[id];
       });
     }
     if (saved.debtStart && typeof saved.debtStart === 'object') {
@@ -2656,6 +2744,7 @@
       Object.keys(scenario.off).length > 0 ||
       Object.keys(scenario.amounts).length > 0 ||
       Object.keys(scenario.debtStart).length > 0 ||
+      Object.keys(scenario.debtSweep).length > 0 ||
       scenario.custom.length > 0;
   }
 
@@ -2777,6 +2866,12 @@
         recompute();
         return;
       }
+      var revertSweep = ev.target.closest('[data-revert-sweep]');
+      if (revertSweep) {
+        delete scenario.debtSweep[revertSweep.dataset.revertSweep];
+        recompute();
+        return;
+      }
       var step = ev.target.closest('[data-lstep]');
       if (!step) return;
       var inp = step.parentNode.querySelector('.amt-in');
@@ -2795,6 +2890,14 @@
       commitAmount(inp);
     });
     el.addEventListener('change', function (ev) {
+      var sw = ev.target.closest('[data-debt-sweep]');
+      if (sw) {
+        var sd = debtById(sw.dataset.debtSweep);
+        if (sd && sw.checked === !!sd.sweep) delete scenario.debtSweep[sw.dataset.debtSweep];
+        else scenario.debtSweep[sw.dataset.debtSweep] = sw.checked;
+        recompute();
+        return;
+      }
       var pick = ev.target.closest('[data-debt-start]');
       if (pick) {
         var d = debtById(pick.dataset.debtStart);
@@ -2996,6 +3099,7 @@
       scenario.off = Object.create(null);
       scenario.amounts = Object.create(null);
       scenario.debtStart = Object.create(null);
+      scenario.debtSweep = Object.create(null);
       scenario.custom = [];
       renderLedger();
       recompute();
