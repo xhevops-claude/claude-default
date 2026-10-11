@@ -1290,6 +1290,18 @@ body.sheet-open { overflow: hidden; }
 .ledit { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
 .lrow.is-off .ledit { text-decoration: none; }
 
+/* A liability's figures — owed, then each instalment — stack in the edit
+ * slot, each under a small label that also carries its own "was …". */
+.ledit-stack { flex-direction: column; align-items: flex-end; gap: 6px; }
+.lknob { display: inline-flex; align-items: center; gap: 5px; }
+.lknob-label {
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  margin-right: 2px;
+}
+.lknob.is-edited .lknob-label { color: var(--accent); }
+
 .lremove {
   width: 26px;
   height: 26px;

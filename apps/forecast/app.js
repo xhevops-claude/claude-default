@@ -208,11 +208,44 @@
   }
 
   // A ledger row's amount as the forecast should use it: what the user typed
-  // over it on the Ledger view, else what the data file says. Only the
-  // additional income, budget and unplanned-expense rows are editable there.
+  // over it on the Ledger view, else what the data file says. The additional
+  // income, budget and unplanned-expense rows are editable there, and so are
+  // a liability's figures through the virtual rows debtKnobs() makes.
   function amountOf(item) {
     var o = scenario.amounts[item.id];
     return o != null ? o : item.amount;
+  }
+
+  /* The figures of a liability that can be typed over on the Ledger — what is
+   * owed and each instalment — as virtual editable rows: `<id>/principal`
+   * first, then `<id>/inst/<n>` in the data's order (a debt with no
+   * `installments` gets one for its `monthlyPayment`). Keying them like any
+   * other row means scenario.amounts, ↺ and "was …" need nothing new.
+   * Mortgages have no knobs: their figures are the bank's plan. */
+  function debtKnobs(d) {
+    var cur = d.currency || 'EUR';
+    var knobs = [{ id: d.id + '/principal', label: 'Owed', currency: cur, amount: d.principal }];
+    var inst = (d.installments && d.installments.length)
+      ? d.installments : [{ payPeriod: null, amount: d.monthlyPayment }];
+    inst.forEach(function (x, i) {
+      var periods = x.payPeriod == null ? [payCycle().periods[0].id] : [].concat(x.payPeriod);
+      knobs.push({ id: d.id + '/inst/' + i, label: 'Pay ' + periods.map(periodLabel).join(' or '),
+        currency: cur, amount: x.amount });
+    });
+    return knobs;
+  }
+
+  // The virtual row behind a `<id>/…` key, or null if it is not a liability's.
+  function debtKnob(id) {
+    var slash = id.indexOf('/');
+    if (slash === -1) return null;
+    var list = data.liabilities.liabilities || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id !== id.slice(0, slash)) continue;
+      var knobs = debtKnobs(list[i]);
+      for (var j = 0; j < knobs.length; j++) if (knobs[j].id === id) return knobs[j];
+    }
+    return null;
   }
 
   function curSymbol(cur) {
@@ -361,15 +394,22 @@
       (list || []).forEach(function (d) {
         if (!isOn(d)) return;
         var cur = d.currency || 'EUR';
+        // A liability's balance and instalments can be typed over on the
+        // Ledger (see debtKnobs); a mortgage's come from the bank's plan.
+        var knobs = kind === 'liability' ? debtKnobs(d) : null;
+        var principal = knobs ? amountOf(knobs[0]) : d.principal;
+        var instAmount = function (i, base) { return knobs ? amountOf(knobs[i + 1]) : base; };
         // `payPeriod` is one period id, or several in preference order — the
         // instalment then comes off the earliest arriving pay that can cover
         // it, and off the last one regardless if none can.
         var installments = (d.installments && d.installments.length)
-          ? d.installments.map(function (x) {
+          ? d.installments.map(function (x, i) {
             var ids = x.payPeriod == null ? [firstPeriodId] : [].concat(x.payPeriod);
-            return { periods: ids, native: x.amount, eur: toEur(x.amount, cur) };
+            var amt = instAmount(i, x.amount);
+            return { periods: ids, native: amt, eur: toEur(amt, cur) };
           })
-          : [{ periods: [firstPeriodId], native: d.monthlyPayment, eur: toEur(d.monthlyPayment, cur) }];
+          : [{ periods: [firstPeriodId], native: instAmount(0, d.monthlyPayment),
+              eur: toEur(instAmount(0, d.monthlyPayment), cur) }];
         var monthlyEur = installments.reduce(function (a, b) { return a + b.eur; }, 0);
 
         out.push({
@@ -391,8 +431,8 @@
               note: r.note || '',
             };
           }).sort(function (a, b) { return a.idx - b.idx; }),
-          principalEur: toEur(d.principal, cur),
-          principalNative: d.principal,
+          principalEur: toEur(principal, cur),
+          principalNative: principal,
           installments: installments,
           monthlyEur: monthlyEur,
           startIdx: ymToIndex(d.startMonth || data.startYm),
@@ -2101,6 +2141,38 @@
       '</div>';
   }
 
+  /* A liability's row: one field per figure (what is owed, then each
+   * instalment), stacked and labelled, each with its own ↺ and "was …" so an
+   * edit to one never hides the committed value of another. Same .ledit
+   * hooks as editableRow, so the click/input handlers need no new case. */
+  function debtRow(item, sub) {
+    var off = !isOn(item);
+    var knobs = debtKnobs(item);
+    return '<div class="lrow is-editable is-debt' + (off ? ' is-off' : '') +
+        '" data-toggle="' + esc(item.id) + '">' +
+      '<span class="lcheck" aria-hidden="true"></span>' +
+      '<span class="lbody"><span class="lname">' + esc(item.label) +
+        (item.sample ? '<span class="tag">sample</span>' : '') + '</span>' +
+        '<span class="lnote">' + esc(sub) + '</span></span>' +
+      '<span class="ledit ledit-stack">' +
+        knobs.map(function (k) {
+          var kEdited = scenario.amounts[k.id] != null;
+          var name = item.label + ' ' + k.label.toLowerCase();
+          return '<span class="lknob' + (kEdited ? ' is-edited' : '') + '">' +
+            '<span class="lknob-label">' + esc(k.label) +
+              (kEdited ? ' · was ' + esc(nativeMoney(k.amount, k.currency)) : '') + '</span>' +
+            amountField({
+              label: name, cur: curSymbol(k.currency), step: 'data-lstep', value: amountOf(k),
+              attrs: 'data-amount="' + esc(k.id) + '" aria-label="' + esc(name) +
+                ' in ' + esc(k.currency) + '"',
+              revert: 'data-revert="' + esc(k.id) + '"' + (kEdited ? '' : ' hidden'),
+            }) +
+            '</span>';
+        }).join('') +
+      '</span>' +
+      '</div>';
+  }
+
   // Utilities has no committed row yet: its default is typed on the Ledger
   // (kept in scenario.amounts like any other edit) over a base of whatever
   // budget.json's `utilities` says, or nothing.
@@ -2117,6 +2189,8 @@
   // retypes the original from a real one.
   function editableItem(id) {
     if (id === 'utilities') return utilitiesItem();
+    var knob = debtKnob(id);
+    if (knob) return knob;
     var lists = [data.income.additional, data.budget.budget, data.extras.extras];
     for (var i = 0; i < lists.length; i++) {
       var list = lists[i] || [];
@@ -2200,14 +2274,17 @@
       debtItems, function (d) {
         var it = d.item;
         var cur = it.currency || 'EUR';
+        var rate = it.annualRate ? ' at ' + it.annualRate + '%' : ' at 0%';
+        if (d.kind === 'Liability') {
+          return debtRow(it, 'Priority ' + (it.priority || '—') + ' · ' + d.kind + rate);
+        }
         var inst = (it.installments || []).map(function (x) {
           return nativeMoney(x.amount, cur) + ' (' +
             [].concat(x.payPeriod).map(periodLabel).join(' or ') + ')';
         }).join(' + ') || nativeMoney(it.monthlyPayment, cur);
         return ledgerRow(it, inst,
           'Priority ' + (it.priority || '—') + ' · ' + d.kind + ' · ' +
-          nativeMoney(it.principal, cur) +
-          (it.annualRate ? ' at ' + it.annualRate + '%' : ' at 0%'));
+          nativeMoney(it.principal, cur) + rate);
       });
 
     var budgetTotal = (data.budget.budget || []).reduce(function (a, b) {
