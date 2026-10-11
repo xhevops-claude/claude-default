@@ -3,6 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>
+    /* no-double-tap-zoom: touch-action: manipulation is set everywhere, but iOS still
+       double-tap-zooms in places (inside an iframe in particular), so the second
+       of two quick taps is cancelled here and its click sent by hand. Pinch-zoom,
+       scrolling, fields and anything that owns its gestures (touch-action: none,
+       canvas) are left alone. Copied into every page on purpose: pages share no
+       code. */
+    (function () {
+      var lastTap = 0, sx = 0, sy = 0, st = 0;
+      document.addEventListener('touchstart', function (e) {
+        if (e.touches.length !== 1) { st = 0; return; }
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
+      }, { passive: true });
+      document.addEventListener('touchend', function (e) {
+        if (!st || e.touches.length || e.changedTouches.length !== 1) { st = 0; lastTap = 0; return; }
+        var c = e.changedTouches[0], now = Date.now();
+        var tap = now - st < 300 && Math.abs(c.clientX - sx) < 10 && Math.abs(c.clientY - sy) < 10;
+        st = 0;
+        if (!tap) { lastTap = 0; return; }
+        var t = e.target;
+        var own = !t || t.nodeType !== 1 || /^(INPUT|TEXTAREA|SELECT|CANVAS)$/.test(t.tagName) ||
+          t.isContentEditable || t.closest('svg') || getComputedStyle(t).touchAction === 'none';
+        if (now - lastTap < 350 && e.cancelable && !e.defaultPrevented && !own) {
+          e.preventDefault();
+          lastTap = 0;
+          t.click();
+        } else {
+          lastTap = now;
+        }
+      }, { passive: false });
+    })();
+  </script>
   <meta name="robots" content="noindex">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0d0f16">
@@ -38,7 +70,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=4016976">
+  <link rel="stylesheet" href="styles.css?v=658e4c4">
 </head>
 <body>
   <div id="app-loading">
@@ -210,7 +242,9 @@
           income below — once or repeating, with a pay or on a date. Extra expenses
           go on the cycle card on the Timeline instead. The
           amounts on the income, budget and unplanned rows can be typed over — after
-          a pay, say — and ↺ puts the committed figure back. Utilities is the one
+          a pay, say — and so can what each debt owes today and its instalments,
+          here or on its card on the Debts view;
+          ↺ puts the committed figure back. Utilities is the one
           figure with no committed row: type the monthly default here. The Timeline
           takes these defaults and lets you switch each off or type over it for the
           current cycle, and switch it off for any later month. All of it, with the
@@ -308,6 +342,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=4016976"></script>
+  <script src="app.js?v=658e4c4"></script>
 </body>
 </html>

@@ -478,3 +478,12 @@ body { overflow: hidden; }
 }
 .error.error-warn { background: var(--error-bg); }
 .error[hidden] { display: none; }
+
+/* Controls are not text: a double tap or a long press on a button, a link
+   or a label must never start a text selection or the copy callout. Project
+   rule, in every page; fields stay selectable. */
+button, a, label, summary, [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

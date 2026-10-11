@@ -208,11 +208,108 @@
   }
 
   // A ledger row's amount as the forecast should use it: what the user typed
-  // over it on the Ledger view, else what the data file says. Only the
-  // additional income, budget and unplanned-expense rows are editable there.
+  // over it on the Ledger view, else what the data file says. The additional
+  // income, budget and unplanned-expense rows are editable there, and so are
+  // a liability's figures through the virtual rows debtKnobs() makes.
   function amountOf(item) {
     var o = scenario.amounts[item.id];
     return o != null ? o : item.amount;
+  }
+
+  /* The figures of a debt that can be typed over — what is owed and each
+   * instalment — as virtual editable rows: `<id>/principal` first, then
+   * `<id>/inst/<n>` in the data's order (a debt with no `installments` gets
+   * one for its `monthlyPayment`). Keying them like any other row means
+   * scenario.amounts, ↺, "was …" and the store need nothing new.
+   *
+   * The balance knob is "owed today", the figure on the debt card, not the
+   * file's opening balance on the 1st: what is typed is what the card then
+   * shows (see commitDebtToday), and the override stored is the opening
+   * balance that gets there. */
+  function debtKnobs(d) {
+    var cur = d.currency || 'EUR';
+    var knobs = [{ id: d.id + '/principal', label: 'Owed today', currency: cur,
+      amount: d.principal, today: true }];
+    var inst = (d.installments && d.installments.length)
+      ? d.installments : [{ payPeriod: null, amount: d.monthlyPayment }];
+    inst.forEach(function (x, i) {
+      var periods = x.payPeriod == null ? [payCycle().periods[0].id] : [].concat(x.payPeriod);
+      knobs.push({ id: d.id + '/inst/' + i, label: 'Pay ' + periods.map(periodLabel).join(' or '),
+        currency: cur, amount: x.amount });
+    });
+    return knobs;
+  }
+
+  function debtById(id) {
+    var lists = [data.loans.loans, data.liabilities.liabilities];
+    for (var i = 0; i < lists.length; i++) {
+      var list = lists[i] || [];
+      for (var j = 0; j < list.length; j++) if (list[j].id === id) return list[j];
+    }
+    return null;
+  }
+
+  // The virtual row behind a `<id>/…` key, or null if it is not a debt's.
+  function debtKnob(id) {
+    var slash = id.indexOf('/');
+    var d = slash === -1 ? null : debtById(id.slice(0, slash));
+    if (!d) return null;
+    var knobs = debtKnobs(d);
+    for (var j = 0; j < knobs.length; j++) if (knobs[j].id === id) return knobs[j];
+    return null;
+  }
+
+  function round2(v) { return Math.round(v * 100) / 100; }
+
+  /* What the walk has taken off a debt between its opening balance and today
+   * (instalments landed since the 1st, less that month's interest), in the
+   * debt's own currency — null for a debt that is switched off. The balance
+   * knob shows opening − gap and stores typed + gap. */
+  function debtLive(id, m) {
+    var live = (m || model) && (m || model).debts;
+    for (var i = 0; live && i < live.length; i++) if (live[i].id === id) return live[i];
+    return null;
+  }
+
+  function debtGap(id) {
+    var live = debtLive(id);
+    return live ? fromEur(live.principalEur - live.balanceToday, live.currency) : null;
+  }
+
+  // The figure a knob's field shows: the balance knob is owed-today, the rest
+  // are the amount itself. `committed` asks for the data file's figure — for
+  // the balance that takes one walk without the override, since the gap
+  // between opening and today carries the interest the opening itself drew.
+  function knobShown(k, committed) {
+    if (!k.today) return committed ? k.amount : amountOf(k);
+    var id = k.id.slice(0, k.id.indexOf('/'));
+    var live = debtLive(id);
+    if (!live) return k.amount;
+    if (committed && scenario.amounts[k.id] != null) {
+      var o = scenario.amounts[k.id];
+      delete scenario.amounts[k.id];
+      live = debtLive(id, build());
+      scenario.amounts[k.id] = o;
+    }
+    return round2(fromEur(live.balanceToday, live.currency));
+  }
+
+  /* Store the opening balance that makes the debt owe `target` today. The gap
+   * barely depends on the opening (only through one month's interest), so a
+   * couple of passes land on the cent; retyping the committed figure clears
+   * the override like any other row. */
+  function commitDebtToday(k, target) {
+    var debtId = k.id.slice(0, k.id.indexOf('/'));
+    for (var pass = 0; pass < 4; pass++) {
+      var gap = debtGap(debtId);
+      scenario.amounts[k.id] = round2(gap == null ? target : target + gap);
+      model = build();
+      if (Math.abs(knobShown(k) - target) < 0.005) break;
+    }
+    if (Math.abs(scenario.amounts[k.id] - k.amount) < 0.005) {
+      delete scenario.amounts[k.id];
+      model = build();
+    }
   }
 
   function curSymbol(cur) {
@@ -361,15 +458,20 @@
       (list || []).forEach(function (d) {
         if (!isOn(d)) return;
         var cur = d.currency || 'EUR';
+        // The balance and instalments can be typed over on the Debts view
+        // and the Ledger (see debtKnobs).
+        var knobs = debtKnobs(d);
+        var principal = amountOf(knobs[0]);
+        var instAmount = function (i) { return amountOf(knobs[i + 1]); };
         // `payPeriod` is one period id, or several in preference order — the
         // instalment then comes off the earliest arriving pay that can cover
         // it, and off the last one regardless if none can.
         var installments = (d.installments && d.installments.length)
-          ? d.installments.map(function (x) {
+          ? d.installments.map(function (x, i) {
             var ids = x.payPeriod == null ? [firstPeriodId] : [].concat(x.payPeriod);
-            return { periods: ids, native: x.amount, eur: toEur(x.amount, cur) };
+            return { periods: ids, native: instAmount(i), eur: toEur(instAmount(i), cur) };
           })
-          : [{ periods: [firstPeriodId], native: d.monthlyPayment, eur: toEur(d.monthlyPayment, cur) }];
+          : [{ periods: [firstPeriodId], native: instAmount(0), eur: toEur(instAmount(0), cur) }];
         var monthlyEur = installments.reduce(function (a, b) { return a + b.eur; }, 0);
 
         out.push({
@@ -391,8 +493,8 @@
               note: r.note || '',
             };
           }).sort(function (a, b) { return a.idx - b.idx; }),
-          principalEur: toEur(d.principal, cur),
-          principalNative: d.principal,
+          principalEur: toEur(principal, cur),
+          principalNative: principal,
           installments: installments,
           monthlyEur: monthlyEur,
           startIdx: ymToIndex(d.startMonth || data.startYm),
@@ -1602,7 +1704,9 @@
           esc(opts.label) + '">−</button>' +
         '<input class="amt-in" type="text" inputmode="decimal" autocomplete="off"' +
           ' enterkeyhint="done" ' + opts.attrs +
-          (opts.value != null ? ' value="' + esc(String(opts.value)) + '"' : '') + '>' +
+          // wide enough for the figure it opens with (a balance can run to 8 digits)
+          (opts.value != null ? ' value="' + esc(String(opts.value)) + '" style="width: max(72px, ' +
+            (String(opts.value).length + 1) + 'ch)"' : '') + '>' +
         '<span class="amt-cur">' + esc(opts.cur) + '</span>' +
         '<button class="amt-step" type="button" ' + opts.step + '="1" aria-label="Raise ' +
           esc(opts.label) + '">+</button>' +
@@ -1668,6 +1772,7 @@
         return nativeMoney(x.native, d.currency) + ' from the ' +
           x.periods.map(periodLabel).join(' pay, else the ') + ' pay';
       }).join(' · ');
+      var src = debtById(d.id);   // the data row behind the live debt, for its fields
 
       var rowsHtml = d.months.map(function (s, i) {
         var dates = s.payments.map(function (p) { return dateLabel(p.date); }).join(', ');
@@ -1694,6 +1799,7 @@
           '<span class="debt-bal">' + esc(money(d.balanceToday)) + '</span>' +
         '</div>' +
         '<div class="debt-splits">' + esc(splits) + '</div>' +
+        (src ? '<div class="debt-edit">' + debtFields(src) + '</div>' : '') +
         '<div class="progress-cap"><span>' + Math.round(pct) + '% repaid by ' +
           (horizonEnd ? esc(ymLabel(horizonEnd)) : '—') + '</span><span>' +
           esc(money(left)) + ' left</span></div>' +
@@ -2101,6 +2207,43 @@
       '</div>';
   }
 
+  /* A liability's row: one field per figure (what is owed, then each
+   * instalment), stacked and labelled, each with its own ↺ and "was …" so an
+   * edit to one never hides the committed value of another. Same .ledit
+   * hooks as editableRow, so the click/input handlers need no new case. */
+  function debtRow(item, sub) {
+    var off = !isOn(item);
+    return '<div class="lrow is-editable is-debt' + (off ? ' is-off' : '') +
+        '" data-toggle="' + esc(item.id) + '">' +
+      '<span class="lcheck" aria-hidden="true"></span>' +
+      '<span class="lbody"><span class="lname">' + esc(item.label) +
+        (item.sample ? '<span class="tag">sample</span>' : '') + '</span>' +
+        '<span class="lnote">' + esc(sub) + '</span></span>' +
+      '<span class="ledit ledit-stack">' + debtFields(item) + '</span>' +
+      '</div>';
+  }
+
+  // The stacked fields of a debt — used by its Ledger row and its card on
+  // the Debts view alike, with the same data-amount/data-revert hooks.
+  function debtFields(item) {
+    return debtKnobs(item).map(function (k) {
+      var kEdited = scenario.amounts[k.id] != null;
+      var name = item.label + ' ' + k.label.toLowerCase();
+      // ↺ goes at the far end, before the label, so it is nowhere near −.
+      return '<span class="lknob' + (kEdited ? ' is-edited' : '') + '">' +
+        '<button class="amt-revert" type="button" data-revert="' + esc(k.id) + '"' +
+          (kEdited ? '' : ' hidden') + ' aria-label="Back to the committed amount">↺</button>' +
+        '<span class="lknob-label">' + esc(k.label) +
+          (kEdited ? ' · was ' + esc(nativeMoney(knobShown(k, true), k.currency)) : '') + '</span>' +
+        amountField({
+          label: name, cur: curSymbol(k.currency), step: 'data-lstep', value: knobShown(k),
+          attrs: 'data-amount="' + esc(k.id) + '" aria-label="' + esc(name) +
+            ' in ' + esc(k.currency) + '"',
+        }) +
+        '</span>';
+    }).join('');
+  }
+
   // Utilities has no committed row yet: its default is typed on the Ledger
   // (kept in scenario.amounts like any other edit) over a base of whatever
   // budget.json's `utilities` says, or nothing.
@@ -2117,6 +2260,8 @@
   // retypes the original from a real one.
   function editableItem(id) {
     if (id === 'utilities') return utilitiesItem();
+    var knob = debtKnob(id);
+    if (knob) return knob;
     var lists = [data.income.additional, data.budget.budget, data.extras.extras];
     for (var i = 0; i < lists.length; i++) {
       var list = lists[i] || [];
@@ -2200,14 +2345,9 @@
       debtItems, function (d) {
         var it = d.item;
         var cur = it.currency || 'EUR';
-        var inst = (it.installments || []).map(function (x) {
-          return nativeMoney(x.amount, cur) + ' (' +
-            [].concat(x.payPeriod).map(periodLabel).join(' or ') + ')';
-        }).join(' + ') || nativeMoney(it.monthlyPayment, cur);
-        return ledgerRow(it, inst,
-          'Priority ' + (it.priority || '—') + ' · ' + d.kind + ' · ' +
-          nativeMoney(it.principal, cur) +
-          (it.annualRate ? ' at ' + it.annualRate + '%' : ' at 0%'));
+        var rate = it.annualRate ? ' at ' + it.annualRate + '%' : ' at 0%';
+        return debtRow(it, 'Priority ' + (it.priority || '—') + ' · ' + d.kind + rate +
+          (it.lender || it.creditor ? ' · ' + (it.lender || it.creditor) : ''));
       });
 
     var budgetTotal = (data.budget.budget || []).reduce(function (a, b) {
@@ -2519,6 +2659,61 @@
     document.body.classList.toggle('sheet-open', open);
   }
 
+  /* The amount fields' behaviour, the same on the Ledger and the Debts view:
+   * ↺ drops the override, −/+ steps the figure, and while typing the model
+   * and the store follow every keystroke but the view is left alone so the
+   * field keeps focus; it redraws once the value is committed (blur or
+   * Enter), which also refreshes the totals around it. */
+  function commitAmount(inp) {
+    var v = amountValue(inp);
+    if (v == null) return;
+    if (inp.dataset.customAmount) {
+      var entry = customEntry(inp.dataset.customAmount);
+      if (entry) { entry.amount = v; model = build(); saveScenario(); }
+      return;
+    }
+    var id = inp.dataset.amount;
+    var item = editableItem(id);
+    if (item && item.today) commitDebtToday(item, v);
+    else {
+      if (item && v === item.amount) delete scenario.amounts[id];
+      else scenario.amounts[id] = v;
+      model = build();
+    }
+    saveScenario();
+  }
+
+  function bindAmountEdits(el) {
+    el.addEventListener('click', function (ev) {
+      var revert = ev.target.closest('[data-revert]');
+      if (revert) {
+        delete scenario.amounts[revert.dataset.revert];
+        recompute();
+        return;
+      }
+      var step = ev.target.closest('[data-lstep]');
+      if (!step) return;
+      var inp = step.parentNode.querySelector('.amt-in');
+      var cur = (editableItem(inp.dataset.amount) || customEntry(inp.dataset.customAmount) ||
+        {}).currency || 'EUR';
+      var was = amountValue(inp) || 0;
+      inp.value = String(Math.max(0, was +
+        (Number(step.dataset.lstep) * Math.round(fromEur(BUDGET_STEP_EUR, cur)))));
+      commitAmount(inp);
+      recompute();
+    });
+    el.addEventListener('input', function (ev) {
+      var inp = ev.target.closest('.amt-in');
+      if (!inp) return;
+      digitsOnly(inp);
+      commitAmount(inp);
+    });
+    el.addEventListener('change', function (ev) {
+      if (!ev.target.closest('.amt-in')) return;
+      recompute();
+    });
+  }
+
   function bind() {
     $('tabs').addEventListener('click', function (ev) {
       var btn = ev.target.closest('.tab');
@@ -2545,26 +2740,6 @@
         }
         return;
       }
-      var revert = ev.target.closest('[data-revert]');
-      if (revert) {
-        delete scenario.amounts[revert.dataset.revert];
-        renderLedger();
-        recompute();
-        return;
-      }
-      var step = ev.target.closest('[data-lstep]');
-      if (step) {
-        var inp = step.parentNode.querySelector('.amt-in');
-        var cur = (editableItem(inp.dataset.amount) || customEntry(inp.dataset.customAmount) ||
-          {}).currency || 'EUR';
-        var was = amountValue(inp) || 0;
-        inp.value = String(Math.max(0, was +
-          (Number(step.dataset.lstep) * Math.round(fromEur(BUDGET_STEP_EUR, cur)))));
-        commitLedgerAmount(inp);
-        renderLedger();
-        recompute();
-        return;
-      }
       if (ev.target.closest('.ledit')) return;   // typing, not toggling
       var row = ev.target.closest('[data-toggle]');
       if (!row) return;
@@ -2574,37 +2749,8 @@
       renderLedger();
       recompute();
     });
-
-    // While typing, the model and the store follow every keystroke but the
-    // row is left alone so the field keeps focus; the ledger redraws once the
-    // value is committed (blur or Enter), which also refreshes the section
-    // totals.
-    function commitLedgerAmount(inp) {
-      var v = amountValue(inp);
-      if (v == null) return;
-      if (inp.dataset.customAmount) {
-        var entry = customEntry(inp.dataset.customAmount);
-        if (entry) { entry.amount = v; model = build(); saveScenario(); }
-        return;
-      }
-      var id = inp.dataset.amount;
-      var item = editableItem(id);
-      if (item && v === item.amount) delete scenario.amounts[id];
-      else scenario.amounts[id] = v;
-      model = build();
-      saveScenario();
-    }
-    $('ledger-list').addEventListener('input', function (ev) {
-      var inp = ev.target.closest('.amt-in');
-      if (!inp) return;
-      digitsOnly(inp);
-      commitLedgerAmount(inp);
-    });
-    $('ledger-list').addEventListener('change', function (ev) {
-      if (!ev.target.closest('.amt-in')) return;
-      renderLedger();
-      recompute();
-    });
+    bindAmountEdits($('ledger-list'));
+    bindAmountEdits($('debts-list'));
 
     $('lock-btn').addEventListener('click', lockApp);
     $('scenario-btn').addEventListener('click', function () { openSheet(true); });

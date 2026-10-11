@@ -3,6 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <script>
+    /* no-double-tap-zoom: touch-action: manipulation is set everywhere, but iOS still
+       double-tap-zooms in places (inside an iframe in particular), so the second
+       of two quick taps is cancelled here and its click sent by hand. Pinch-zoom,
+       scrolling, fields and anything that owns its gestures (touch-action: none,
+       canvas) are left alone. Copied into every page on purpose: pages share no
+       code. */
+    (function () {
+      var lastTap = 0, sx = 0, sy = 0, st = 0;
+      document.addEventListener('touchstart', function (e) {
+        if (e.touches.length !== 1) { st = 0; return; }
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
+      }, { passive: true });
+      document.addEventListener('touchend', function (e) {
+        if (!st || e.touches.length || e.changedTouches.length !== 1) { st = 0; lastTap = 0; return; }
+        var c = e.changedTouches[0], now = Date.now();
+        var tap = now - st < 300 && Math.abs(c.clientX - sx) < 10 && Math.abs(c.clientY - sy) < 10;
+        st = 0;
+        if (!tap) { lastTap = 0; return; }
+        var t = e.target;
+        var own = !t || t.nodeType !== 1 || /^(INPUT|TEXTAREA|SELECT|CANVAS)$/.test(t.tagName) ||
+          t.isContentEditable || t.closest('svg') || getComputedStyle(t).touchAction === 'none';
+        if (now - lastTap < 350 && e.cancelable && !e.defaultPrevented && !own) {
+          e.preventDefault();
+          lastTap = 0;
+          t.click();
+        } else {
+          lastTap = now;
+        }
+      }, { passive: false });
+    })();
+  </script>
   <title>Planner</title>
   <script>
     if (window.self !== window.top) document.documentElement.classList.add('embedded');
@@ -64,7 +96,7 @@
       border: 1px solid rgba(143, 216, 255, 0.5); background: transparent; color: #8fd8ff;
     }
   </style>
-  <link rel="stylesheet" href="styles.css?v=4016976" />
+  <link rel="stylesheet" href="styles.css?v=658e4c4" />
   <!-- three.js ships with the app (apps/planner/vendor), not from a
        CDN: one host to reach, and no third party that a phone's
        network can leave hanging. -->
@@ -209,7 +241,7 @@
     </footer>
   </main>
 
-  <script type="module" src="main.js?v=4016976" id="entry"></script>
+  <script type="module" src="main.js?v=658e4c4" id="entry"></script>
   <script>
     /* right after the entry tag, before its fetch can fail */
     document.getElementById('entry').addEventListener('error', function () { window.plannerStuck('The planner could not be loaded — this may be an old link.'); });

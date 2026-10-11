@@ -45,6 +45,16 @@ html, body {
 button, input, select, textarea, a, label,
 .lrow, .tab, .cur-btn, .seg-btn, .amt-step, .amt-revert, .icon-btn { touch-action: manipulation; }
 
+/* Controls are not text: a double tap or a long press on a stepper, a tab or
+ * a row's label must never start a text selection or the copy callout. The
+ * fields themselves stay selectable, of course. */
+button, label, .lrow, .tab, .cur-btn, .seg-btn, .icon-btn, .amt-cur, .lknob-label,
+.np-row, .sum-cell, .debt-head, .debt-facts, .progress-cap, .card-head {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 body.sheet-open { overflow: hidden; }
 
 #app {
@@ -848,18 +858,21 @@ body.sheet-open { overflow: hidden; }
 .np-row.is-off .amt { opacity: 0.45; }
 .is-edited .amt-in { color: var(--accent); }
 
-/* ↺ beside the field once the figure has been typed over. */
+/* ↺ once the figure has been typed over — the same size as a stepper
+ * button, and kept a clear gap away from − so a thumb aiming at one does
+ * not land on the other. */
 .amt-revert {
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
+  margin-right: 12px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   color: inherit;
   opacity: 0.8;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
 }
@@ -1289,6 +1302,43 @@ body.sheet-open { overflow: hidden; }
 .lrow.is-editable .lbody { flex: 1 1 150px; }
 .ledit { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
 .lrow.is-off .ledit { text-decoration: none; }
+
+/* A liability's figures — owed, then each instalment — stack in the edit
+ * slot, each under a small label that also carries its own "was …". */
+.ledit-stack {
+  flex: 1 1 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-left: 0;
+}
+
+/* Each field is a full-width row: ↺ at the left edge, the label taking what
+ * is left and wrapping if it must, the stepper never squeezed or pushed
+ * past the card's edge. */
+.lknob { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; }
+.lknob .amt-revert { margin-right: 2px; }
+.lknob .amt { flex: none; }
+.lknob-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--ink-3);
+}
+.lknob.is-edited .lknob-label { color: var(--accent); }
+
+/* The same fields on a debt card, under the instalment line. */
+.debt-edit {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--surface-2);
+}
 
 .lremove {
   width: 26px;
