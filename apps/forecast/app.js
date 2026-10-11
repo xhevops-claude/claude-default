@@ -281,8 +281,8 @@
     for (var i = -3; i < 18; i++) {
       periodsOf(y, m + i).forEach(function (p) {
         if (p.arrival.getTime() <= today.getTime()) return;
-        out.push({ key: p.ym + '/' + p.id, arrival: p.arrival,
-          label: p.rangeLabel + ' pay → ' + dateLabel(p.arrival, { full: true }).replace(/^\w+ /, '') });
+        // Strictly the pay day: the work period behind it is not the point.
+        out.push({ key: p.ym + '/' + p.id, arrival: p.arrival, label: dateLabel(p.arrival, { full: true }) });
       });
     }
     return out.sort(function (a, b) { return a.arrival - b.arrival; });
@@ -1886,8 +1886,7 @@
         return nativeMoney(x.native, d.currency) + ' from the ' +
           x.periods.map(periodLabel).join(' pay, else the ') + ' pay';
       }).join(' · ') + (d.sweep ? ' · plus whatever each pay has left after the budget' : '') +
-        (d.firstPay ? ' · first from the ' + d.firstPay.rangeLabel + ' pay (' +
-        dateLabel(d.firstPay.arrival) + ')' : '');
+        (d.firstPay ? ' · first instalment ' + dateLabel(d.firstPay.arrival, { full: true }) : '');
       var src = debtById(d.id);   // the data row behind the live debt, for its fields
 
       var rowsHtml = d.months.map(function (s, i) {
@@ -2376,8 +2375,7 @@
     var choices = startChoices();
     if (chosen && !choices.some(function (c) { return c.key === chosen; })) {
       var fp = firstPayOf(item);
-      choices.unshift({ key: chosen, label: fp ? fp.rangeLabel + ' pay → ' +
-        dateLabel(fp.arrival, { full: true }).replace(/^\w+ /, '') : chosen });
+      choices.unshift({ key: chosen, label: fp ? dateLabel(fp.arrival, { full: true }) : chosen });
     }
     return '<span class="lknob lknob-start' + (edited ? ' is-edited' : '') + '">' +
       '<button class="amt-revert" type="button" data-revert-start="' + esc(item.id) + '"' +
