@@ -1916,8 +1916,13 @@
         '</div>' +
         '<div class="debt-splits">' + esc(splits) + '</div>' +
         (src ? '<div class="debt-edit">' + debtFields(src) + '</div>' : '') +
-        '<div class="progress-cap"><span>' + Math.round(pct) + '% repaid by ' +
-          (horizonEnd ? esc(ymLabel(horizonEnd)) : '—') + '</span><span>' +
+        // Cleared inside the window: say when. Otherwise, how far by its end
+        // (the walk runs on past the window to find the payoff, if any).
+        '<div class="progress-cap"><span>' + (d.payoffDate && horizonEnd && ymOf(d.payoffDate) <= horizonEnd
+          ? 'Cleared ' + esc(ymLabel(ymOf(d.payoffDate), { long: true }))
+          : Math.round(pct) + '% repaid by ' + (horizonEnd ? esc(ymLabel(horizonEnd)) : '—') +
+            (d.payoffDate ? ' · clears ' + esc(ymLabel(ymOf(d.payoffDate))) : '')) +
+          '</span><span>' +
           esc(money(left)) + ' left</span></div>' +
         '<div class="progress"><span style="width:' + pct.toFixed(1) + '%"></span></div>' +
         '<div class="debt-facts">' +
