@@ -1475,8 +1475,17 @@
   // baseline; localStorage layers on top. Watched cursors merge by taking the
   // later date per channel (never loses progress); per-device prefs fill only
   // when this device hasn't set them. Cutoff stays local (defaults to today).
+  //
+  // Except once per baseline: db.json carries a `binge-rev`, bumped each time
+  // a new baseline is saved. A device that hasn't applied that rev yet takes
+  // the baseline's settings over its own (groups, channels, filters, layout),
+  // then remembers the rev — so a saved baseline reaches every device, a TV
+  // included, with nothing to clear by hand, and later changes on the device
+  // still stick until the next rev.
   // ---------------------------------------------------------------------------
   const SYNC_FILL = [LS.selected, LS.showWatched, LS.cutoff, LS.view, LS.sort, LS.group, LS.tab, LS.tabs];
+  const SYNC_TAKE = SYNC_FILL.concat([LS.sidebar]);
+  const REV_KEY = 'binge-rev-applied';
 
   async function loadDB() {
     try {
@@ -1501,6 +1510,17 @@
     const localW = load(LS.watched, []);
     const unionW = Array.from(new Set(baseW.concat(localW)));
     if (unionW.length) save(LS.watched, unionW);
+    const rev = Number(db['binge-rev']) || 0;
+    if (rev && rev > (Number(load(REV_KEY, 0)) || 0)) {
+      SYNC_TAKE.forEach((k) => {
+        try {
+          if (db[k] !== undefined) localStorage.setItem(k, JSON.stringify(db[k]));
+          else if (k === LS.selected) localStorage.removeItem(k);   // the pre-groups list; a baseline without it means it's gone
+        } catch (e) {}
+      });
+      save(REV_KEY, rev);
+      return;
+    }
     SYNC_FILL.forEach((k) => {
       if (localStorage.getItem(k) == null && db[k] !== undefined) {
         try { localStorage.setItem(k, JSON.stringify(db[k])); } catch (e) {}
@@ -1627,8 +1647,8 @@
   syncClearBtn.addEventListener('click', () => {
     if (Date.now() > clearArmed) {
       clearArmed = Date.now() + 4000;
-      syncClearBtn.textContent = 'Tap again to clear';
-      setTimeout(() => { if (Date.now() >= clearArmed) syncClearBtn.textContent = 'Clear this device'; }, 4000);
+      syncClearBtn.classList.add('armed');
+      setTimeout(() => { if (Date.now() >= clearArmed) syncClearBtn.classList.remove('armed'); }, 4000);
       return;
     }
     try {

@@ -62,7 +62,7 @@
       animation: gl-run 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
     @keyframes gl-run { 0% { left: -40%; } 100% { left: 100%; } }
   </style>
-  <link rel="stylesheet" href="styles.css?v=2e17e18" />
+  <link rel="stylesheet" href="styles.css?v=8e74345" />
 </head>
 <body>
   <div id="app-loading">
@@ -272,7 +272,7 @@
       <div class="sync-note" id="sync-note" role="status"></div>
       <div class="sync-reset">
         <p class="sync-sub">Start over from the shared baseline: wipes everything Binge keeps on this device (progress, groups, filters, layout) and reloads with the last saved copy.</p>
-        <button id="sync-clear" type="button" class="btn danger">Clear this device</button>
+        <button id="sync-clear" type="button" class="btn danger"><span class="lab-idle">Clear this device</span><span class="lab-armed" aria-hidden="true">Tap again to clear</span></button>
       </div>
     </section>
 
@@ -287,6 +287,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=2e17e18"></script>
+  <script src="app.js?v=8e74345"></script>
 </body>
 </html>
