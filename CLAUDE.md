@@ -426,6 +426,9 @@ everything but the currency back.
 
 ## Binge baseline (apps/binge/db.json)
 
+`apps/binge/README.md` documents the app (screen, groups, cutoff, sync, stored
+keys) — update it in the same commit as any change to Binge.
+
 When the user pastes a Binge export to save, merge it into `apps/binge/db.json`
 (watched dates: the later per channel; everything else: the export's value) and
 **bump `binge-rev`**. A device applies a newer rev once, taking the baseline's
