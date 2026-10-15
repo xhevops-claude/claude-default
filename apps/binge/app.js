@@ -19,6 +19,7 @@
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   function load(key, fallback) {
     try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); }
@@ -74,7 +75,7 @@
   const syncBackBtn = $('sync-back');
   const viewBinge = $('view-binge'), viewSync = $('view-sync'), appbarTitle = $('appbar-title'), drawerSyncBtn = $('drawer-sync');
   const syncCopyBtn = $('sync-copy'), syncPaste = $('sync-paste'), syncApplyBtn = $('sync-apply'), syncNote = $('sync-note');
-  const yrValue = $('yr-value'), moValue = $('mo-value'), dyValue = $('dy-value');
+  const yrValue = $('yr-value'), moValue = $('mo-value'), wkValue = $('wk-value'), dyValue = $('dy-value');
   const horizonEl = $('status-horizon'), horizonLine = $('horizon-line'), horizonJump = $('horizon-jump'), horizonSteps = $('horizon-steps');
 
   // ---------------------------------------------------------------------------
@@ -312,6 +313,26 @@
   }
   function todayYMD() { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; }
   function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+  // The month's Monday-to-Sunday weeks as [firstDay, lastDay], cut at the
+  // month's edges — so the first and last can be a day or two long, and a
+  // week never reaches into the month (or year) next door.
+  function weeksOfMonth(y, m) {
+    const n = daysInMonth(y, m), weeks = [];
+    let start = 1;
+    while (start <= n) {
+      const dow = (new Date(y, m - 1, start).getDay() + 6) % 7;   // Mon 0 … Sun 6
+      const end = Math.min(n, start + 6 - dow);
+      weeks.push([start, end]);
+      start = end + 1;
+    }
+    return weeks;
+  }
+  function weekIndexOf(y, m, d) { return weeksOfMonth(y, m).findIndex((w) => d >= w[0] && d <= w[1]); }
+  function weekLabel(y, m, i) {
+    const w = weeksOfMonth(y, m)[i]; if (!w) return '—';
+    const day = (d) => WEEKDAYS[new Date(y, m - 1, d).getDay()] + ' ' + d;
+    return 'W' + (i + 1) + ' · ' + (w[0] === w[1] ? day(w[0]) : day(w[0]) + '–' + day(w[1]));
+  }
   function fmtDate(v) {
     const dt = vidDate(v);
     if (dt.precise) return dt.day + ' ' + MONTHS[dt.m - 1] + ' ' + dt.y;
@@ -563,10 +584,26 @@
     horizonJump.textContent = 'Skip to ' + when;
     horizonJump.onclick = () => jumpTo({ y: Math.floor(h.ymd / 10000), m: Math.floor(h.ymd / 100) % 100, d: h.ymd % 100 });
 
+    // Skip a whole stretch rather than one video: to the end of the week (the
+    // slider's month-clipped Mon–Sun week) or the month the next drop lands in,
+    // so everything in it comes in at once.
+    let spans = '';
+    if (monthDayEnabled()) {
+      const ny = Math.floor(h.ymd / 10000), nm = Math.floor(h.ymd / 100) % 100, nd = h.ymd % 100;
+      const wk = weeksOfMonth(ny, nm)[weekIndexOf(ny, nm, nd)];
+      const span = (lab, endD) => {
+        const to = ny * 10000 + nm * 100 + endD;
+        return '<button type="button" class="hstep span" data-to="' + to + '">'
+          + '<span class="hstep-lab">' + lab + '</span>'
+          + '<span class="hstep-n">+' + unlockedBy(to) + '</span></button>';
+      };
+      spans = span('Week of ' + wk[0] + ' ' + MONTHS[nm - 1], wk[1]) + span('All of ' + MONTHS[nm - 1] + ' ' + ny, daysInMonth(ny, nm));
+    }
+
     // Day, week and month steps only mean something when the videos carry full
     // dates; without them the cutoff is a year and only the year step moves.
     const units = monthDayEnabled() ? ['day', 'week', 'month', 'year'] : ['year'];
-    horizonSteps.innerHTML = units.map((u) => {
+    horizonSteps.innerHTML = spans + units.map((u) => {
       const c = steppedCutoff(u, 1);
       const target = c.y * 10000 + c.m * 100 + c.d;
       if (target <= cut) return '';
@@ -579,6 +616,8 @@
     return true;
   }
   horizonSteps.addEventListener('click', (e) => {
+    const to = e.target.closest('[data-to]');
+    if (to) { const t = Number(to.getAttribute('data-to')); jumpTo({ y: Math.floor(t / 10000), m: Math.floor(t / 100) % 100, d: t % 100 }); return; }
     const b = e.target.closest('[data-step]');
     if (b) jumpTo(steppedCutoff(b.getAttribute('data-step'), 1));
   });
@@ -725,6 +764,7 @@
   function renderFilters() {
     const hasPrecise = baseVideosRaw().some((v) => v.d);
     $('ds-month').hidden = !hasPrecise;
+    $('ds-week').hidden = !hasPrecise;
     $('ds-day').hidden = !hasPrecise;
 
     const years = availableYears();
@@ -749,6 +789,9 @@
     yrValue.textContent = String(cutoff.y);
     monthSlider.set(12, cutoff.m - 1);
     moValue.textContent = MONTHS[cutoff.m - 1];
+    const wi = weekIndexOf(cutoff.y, cutoff.m, cutoff.d);
+    weekSlider.set(weeksOfMonth(cutoff.y, cutoff.m).length, wi);
+    wkValue.textContent = weekLabel(cutoff.y, cutoff.m, wi);
     daySlider.set(daysInMonth(cutoff.y, cutoff.m), cutoff.d - 1);
     dyValue.textContent = String(cutoff.d);
 
@@ -1262,8 +1305,9 @@
   });
 
   // Year: one slot per year between the oldest video and today. Month: 12
-  // slots. Day: one slot per day of the selected month (28–31), so the day
-  // slider re-divides itself whenever the year or month changes.
+  // slots. Week: one slot per Mon–Sun week of the selected month (4–6), cut
+  // at the month's edges. Day: one slot per day of the selected month
+  // (28–31). Week and day re-divide whenever the year or month changes.
   const yearSlider = slotSlider($('f-year'), {
     valueText: (i) => String(yearRange[i]),
     onPreview: (i) => { yrValue.textContent = String(yearRange[i] || cutoff.y); },
@@ -1279,6 +1323,17 @@
     onChange: (i) => {
       cutoff.m = i + 1;
       cutoff.d = Math.min(cutoff.d, daysInMonth(cutoff.y, cutoff.m));
+      commitCutoff();
+    },
+  });
+  // A week shows up to its last day — the last day it has inside the month,
+  // so the year's first week stops at that year's own days.
+  const weekSlider = slotSlider($('f-week'), {
+    valueText: (i) => weekLabel(cutoff.y, cutoff.m, i),
+    onPreview: (i) => { wkValue.textContent = weekLabel(cutoff.y, cutoff.m, i); },
+    onChange: (i) => {
+      const w = weeksOfMonth(cutoff.y, cutoff.m)[i]; if (!w) return;
+      cutoff.d = w[1];
       commitCutoff();
     },
   });
@@ -1524,6 +1579,28 @@
   }
   syncBackBtn.addEventListener('click', () => showPage('binge'));
   syncCopyBtn.addEventListener('click', exportData);
+
+  // Clear this device: drop every binge-* key, then reload so db.json seeds
+  // it afresh. Only Binge's keys — the rest of the site (theme, Forecast's
+  // cached key, Planner) shares this origin's storage and is left alone.
+  // Two taps, so a stray one can't wipe progress.
+  const syncClearBtn = $('sync-clear');
+  let clearArmed = 0;
+  syncClearBtn.addEventListener('click', () => {
+    if (Date.now() > clearArmed) {
+      clearArmed = Date.now() + 4000;
+      syncClearBtn.textContent = 'Tap again to clear';
+      setTimeout(() => { if (Date.now() >= clearArmed) syncClearBtn.textContent = 'Clear this device'; }, 4000);
+      return;
+    }
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf('binge-') === 0) localStorage.removeItem(k);
+      }
+    } catch (e) {}
+    location.reload();
+  });
   syncApplyBtn.addEventListener('click', applyPaste);
 
   // ---------------------------------------------------------------------------

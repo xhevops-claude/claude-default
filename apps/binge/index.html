@@ -197,6 +197,10 @@
             <div class="dslider-row"><span class="dslider-label">Month</span><span class="dslider-value" id="mo-value">—</span></div>
             <div id="f-month" class="slot-slider" role="slider" tabindex="0" aria-label="Month" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0"><div class="slot-knob"></div></div>
           </div>
+          <div class="dslider" id="ds-week">
+            <div class="dslider-row"><span class="dslider-label">Week</span><span class="dslider-value" id="wk-value">—</span></div>
+            <div id="f-week" class="slot-slider" role="slider" tabindex="0" aria-label="Week" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0"><div class="slot-knob"></div></div>
+          </div>
           <div class="dslider" id="ds-day">
             <div class="dslider-row"><span class="dslider-label">Day</span><span class="dslider-value" id="dy-value">—</span></div>
             <div id="f-day" class="slot-slider" role="slider" tabindex="0" aria-label="Day" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0"><div class="slot-knob"></div></div>
@@ -266,6 +270,10 @@
         <button id="sync-apply" type="button" class="btn">Merge pasted data</button>
       </div>
       <div class="sync-note" id="sync-note" role="status"></div>
+      <div class="sync-reset">
+        <p class="sync-sub">Start over from the shared baseline: wipes everything Binge keeps on this device (progress, groups, filters, layout) and reloads with the last saved copy.</p>
+        <button id="sync-clear" type="button" class="btn danger">Clear this device</button>
+      </div>
     </section>
 
     <!-- Undo toast: floats above the HUD for a few seconds after marking watched -->
