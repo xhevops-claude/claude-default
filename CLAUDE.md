@@ -424,6 +424,16 @@ following the committed data when it changes. Only the user's own overrides go
 in there, never a figure from the vault. Reset in the scenario sheet puts
 everything but the currency back.
 
+## Binge baseline (apps/binge/db.json)
+
+When the user pastes a Binge export to save, merge it into `apps/binge/db.json`
+(watched dates: the later per channel; everything else: the export's value) and
+**bump `binge-rev`**. A device applies a newer rev once, taking the baseline's
+groups, channels, filters and layout over its own — that is how a save reaches
+every device (a TV has no console and no one to tap Clear). Without the bump,
+devices that already have settings keep them. Channel selection is per group,
+saved as `on` (the channels switched on); `off` is the old format, read only.
+
 ## Planner (apps/planner/) — one viewer, many projects
 
 Planner is the site-and-buildings viewer (it was called Wire for a day). It is software only; a

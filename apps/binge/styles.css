@@ -422,7 +422,13 @@ html, body {
 .sync-actions { display: flex; }
 .sync-note { color: var(--amber); font-size: 13px; min-height: 18px; }
 .sync-reset { margin-top: 12px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
-.btn.danger { color: var(--red); border-color: rgba(239, 68, 68, 0.45); }
+/* Both labels share one grid cell, so the button is always as wide as the
+   longer one and doesn't jump when the first tap arms it. */
+.btn.danger { display: inline-grid; color: var(--red); border-color: rgba(239, 68, 68, 0.45); }
+.btn.danger > span { grid-area: 1 / 1; text-align: center; }
+.btn.danger .lab-armed, .btn.danger.armed .lab-idle { visibility: hidden; }
+.btn.danger.armed .lab-armed { visibility: visible; }
+.btn.danger.armed { background: var(--red); border-color: var(--red); color: #fff; }
 /* Sidebar item for the page you're on: lit like the active group. */
 .drawer-item[aria-current="page"] { background: var(--panel-2); font-weight: 700; position: relative; }
 .drawer-item[aria-current="page"]::before { content: ""; position: absolute; left: 3px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 2px; background: var(--red); }
