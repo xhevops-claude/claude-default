@@ -1647,8 +1647,8 @@
   syncClearBtn.addEventListener('click', () => {
     if (Date.now() > clearArmed) {
       clearArmed = Date.now() + 4000;
-      syncClearBtn.textContent = 'Tap again to clear';
-      setTimeout(() => { if (Date.now() >= clearArmed) syncClearBtn.textContent = 'Clear this device'; }, 4000);
+      syncClearBtn.classList.add('armed');
+      setTimeout(() => { if (Date.now() >= clearArmed) syncClearBtn.classList.remove('armed'); }, 4000);
       return;
     }
     try {
