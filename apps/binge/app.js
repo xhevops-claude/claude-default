@@ -1524,10 +1524,16 @@
     tabs = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
     // One-time migration from the pre-groups flat channel selection: the
     // channels that were switched off become the "All" tab's exclusions.
+    // The old key goes once it's folded in — left behind, it re-applied on
+    // every load whenever "All" had every channel on (no `off` to stop it),
+    // so switching channels back on never stuck.
     const savedSel = load(LS.selected, null);
-    if (!Array.isArray(tabState('all').off) && Array.isArray(savedSel)) {
-      const off = available.map((c) => c.slug).filter((s) => savedSel.indexOf(s) < 0);
-      if (off.length) setOff('all', off);
+    if (Array.isArray(savedSel) && available.length) {
+      if (!Array.isArray(tabState('all').off)) {
+        const off = available.map((c) => c.slug).filter((s) => savedSel.indexOf(s) < 0);
+        if (off.length) setOff('all', off);
+      }
+      try { localStorage.removeItem(LS.selected); } catch (e) {}
     }
     recomputeSelected();
   }
@@ -1537,7 +1543,7 @@
   // copy can carry just the progress, or just the settings, etc.
   const SYNC_PARTS = {
     watched: [LS.watchedTo, LS.watched],
-    channels: [LS.selected],
+    channels: [LS.tabs],   // each group's switched-off channels live in its tab state
     filters: [LS.tab, LS.tabs, LS.cutoff, LS.showWatched],
     layout: [LS.view, LS.sort, LS.group, LS.sidebar],
   };
@@ -1545,7 +1551,7 @@
   function pickedKeys() {
     const keys = [];
     Array.prototype.forEach.call(syncPick.querySelectorAll('input[data-part]:checked'), (c) => {
-      (SYNC_PARTS[c.getAttribute('data-part')] || []).forEach((k) => keys.push(k));
+      (SYNC_PARTS[c.getAttribute('data-part')] || []).forEach((k) => { if (keys.indexOf(k) < 0) keys.push(k); });
     });
     return keys;
   }
