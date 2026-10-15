@@ -1564,6 +1564,16 @@
       const v = localStorage.getItem(k);
       if (v != null) { try { out[k] = JSON.parse(v); } catch (e) {} }
     });
+    // Spell out every group's switched-off channels, even when none are — an
+    // absent `off` reads as "nothing chosen" and would let another device's
+    // older choice stand.
+    if (keys.indexOf(LS.tabs) >= 0) {
+      const t = out[LS.tabs] = Object.assign({}, out[LS.tabs] || {});
+      allGroups().forEach((g) => {
+        t[g.id] = Object.assign({}, t[g.id] || {});
+        if (!Array.isArray(t[g.id].off)) t[g.id].off = [];
+      });
+    }
     // Shown in the textarea as well as copied, so keep it readable: two-space indent.
     const text = JSON.stringify(out, null, 2);
     syncPaste.value = text;
@@ -1584,6 +1594,16 @@
     syncNoteMsg('Merged. Watched progress and settings updated on this device.');
   }
   syncBackBtn.addEventListener('click', () => showPage('binge'));
+
+  // Another open copy of Binge on this site (the arcade, a preview link, a
+  // second tab) writes the same keys. Pick its changes up straight away —
+  // otherwise this copy's in-memory state is stale, and its next save writes
+  // that stale state back over the other copy's channel choices.
+  window.addEventListener('storage', (e) => {
+    if (e.key && e.key.indexOf('binge-') !== 0) return;
+    reloadState();
+    render();
+  });
   syncCopyBtn.addEventListener('click', exportData);
 
   // Clear this device: drop every binge-* key, then reload so db.json seeds
