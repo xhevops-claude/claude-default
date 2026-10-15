@@ -197,8 +197,8 @@
   // ---------------------------------------------------------------------------
   // Groups — a tab per group from groups.json plus a synthetic "All". The
   // active tab decides which channels are in play; within a tab every channel
-  // starts on and the ones you switch off are remembered per tab, so
-  // "Steve" always means all of Steve unless you've trimmed it.
+  // starts on, and once you switch any, the ones left on are remembered per
+  // tab — so "Steve" means all of Steve until you've trimmed it.
   // ---------------------------------------------------------------------------
   function allGroups() {
     const out = [{ id: 'all', name: 'All', channels: available.map((c) => c.slug) }];
@@ -219,8 +219,19 @@
     if (!Object.keys(tabs[id]).length) delete tabs[id];
     save(LS.tabs, tabs);
   }
-  function offSet(id) { const off = tabState(id).off; return new Set(Array.isArray(off) ? off : []); }
-  function setOff(id, slugs) { setTabPref(id, 'off', slugs.length ? slugs : null); }
+  // A tab saves the channels switched ON (`on`), so what's stored is exactly
+  // what the filter shows. Tabs saved before that hold the switched-off ones
+  // (`off`) instead; with neither, every channel in the group is on.
+  function groupChannels(id) { const g = allGroups().find((x) => x.id === id); return g ? g.channels : []; }
+  function offSet(id) {
+    const s = tabState(id);
+    if (Array.isArray(s.on)) return new Set(groupChannels(id).filter((c) => s.on.indexOf(c) < 0));
+    return new Set(Array.isArray(s.off) ? s.off : []);
+  }
+  function setOff(id, slugs) {
+    setTabPref(id, 'off', null);
+    setTabPref(id, 'on', groupChannels(id).filter((c) => slugs.indexOf(c) < 0));
+  }
   // A tab keeps a picked cutoff { y, m, d } and a `live` flag. Live means
   // "today": the cutoff resolves to the current date whenever it's read, so
   // Today switched on yesterday still means today, while the picked date
@@ -1524,10 +1535,16 @@
     tabs = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
     // One-time migration from the pre-groups flat channel selection: the
     // channels that were switched off become the "All" tab's exclusions.
+    // The old key goes once it's folded in — left behind, it re-applied on
+    // every load whenever "All" had every channel on (no `off` to stop it),
+    // so switching channels back on never stuck.
     const savedSel = load(LS.selected, null);
-    if (!Array.isArray(tabState('all').off) && Array.isArray(savedSel)) {
-      const off = available.map((c) => c.slug).filter((s) => savedSel.indexOf(s) < 0);
-      if (off.length) setOff('all', off);
+    if (Array.isArray(savedSel) && available.length) {
+      if (!Array.isArray(tabState('all').off) && !Array.isArray(tabState('all').on)) {
+        const off = available.map((c) => c.slug).filter((s) => savedSel.indexOf(s) < 0);
+        if (off.length) setOff('all', off);
+      }
+      try { localStorage.removeItem(LS.selected); } catch (e) {}
     }
     recomputeSelected();
   }
@@ -1537,7 +1554,7 @@
   // copy can carry just the progress, or just the settings, etc.
   const SYNC_PARTS = {
     watched: [LS.watchedTo, LS.watched],
-    channels: [LS.selected],
+    channels: [LS.tabs],   // each group's switched-off channels live in its tab state
     filters: [LS.tab, LS.tabs, LS.cutoff, LS.showWatched],
     layout: [LS.view, LS.sort, LS.group, LS.sidebar],
   };
@@ -1545,7 +1562,7 @@
   function pickedKeys() {
     const keys = [];
     Array.prototype.forEach.call(syncPick.querySelectorAll('input[data-part]:checked'), (c) => {
-      (SYNC_PARTS[c.getAttribute('data-part')] || []).forEach((k) => keys.push(k));
+      (SYNC_PARTS[c.getAttribute('data-part')] || []).forEach((k) => { if (keys.indexOf(k) < 0) keys.push(k); });
     });
     return keys;
   }
@@ -1558,6 +1575,17 @@
       const v = localStorage.getItem(k);
       if (v != null) { try { out[k] = JSON.parse(v); } catch (e) {} }
     });
+    // Spell out every group's switched-on channels, so the copy always says
+    // exactly what each filter shows (older saves only held the ones off).
+    if (keys.indexOf(LS.tabs) >= 0) {
+      const t = out[LS.tabs] = Object.assign({}, out[LS.tabs] || {});
+      allGroups().forEach((g) => {
+        const off = offSet(g.id);
+        t[g.id] = Object.assign({}, t[g.id] || {});
+        delete t[g.id].off;
+        t[g.id].on = g.channels.filter((c) => !off.has(c));
+      });
+    }
     // Shown in the textarea as well as copied, so keep it readable: two-space indent.
     const text = JSON.stringify(out, null, 2);
     syncPaste.value = text;
@@ -1578,6 +1606,16 @@
     syncNoteMsg('Merged. Watched progress and settings updated on this device.');
   }
   syncBackBtn.addEventListener('click', () => showPage('binge'));
+
+  // Another open copy of Binge on this site (the arcade, a preview link, a
+  // second tab) writes the same keys. Pick its changes up straight away —
+  // otherwise this copy's in-memory state is stale, and its next save writes
+  // that stale state back over the other copy's channel choices.
+  window.addEventListener('storage', (e) => {
+    if (e.key && e.key.indexOf('binge-') !== 0) return;
+    reloadState();
+    render();
+  });
   syncCopyBtn.addEventListener('click', exportData);
 
   // Clear this device: drop every binge-* key, then reload so db.json seeds
