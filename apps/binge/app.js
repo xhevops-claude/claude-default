@@ -197,8 +197,8 @@
   // ---------------------------------------------------------------------------
   // Groups — a tab per group from groups.json plus a synthetic "All". The
   // active tab decides which channels are in play; within a tab every channel
-  // starts on and the ones you switch off are remembered per tab, so
-  // "Steve" always means all of Steve unless you've trimmed it.
+  // starts on, and once you switch any, the ones left on are remembered per
+  // tab — so "Steve" means all of Steve until you've trimmed it.
   // ---------------------------------------------------------------------------
   function allGroups() {
     const out = [{ id: 'all', name: 'All', channels: available.map((c) => c.slug) }];
@@ -219,8 +219,19 @@
     if (!Object.keys(tabs[id]).length) delete tabs[id];
     save(LS.tabs, tabs);
   }
-  function offSet(id) { const off = tabState(id).off; return new Set(Array.isArray(off) ? off : []); }
-  function setOff(id, slugs) { setTabPref(id, 'off', slugs.length ? slugs : null); }
+  // A tab saves the channels switched ON (`on`), so what's stored is exactly
+  // what the filter shows. Tabs saved before that hold the switched-off ones
+  // (`off`) instead; with neither, every channel in the group is on.
+  function groupChannels(id) { const g = allGroups().find((x) => x.id === id); return g ? g.channels : []; }
+  function offSet(id) {
+    const s = tabState(id);
+    if (Array.isArray(s.on)) return new Set(groupChannels(id).filter((c) => s.on.indexOf(c) < 0));
+    return new Set(Array.isArray(s.off) ? s.off : []);
+  }
+  function setOff(id, slugs) {
+    setTabPref(id, 'off', null);
+    setTabPref(id, 'on', groupChannels(id).filter((c) => slugs.indexOf(c) < 0));
+  }
   // A tab keeps a picked cutoff { y, m, d } and a `live` flag. Live means
   // "today": the cutoff resolves to the current date whenever it's read, so
   // Today switched on yesterday still means today, while the picked date
@@ -1529,7 +1540,7 @@
     // so switching channels back on never stuck.
     const savedSel = load(LS.selected, null);
     if (Array.isArray(savedSel) && available.length) {
-      if (!Array.isArray(tabState('all').off)) {
+      if (!Array.isArray(tabState('all').off) && !Array.isArray(tabState('all').on)) {
         const off = available.map((c) => c.slug).filter((s) => savedSel.indexOf(s) < 0);
         if (off.length) setOff('all', off);
       }
@@ -1564,14 +1575,15 @@
       const v = localStorage.getItem(k);
       if (v != null) { try { out[k] = JSON.parse(v); } catch (e) {} }
     });
-    // Spell out every group's switched-off channels, even when none are — an
-    // absent `off` reads as "nothing chosen" and would let another device's
-    // older choice stand.
+    // Spell out every group's switched-on channels, so the copy always says
+    // exactly what each filter shows (older saves only held the ones off).
     if (keys.indexOf(LS.tabs) >= 0) {
       const t = out[LS.tabs] = Object.assign({}, out[LS.tabs] || {});
       allGroups().forEach((g) => {
+        const off = offSet(g.id);
         t[g.id] = Object.assign({}, t[g.id] || {});
-        if (!Array.isArray(t[g.id].off)) t[g.id].off = [];
+        delete t[g.id].off;
+        t[g.id].on = g.channels.filter((c) => !off.has(c));
       });
     }
     // Shown in the textarea as well as copied, so keep it readable: two-space indent.
