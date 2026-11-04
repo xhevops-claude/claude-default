@@ -403,8 +403,10 @@ export function deriveModel(PLAN) {
     if (d < dFace) return sampleProfile(CUT.profile, d, across);
     const base = sampleProfile(CUT.profile, Math.max(d, 0), across);
     /* Behind a turned outer wall the cut stops short of the street: the
-       setback is the hill as found. */
-    if (WALL_TURN && d >= wallD(across) && d < WALL_D) return natural(d, across);
+       setback is the hill as found — or, with `turnWall.setback` of
+       'road', taken down to the road's level, an open splay off the
+       street. */
+    if (WALL_TURN && d >= wallD(across) && d < WALL_D) return CUT.turnWall?.setback === 'road' ? roadLevel(across) : natural(d, across);
     if (WALL_ROUND && roundedOff(d, across)) return natural(d, across);
     if (!CUT.ramp) return base;
     const r = CUT.ramp;
