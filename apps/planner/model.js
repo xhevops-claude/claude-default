@@ -175,6 +175,16 @@ export function deriveModel(PLAN) {
      is doing; the hill only begins past this line. */
   const HOUSE_EDGE = FRONT.axis === 'x' ? e.y1 : e.x1;
 
+  /* Where the outer wall stands across the front, in d: on the wall
+     line everywhere, unless the cut says `turnWall` — then, north of
+     the house's corner, the wall is turned with the house about the
+     point where it meets the corner's line, so it runs parallel to the
+     face instead of the street, and what it leaves between itself and
+     the street is a triangle of the ground as found. The ramp's side of
+     the corner is never turned: the ramp runs along the street. */
+  const WALL_TURN = CUT?.turnWall && TURN ? Math.tan(TURN) : 0;
+  const wallD = (across) => (across >= HOUSE_EDGE ? WALL_D : WALL_D - (HOUSE_EDGE - across) * WALL_TURN);
+
   /* The quarter-round cut into the inside corner where the apron turns
      onto the ramp. The corner is where the ramp's uphill edge passes the
      house's corner; the circle's centre sits `r` in from it both ways,
@@ -332,6 +342,9 @@ export function deriveModel(PLAN) {
     const dFace = faceD(across);
     if (d < dFace) return sampleProfile(CUT.profile, d, across);
     const base = sampleProfile(CUT.profile, Math.max(d, 0), across);
+    /* Behind a turned outer wall the cut stops short of the street: the
+       setback is the hill as found. */
+    if (WALL_TURN && d >= wallD(across) && d < WALL_D) return natural(d, across);
     if (!CUT.ramp) return base;
     const r = CUT.ramp;
     if (insideFillet(along, across)) return natural(d, across);
@@ -352,5 +365,5 @@ export function deriveModel(PLAN) {
     return -(HOUSE_EDGE - across) * Math.tan(TURN);
   }
 
-  return { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD };
+  return { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_TURN, wallD, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD };
 }
