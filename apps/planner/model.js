@@ -185,6 +185,66 @@ export function deriveModel(PLAN) {
   const WALL_TURN = CUT?.turnWall && TURN ? Math.tan(TURN) : 0;
   const wallD = (across) => (across >= HOUSE_EDGE ? WALL_D : WALL_D - (HOUSE_EDGE - across) * WALL_TURN);
 
+  /* Where a line across the front, d = D0 + t · across, meets the cut's
+     near edge: { d, across, i } with i the edge's segment, or null if
+     it never does. */
+  function lineMeetsCut(D0, t) {
+    if (!CUT) return null;
+    const dAt = (a) => D0 + t * a;
+    if (typeof CUT.from === 'number') return { d: dAt(CUT.from), across: CUT.from, i: null };
+    for (let i = 1; i < CUT.from.length; i++) {
+      const [d0, a0] = CUT.from[i - 1], [d1, a1] = CUT.from[i];
+      /* d0 + u (d1 - d0) = D0 + t (a0 + u (a1 - a0)) */
+      const den = d1 - d0 - (a1 - a0) * t;
+      if (Math.abs(den) < 1e-9) continue;
+      const u = (D0 + t * a0 - d0) / den;
+      if (u >= -1e-9 && u <= 1 + 1e-9) {
+        const a = a0 + u * (a1 - a0);
+        return { d: dAt(a), across: a, i };
+      }
+    }
+    return null;
+  }
+
+  /* The turned wall's north end rounded: `turnWall: { r }` fillets the
+     corner where the wall line meets the cut's edge with an arc of that
+     radius, tangent to both — the wall follows it and the apron's
+     ground stops at it. In (d, across): the corner C, the unit edges u1
+     (back along the wall) and u2 (along the cut's edge away from the
+     street), the centre O, the tangent points P1 on the wall and P2 on
+     the edge, and their outward normals n1, n2. */
+  const WALL_ROUND = (() => {
+    const r = CUT?.turnWall?.r;
+    if (!r || !WALL_TURN || typeof CUT.from === 'number') return null;
+    const met = lineMeetsCut(WALL_D - HOUSE_EDGE * WALL_TURN, WALL_TURN);
+    if (!met || met.i == null) return null;
+    const unit = ([d, a]) => { const l = Math.hypot(d, a); return [d / l, a / l]; };
+    const [d0, a0] = CUT.from[met.i - 1], [d1, a1] = CUT.from[met.i];
+    const u1 = unit([WALL_TURN, 1]);
+    const u2 = unit(d0 < d1 ? [d0 - d1, a0 - a1] : [d1 - d0, a1 - a0]);
+    const phi = Math.acos(Math.max(-1, Math.min(1, u1[0] * u2[0] + u1[1] * u2[1])));
+    const T = r / Math.tan(phi / 2);
+    const b = unit([u1[0] + u2[0], u1[1] + u2[1]]);
+    const C = [met.d, met.across];
+    const O = [C[0] + (b[0] * r) / Math.sin(phi / 2), C[1] + (b[1] * r) / Math.sin(phi / 2)];
+    const P1 = [C[0] + T * u1[0], C[1] + T * u1[1]], P2 = [C[0] + T * u2[0], C[1] + T * u2[1]];
+    const n1 = [(P1[0] - O[0]) / r, (P1[1] - O[1]) / r], n2 = [(P2[0] - O[0]) / r, (P2[1] - O[1]) / r];
+    return { r, C, u1, u2, T, O, P1, P2, n1, n2 };
+  })();
+  /* Inside the corner the rounding takes off: between the two tangents
+     and outside the arc. */
+  function roundedOff(d, across) {
+    if (!WALL_ROUND) return false;
+    const { r, O, n1, n2 } = WALL_ROUND;
+    const qd = d - O[0], qa = across - O[1];
+    if (qd * qd + qa * qa < r * r) return false;
+    /* q − O = α n1 + β n2, both non-negative inside the sector */
+    const det = n1[0] * n2[1] - n1[1] * n2[0];
+    if (Math.abs(det) < 1e-12) return false;
+    const al = (qd * n2[1] - qa * n2[0]) / det, be = (n1[0] * qa - n1[1] * qd) / det;
+    return al >= -1e-9 && be >= -1e-9;
+  }
+
   /* The quarter-round cut into the inside corner where the apron turns
      onto the ramp. The corner is where the ramp's uphill edge passes the
      house's corner; the circle's centre sits `r` in from it both ways,
@@ -345,6 +405,7 @@ export function deriveModel(PLAN) {
     /* Behind a turned outer wall the cut stops short of the street: the
        setback is the hill as found. */
     if (WALL_TURN && d >= wallD(across) && d < WALL_D) return natural(d, across);
+    if (WALL_ROUND && roundedOff(d, across)) return natural(d, across);
     if (!CUT.ramp) return base;
     const r = CUT.ramp;
     if (insideFillet(along, across)) return natural(d, across);
@@ -365,5 +426,5 @@ export function deriveModel(PLAN) {
     return -(HOUSE_EDGE - across) * Math.tan(TURN);
   }
 
-  return { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_TURN, wallD, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD };
+  return { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_TURN, wallD, lineMeetsCut, WALL_ROUND, roundedOff, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD };
 }

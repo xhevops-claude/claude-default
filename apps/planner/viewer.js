@@ -10,7 +10,7 @@ import { dotTexture, labelTexture, tipTexture } from './textures.js';
 
 const { PLAN, RELIEF, PROJECT } = await loadCurrent();
 const M = deriveModel(PLAN);
-const { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_TURN, wallD, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD } = M;
+const { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_TURN, wallD, lineMeetsCut, WALL_ROUND, roundedOff, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD } = M;
 
 /* The tracker lives with the project. */
 {
@@ -262,9 +262,9 @@ async function boot() {
   /* A walked volume: thickness and length read off its top, and the
      height it stands at each end — the second may differ from the first
      or be nothing at all, which is the point of showing both. */
-  const walkedDims = (bottom, top, n) => {
+  const walkedDims = (bottom, top, n, m = n) => {
     const dims = [
-      { a: top[0], b: top[2 * n - 1], label: mLabel(dist3(top[0], top[2 * n - 1])) },
+      { a: top[0], b: top[n + m - 1], label: mLabel(dist3(top[0], top[n + m - 1])) },
       { a: top[0], b: top[n - 1], label: mLabel(plan2(top[0], top[n - 1])), at: 0.6 },
     ];
     for (const i of [0, n - 1]) {
@@ -289,29 +289,53 @@ async function boot() {
       const onWall = v.onWall && CUT && FRONT.axis === 'x';
       const offD = (p) => (p - FACE) * FRONT.sign - WALL_D;
       const alongAt = (p) => (onWall ? (a) => FACE + FRONT.sign * (wallD(a) + offD(p)) : () => p);
+      /* With the wall's end rounded, a face's chain starts on the arc —
+         its own, concentric, at the face's distance in from the outer
+         line — from the cut's edge round to where it joins the straight. */
+      const round = onWall && onCut && WALL_ROUND;
+      const arcOf = (p) => {
+        const { r, O, n1, n2 } = WALL_ROUND;
+        const rho = r + offD(p) / Math.hypot(1, WALL_TURN);
+        const th1 = Math.atan2(n1[1], n1[0]);
+        let th2 = Math.atan2(n2[1], n2[0]);
+        if (th2 - th1 > Math.PI) th2 -= 2 * Math.PI; else if (th1 - th2 > Math.PI) th2 += 2 * Math.PI;
+        const K = 8, pts = [];
+        for (let k = 0; k <= K; k++) {
+          const th = th2 + ((th1 - th2) * k) / K;
+          pts.push([FACE + FRONT.sign * (O[0] + rho * Math.cos(th)), O[1] + rho * Math.sin(th)]);
+        }
+        return pts;
+      };
       const startAt = (p) => {
         if (!onCut) return FRONT.axis === 'x' ? v.z0 : v.x0;
+        if (round) return arcOf(p)[arcOf(p).length - 1][1];
         if (!onWall || !WALL_TURN) return cutAt(p);
         const met = lineMeetsCut(WALL_D - HOUSE_EDGE * WALL_TURN + offD(p), WALL_TURN);
-        return met ? met[1] : cutAt(p);
+        return met ? met.across : cutAt(p);
       };
       const a0Lo = startAt(lo);
       const a0Hi = onCut ? startAt(hi) : a0Lo;
       const a1 = FRONT.axis === 'x' ? v.z1 : v.x1;
       const dFace = ((FRONT.sign > 0 ? lo : hi) - FACE) * FRONT.sign;
       const steps = runOut(stationsBetween(Math.max(a0Lo, a0Hi), a1), (a) => yAt(v.y1, a, dFace) - yAt(v.y0, a, dFace));
-      const n = steps.length;
-      /* Each side starts on its own end of the cut edge; the stations
-         beyond the first are shared, so the two chains match. */
-      const side = (p, list) => { const at = alongAt(p); return list.map((a) => (FRONT.axis === 'x' ? [at(a), a] : [a, at(a)])); };
-      const ring = [...side(lo, [a0Lo, ...steps.slice(1)]), ...side(hi, [a0Hi, ...steps.slice(1)].reverse())];
+      /* Each side starts on its own end of the cut edge (or its own arc);
+         the stations beyond the first are shared, so the two chains match. */
+      const side = (p, a0) => {
+        const at = alongAt(p);
+        const head = round ? arcOf(p) : [FRONT.axis === 'x' ? [at(a0), a0] : [a0, at(a0)]];
+        const rest = (round ? steps.filter((a) => a > a0 + 1e-6) : steps.slice(1)).map((a) => (FRONT.axis === 'x' ? [at(a), a] : [a, at(a)]));
+        return [...head, ...rest];
+      };
+      const chainLo = side(lo, a0Lo), chainHi = side(hi, a0Hi);
+      const n = chainLo.length, m = chainHi.length;
+      const ring = [...chainLo, ...chainHi.slice().reverse()];
       const acrossOf = ([x, z]) => (FRONT.axis === 'x' ? z : x);
-      const cornersAt = [0, n - 1, n, 2 * n - 1];
+      const cornersAt = [0, n - 1, n, n + m - 1];
       const bottom = ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z]), dFace), z]);
       const top = ring.map(([x, z]) => [x, yAt(v.y1, acrossOf([x, z]), dFace), z]);
       addVolume(o, bottom, top, { dots: false, uprightAt: cornersAt });
       for (const i of cornersAt) o.dotPos.push(...bottom[i], ...top[i]);
-      o.dims = walkedDims(bottom, top, n);
+      o.dims = walkedDims(bottom, top, n, m);
       continue;
     }
     /* A work with its own `ring` is that footprint; a box otherwise. */
@@ -367,29 +391,12 @@ async function boot() {
       o.dims = boxDims(v, v.house ? H : null);
     }
   }
-  /* Where a line across the front, d = D0 + t · across, meets the cut's
-     near edge: [along, across], or null if it never does. */
-  function lineMeetsCut(D0, t) {
-    const dAt = (a) => D0 + t * a;
-    if (typeof CUT.from === 'number') return [FACE + FRONT.sign * dAt(CUT.from), CUT.from];
-    for (let i = 1; i < CUT.from.length; i++) {
-      const [d0, a0] = CUT.from[i - 1], [d1, a1] = CUT.from[i];
-      /* d0 + u (d1 - d0) = D0 + t (a0 + u (a1 - a0)) */
-      const den = d1 - d0 - (a1 - a0) * t;
-      if (Math.abs(den) < 1e-9) continue;
-      const u = (D0 + t * a0 - d0) / den;
-      if (u >= -1e-9 && u <= 1 + 1e-9) {
-        const a = a0 + u * (a1 - a0);
-        return [FACE + FRONT.sign * dAt(a), a];
-      }
-    }
-    return null;
-  }
   /* Where the turned house's east face line meets the cut's near edge:
-     the apron's north-west corner. */
+     the apron's north-west corner, [along, across]. */
   function faceMeetsCut() {
     const t = Math.tan(TURN);
-    return lineMeetsCut(-HOUSE_EDGE * t, t);
+    const met = lineMeetsCut(-HOUSE_EDGE * t, t);
+    return met ? [FACE + FRONT.sign * met.d, met.across] : null;
   }
 
   /* ── the driveway, derived ──────────────────────────── */
@@ -1233,7 +1240,18 @@ async function boot() {
     }
     /* the turned outer wall, north of the corner, inside the cut */
     if (WALL_TURN && FRONT.axis === 'x' && z < HOUSE_EDGE && z >= cutFrom(wallD(z))) out.push(FACE + FRONT.sign * wallD(z));
+    /* the rounded end's arc, where this line crosses it */
+    if (WALL_ROUND && FRONT.axis === 'x') {
+      const { r, O } = WALL_ROUND, h = r * r - (z - O[1]) ** 2;
+      if (h > 0) for (const d of [O[0] - Math.sqrt(h), O[0] + Math.sqrt(h)]) if (roundedOff(d + 1e-6 * Math.sign(d - O[0]), z + 1e-6 * Math.sign(z - O[1]))) out.push(FACE + FRONT.sign * d);
+    }
     return out;
+  };
+  const arcZCrossings = (d) => {
+    if (!WALL_ROUND) return [];
+    const { r, O } = WALL_ROUND, h = r * r - (d - O[0]) ** 2;
+    if (h <= 0) return [];
+    return [O[1] - Math.sqrt(h), O[1] + Math.sqrt(h)].filter((a) => roundedOff(d + 1e-6 * Math.sign(d - O[0]), a + 1e-6 * Math.sign(a - O[1])));
   };
   const zCrossings = (x) => {
     const d = (x - FACE) * FRONT.sign;
@@ -1245,6 +1263,7 @@ async function boot() {
       const a = HOUSE_EDGE - (WALL_D - d) / WALL_TURN;
       if (a >= cutFrom(d) && a <= CUT.to) out.push(a);
     }
+    out.push(...arcZCrossings(d));
     return out;
   };
   const faceXCrossing = (z) => {
