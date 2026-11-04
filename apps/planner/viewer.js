@@ -10,7 +10,7 @@ import { dotTexture, labelTexture, tipTexture } from './textures.js';
 
 const { PLAN, RELIEF, PROJECT } = await loadCurrent();
 const M = deriveModel(PLAN);
-const { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_MOVED, wallD, wallAcross, wallMeetsCut, lineMeetsCut, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD } = M;
+const { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_MOVED, ARC, SWEEP, wallD, wallPoint, wallStations, onCurve, wallAcross, wallMeetsCut, lineMeetsCut, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, driveLevel, DRIVE, groundY, faceD } = M;
 
 /* The tracker lives with the project. */
 {
@@ -213,20 +213,39 @@ async function boot() {
      `ground` is the natural hill at the volume's house-side face, one
      height across its thickness. */
   const followsGround = (v) => typeof v.y0 === 'object' || typeof v.y1 === 'object';
+  /* A walked wall is drawn in metre pieces: an upright wherever the
+     distance along a chain of [x, z] passes a whole metre, plus its
+     ends, so a straight 4 m wall shows four slabs and a curve more.
+     Returns the ring indices, the chain starting at `offset` in it. */
+  const metreMarks = (chain, offset = 0, reverse = false) => {
+    const out = [], n = chain.length;
+    let acc = 0, next = 1;
+    for (let i = 0; i < n; i++) {
+      if (i) acc += Math.hypot(chain[i][0] - chain[i - 1][0], chain[i][1] - chain[i - 1][1]);
+      const mark = i === 0 || i === n - 1 || acc >= next - 1e-6;
+      while (acc >= next - 1e-6) next += 1;
+      if (mark) out.push(reverse ? offset + n - 1 - i : offset + i);
+    }
+    return out;
+  };
   const yAt = (spec, across, dFace) => {
     if (typeof spec === 'number') return spec;
     if ('road' in spec) return roadLevel(across) + (spec.road || 0);
     if ('ground' in spec) return natural(dFace, across) + (spec.ground || 0);
-    return rampLevel(across) + (spec.floor || 0);
+    return driveLevel(WALL_D, across) + (spec.floor || 0);
   };
   /* The stations a walked volume is sampled at: every STEP from its
      start, then its end. The ground grid uses the same, so a slab's
      edge and the grid line under it are the same polyline. */
   const stationsBetween = (a0, a1) => {
     const s = [];
-    for (let a = a0; a < a1 - 1e-6; a += STEP) s.push(a);
+    /* Round the wall's arc the stations are the arc's own, by angle,
+       in place of the half-metre ones, so the wall and the apron's ring
+       share their chords. */
+    for (let a = a0; a < a1 - 1e-6; a += STEP) if (!onCurve(a)) s.push(a);
+    for (const a of wallStations()) if (a > a0 + 1e-6 && a < a1 - 1e-6) s.push(a);
     s.push(a1);
-    return s;
+    return [...new Set(s)].sort((x, y) => x - y);
   };
   /* A wall whose top would pass under its foot ends where they meet:
      the last station is moved to that crossing, found by bisection. */
@@ -280,6 +299,37 @@ async function boot() {
        when the boundary runs at an angle — so its end follows it. */
     const onCut = v.z0 === 'cut' && CUT && FRONT.axis === 'x';
     const cutAt = (x) => cutFrom((x - FACE) * FRONT.sign);
+    /* A volume `onEdge` stands on the cut's near edge, the boundary,
+       from x0 to x1 along the front: its outer face on the edge, its
+       inner face WALL in along the edge's own normal, each station's
+       top and foot read where that station is. A `ground` top is the
+       natural hill there. */
+    if (v.onEdge && CUT && FRONT.axis === 'x' && Array.isArray(CUT.from)) {
+      const xs = stationsBetween(v.x0, v.x1);
+      for (const [d] of CUT.from) { const x = FACE + FRONT.sign * d; if (x > v.x0 + 1e-6 && x < v.x1 - 1e-6) xs.push(x); }
+      xs.sort((a, b) => a - b);
+      const outer = xs.map((x) => [x, cutFrom((x - FACE) * FRONT.sign)]);
+      const inner = outer.map(([x, z], i) => {
+        const [xa, za] = outer[Math.max(0, i - 1)], [xb, zb] = outer[Math.min(outer.length - 1, i + 1)];
+        const dx = xb - xa, dz = zb - za, l = Math.hypot(dx, dz) || 1;
+        const nx = -dz / l, nz = dx / l, sgn = nz >= 0 ? 1 : -1;
+        return [x + sgn * nx * WALL, z + sgn * nz * WALL];
+      });
+      const yOf = (spec, [x, z]) => {
+        if (typeof spec === 'number') return spec;
+        if ('ground' in spec) return natural((x - FACE) * FRONT.sign, z) + (spec.ground || 0);
+        return yAt(spec, z, 0);
+      };
+      const ring = [...outer, ...inner.slice().reverse()];
+      const bottom = ring.map((p) => [p[0], yOf(v.y0, p), p[1]]);
+      const top = ring.map((p) => [p[0], Math.max(yOf(v.y0, p), yOf(v.y1, p)), p[1]]);
+      const n = outer.length;
+      const cornersAt = [0, n - 1, n, 2 * n - 1];
+      addVolume(o, bottom, top, { dots: false, uprightAt: cornersAt });
+      for (const i of cornersAt) o.dotPos.push(...bottom[i], ...top[i]);
+      o.dims = walkedDims(bottom, top, n, n);
+      continue;
+    }
     if (followsGround(v) && TER) {
       const lo = FRONT.axis === 'x' ? v.x0 : v.z0, hi = FRONT.axis === 'x' ? v.x1 : v.z1;
       /* A volume `onWall` stands on the cut's outer wall line: its two
@@ -288,7 +338,12 @@ async function boot() {
          each starts where its own line meets the cut edge. */
       const onWall = v.onWall && CUT && FRONT.axis === 'x';
       const offD = (p) => (p - FACE) * FRONT.sign - WALL_D;
-      const alongAt = (p) => (onWall ? (a) => FACE + FRONT.sign * (wallD(a) + offD(p)) : () => p);
+      /* A station's point on a face: for a wall on the wall line, where
+         that face's own line stands at the station (round the arc it
+         moves across as well as out). */
+      const pointAt = (p) => (onWall
+        ? (a) => { const [d, ac] = wallPoint(a, offD(p)); return [FACE + FRONT.sign * d, ac]; }
+        : (a) => (FRONT.axis === 'x' ? [p, a] : [a, p]));
       /* Where a face meets the cut's near edge: for a wall on the wall
          line, where its own line does. A z1 of 'cut' ends the volume
          there instead — a piece on the far side of the edge running up
@@ -310,10 +365,10 @@ async function boot() {
       /* Each side starts and ends on its own point of the cut edge; the
          stations between are shared, so the two chains match. */
       const side = (p, a0, a1) => {
-        const at = alongAt(p);
+        const at = pointAt(p);
         const end = ranOut ? steps[steps.length - 1] : a1;
         const list = [a0, ...steps.slice(1, -1).filter((a) => a > a0 + 1e-6 && a < end - 1e-6), end];
-        return list.map((a) => (FRONT.axis === 'x' ? [at(a), a] : [a, at(a)]));
+        return list.map(at);
       };
       const chainLo = side(lo, a0Lo, a1Lo), chainHi = side(hi, a0Hi, a1Hi);
       const n = chainLo.length, m = chainHi.length;
@@ -322,7 +377,7 @@ async function boot() {
       const cornersAt = [0, n - 1, n, n + m - 1];
       const bottom = ring.map(([x, z]) => [x, yAt(v.y0, acrossOf([x, z]), dFace), z]);
       const top = ring.map(([x, z]) => [x, yAt(v.y1, acrossOf([x, z]), dFace), z]);
-      addVolume(o, bottom, top, { dots: false, uprightAt: cornersAt });
+      addVolume(o, bottom, top, { dots: false, uprightAt: [...metreMarks(chainLo), ...metreMarks(chainHi, n, true)] });
       for (const i of cornersAt) o.dotPos.push(...bottom[i], ...top[i]);
       o.dims = walkedDims(bottom, top, n, m);
       continue;
@@ -407,14 +462,62 @@ async function boot() {
   if (DRIVE) {
     const { stations, edge, hill, outer } = DRIVE;
     const m = stations.length;
-    const ring = [...stations.map((c) => [outer, c]), ...stations.slice().reverse().map((c) => [edge(c), c])];
+    const ring = [...stations.map((c) => [outer(c), c]), ...stations.slice().reverse().map((c) => [edge(c), c])];
     const at = (c) => stations.indexOf(c);
     const corners = [0, m - 1, 2 * m - 1];
     if (FILLET) corners.push(2 * m - 1 - at(FILLET.centre.across));
     if (MOUTH) corners.push(2 * m - 1 - at(MOUTH.across0));
     const o = makeObject({ id: 'driveway-ramp', name: 'Driveway, down to the road', group: 'drive' });
-    const bottom = ring.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB));
-    const top = ring.map(([d, c]) => pt(atD(d, c), rampLevel(c)));
+    /* Cross lines over the drive: one every metre of across on the
+       straight stretches, inner edge to wall; on each curve (the street
+       wall's sweep and corner arc, the mouth) one every 10 degrees, from
+       the curve towards its centre, stopping at the far edge. */
+    {
+      const r = CUT.ramp, door = r.from, deg = Math.PI / 18;
+      const inner = (z) => {
+        if (z >= door) return FACE + FRONT.sign * edge(Math.min(z, CUT.to));
+        if (z >= -0.21) return 11 + (z + 0.21) * (0.98 / 6.93);
+        return 9.02 - (0.07 - z) * (0.22 / 1.56);
+      };
+      const first = SWEEP ? SWEEP.start : ARC ? ARC.from : -Infinity;
+      const pts = [];
+      const lv = (p) => driveLevel((p[0] - FACE) * FRONT.sign, p[1]) + 0.02;
+      const seg = (a, b) => { pts.push(a[0], lv(a), a[1], b[0], lv(b), b[1]); };
+      const last = MOUTH ? MOUTH.across0 : CUT.to;
+      /* the drive lies between the walls: lines end on the wall's drive face */
+      const outerX = (z) => FACE + FRONT.sign * (MOUTH && z >= MOUTH.across0 - 1e-6 ? WALL_D : wallPoint(z, -WALL)[0]);
+      for (let z = door; z <= last + 1e-6; z += 1) seg([inner(z), z], [outerX(z), z]);
+      for (let z = door - 1; z >= first - 1e-6; z -= 1) seg([inner(z), z], [outerX(z), z]);
+      const spoke = (p, c) => {
+        const dx = c[0] - p[0], dz = c[1] - p[1], n = Math.ceil(Math.hypot(dx, dz) / 0.05);
+        let end = c;
+        for (let k = 1; k <= n; k++) { const q = [p[0] + (dx * k) / n, p[1] + (dz * k) / n]; if (q[0] <= inner(q[1])) { end = q; break; } }
+        seg(p, end);
+      };
+      const arcs = [];
+      if (SWEEP) arcs.push({ c: [FACE + FRONT.sign * SWEEP.cd, SWEEP.cz], rad: SWEEP.R, a: 0, b: ARC ? ARC.a0 : 0 });
+      if (ARC) arcs.push({ c: [FACE + FRONT.sign * ARC.cd, ARC.cz], rad: ARC.r, a: ARC.a0, b: -Math.PI / 2 });
+      for (const { c, rad, a, b } of arcs) {
+        const phis = [a];
+        for (let k = Math.floor(a / deg) * deg; k > b + 1e-9; k -= deg) if (k < a - 1e-9) phis.push(k);
+        phis.push(b);
+        for (const phi of phis) spoke([c[0] + (rad - WALL) * Math.cos(phi), c[1] + (rad - WALL) * Math.sin(phi)], c);
+      }
+      if (MOUTH) {
+        const { a, b, d0, across0 } = MOUTH, c = [FACE + FRONT.sign * (d0 - WALL), across0];
+        /* the mouth: spokes from the ellipse to the street wall's end,
+           every 10 degrees; the mouth is a spiral, so each spoke is level
+           at its own height and meets the wall's end that much higher
+           than the one before */
+        for (let k = 0; k <= 9; k++) {
+          const th = (k * Math.PI) / 18, p = [FACE + FRONT.sign * (d0 - a * Math.cos(th)), across0 + b * Math.sin(th)], y = lv(p);
+          pts.push(p[0], y, p[1], c[0], y, c[1]);
+        }
+      }
+      o.node.add(tagged(segments(pts, o.line(0.9)), 'floors'));
+    }
+    const bottom = ring.map(([d, c]) => pt(atD(d, c), driveLevel(d, c) - SLAB));
+    const top = ring.map(([d, c]) => pt(atD(d, c), driveLevel(d, c)));
     addVolume(o, bottom, top, { dots: false, uprightAt: corners, strip: true });
     for (const i of corners) o.dotPos.push(...bottom[i], ...top[i]);
 
@@ -427,12 +530,12 @@ async function boot() {
         const target = ((FILLET ? FILLET.centre.across : r.from) + (MOUTH ? MOUTH.across0 : CUT.to)) / 2;
         return Math.abs(c - target) < Math.abs(best - target) ? c : best;
       });
-      const outerAt = (c) => pt(atD(outer, c), rampLevel(c));
-      const innerAt = (c) => pt(atD(edge(c), c), rampLevel(c));
+      const outerAt = (c) => pt(atD(outer(c), c), driveLevel(outer(c), c));
+      const innerAt = (c) => pt(atD(edge(c), c), driveLevel(edge(c), c));
       const drop = rampLevel(r.from) - rampLevel(r.to);
       o.dims = [
         { a: outerAt(r.from), b: outerAt(CUT.to), label: `run ${mLabel(CUT.to - r.from)}`, at: 0.9 },
-        { a: innerAt(straightMid), b: outerAt(straightMid), label: mLabel(outer - edge(straightMid)), at: 0.35 },
+        { a: innerAt(straightMid), b: outerAt(straightMid), label: mLabel(outer(straightMid) - edge(straightMid)), at: 0.35 },
         { a: outerAt(r.from), b: outerAt(r.to), label: `↓ ${mLabel(drop)} over ${mLabel(r.to - r.from)} · ${Math.round((drop / (r.to - r.from)) * 100)} %`, at: 0.3 },
         { a: bottom[0], b: top[0], label: mLabel(SLAB) },
       ];
@@ -450,7 +553,7 @@ async function boot() {
     const arcEnd = FILLET ? FILLET.centre.across : null;
     const mouthStart = MOUTH ? MOUTH.across0 : null;
     if (FILLET) pieces.push(['fillet-wall', 'Corner fillet, wall', (c) => c <= arcEnd]);
-    pieces.push(['ramp-wall', 'Retaining wall, uphill side', (c) => (arcEnd == null || c >= arcEnd) && (mouthStart == null || c <= mouthStart)]);
+    pieces.push(['ramp-wall', 'Retaining wall, uphill side', (c) => (arcEnd == null || c >= arcEnd) && c >= HOUSE_EDGE - 1e-9 && (mouthStart == null || c <= mouthStart)]);
     if (MOUTH) pieces.push(['mouth-wall', 'Entrance mouth, wall', (c) => c >= mouthStart]);
     for (const [id, name, within] of pieces) {
       const st = stations.filter(within);
@@ -475,11 +578,17 @@ async function boot() {
       }
       const n = cut.length;
       const wallRing = [...cut, ...far.slice().reverse()];
-      const topAt = (k) => { const [d, c] = far[k < n ? k : 2 * n - 1 - k]; return natural(d, c); };
+      /* A cut wall where the hill stands above the drive, a fill wall
+         where the drive stands above the hill: the top is the higher of
+         the hill and the drive plus LIP, the foot the lower of the hill
+         and the slab's underside. */
+      const LIP = 0.2;
+      const hillAt = (k) => { const [d, c] = far[k < n ? k : 2 * n - 1 - k]; return natural(d, c); };
       const wo = makeObject({ id, name, group: 'wall' });
-      const wb = wallRing.map(([d, c]) => pt(atD(d, c), rampLevel(c) - SLAB));
-      const wt = wallRing.map(([d, c], k) => pt(atD(d, c), topAt(k)));
-      addVolume(wo, wb, wt, { dots: false, uprightAt: [0, n - 1, n, 2 * n - 1], strip: true });
+      const wb = wallRing.map(([d, c], k) => pt(atD(d, c), Math.min(driveLevel(d, c) - SLAB, hillAt(k))));
+      const wt = wallRing.map(([d, c], k) => pt(atD(d, c), Math.max(driveLevel(d, c) + LIP, hillAt(k))));
+      const marks = metreMarks(cut.map(([d, c]) => [atD(d, c), c]));
+      addVolume(wo, wb, wt, { dots: false, uprightAt: [...marks, ...marks.map((k) => 2 * n - 1 - k)], strip: true });
       /* Thickness at its start, its length along the cut edge (the
          arc's, not the chord's), and its height at each end. */
       let along = 0;
@@ -1861,7 +1970,7 @@ async function boot() {
     for (const [id, key] of [['dock-left-fold', 'Collapse'], ['dock-left-open', 'Expand'], ['dock-right-fold', 'Collapse'], ['dock-right-open', 'Expand'], ['fs-exit', 'Exit full screen'], ['settings-open', 'Settings']]) { $(id).title = t(key); $(id).setAttribute('aria-label', t(key)); }
     paintFS();
     paintProps();
-    setMode(state.mode);
+    setMode(PLAN.defaults?.mode || state.mode);
     paintReliefLabels();
     if (selected) { const o = selected; select(null); select(o); }
   }
@@ -1871,10 +1980,15 @@ async function boot() {
   });
   applyLang();
 
+  /* The opening view: from `defaults.camera` when the scene gives one
+     (dir, the way the camera looks from; dist, metres from the target,
+     or zoom, a factor on the fitted distance; target, the point looked
+     at), else fitted to the box. */
   function fit() {
-    const dist = (BOX.r / Math.sin((camera.fov * Math.PI / 180) / 2)) * 1.25;
-    const dir = new THREE.Vector3(0.75, 0.42, 1).normalize();
-    controls.target.set(BOX.cx, BOX.cy, BOX.cz);
+    const cam = PLAN.defaults?.camera || {};
+    const dist = cam.dist ?? (BOX.r / Math.sin((camera.fov * Math.PI / 180) / 2)) * 1.25 * (cam.zoom || 1);
+    const dir = new THREE.Vector3(...(cam.dir || [0.75, 0.42, 1])).normalize();
+    controls.target.set(...(cam.target || [BOX.cx, BOX.cy, BOX.cz]));
     camera.position.copy(controls.target).addScaledVector(dir, dist);
     camera.up.set(0, 1, 0);
     camera.lookAt(controls.target);

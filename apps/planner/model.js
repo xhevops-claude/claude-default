@@ -10,8 +10,8 @@ export function deriveModel(PLAN) {
   /* Everything that follows the ground across the front — slabs, walls,
      the ground grid over the driveway — is sampled at these intervals, so
      lines that should coincide do. */
-  const STEP = 0.5;
   const TER = PLAN.terrain || null;
+  const STEP = TER?.step || 0.5;
   /* With no house in the plan, the envelope is an empty box at the origin. */
   const e = PLAN.envelope || { x0: 0, y0: 0, x1: 0, y1: 0 };
   /* The house turned about its south-east corner — the corner the fillet
@@ -178,36 +178,168 @@ export function deriveModel(PLAN) {
   /* Where the outer wall stands across the front, in d: on the wall
      line everywhere, unless the cut gives a `wallLine` that moves it in
      from the street somewhere north of the ramp. Two shapes:
-       'turned' — north of the house's corner the wall is turned with
-         the house about the point where it meets the corner's line, so
-         it runs parallel to the face; what it leaves between itself and
-         the street is a triangle.
+       'turned' — the wall runs parallel to the house's face, on the
+         house's own line `d` out from it (house frame; without `d`, the
+         line through the ramp's corner), and on the street line where
+         that line would stand in the road; what it leaves between itself
+         and the street is a wedge; with `ease` it leaves the street line
+         on an arc of that radius tangent to both, no kink. With `to` it leaves the parallel line
+         on the circle tangent to it whose lowest point is the cut's near
+         edge at `to` (the boundary's bend), so the corner is one arc
+         ending square there — or, with `from` instead, the circle
+         tangent where the line is left, its radius found so that its
+         lowest point lands on the edge; from there the cut's edge is the line and
+         nothing north of `to` is inside the wall.
        's' — from `from` across to `to` the wall eases `offset` metres
          in from the street on a cosine S, tangent to the street line at
          one end and to its offset at the other, and stays offset beyond
          `to`: one smooth wall, no corner anywhere.
+       'sweep' — one curve, no straight: the wall leaves the street line
+         at `start` on the circle through the point `d` out from the face
+         (house frame) at `from` — the door's clearance — and goes on
+         from that point on the corner circle tangent to it there, whose
+         lowest point lands on the cut's edge; square end there.
      `setback: 'road'` takes the ground it leaves in front of the wall
      down to the road, an open splay off the street; without it that
      ground is the hill as found. The ramp's side is never moved: the
      ramp runs along the street. */
   const WL = CUT?.wallLine || null;
   const WALL_MOVED = !!WL;
+  /* The turned line, d = a + b · across on the frontage's axes: the
+     house's own line `d` out from the face; `pivot` is the across where
+     it reaches the street line. */
+  const TURNED = (() => {
+    if ((WL?.shape !== 'turned' && WL?.shape !== 'sweep') || !TURN) return null;
+    const b = Math.tan(TURN), a = (WL.d ?? WALL_D * Math.cos(TURN)) / Math.cos(TURN) - HOUSE_EDGE * b;
+    return { a, b, pivot: (WALL_D - a) / b };
+  })();
+  /* The ease off the street line: the circle of radius `ease` tangent to
+     the street line and the turned line, centre (cd, cz), between
+     across z0 on the turned line and z1 on the street. */
+  const EASE = (() => {
+    if (!TURNED || !WL.ease) return null;
+    const R = WL.ease, t = R * Math.tan(TURN / 2);
+    return { R, cd: WALL_D - R, cz: TURNED.pivot + t, z0: TURNED.pivot - t * Math.cos(TURN), z1: TURNED.pivot + t };
+  })();
+  const turnedD = (across) => {
+    if (EASE && across > EASE.z0 && across < EASE.z1) return EASE.cd + Math.sqrt(Math.max(0, EASE.R ** 2 - (across - EASE.cz) ** 2));
+    return Math.min(WALL_D, TURNED.a + TURNED.b * across);
+  };
+  /* The cut's near edge, d out from the face, at an across on it. */
+  const edgeD = (across) => {
+    if (typeof CUT.from === 'number') return null;
+    for (let i = 1; i < CUT.from.length; i++) {
+      const [d0, a0] = CUT.from[i - 1], [d1, a1] = CUT.from[i];
+      if ((a0 - across) * (a1 - across) <= 0 && a0 !== a1) return d0 + ((across - a0) * (d1 - d0)) / (a1 - a0);
+    }
+    return null;
+  };
+  /* The corner's arc: the circle tangent to the turned line whose lowest
+     point is the cut's edge at `to`; centre (cd, cz), from the tangent
+     point's across `from` down to `to`. */
+  /* The sweep's first circle: tangent to the street line at `start`,
+     through P on the house's line at `from`; u is the unit from its
+     centre to P, the corner circle's centre lies on it. */
+  const SWEEP = (() => {
+    if (WL?.shape !== 'sweep' || !TURNED) return null;
+    const P = [TURNED.a + TURNED.b * WL.from, WL.from], g = WALL_D - P[0];
+    const R = (g * g + (P[1] - WL.start) ** 2) / (2 * g);
+    const c = [WALL_D - R, WL.start];
+    return { R, cd: c[0], cz: c[1], start: WL.start, P, u: [(P[0] - c[0]) / R, (P[1] - c[1]) / R] };
+  })();
+  const ARC = (() => {
+    if (!TURNED) return null;
+    if (SWEEP) {
+      const { P, u } = SWEEP;
+      const low = (r) => [P[0] - r * u[0], P[1] - r * u[1] - r];
+      const f = (r) => { const [d, z] = low(r); return z - cutFrom(d); };
+      let lo = 0.1, hi = 20;
+      if (f(lo) < 0 || f(hi) > 0) return null;
+      for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (f(mid) > 0) lo = mid; else hi = mid; }
+      const r = (lo + hi) / 2, [cd, to] = low(r);
+      return { to, r, cd, cz: to + r, from: P[1], a0: Math.atan2(u[1], u[0]) };
+    }
+    if (WL.from != null) {
+      /* given where it leaves the line: the radius whose circle, tangent
+         there, has its lowest point on the cut's edge */
+      const from = WL.from, d1 = turnedD(from);
+      const low = (r) => [d1 - r * Math.cos(TURN), from + r * Math.sin(TURN) - r];
+      const f = (r) => { const [d, z] = low(r); return z - cutFrom(d); };
+      let lo = 0.1, hi = 20;
+      if (f(lo) < 0 || f(hi) > 0) return null;
+      for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (f(mid) > 0) lo = mid; else hi = mid; }
+      const r = (lo + hi) / 2, [cd, to] = low(r);
+      return { to, r, cd, cz: to + r, from, a0: -TURN };
+    }
+    if (WL.to == null) return null;
+    const to = WL.to, cd = edgeD(to);
+    if (cd == null) return null;
+    const { a, b } = TURNED;
+    const r = (a + b * to - cd) / (Math.sqrt(1 + b * b) - b);
+    return { to, r, cd, cz: to + r, from: to + r - r * Math.sin(TURN), a0: -TURN };
+  })();
   const wallD = (across) => {
     if (!WL) return WALL_D;
-    if (WL.shape === 'turned') return across >= HOUSE_EDGE || !TURN ? WALL_D : WALL_D - (HOUSE_EDGE - across) * Math.tan(TURN);
+    if (WL.shape === 'turned' || WL.shape === 'sweep') {
+      if (!TURNED) return WALL_D;
+      if (ARC && across < ARC.from) return across <= ARC.to ? ARC.cd : ARC.cd + Math.sqrt(Math.max(0, ARC.r ** 2 - (across - ARC.cz) ** 2));
+      if (SWEEP) return across >= SWEEP.start ? WALL_D : SWEEP.cd + Math.sqrt(Math.max(0, SWEEP.R ** 2 - (across - SWEEP.cz) ** 2));
+      return turnedD(across);
+    }
     const { from, to, offset } = WL;
     if (across >= from) return WALL_D;
     if (across <= to) return WALL_D - offset;
     const u = (from - across) / (from - to);
     return WALL_D - (offset * (1 - Math.cos(Math.PI * u))) / 2;
   };
+  /* Where a face `off` out from the wall line stands, [d, across], for
+     the line's own `across`: along the line's normal, so the wall keeps
+     its thickness where the line is turned and round the arc (the same
+     angle on the concentric circle, ending square at the bend);
+     straight out from the line elsewhere. */
+  const wallPoint = (across, off = 0) => {
+    if (ARC && across < ARC.from) {
+      const sin = Math.max(-1, (Math.max(across, ARC.to) - ARC.cz) / ARC.r), cos = Math.sqrt(1 - sin * sin);
+      return [ARC.cd + (ARC.r + off) * cos, ARC.cz + (ARC.r + off) * sin];
+    }
+    if (SWEEP && across < SWEEP.start && !(ARC && across < ARC.from)) {
+      const sin = (across - SWEEP.cz) / SWEEP.R, cos = Math.sqrt(1 - sin * sin);
+      return [SWEEP.cd + (SWEEP.R + off) * cos, SWEEP.cz + (SWEEP.R + off) * sin];
+    }
+    if (EASE && across > EASE.z0 && across < EASE.z1) {
+      const sin = (across - EASE.cz) / EASE.R, cos = Math.sqrt(1 - sin * sin);
+      return [EASE.cd + (EASE.R + off) * cos, EASE.cz + (EASE.R + off) * sin];
+    }
+    if (TURNED && across < TURNED.pivot) {
+      const n = 1 / Math.sqrt(1 + TURNED.b ** 2);
+      return [turnedD(across) + off * n, across - off * TURNED.b * n];
+    }
+    return [wallD(across) + off, across];
+  };
+  /* The wall line's own stations across — where it leaves the street,
+     where the arc starts and ends, the arc's twelve angle steps — so
+     whatever follows the wall draws the same chords. */
+  const wallStations = () => {
+    const out = [];
+    if (SWEEP) for (let i = 0; i <= 6; i++) out.push(SWEEP.cz + SWEEP.R * Math.sin(((ARC ? ARC.a0 : -TURN) * i) / 6));
+    else if (EASE) for (let i = 0; i <= 4; i++) out.push(EASE.cz - EASE.R * Math.sin((TURN * i) / 4));
+    else if (TURNED && TURNED.pivot < HOUSE_EDGE) out.push(TURNED.pivot);
+    if (ARC) {
+      out.push(ARC.from, ARC.to);
+      for (let i = 1; i < 12; i++) out.push(ARC.cz + ARC.r * Math.sin(ARC.a0 + ((-Math.PI / 2 - ARC.a0) * i) / 12));
+    }
+    return out.map((a) => +a.toFixed(6));
+  };
   /* The stretch across which the line moves, south end first; d grows
      with across over it. */
-  const wallStretch = () => (WL.shape === 'turned' ? [HOUSE_EDGE - 60, HOUSE_EDGE] : [WL.to, WL.from]);
+  const wallStretch = () => (TURNED ? [ARC ? ARC.to : HOUSE_EDGE - 60, SWEEP ? SWEEP.start : EASE ? EASE.z1 : TURNED.pivot] : [WL.to, WL.from]);
+  /* On a curved stretch of the wall line, where only its own stations
+     should sample it. */
+  const onCurve = (across) => (!!ARC && across > ARC.to + 1e-6 && across < ARC.from - 1e-6) || (!!EASE && across > EASE.z0 + 1e-6 && across < EASE.z1 - 1e-6) || (!!SWEEP && across > ARC.from + 1e-6 && across < SWEEP.start - 1e-6);
   /* Where the wall line is `d` out from the face: the one across on its
      moving stretch, or nothing where it never is. */
   function wallAcross(d) {
-    if (!WL || d >= WALL_D - 1e-9) return [];
+    if (!WL || d >= WALL_D - 1e-9 || ((WL.shape === 'turned' || WL.shape === 'sweep') && !TURNED)) return [];
     let [lo, hi] = wallStretch();
     if (d <= wallD(lo) + 1e-9) return [];
     for (let i = 0; i < 60; i++) {
@@ -221,7 +353,8 @@ export function deriveModel(PLAN) {
      edge's northernmost point and the house's corner. */
   function wallMeetsCut(off = 0) {
     if (!CUT) return null;
-    const f = (a) => a - cutFrom(wallD(a) + off);
+    if (ARC) return ARC.to;
+    const f = (a) => { const [d, ac] = wallPoint(a, off); return ac - cutFrom(d); };
     let lo = typeof CUT.from === 'number' ? CUT.from - 1 : Math.min(...CUT.from.map(([, a]) => a)) - 1;
     let hi = HOUSE_EDGE;
     if (f(lo) > 0 || f(hi) < 0) return null;
@@ -299,12 +432,14 @@ export function deriveModel(PLAN) {
   function rampT(across) {
     const r = CUT.ramp;
     const t = Math.min(1, Math.max(0, (across - r.from) / (r.to - r.from)));
-    const e = Math.min(0.5, Math.max(0, r.ease || 0));
-    if (!e) return t;
-    const s = 1 / (1 - e);
-    if (t < e) return (s * t * t) / (2 * e);
-    if (t > 1 - e) return 1 - (s * (1 - t) * (1 - t)) / (2 * e);
-    return s * (e / 2 + (t - e));
+    /* `ease` is one fraction for both ends, or { top, bottom } for each. */
+    const clamp = (v) => Math.min(0.5, Math.max(0, v || 0));
+    const e1 = clamp(typeof r.ease === 'object' ? r.ease.top : r.ease), e2 = clamp(typeof r.ease === 'object' ? r.ease.bottom : r.ease);
+    if (!e1 && !e2) return t;
+    const s = 1 / (1 - e1 / 2 - e2 / 2);
+    if (e1 && t < e1) return (s * t * t) / (2 * e1);
+    if (e2 && t > 1 - e2) return 1 - (s * (1 - t) * (1 - t)) / (2 * e2);
+    return s * (e1 / 2 + (t - e1));
   }
 
   /* The entrance, over the property's last `flare` metres: the hill is
@@ -338,11 +473,36 @@ export function deriveModel(PLAN) {
   function rampLevel(across) {
     const r = CUT.ramp;
     const base = sampleProfile(CUT.profile, r.dFrom ?? 0, across);
+    /* With a mouth that climbs (`mouth.climb`), the ramp foot on the
+       uphill side already stands that climb above the road, the mouth
+       having risen that much from the road edge. */
+    const foot = CUT.mouth?.climb ? roadLevel(CUT.to) + CUT.mouth.climb * CUT.mouth.flare : roadLevel(r.to);
     if (across <= r.from) return base;
-    if (across >= r.to) return roadLevel(across);
-    return base - (base - roadLevel(r.to)) * rampT(across);
+    if (across >= r.to) return CUT.mouth?.climb ? foot : roadLevel(across);
+    return base - (base - foot) * rampT(across);
   }
-
+  /* The drive surface at (d, across): the ramp's level, except in the
+     mouth, which is a spiral about the street wall's end: the spokes
+     from that end to the mouth's edge are level lines, the one along
+     the street at the road's height, the one across the drive at the
+     ramp foot's, and the height climbs evenly from spoke to spoke
+     (`mouth.climb` over the mouth's length along the road), so the car
+     sweeps in off the road and climbs round the corner; the wall's end
+     rises with it. */
+  function driveLevel(d, across) {
+    const r = CUT.ramp, base = rampLevel(across);
+    if (!MOUTH || !CUT.mouth?.climb || across < MOUTH.across0) return base;
+    const { a, b, d0, across0 } = MOUTH;
+    const dx = d - (d0 - WALL), dz = across - across0;
+    if (dz <= 1e-9) return dx <= 0 ? base : roadLevel(across);
+    /* the spoke through the point: the ellipse angle whose chord to the wall's end passes it */
+    const f = (th) => (WALL - a * Math.cos(th)) * dz - b * Math.sin(th) * dx;
+    let lo = 0, hi = Math.PI / 2;
+    if (f(hi) <= 0) return roadLevel(across);
+    for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (f(mid) < 0) lo = mid; else hi = mid; }
+    const u = 1 - (lo + hi) / Math.PI;
+    return roadLevel(across) + (rampLevel(r.to) - roadLevel(across)) * u;
+  }
   /* The driveway's outline, station by station across the front from the
      apron's edge to the property's end: `edge(c)` is the cut line — the
      fillet's arc, then the straight run `dFrom` out, then the mouth's arc
@@ -358,6 +518,10 @@ export function deriveModel(PLAN) {
     for (let a = r.from; a < CUT.to - 1e-6; a += STEP) set.add(+a.toFixed(6));
     set.add(CUT.to);
     set.add(r.to);
+    if (HOUSE_EDGE > r.from && HOUSE_EDGE < CUT.to) set.add(HOUSE_EDGE);
+    /* the chamfer: the cut edge leaves the garage front (dTop) at the house corner and reaches the ramp line (dFrom) chamfer metres on */
+    const CH = r.chamfer && r.dTop != null ? { from: HOUSE_EDGE, to: HOUSE_EDGE + r.chamfer, d0: r.dTop, d1: dFrom } : null;
+    if (CH) set.add(CH.to);
     if (FILLET) {
       set.add(FILLET.centre.across);
       for (let i = 0; i <= 12; i++) set.add(+(FILLET.centre.across - FILLET.r * Math.cos((i / 12) * (Math.PI / 2))).toFixed(6));
@@ -369,6 +533,8 @@ export function deriveModel(PLAN) {
     const stations = [...set].filter((c) => c >= r.from - 1e-9 && c <= CUT.to + 1e-9).sort((a, b) => a - b);
     /* The cut line's d at a station. */
     const edge = (c) => {
+      if (CH && c <= CH.from) return CH.d0;
+      if (CH && c < CH.to) return CH.d0 + ((CH.d1 - CH.d0) * (c - CH.from)) / (CH.to - CH.from);
       if (FILLET && c < FILLET.centre.across) {
         const dc = dFrom - FILLET.r;
         return dc + Math.sqrt(Math.max(0, FILLET.r ** 2 - (c - FILLET.centre.across) ** 2));
@@ -384,6 +550,10 @@ export function deriveModel(PLAN) {
        the offset arc, so the point moves across as well as out, and the
        wall's top can be read at the ground it actually stands in. */
     const hill = (c) => {
+      if (CH && c > CH.from && c < CH.to) {
+        const len = Math.hypot(CH.d1 - CH.d0, CH.to - CH.from);
+        return [edge(c) - (WALL * (CH.to - CH.from)) / len, c + (WALL * (CH.d1 - CH.d0)) / len];
+      }
       if (FILLET && c < FILLET.centre.across) {
         const { r: rad, centre } = FILLET;
         const dc = dFrom - rad;
@@ -397,7 +567,9 @@ export function deriveModel(PLAN) {
       }
       return [dFrom - WALL, c];
     };
-    return { stations, edge, hill, outer: WALL_D, dFrom };
+    /* The slab runs to the street wall's drive face, and to the street line where the mouth has no wall. */
+    const outer = (c) => (MOUTH && c >= MOUTH.across0 - 1e-9 ? WALL_D : WALL_D - WALL);
+    return { stations, edge, hill, outer, dFrom };
   })();
 
   function groundY(x, z) {
@@ -419,12 +591,12 @@ export function deriveModel(PLAN) {
     const r = CUT.ramp;
     if (insideFillet(along, across)) return natural(d, across);
     if (across <= r.from || d >= WALL_D) return base;
-    if (MOUTH && across >= MOUTH.across0) return inMouth(d, across) ? rampLevel(across) : natural(d, across);
-    if (d < (r.dFrom ?? 0)) {
+    if (MOUTH && across >= MOUTH.across0) return inMouth(d, across) ? driveLevel(d, across) : natural(d, across);
+    if (d < (DRIVE ? DRIVE.edge(Math.min(across, CUT.to)) : (r.dFrom ?? 0))) {
       if (across <= HOUSE_EDGE) return base;
       if (!inFillet(along, across)) return natural(d, across);
     }
-    return rampLevel(across);
+    return driveLevel(d, across);
   }
   /* Where the house's east face stands, in d, at a position across the
      front: on the face line for a house that is not turned; for one that
@@ -435,5 +607,5 @@ export function deriveModel(PLAN) {
     return -(HOUSE_EDGE - across) * Math.tan(TURN);
   }
 
-  return { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_MOVED, wallD, wallAcross, wallMeetsCut, lineMeetsCut, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD };
+  return { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_MOVED, ARC, SWEEP, wallD, wallPoint, wallStations, onCurve, wallAcross, wallMeetsCut, lineMeetsCut, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, driveLevel, DRIVE, groundY, faceD };
 }

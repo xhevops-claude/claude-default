@@ -60,7 +60,7 @@ fix.
 | 7 | Ramp, z 6–22 | Grid at 1 m, slabs at 0.5 m: lines that should coincide did not. | R5: one `STEP` (0.5 m) for walked volumes and for the grid over the driveway, stations from `ramp.from`, so slab edges and grid lines are the same polyline. | shipped | (19, −1.6, 9.6) → (14.5, −4.2, 10.5) |
 | 8 | Whole ramp | 27 % average, ~36 % mid. | D2 brought it to 12.5 %, D3's landing to 18 % — and the real frontage (19.3 m, ending at z 16.17) leaves only z 6–14 for the grade: 1.76 m over 8 m, 22 % average, ~27 % mid, with a 2.2 m landing. D6 moved the house 0.68 m up the frontage, so now **1.76 m over 8.68 m, 20 % average, ~25 % mid**. The frontage is the hard limit; see D4. | open — decision D4 | (34, −2.5, 10) → (14.5, −4.5, 10) |
 | 9 | The entrance, z 16–22 | The outer wall ran to the tip and the floor met the road only over the last 1.5 m. | D3: the driveway reaches the road at z 18 and from there *is* the road's surface (a 4 m landing that follows the road's own fall, with the mouth's flare opening onto it); the outer wall runs out at z ≈ 16.1, so the road side is open for 6 m, the first 2 m with a kerb of at most 24 cm. | shipped | plan view (15.5, 6, 19) → (15.5, −5, 19), up −Z |
-| 10 | Apron's north edge — the north-east boundary from the turned house face (≈ 9.0, −1.03) to the road corner (16, −2.49) — and the house's east face line north of the garage | The cut in front of the house is bounded to the north by a bare vertical face: 2.9 m of hill at x 10 falling to nothing at x ≈ 13, and from there to the outer wall the apron sits *above* the natural ground with no wall under its edge. The strip of the house's east face line north of the garage's north band is bare too. (The edge used to stop at z −1.5, short of the boundary; it now runs on the boundary itself, and the face is the turned house's.) | Carry the wall line on: garage north band → a band on the hill side of the turned face line from the band to the boundary → a band inside the boundary line to the outer wall, cut wall as far as the ground is above the apron, fill wall (down to natural ground) beyond, meeting the outer wall at the road corner. The band would take 30 cm off the apron's north edge. | open | plan view (12.5, 8, −1) → (12.5, −3, −1), up −Z |
+| 10 | Apron's north edge — the north-east boundary from the turned house face (≈ 9.0, −1.03) to the road corner (16, −2.49) — and the house's east face line north of the garage | The cut in front of the house is bounded to the north by a bare vertical face: 2.9 m of hill at x 10 falling to nothing at x ≈ 13, and from there to the outer wall the apron sits *above* the natural ground with no wall under its edge. The strip of the house's east face line north of the garage's north band is bare too. (The edge used to stop at z −1.5, short of the boundary; it now runs on the boundary itself, and the face is the turned house's.) | Carry the wall line on: garage north band → a band on the hill side of the turned face line from the band to the boundary → a band inside the boundary line to the outer wall, cut wall as far as the ground is above the apron, fill wall (down to natural ground) beyond, meeting the outer wall at the road corner. The band would take 30 cm off the apron's north edge. | open (a boundary wall was drawn and dropped on 2026-11-04) | plan view (12.5, 8, −1) → (12.5, −3, −1), up −Z |
 | 11 | The house against the real parcel | With the surveyed parcel overlaid, the house's north edge lay outside the north-east boundary and the cut assumed a 24 m frontage. | D5: the parcel is placed 3.5 m further north relative to the house (frontage midpoint at z 6.5), so the north wall clears the boundary by 0.5 m at its north-west corner and the apron's corner at x 10 stays inside; the cut, the road's fall and the ramp now use the surveyed frontage. D6 then turned the house 8.06° about its south-east corner to lie parallel to the boundary and set it 1 m off it (frontage now z −2.49…16.85, midpoint 7.18). | shipped | plan view (−4, 60, 7) → (−4, 0, 7), up −Z |
 
 ## Decisions
@@ -89,13 +89,43 @@ fix.
 - **D6 — decided:** the house is turned 8.06° about its south-east
   corner (10, 6) — the corner the fillet hangs off — so its north wall
   runs parallel to the north-east boundary's chord (x 1.21 → 10.25), and
-  the site is placed so the wall is 1 m off the boundary at the closest
-  point, the boundary's bend at x 7.59 (1.19 m at the chord's ends). The
+  the site is placed so the wall is 1.5 m off the boundary at the closest
+  point, the boundary's bend at x 7.59 (1.69 m at the chord's ends; 1 m
+  until D7). The
   driveway, walls and road stay on the frontage's axes; the levels, the
   garage's bands and the canopy turn; the apron's west edge is the
   turned face; the fillet is the largest arc still tangent to the turned
   south edge line at the corner and to the ramp's edge, r = dFrom /
   (1 + sin 8.06°) = 2.63 m, its wall walked by angle from the corner.
+- **D7 — decided (2026-11-04):** the house 1.5 m off the north-east
+  boundary, not 1 m: the site (parcel, relief, road, boundary, the
+  uncle's walls) moved 0.505 m north of the house in the model's frame.
+  The street wall is one curve: on the street line from the ramp's
+  corner to z 5.3, then a circle of r 20 tangent to the street through
+  the point 4.30 m square off the garage door line at its north jamb
+  (wall included, 4.00 clear; the door's south half is nearer the
+  street, so the 4.30 is clipped by the road line there), then the
+  corner circle tangent to it, r 3.6, ending square where its lowest
+  point meets the property line (11.95, −2.04). The street walls are
+  founded 0.5 m under the road. The S wall and the uncle's-wall
+  proposal are dropped; the land between the wall and the street goes
+  down to the road, all of it ours, which leaves the uncle room between
+  our wall and the road for a sliding gate at his end. A wall along the
+  boundary back to the house face was drawn and dropped the same day.
+  The ramp climbs from the parcel's end with no landing, its curve only
+  at the top, ending at the door's south edge (ramp from z 6.32, about
+  17 % average). The cut in front of the garage starts at the garage's
+  front (dFrom 2, was 3), so the corner fillet's wall meets the garage's
+  corner and the ramp is 4 m wide. The drive is sampled every 10 cm
+  (`terrain.step`). Later the same day: the drive 3.0 m between the
+  wall faces, the entrance 4 m, the mouth a spiral climbing from the
+  road edge, the garage floor lowered 0.20 m to −3.10 (2.90 clear, the
+  flight 17 risers of 0.182), the ramp about 16 %. Then, for a drivable
+  entrance level with the road and nothing over 15 %: the garage floor
+  to −3.40 (3.20 clear, 17 risers of 0.200), the mouth climbing 10 %
+  of its length along the road, the ramp 11 %. The flight then 20 risers
+  of 0.170, 14 up the north wall from x 9.96, the landing inside the
+  door 0.49; the ramp starts 1 m inside the door's south edge.
 - **D4 — waiting:** the grade is 20 % (25 % mid) because the surveyed
   frontage leaves 8.7 m for the ramp. Options: start the grade inside the
   apron (D1 revisited), a shorter landing, a flatter `ease`, a different
@@ -153,7 +183,7 @@ fix.
 - The surveyed ground as a Relief group, and the parcel re-placed so the
   house clears the boundary; cut, road fall and ramp follow the surveyed
   frontage (shipped, PR #143).
-- The house turned 8.06° to the north-east boundary and set 1 m off it
+- The house turned 8.06° to the north-east boundary and set 1.5 m off it (1 m until D7)
   (D6): the turn lives in scene.json, the levels, garage bands and canopy
   follow it, the apron meets the turned face and the fillet's arc dips
   from the corner tangent to the turned south edge line; the site moved
