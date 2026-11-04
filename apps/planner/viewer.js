@@ -10,7 +10,7 @@ import { dotTexture, labelTexture, tipTexture } from './textures.js';
 
 const { PLAN, RELIEF, PROJECT } = await loadCurrent();
 const M = deriveModel(PLAN);
-const { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_TURN, wallD, lineMeetsCut, WALL_ROUND, roundedOff, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD } = M;
+const { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_MOVED, wallD, wallAcross, wallMeetsCut, lineMeetsCut, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD } = M;
 
 /* The tracker lives with the project. */
 {
@@ -289,44 +289,33 @@ async function boot() {
       const onWall = v.onWall && CUT && FRONT.axis === 'x';
       const offD = (p) => (p - FACE) * FRONT.sign - WALL_D;
       const alongAt = (p) => (onWall ? (a) => FACE + FRONT.sign * (wallD(a) + offD(p)) : () => p);
-      /* With the wall's end rounded, a face's chain starts on the arc —
-         its own, concentric, at the face's distance in from the outer
-         line — from the cut's edge round to where it joins the straight. */
-      const round = onWall && onCut && WALL_ROUND;
-      const arcOf = (p) => {
-        const { r, O, n1, n2 } = WALL_ROUND;
-        const rho = r + offD(p) / Math.hypot(1, WALL_TURN);
-        const th1 = Math.atan2(n1[1], n1[0]);
-        let th2 = Math.atan2(n2[1], n2[0]);
-        if (th2 - th1 > Math.PI) th2 -= 2 * Math.PI; else if (th1 - th2 > Math.PI) th2 += 2 * Math.PI;
-        const K = 8, pts = [];
-        for (let k = 0; k <= K; k++) {
-          const th = th2 + ((th1 - th2) * k) / K;
-          pts.push([FACE + FRONT.sign * (O[0] + rho * Math.cos(th)), O[1] + rho * Math.sin(th)]);
-        }
-        return pts;
+      /* Where a face meets the cut's near edge: for a wall on the wall
+         line, where its own line does. A z1 of 'cut' ends the volume
+         there instead — a piece on the far side of the edge running up
+         to it. */
+      const edgeAt = (p) => {
+        if (!onWall || !WALL_MOVED) return cutAt(p);
+        const a = wallMeetsCut(offD(p));
+        return a ?? cutAt(p);
       };
-      const startAt = (p) => {
-        if (!onCut) return FRONT.axis === 'x' ? v.z0 : v.x0;
-        if (round) return arcOf(p)[arcOf(p).length - 1][1];
-        if (!onWall || !WALL_TURN) return cutAt(p);
-        const met = lineMeetsCut(WALL_D - HOUSE_EDGE * WALL_TURN + offD(p), WALL_TURN);
-        return met ? met.across : cutAt(p);
-      };
-      const a0Lo = startAt(lo);
-      const a0Hi = onCut ? startAt(hi) : a0Lo;
-      const a1 = FRONT.axis === 'x' ? v.z1 : v.x1;
+      const endOnCut = v.z1 === 'cut' && CUT && FRONT.axis === 'x';
+      const a0Lo = onCut ? edgeAt(lo) : (FRONT.axis === 'x' ? v.z0 : v.x0);
+      const a0Hi = onCut ? edgeAt(hi) : a0Lo;
+      const a1Lo = endOnCut ? edgeAt(lo) : (FRONT.axis === 'x' ? v.z1 : v.x1);
+      const a1Hi = endOnCut ? edgeAt(hi) : a1Lo;
       const dFace = ((FRONT.sign > 0 ? lo : hi) - FACE) * FRONT.sign;
-      const steps = runOut(stationsBetween(Math.max(a0Lo, a0Hi), a1), (a) => yAt(v.y1, a, dFace) - yAt(v.y0, a, dFace));
-      /* Each side starts on its own end of the cut edge (or its own arc);
-         the stations beyond the first are shared, so the two chains match. */
-      const side = (p, a0) => {
+      const steps = runOut(stationsBetween(Math.max(a0Lo, a0Hi), Math.min(a1Lo, a1Hi)), (a) => yAt(v.y1, a, dFace) - yAt(v.y0, a, dFace));
+      /* A wall that ran out ends where its top met its foot, both faces. */
+      const ranOut = steps[steps.length - 1] < Math.min(a1Lo, a1Hi) - 1e-9;
+      /* Each side starts and ends on its own point of the cut edge; the
+         stations between are shared, so the two chains match. */
+      const side = (p, a0, a1) => {
         const at = alongAt(p);
-        const head = round ? arcOf(p) : [FRONT.axis === 'x' ? [at(a0), a0] : [a0, at(a0)]];
-        const rest = (round ? steps.filter((a) => a > a0 + 1e-6) : steps.slice(1)).map((a) => (FRONT.axis === 'x' ? [at(a), a] : [a, at(a)]));
-        return [...head, ...rest];
+        const end = ranOut ? steps[steps.length - 1] : a1;
+        const list = [a0, ...steps.slice(1, -1).filter((a) => a > a0 + 1e-6 && a < end - 1e-6), end];
+        return list.map((a) => (FRONT.axis === 'x' ? [at(a), a] : [a, at(a)]));
       };
-      const chainLo = side(lo, a0Lo), chainHi = side(hi, a0Hi);
+      const chainLo = side(lo, a0Lo, a1Lo), chainHi = side(hi, a0Hi, a1Hi);
       const n = chainLo.length, m = chainHi.length;
       const ring = [...chainLo, ...chainHi.slice().reverse()];
       const acrossOf = ([x, z]) => (FRONT.axis === 'x' ? z : x);
@@ -1238,32 +1227,20 @@ async function boot() {
       const [d0, a0] = CUT.from[i - 1], [d1, a1] = CUT.from[i];
       if ((a0 - z) * (a1 - z) <= 0 && a0 !== a1) out.push(FACE + FRONT.sign * (d0 + ((z - a0) * (d1 - d0)) / (a1 - a0)));
     }
-    /* the turned outer wall, north of the corner, inside the cut */
-    if (WALL_TURN && FRONT.axis === 'x' && z < HOUSE_EDGE && z >= cutFrom(wallD(z))) out.push(FACE + FRONT.sign * wallD(z));
-    /* the rounded end's arc, where this line crosses it */
-    if (WALL_ROUND && FRONT.axis === 'x') {
-      const { r, O } = WALL_ROUND, h = r * r - (z - O[1]) ** 2;
-      if (h > 0) for (const d of [O[0] - Math.sqrt(h), O[0] + Math.sqrt(h)]) if (roundedOff(d + 1e-6 * Math.sign(d - O[0]), z + 1e-6 * Math.sign(z - O[1]))) out.push(FACE + FRONT.sign * d);
+    /* the outer wall where it is moved in from the street, inside the cut */
+    if (WALL_MOVED && FRONT.axis === 'x') {
+      const d = wallD(z);
+      if (d < WALL_D - 1e-9 && z >= cutFrom(d)) out.push(FACE + FRONT.sign * d);
     }
     return out;
-  };
-  const arcZCrossings = (d) => {
-    if (!WALL_ROUND) return [];
-    const { r, O } = WALL_ROUND, h = r * r - (d - O[0]) ** 2;
-    if (h <= 0) return [];
-    return [O[1] - Math.sqrt(h), O[1] + Math.sqrt(h)].filter((a) => roundedOff(d + 1e-6 * Math.sign(d - O[0]), a + 1e-6 * Math.sign(a - O[1])));
   };
   const zCrossings = (x) => {
     const d = (x - FACE) * FRONT.sign;
     const out = slanted && d >= faceD(cutFrom(d)) ? [cutFrom(d)] : [];
     /* the turned house's east face, between the cut's edge and the corner */
     if (TURN && d < 0 && d >= faceD(cutFrom(d))) out.push(HOUSE_EDGE + d / Math.tan(TURN));
-    /* the turned outer wall, where this line crosses it north of the corner */
-    if (WALL_TURN && d < WALL_D) {
-      const a = HOUSE_EDGE - (WALL_D - d) / WALL_TURN;
-      if (a >= cutFrom(d) && a <= CUT.to) out.push(a);
-    }
-    out.push(...arcZCrossings(d));
+    /* the moved outer wall, where this line crosses it inside the cut */
+    if (WALL_MOVED && d < WALL_D) for (const a of wallAcross(d)) if (a >= cutFrom(d) && a <= CUT.to) out.push(a);
     return out;
   };
   const faceXCrossing = (z) => {

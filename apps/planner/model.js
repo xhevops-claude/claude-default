@@ -176,14 +176,61 @@ export function deriveModel(PLAN) {
   const HOUSE_EDGE = FRONT.axis === 'x' ? e.y1 : e.x1;
 
   /* Where the outer wall stands across the front, in d: on the wall
-     line everywhere, unless the cut says `turnWall` — then, north of
-     the house's corner, the wall is turned with the house about the
-     point where it meets the corner's line, so it runs parallel to the
-     face instead of the street, and what it leaves between itself and
-     the street is a triangle of the ground as found. The ramp's side of
-     the corner is never turned: the ramp runs along the street. */
-  const WALL_TURN = CUT?.turnWall && TURN ? Math.tan(TURN) : 0;
-  const wallD = (across) => (across >= HOUSE_EDGE ? WALL_D : WALL_D - (HOUSE_EDGE - across) * WALL_TURN);
+     line everywhere, unless the cut gives a `wallLine` that moves it in
+     from the street somewhere north of the ramp. Two shapes:
+       'turned' — north of the house's corner the wall is turned with
+         the house about the point where it meets the corner's line, so
+         it runs parallel to the face; what it leaves between itself and
+         the street is a triangle.
+       's' — from `from` across to `to` the wall eases `offset` metres
+         in from the street on a cosine S, tangent to the street line at
+         one end and to its offset at the other, and stays offset beyond
+         `to`: one smooth wall, no corner anywhere.
+     `setback: 'road'` takes the ground it leaves in front of the wall
+     down to the road, an open splay off the street; without it that
+     ground is the hill as found. The ramp's side is never moved: the
+     ramp runs along the street. */
+  const WL = CUT?.wallLine || null;
+  const WALL_MOVED = !!WL;
+  const wallD = (across) => {
+    if (!WL) return WALL_D;
+    if (WL.shape === 'turned') return across >= HOUSE_EDGE || !TURN ? WALL_D : WALL_D - (HOUSE_EDGE - across) * Math.tan(TURN);
+    const { from, to, offset } = WL;
+    if (across >= from) return WALL_D;
+    if (across <= to) return WALL_D - offset;
+    const u = (from - across) / (from - to);
+    return WALL_D - (offset * (1 - Math.cos(Math.PI * u))) / 2;
+  };
+  /* The stretch across which the line moves, south end first; d grows
+     with across over it. */
+  const wallStretch = () => (WL.shape === 'turned' ? [HOUSE_EDGE - 60, HOUSE_EDGE] : [WL.to, WL.from]);
+  /* Where the wall line is `d` out from the face: the one across on its
+     moving stretch, or nothing where it never is. */
+  function wallAcross(d) {
+    if (!WL || d >= WALL_D - 1e-9) return [];
+    let [lo, hi] = wallStretch();
+    if (d <= wallD(lo) + 1e-9) return [];
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (wallD(mid) < d) lo = mid; else hi = mid;
+    }
+    return [(lo + hi) / 2];
+  }
+  /* Where a line `off` out from the wall line (a wall's far face, off
+     negative) meets the cut's near edge: its across, found between the
+     edge's northernmost point and the house's corner. */
+  function wallMeetsCut(off = 0) {
+    if (!CUT) return null;
+    const f = (a) => a - cutFrom(wallD(a) + off);
+    let lo = typeof CUT.from === 'number' ? CUT.from - 1 : Math.min(...CUT.from.map(([, a]) => a)) - 1;
+    let hi = HOUSE_EDGE;
+    if (f(lo) > 0 || f(hi) < 0) return null;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (f(mid) < 0) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
 
   /* Where a line across the front, d = D0 + t · across, meets the cut's
      near edge: { d, across, i } with i the edge's segment, or null if
@@ -206,44 +253,6 @@ export function deriveModel(PLAN) {
     return null;
   }
 
-  /* The turned wall's north end rounded: `turnWall: { r }` fillets the
-     corner where the wall line meets the cut's edge with an arc of that
-     radius, tangent to both — the wall follows it and the apron's
-     ground stops at it. In (d, across): the corner C, the unit edges u1
-     (back along the wall) and u2 (along the cut's edge away from the
-     street), the centre O, the tangent points P1 on the wall and P2 on
-     the edge, and their outward normals n1, n2. */
-  const WALL_ROUND = (() => {
-    const r = CUT?.turnWall?.r;
-    if (!r || !WALL_TURN || typeof CUT.from === 'number') return null;
-    const met = lineMeetsCut(WALL_D - HOUSE_EDGE * WALL_TURN, WALL_TURN);
-    if (!met || met.i == null) return null;
-    const unit = ([d, a]) => { const l = Math.hypot(d, a); return [d / l, a / l]; };
-    const [d0, a0] = CUT.from[met.i - 1], [d1, a1] = CUT.from[met.i];
-    const u1 = unit([WALL_TURN, 1]);
-    const u2 = unit(d0 < d1 ? [d0 - d1, a0 - a1] : [d1 - d0, a1 - a0]);
-    const phi = Math.acos(Math.max(-1, Math.min(1, u1[0] * u2[0] + u1[1] * u2[1])));
-    const T = r / Math.tan(phi / 2);
-    const b = unit([u1[0] + u2[0], u1[1] + u2[1]]);
-    const C = [met.d, met.across];
-    const O = [C[0] + (b[0] * r) / Math.sin(phi / 2), C[1] + (b[1] * r) / Math.sin(phi / 2)];
-    const P1 = [C[0] + T * u1[0], C[1] + T * u1[1]], P2 = [C[0] + T * u2[0], C[1] + T * u2[1]];
-    const n1 = [(P1[0] - O[0]) / r, (P1[1] - O[1]) / r], n2 = [(P2[0] - O[0]) / r, (P2[1] - O[1]) / r];
-    return { r, C, u1, u2, T, O, P1, P2, n1, n2 };
-  })();
-  /* Inside the corner the rounding takes off: between the two tangents
-     and outside the arc. */
-  function roundedOff(d, across) {
-    if (!WALL_ROUND) return false;
-    const { r, O, n1, n2 } = WALL_ROUND;
-    const qd = d - O[0], qa = across - O[1];
-    if (qd * qd + qa * qa < r * r) return false;
-    /* q − O = α n1 + β n2, both non-negative inside the sector */
-    const det = n1[0] * n2[1] - n1[1] * n2[0];
-    if (Math.abs(det) < 1e-12) return false;
-    const al = (qd * n2[1] - qa * n2[0]) / det, be = (n1[0] * qa - n1[1] * qd) / det;
-    return al >= -1e-9 && be >= -1e-9;
-  }
 
   /* The quarter-round cut into the inside corner where the apron turns
      onto the ramp. The corner is where the ramp's uphill edge passes the
@@ -402,12 +411,10 @@ export function deriveModel(PLAN) {
     const dFace = faceD(across);
     if (d < dFace) return sampleProfile(CUT.profile, d, across);
     const base = sampleProfile(CUT.profile, Math.max(d, 0), across);
-    /* Behind a turned outer wall the cut stops short of the street: the
-       setback is the hill as found — or, with `turnWall.setback` of
-       'road', taken down to the road's level, an open splay off the
-       street. */
-    if (WALL_TURN && d >= wallD(across) && d < WALL_D) return CUT.turnWall?.setback === 'road' ? roadLevel(across) : natural(d, across);
-    if (WALL_ROUND && roundedOff(d, across)) return natural(d, across);
+    /* Where the outer wall is moved in from the street the cut stops
+       short of it: the setback is the hill as found, or the road's
+       level if the wall line says so. */
+    if (WALL_MOVED && d >= wallD(across) && d < WALL_D) return WL.setback === 'road' ? roadLevel(across) : natural(d, across);
     if (!CUT.ramp) return base;
     const r = CUT.ramp;
     if (insideFillet(along, across)) return natural(d, across);
@@ -428,5 +435,5 @@ export function deriveModel(PLAN) {
     return -(HOUSE_EDGE - across) * Math.tan(TURN);
   }
 
-  return { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_TURN, wallD, lineMeetsCut, WALL_ROUND, roundedOff, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD };
+  return { SLAB, WALL, STEP, TER, e, TURN, PIVOT, H, FRONT, ROAD, ROAD_MIN, roadLevel, VOLS, FRAMED, BOX, OUTLINES, PRISMS, FACE, PROFILE, CUT, cutFrom, sampleProfile, natural, WALL_D, WALL_MOVED, wallD, wallAcross, wallMeetsCut, lineMeetsCut, HOUSE_EDGE, FILLET, insideFillet, inFillet, rampT, MOUTH, inMouth, rampLevel, DRIVE, groundY, faceD };
 }
